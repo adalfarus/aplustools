@@ -1,0 +1,6 @@
+numpy
+requests
+pyqt5
+Pillow
+requests
+duckduckgo_search
