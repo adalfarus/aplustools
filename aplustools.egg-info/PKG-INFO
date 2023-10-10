@@ -1,0 +1,12 @@
+Metadata-Version: 2.1
+Name: aplustools
+Version: 0.1.2
+Summary: A collection of helpful tools
+Author: Cariel Becker
+License: MIT
+Requires-Dist: numpy
+Requires-Dist: requests
+Requires-Dist: pyqt5
+Requires-Dist: Pillow
+Requires-Dist: requests
+Requires-Dist: duckduckgo_search
