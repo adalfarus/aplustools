@@ -5,10 +5,26 @@ import re
 from urllib.parse import urlparse, urljoin
 import base64
 
-class Image:
-    def __init__(self, base_location, current_url=None):
+class ImageManager:
+    def __init__(self, base_location):
         self.base_location = base_location
+        self.images = []
+        
+    def add(self, ImageClass, **args):
+        self.images.append(ImageClass(**args))
+        return len(self.images)
+
+    def remove(self, index):
+        del self.images[index]
+
+    def execute(self, index, function, **args):
+        self.images[index].function(**args)
+
+class OnlineImage:
+    def __init__(self, current_url=None, one_time=True):
         self.current_url = current_url
+        if one_time == True:
+            self.download_logo_image(current_url)
         
     def save_image(self, base_location, img_data, original_name, original_format=None, new_name=None, target_format=None):
         if original_format == '.svg':
@@ -17,7 +33,7 @@ class Image:
         source_path = os.path.join(base_location, f"{original_name}.{original_format}" if original_format else original_name)
         with open(source_path, 'wb') as img_file:
             img_file.write(img_data)
-        return _convert_image_format(source_path, new_name, target_format) if target_format else source_path
+        return self.convert_image_format(source_path, new_name, target_format) if target_format else source_path
             
     def convert_image_format(self, source_path, new_name=None, target_format='png'):
         if source_path.split(".")[-1] == "svg":
@@ -77,7 +93,7 @@ class Image:
             
             if img_name.strip():
                 img_data = requests.get(img_url, verify=False).content
-                self._save_image(self.cache, img_data, name, extension, new_name=None, target_format=None)
+                self.save_image(self.cache, img_data, name, extension, new_name=None, target_format=None)
         except KeyError:
             print("The image tag does not have a src attribute.")
         except Exception as e:

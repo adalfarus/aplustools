@@ -1,9 +1,8 @@
 {
   "ExpandedNodes": [
     "",
-    "\\aplustools",
-    "\\tests"
+    "\\aplustools"
   ],
-  "SelectedNode": "\\build",
+  "SelectedNode": "\\aplustools\\database.py",
   "PreviewInSolutionExplorer": false
 }
