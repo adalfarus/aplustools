@@ -3,4 +3,5 @@ requests
 pyqt5
 Pillow
 requests
+bs4
 duckduckgo_search

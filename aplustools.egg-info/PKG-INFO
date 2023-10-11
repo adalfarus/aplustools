@@ -10,4 +10,5 @@ Requires-Dist: requests
 Requires-Dist: pyqt5
 Requires-Dist: Pillow
 Requires-Dist: requests
+Requires-Dist: bs4
 Requires-Dist: duckduckgo_search
