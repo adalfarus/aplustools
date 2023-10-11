@@ -13,6 +13,7 @@ setup(
         'pyqt5',
         'Pillow',
         'requests',
+        'bs4',
         'duckduckgo_search' # Get rid of
     ],
     setup_requires=['pytest-runner'],
