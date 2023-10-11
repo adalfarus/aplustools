@@ -10,15 +10,15 @@ class ImageManager:
         self.base_location = base_location
         self.images = []
         
-    def add(self, ImageClass, **args):
-        self.images.append(ImageClass(**args))
-        return len(self.images)
+    def add(self, ImageClass, *args, **kwargs):
+        self.images.append(ImageClass(*args, **kwargs))
+        return len(self.images) - 1
 
     def remove(self, index):
         del self.images[index]
 
-    def execute(self, index, function, **args):
-        self.images[index].function(**args)
+    def execute(self, index, function, *args, **kwargs):
+        getattr(self.images[index], function)(*args, **kwargs)
 
 class OnlineImage:
     def __init__(self, current_url=None, one_time=True):
@@ -81,9 +81,9 @@ class OnlineImage:
             print("The image tag does not have a src attribute.")
             return False
             
-    def download_image(self, img_tag):
+    def download_image(self):
         try:
-            img_url = urljoin(self.current_url, img_tag['src'])
+            img_url = urljoin(self.current_url, "")
             img_name = os.path.basename(urlparse(img_url).path)
             print(img_name)
             name = img_name.split(".")[0]
