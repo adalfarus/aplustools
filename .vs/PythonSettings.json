@@ -1,3 +1,4 @@
 {
-  "TestFramework": "Pytest"
+  "TestFramework": "Pytest",
+  "SuppressConfigureTestFrameworkPrompt": "true"
 }
