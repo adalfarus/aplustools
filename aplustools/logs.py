@@ -45,4 +45,5 @@ class Logger(object):
         
 def monitor_stdout(log_file):
     sys.stdout = Logger(log_file)
+    return sys.stdout
     
