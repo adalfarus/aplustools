@@ -153,7 +153,7 @@ class Search:
                 print("Failed to parse the search results.")
                 return
 
-        for query in queries:
+        for query in list(queries): # Added, so you can pass a single string
             results = ddg_instant_answer_search(query)
             for r in results:
                 print(r)
@@ -167,7 +167,7 @@ class Search:
         
     def duckduckgo_provider(self, queries):
         with DDGS(timeout=20) as ddgs:
-            for query in queries:
+            for query in list(queries): # Added, so you can pass a single string
                 results = ddgs.text(query, timelimit=100, safesearch='off')
                 for r in results:
                     url = check_url(r['href'], r['title'])
@@ -197,7 +197,7 @@ class Search:
             for link in links[:num_results]:  # limiting the number of results
                 yield {"title": link[0], "url": link[1]}
 
-        for query in queries:
+        for query in list(queries): # Added, so you can pass a single string
             results = bing_search(query, num_results=10)
             for i in results:
                 url = check_url(i['url'], i['title'])
