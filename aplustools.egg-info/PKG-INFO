@@ -1,14 +1,18 @@
 Metadata-Version: 2.1
 Name: aplustools
-Version: 0.1.3.1
+Version: 0.1.3.5
 Summary: A collection of helpful tools
 Author: Cariel Becker
 License: MIT
+Description-Content-Type: text/markdown
 License-File: LICENSE
 Requires-Dist: numpy
 Requires-Dist: requests
-Requires-Dist: pyqt5
 Requires-Dist: Pillow
 Requires-Dist: requests
 Requires-Dist: bs4
+Requires-Dist: datetime
 Requires-Dist: duckduckgo_search
+
+[![Active Development](https://img.shields.io/badge/Maintenance%20Level-Actively%20Developed-brightgreen.svg)](https://gist.github.com/cheerfulstoic/d107229326a01ff0f333a1d3476e068d)
+# aplustools

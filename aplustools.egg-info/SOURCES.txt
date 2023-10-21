@@ -2,6 +2,8 @@ LICENSE
 README.md
 setup.py
 aplustools/__init__.py
+aplustools/adultswork.py
+aplustools/childsplay.py
 aplustools/database.py
 aplustools/enviornment.py
 aplustools/gitupdater-cmd.exe
