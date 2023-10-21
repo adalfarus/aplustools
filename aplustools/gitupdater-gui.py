@@ -3,7 +3,10 @@ import requests
 import zipfile
 from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QPushButton, QLabel, QLineEdit, QTextEdit
 from PyQt5.QtCore import QThread, pyqtSignal
+import warnings
 
+
+warnings.warn("This package doesn't include PyQt5 anymore, so this is deprecated. Please use the executable instead.", DeprecationWarning, stacklevel=2)
 
 class DownloadThread(QThread):
     signal = pyqtSignal('PyQt_PyObject')

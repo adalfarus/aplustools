@@ -10,10 +10,10 @@ setup(
     install_requires=[
         'numpy',
         'requests',
-        'pyqt5',
         'Pillow',
         'requests',
         'bs4',
+        'datetime',
         'duckduckgo_search' # Get rid of
     ],
     setup_requires=['pytest-runner'],

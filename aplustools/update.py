@@ -30,11 +30,11 @@ class gitupdater:
         
     def update(self, path, zip_path, version, author, repo_name, gui_toggle=0, cmd_toggle=0):
         try:
-            if bool(cmd_toggle) and not bool(ui_toggle):
+            if bool(cmd_toggle) and not bool(gui_toggle):
                 subprocess.run([f"gitupdater-cmd.{self.version}", str(path), str(zip_path), str(version), str(author), str(repo_name)])
             elif bool(gui_toggle) and not bool(cmd_toggle):
                 subprocess.run([f"gitupdater-gui.{self.version}", str(path), str(zip_path), str(version), str(author), str(repo_name)])
-            elif not bool(cmd_toggle) and not bool(ui_toggle):
+            elif not bool(cmd_toggle) and not bool(gui_toggle):
                 subprocess.run([f"gitupdater.{self.version}", str(path), str(zip_path), str(version), str(author), str(repo_name)])
             else:
                 raise RuntimeError()
