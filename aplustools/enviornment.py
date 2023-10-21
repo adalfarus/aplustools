@@ -3,6 +3,30 @@ import os
 import sys
 import shutil
 import tempfile
+import __main__
+
+def set_working_dir_to_main_script_location():
+    """
+    Set the current working directory to the location of the main script
+    or executable. It considers whether the script is frozen using PyInstaller
+    or is running as a normal Python script.
+    """
+    try:
+        # Get the directory where the main script (or frozen exe) is located
+        if getattr(sys, 'frozen', False):
+            # If the script is running as a bundled executable created by PyInstaller
+            main_dir = os.path.dirname(sys.executable)
+        else:
+            # If the script is running as a normal Python script
+            main_dir = os.path.dirname(os.path.abspath(__main__.__file__))
+
+        # Change the current working directory to the main script directory
+        os.chdir(main_dir)
+        print(f"Working directory set to {main_dir}")
+
+    except Exception as e:
+        print(f"An error occurred while changing the working directory: {e}")
+        raise # Re-raise the error
 
 def change_working_dir_to_script_location():
     # Get the directory where the script (or frozen exe) is located
@@ -79,11 +103,15 @@ class Path:
 
     def create_directory(self):
         """Create a directory at the path."""
-        if not self.exists():
-            os.makedirs(self.path)
-            print(f"Directory {self.path} created.")
-        else:
-            print(f"Directory {self.path} already exists.")
+        try:
+            if not self.exists():
+                os.makedirs(self.path)
+                print(f"Directory {self.path} created.")
+            else:
+                print(f"Directory {self.path} already exists.")
+        except Exception as e:
+            print(f"An error occurred: {e}")
+            raise  # Reraise the exception after logging or printing the error message
 
     def list_files(self):
         """List all files in the directory."""
@@ -139,4 +167,9 @@ def move(orloc, newloc):
     shutil.move(orloc, newloc)
     
 def rename(ornam, newnam):
-    os.rename(ornam, newnam)
+    try:
+        os.rename(ornam, newnam)
+        print(f"{ornam} renamed to {newnam}.")
+    except Exception as e:
+        print(f"An error occurred while renaming: {e}")
+        

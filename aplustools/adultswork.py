@@ -1,12 +1,8 @@
 # childsplay.py, aims to make python standard classes easier and more consistent
 import datetime
-import warnings
 
-warnings.warn("This will alter the internal variable classes of python, be sure to only use it when learning python! If you want to use this in a real world application, use adultswork instead.", 
-              UserWarning, 
-              stacklevel=2)
 
-class str(str):
+class EnhancedString(str):
     """
     Enhanced string class with additional methods for ease of use.
     """
@@ -19,10 +15,10 @@ class str(str):
     def __add__(self, other: str) -> str:
         if not isinstance(other, str):
             raise TypeError(f"can only concatenate str (not '{type(other).__name__}') to str")
-        return str(super().__add__(other))
+        return EnhancedString(super().__add__(other))
 
 
-class dict(dict):
+class EnhancedDict(dict):
     """
     Enhanced dictionary class with additional methods for ease of use.
     """
@@ -44,12 +40,12 @@ class dict(dict):
     def __add__(self, other: dict):
         if not isinstance(other, dict):
             raise TypeError(f"unsupported operand type(s) for +: '{type(self).__name__}' and '{type(other).__name__}'")
-        new_dict = dict(self)
+        new_dict = EnhancedDict(self)
         new_dict.update(other)
         return new_dict
 
 
-class list(list):
+class EnhancedList(list):
     """
     Enhanced list class with additional methods for ease of use.
     """
@@ -62,7 +58,7 @@ class list(list):
     def __add__(self, other: list):
         if not isinstance(other, list):
             raise TypeError(f"can only concatenate list (not '{type(other).__name__}') to list")
-        return list(super().__add__(other))
+        return EnhancedList(super().__add__(other))
 
 class EnhancedInteger(int):
     """
@@ -76,7 +72,7 @@ class EnhancedInteger(int):
         return hex(self)[2:]
 
     
-class float(float):
+class EnhancedFloat(float):
     """
     Enhanced float class with additional methods for ease of use.
     """
@@ -85,14 +81,14 @@ class float(float):
         return f"{self:.{decimal_places}f}"
 
     
-class set(set):
+class EnhancedSet(set):
     """
     Enhanced set class with additional methods for ease of use.
     """
 
     def power_set(self):
         from itertools import chain, combinations
-        return set(chain.from_iterable(combinations(self, r) for r in range(len(self)+1)))
+        return EnhancedSet(chain.from_iterable(combinations(self, r) for r in range(len(self)+1)))
 
 class EnhancedFile:
     """
@@ -131,7 +127,7 @@ class EnhancedDateTime(datetime.datetime):
         return self.strftime(format)
 
 
-class tuple(tuple):
+class EnhancedTuple(tuple):
     """
     Enhanced tuple class with additional methods for ease of use.
     """
