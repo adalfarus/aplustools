@@ -13,7 +13,7 @@ class str(str):
     
     def remove(self, substring: str) -> str:
         if not isinstance(substring, str):
-            return self
+            raise ValueError("The substring must be a string.")
         return self.replace(substring, '')
 
     def __add__(self, other: str) -> str:
