@@ -131,3 +131,12 @@ class Path:
             
     def __len__(self):
         return len(self.path.split("\\"))
+
+def copy(orloc, newloc):
+    shutil.copy(orloc, newloc)
+
+def move(orloc, newloc):
+    shutil.move(orloc, newloc)
+    
+def rename(ornam, newnam):
+    os.rename(ornam, newnam)
