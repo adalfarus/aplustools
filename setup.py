@@ -10,7 +10,7 @@ setup(
     version='0.1.3.5', # Change to 0.1.4 if the duckduckgo search works aswell as DGGS
     description='A collection of helpful tools',
     author='Cariel Becker',
-    license='MIT',
+    license='GPL-3.0',
     install_requires=[
         'numpy',
         'requests',
