@@ -5,7 +5,7 @@ aplustools/__init__.py
 aplustools/adultswork.py
 aplustools/childsplay.py
 aplustools/database.py
-aplustools/enviornment.py
+aplustools/environment.py
 aplustools/gitupdater-cmd.exe
 aplustools/gitupdater-cmd.py
 aplustools/gitupdater-gui.exe
@@ -15,7 +15,7 @@ aplustools/gitupdater.py
 aplustools/imagetools.py
 aplustools/logs.py
 aplustools/setdirtoex.py
-aplustools/update.py
+aplustools/updaters.py
 aplustools/webtools.py
 aplustools.egg-info/PKG-INFO
 aplustools.egg-info/SOURCES.txt
