@@ -110,7 +110,7 @@ class OnlineImage(OfflineImage):
                     return False
                 return self.base64(img_url, new_name, img_format)
             else:
-                return self.download_image(".\\data", img_url, new_name, img_format)
+                return self.download_image(".\\data", img_url, new_name, img_format)[0]
         except:
             return
             
@@ -129,9 +129,9 @@ class OnlineImage(OfflineImage):
                 response.raise_for_status()
                 img_data = response.content
                 self._save_image(os.path.join(basepath, f"{name}.{extension}"), img_data, new_name=None)
-                return True
+                return True, f"{name}.{extension}", os.path.join(basepath, f"{name}.{extension}")
             else:
-                return False
+                return False, f"{name}.{extension}", os.path.join(basepath, f"{name}.{extension}") # Passing it here, so it can be deleted if created
         except requests.ConnectionError:
             print("Failed to connect to the server.")
         except requests.Timeout:

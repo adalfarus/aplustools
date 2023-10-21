@@ -7,12 +7,11 @@ with open("README.md", "r", encoding="utf-8") as fh:
 setup(
     name='aplustools',
     packages=find_packages(include=['aplustools']),
-    version='0.1.3.5', # Change to 0.1.4 if the duckduckgo search works aswell as DGGS
+    version='0.1.3.6', # Change to 0.1.4 if the duckduckgo search works aswell as DGGS
     description='A collection of helpful tools',
     author='Cariel Becker',
     license='GPL-3.0',
     install_requires=[
-        'numpy',
         'requests',
         'Pillow',
         'requests',
