@@ -13,7 +13,7 @@ class ImageManager:
         self.base_location = base_location
         self.images = []
         
-    def add(self, ImageClass: Type[Union['OfflineImage', 'OnlineImage']], *args, **kwargs):
+    def add(self, ImageClass: Type[Union['OfflineImage', 'OnlineImage']], *args, **kwargs) -> int:
         self.images.append(ImageClass(*args, **kwargs))
         return len(self.images) - 1
 
@@ -33,7 +33,7 @@ class OfflineImage:
         with open(path, 'rb') as f:
             self.data = f.readlines()
 
-    def _save_image(self, source_path: str, img_data: str, new_name: str=None):
+    def _save_image(self, source_path: str, img_data: str, new_name: str=None) -> str:
         if source_path.split(".")[-1] == 'svg':
             print("SVG format is not supported.")
             return None
@@ -41,7 +41,7 @@ class OfflineImage:
             img_file.write(img_data)
         return self._convert_image_format(source_path, new_name) if new_name else source_path
     
-    def save_image(self, base_location: str, img_data: str, original_name: str, original_format: str=None, new_name: str=None, target_format: str=None):
+    def save_image(self, base_location: str, img_data: str, original_name: str, original_format: str=None, new_name: str=None, target_format: str=None) -> str:
         if original_format == '.svg':
             print("SVG format is not supported.")
             return None
@@ -50,7 +50,7 @@ class OfflineImage:
             img_file.write(img_data)
         return self.convert_image_format(base_location, original_name, original_format, new_name, target_format)
             
-    def _convert_image_format(self, source_path, new_name):
+    def _convert_image_format(self, source_path, new_name) -> str:
         if source_path.split(".")[-1] == "svg":
             print("SVG format is not supported.")
             return None
@@ -62,7 +62,7 @@ class OfflineImage:
         os.remove(source_path) if source_path != new_file_path else print("Skipping deleting ...")
         return new_file_path
         
-    def convert_image_format(self, base_location: str, original_name: str, original_format: str=None, new_name: str=None, target_format: str='png'):
+    def convert_image_format(self, base_location: str, original_name: str, original_format: str=None, new_name: str=None, target_format: str='png') -> str:
         source_path = os.path.join(base_location, f"{original_name}.{original_format}" if original_format else original_name)
         if source_path.split(".")[-1] == "svg":
             print("SVG format is not supported.")
@@ -80,12 +80,15 @@ class OfflineImage:
         os.remove(source_path) if source_path != new_file_path else print("Skipping deleting ...")
         return new_file_path
 
-    def base64(self, path: str, new_name: str, img_format: str, data: str=None):
+    def base64(self, path: str, new_name: str, img_format: str, data: str=None) -> bool:
         internal_data = self.data if not data else data
-        img_data = base64.b64decode(internal_data.split(',')[1])
-        img_name = new_name + '.' + img_format
-        source_path = os.path.join(path, img_name)
-        self._save_image(source_path, img_data, img_name)
+        try:
+            img_data = base64.b64decode(internal_data.split(',')[1])
+            img_name = new_name + '.' + img_format
+            source_path = os.path.join(path, img_name)
+            self._save_image(source_path, img_data, img_name)
+        except: return False
+        return True
 
 class OnlineImage(OfflineImage):
     def __init__(self, current_url: str=None, one_time: bool=True):
@@ -93,7 +96,7 @@ class OnlineImage(OfflineImage):
         if one_time == True:
             self.download_image(".\\")
             
-    def download_logo_image(self, img_url: str, new_name: str, img_format: str):
+    def download_logo_image(self, img_url: str, new_name: str, img_format: str) -> bool:
         warnings.warn(
             "download_logo_image is deprecated and will be removed in version 1.4.0. Use OfflineImage.base64 or OnlineImage.download_image instead.", 
             category=DeprecationWarning,
@@ -111,7 +114,7 @@ class OnlineImage(OfflineImage):
         except:
             return
             
-    def download_image(self, basepath: str, img_url: str=None, new_name: str=None, img_format: str=None):
+    def download_image(self, basepath: str, img_url: str=None, new_name: str=None, img_format: str=None) -> bool:
         try:
             img_url = urljoin(self.current_url, "") if not img_url else img_url
             img_name = os.path.basename(urlparse(img_url).path)
