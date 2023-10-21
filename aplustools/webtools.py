@@ -6,8 +6,9 @@ from bs4 import BeautifulSoup
 import re
 import json
 from html import unescape
+from typing import Type, Union
 
-def get_useragent():
+def get_useragent() -> str:
     _useragent_list = [
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:66.0) Gecko/20100101 Firefox/66.0',
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36',
@@ -24,8 +25,8 @@ def get_useragent():
     ]
     return random.choice(_useragent_list)
 
-def check_url(url, urlTitle, inTitle=None, blacklisted_websites=None):
-    if inTitle == None or all([x in urlTitle.lower() for x in inTitle]):
+def check_url(url: str, urlTitle: str, inTitle: Type[Union['str', 'list']]=None, blacklisted_websites: list=None):
+    if inTitle == None or all([x in urlTitle.lower() for x in list(inTitle)]):
         # Checking if the URL is accessible or leads to a 404 error
         try:
             response = requests.head(url, allow_redirects=True)  # Using HEAD request to get the headers
@@ -44,7 +45,7 @@ def check_url(url, urlTitle, inTitle=None, blacklisted_websites=None):
             print(f"The URL {url} cannot be crawled, checking next result...")
     return None
     
-def is_crawlable(url):
+def is_crawlable(url: str) -> bool:
     """
     Check if the URL can be crawled by checking the robots.txt file of the website.
     """
@@ -73,7 +74,7 @@ class Search:
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"
         }
         
-    def google_provider(self, queries):
+    def google_provider(self, queries: Type[Union['str', 'list']]) -> str:
         user_agent = get_useragent()
 
         def search(query, num_results=10, lang="en", proxy=None, advanced=False, sleep_interval=0, timeout=5):
@@ -126,7 +127,7 @@ class Search:
         print("No crawlable URL found.")
         return None
         
-    def _duckduckgo_provider(self, queries):
+    def _duckduckgo_provider(self, queries: Type[Union['str', 'list']]) -> str:
         def ddg_instant_answer_search(query):
             params = {
                 "q": query,
@@ -165,7 +166,7 @@ class Search:
         print("No crawlable URL found.")
         return None
         
-    def duckduckgo_provider(self, queries):
+    def duckduckgo_provider(self, queries: Type[Union['str', 'list']]) -> str:
         with DDGS(timeout=20) as ddgs:
             for query in list(queries): # Added, so you can pass a single string
                 results = ddgs.text(query, timelimit=100, safesearch='off')
@@ -177,7 +178,7 @@ class Search:
         print("No crawlable URL found.")
         return None
         
-    def bing_provider(self, queries):
+    def bing_provider(self, queries: Type[Union['str', 'list']]) -> str:
         user_agent = get_useragent()
         
         def bing_search(query, num_results=10):

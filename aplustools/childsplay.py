@@ -2,6 +2,14 @@
 import datetime
 import warnings
 
+
+class ExperimentalError(Exception):
+    pass
+
+warnings.warn("This module is still experimental. Please use with caution", 
+              ExperimentalError, 
+              stacklevel=2)
+
 warnings.warn("This will alter the internal variable classes of python, be sure to only use it when learning python! If you want to use this in a real world application, use adultswork instead.", 
               UserWarning, 
               stacklevel=2)

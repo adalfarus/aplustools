@@ -1,6 +1,14 @@
 # childsplay.py, aims to make python standard classes easier and more consistent
 import datetime
+import warnings
 
+
+class ExperimentalError(Exception):
+    pass
+
+warnings.warn("This module is still experimental. Please use with caution", 
+              ExperimentalError, 
+              stacklevel=2)
 
 class EnhancedString(str):
     """

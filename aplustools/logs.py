@@ -13,7 +13,7 @@ class Logger(object):
         self.log_file = open(filename, "a")
         self.buffer = ''
 
-    def _add_timestamp(self, message: str):
+    def _add_timestamp(self, message: str) -> str:
         """Adds a timestamp to the message if show_time is True."""
         if self.show_time and message.strip():
             timestamp = f"[{time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime())}] " if self.show_time else ''
@@ -63,7 +63,7 @@ class Logger(object):
         if self.terminal:
             sys.stdout = self.terminal
         
-def monitor_stdout(log_file: str=None, logger: Logger=None):
+def monitor_stdout(log_file: str=None, logger: Logger=None) -> Logger:
     """Monitors and logs stdout messages based on given parameters.
 
     Args:
@@ -79,4 +79,4 @@ def monitor_stdout(log_file: str=None, logger: Logger=None):
         logger = Logger(log_file)
     
     sys.stdout = logger
-    return logger
+    return sys.stdout
