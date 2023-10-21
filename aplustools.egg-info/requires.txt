@@ -1,7 +1,7 @@
 numpy
 requests
-pyqt5
 Pillow
 requests
 bs4
+datetime
 duckduckgo_search
