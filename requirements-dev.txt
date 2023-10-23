@@ -1,0 +1,5 @@
+requests==2.31.0
+Pillow==10.1.0
+bs4==4.12.2
+datetime==5.2
+duckduckgo_search==3.9.3
