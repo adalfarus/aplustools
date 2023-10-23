@@ -14,7 +14,6 @@ setup(
     install_requires=[
         'requests',
         'Pillow',
-        'requests',
         'bs4',
         'datetime',
         'duckduckgo_search' # Get rid of
