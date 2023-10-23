@@ -37,7 +37,7 @@ def get_useragent() -> str:
 
 def check_url(url: str, urlTitle: str, inTitle: Optional[Union[str, List[str]]]=None, blacklisted_websites: Optional[list]=None) -> Optional[str]:
     if inTitle is not None and not isinstance(inTitle, list): inTitle = [inTitle]
-    if inTitle is None or all([x in urlTitle.lower() for x in inTitle]):
+    if inTitle is None or all([str(x).lower() in urlTitle.lower() for x in inTitle]):
         # Checking if the URL is accessible or leads to a 404 error
         try:
             response = requests.head(url, allow_redirects=True)  # Using HEAD request to get the headers
