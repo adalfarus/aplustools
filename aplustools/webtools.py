@@ -85,7 +85,7 @@ class Search:
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"
         }
         
-    def google_provider(self, queries: Union[str, List[str]]) -> Optional[str]:
+    def google_provider(self, queries: Union[str, List[str]], blacklisted_websites: Optional[list]=None) -> Optional[str]:
         user_agent = get_useragent()
 
         def search(query, num_results=10, lang="en", proxy=None, advanced=False, sleep_interval=0, timeout=5):
@@ -131,7 +131,7 @@ class Search:
         for query in queries:
             results = search(query, num_results=10, advanced=True)
             for i in results:
-                url = check_url(i['url'], i['title'])
+                url = check_url(i['url'], i['title'], blacklisted_websites=blacklisted_websites)
                 if url:
                     print("Found URL:", url)
                     return url
@@ -139,7 +139,7 @@ class Search:
         print("No crawlable URL found.")
         return None
         
-    def _duckduckgo_provider(self, queries: Union[str, List[str]]) -> Optional[Union[bool, str]]:
+    def _duckduckgo_provider(self, queries: Union[str, List[str]], blacklisted_websites: Optional[list]=None) -> Optional[Union[bool, str]]:
         def ddg_instant_answer_search(query):
             params = {
                 "q": query,
@@ -171,7 +171,7 @@ class Search:
             results = ddg_instant_answer_search(query)
             for r in results:
                 print(r)
-                url = check_url(r['url'], r['title'])
+                url = check_url(r['url'], r['title'], blacklisted_websites=blacklisted_websites)
                 if url:
                     print("Found URL:", url)
                     return url
@@ -179,19 +179,19 @@ class Search:
         print("No crawlable URL found.")
         return None
         
-    def duckduckgo_provider(self, queries: Union[str, List[str]]) -> Optional[str]:
+    def duckduckgo_provider(self, queries: Union[str, List[str]], blacklisted_websites: Optional[list]=None) -> Optional[str]:
         with DDGS(timeout=20) as ddgs:
             for query in list(queries): # Added, so you can pass a single string
                 results = ddgs.text(query, timelimit=100, safesearch='off')
                 for r in results:
-                    url = check_url(r['href'], r['title'])
+                    url = check_url(r['href'], r['title'], blacklisted_websites=blacklisted_websites)
                     if url:
                         print("Found URL:", url)
                         return url
         print("No crawlable URL found.")
         return None
         
-    def bing_provider(self, queries: Union[str, List[str]]) -> Optional[str]:
+    def bing_provider(self, queries: Union[str, List[str]], blacklisted_websites: Optional[list]=None) -> Optional[str]:
         user_agent = get_useragent()
         
         def bing_search(query, num_results=10):
@@ -215,7 +215,7 @@ class Search:
         for query in list(queries): # Added, so you can pass a single string
             results = bing_search(query, num_results=10)
             for i in results:
-                url = check_url(i['url'], i['title'])
+                url = check_url(i['url'], i['title'], blacklisted_websites=blacklisted_websites)
                 if url:
                     print("Found URL:", url)
                     return url
