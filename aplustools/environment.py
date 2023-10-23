@@ -4,6 +4,8 @@ import sys
 import shutil
 import tempfile
 import __main__
+from typing import Union, Optional
+import inspect
 
 def set_working_dir_to_main_script_location():
     """
@@ -51,12 +53,24 @@ def change_working_dir_to_userprof_folder(folder: str):
         wDir = os.path.join(os.path.join(os.environ['USERPROFILE']), folder)
     os.chdir(wDir)
     
-def absolute_path(relative_path: str) -> str:
-    ab = os.path.dirname(__file__)
-    return os.path.join(ab, relative_path)
+def inject_file_path(func):
+    def wrapper(relative_path: str):
+        frame = inspect.currentframe().f_back
+        module = inspect.getmodule(frame)
+        if module is not None:
+            file_path = module.__file__
+        else:
+            file_path = __file__  # Fallback to the current script
+        return func(relative_path, file_path)
+    return wrapper
+
+@inject_file_path
+def absolute_path(relative_path: str, file_path: str) -> str:
+    base_dir = os.path.dirname(os.path.abspath(file_path))
+    return os.path.join(base_dir, relative_path)
     
-def remv(paths: list):
-    if not isinstance(paths, list): paths = list(paths)
+def remv(paths: Union[str, list]):
+    if not isinstance(paths, list): paths = [paths]
     for path in paths:
         if os.path.exists(path):
             if os.path.isfile(path):
@@ -75,18 +89,30 @@ def contains_only_directories(path: str) -> bool:
             return False
     return True
 
+def is_accessible(path):
+    return os.access(path, os.R_OK)
+
 def is_empty_directory(path: str) -> bool:
-    with os.scandir(path) as entries:
-        for entry in entries:
-            if entry.is_file():
-                return False
-            elif entry.is_dir():
-                if not is_empty_directory(entry.path):
-                    return False
-    return True
+    if os.path.isfile(path):
+        return False
+    elif os.path.isdir(path):
+        try:
+            with os.scandir(path) as entries:
+                for entry in entries:
+                    if entry.is_file():
+                        return False
+                    elif entry.is_dir():
+                        if not is_empty_directory(entry.path):
+                            return False
+        except PermissionError:
+            print(f"Permission denied: {path}")
+            return False
+        return True
+    else:
+        raise FileNotFoundError(f"No such file or directory '{path}'")
 
 class Path:
-    def __init__(self, path: str) -> str:
+    def __init__(self, path: str):
         self.path = os.path.abspath(path)
 
     def exists(self) -> bool:
@@ -131,7 +157,7 @@ class Path:
             print(f"{self.path} is not a directory.")
             return []
 
-    def get_size(self) -> int:
+    def get_size(self) -> Optional[int]:
         """Get the size of a file in bytes."""
         if self.is_file():
             return os.path.getsize(self.path)

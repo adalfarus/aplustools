@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: aplustools
-Version: 0.1.3.6
+Version: 0.1.3.6.7
 Summary: A collection of helpful tools
 Author: Cariel Becker
 License: GPL-3.0
@@ -66,11 +66,14 @@ print(result)
 
 ### Logger
 ```python
-import aplustools.setdirtoex # Just the import is needed to set the current working directory to the main script or executable
+import aplustools.setdirtoex
+# Just the import is needed to set the current working directory to the main script or executable
 from aplustools import logs
 
 # Create an instance of Logger
-logger = logs.Logger("my_logs_file.log", show_time=True, capture_print=False, overwrite_print=True, print_passthrough=False, print_log_to_stdout=True) # Shows the time in the logs (Like this [12:33:21]) and overwrites the normal sys.stdout
+logger = logs.Logger("my_logs_file.log", show_time=True, capture_print=False, 
+                     overwrite_print=True, print_passthrough=False, print_log_to_stdout=True)
+# Shows the time in the logs (Like this [12:33:21]) and overwrites the normal sys.stdout
 
 # Call the `monitor_stdout` method and pass the logger object
 logger = logs.monitor_stdout(logger=logger) # Overwrite logger object here to close it later (You don't have to do this, if you keep the reference)
@@ -93,10 +96,16 @@ from aplustools.environment import Path
 # Download the image to the current working directory
 imagetools.OnlineImage("someImage.url", True)
 
-# Download the image to a specified path
-image = imagetools.OnlineImage("someImage.url")
+# Making sure that folder_path exists
 folder_path = Path(".\\images")
 folder_path.create_directory()
+
+# Converting the image and moving it to a specified path
+image = imagetools.OfflineImage("data:image/jpeg;base64,/9j...")
+success = image.base64(str(folder_path), "Image", "png") # Make sure this directory exists
+
+# Download the image to a specified path
+image2 = imagetools.OnlineImage("someImage.url")
 _, img_name, img_path = image.download_image(str(folder_path)) # Make sure this directory exists
 ```
 
@@ -105,18 +114,31 @@ _, img_name, img_path = image.download_image(str(folder_path)) # Make sure this 
 from aplustools import updaters
 from aplustools.environment import set_working_dir_to_main_script_location
 import os
+import threading
+from aplustools.environment import Path
 
 set_working_dir_to_main_script_location()
 
 # Initialize an updater
 updater = updaters.gitupdater("exe")
-current_version = updater.get_current_version("Adalfarus", "aplustools")[1] # Gives back two values, use whichever applicable
+current_version = updater.get_latest_version("Adalfarus", "unicode-writer")[1] # Gives back two values, use whichever applicable
 
-# Start the update
-updater.update(''.join(os.getcwd().split("\\")[:-2]), os.path.join(updaters.get_temp(), "update"), 
-			current_version, "Adalfarus", "aplustools", gui_toggle=False, cmd_toggle=False)
-for i in updater.receive_update_status():
-	print(i, end="%\n")
+# Define the arguments for the updater method
+host, port, path = "localhost", 1264, Path(os.path.join(updaters.get_temp(), "update")
+path.create_directory()
+update_args = (os.path.join(os.getcwd(), "update"), str(path), 
+			current_version, "Adalfarus", "unicode-writer", False, False, host, port)
+#                                                      gui_toggle, cmd_toggle
+
+# Start the update in a seperate thread
+update_thread = threading.Thread(target=updater.update, args=update_args)
+update_thread.start()
+
+# Receive the update status generator and print them
+progress_bar = 1
+for i in updater.receive_update_status(host, port):
+	print(f"{i}%", end=f" PB{progress_bar}\n")
+	if i == 100: progress_bar += 1 # Switch to second progress bar, when the downloading is finished
 ```
 
 ### Webtools
@@ -129,8 +151,9 @@ print(result)
 from aplustools.webtools import check_url, is_crawlable
 import requests
 
-if check_url(result):
-	requests.get(...
+if check_url(result, ''): # Not really nessesary, search does this automatically
+	response = requests.get(result)
+	...
 ```
 
 ### environment
@@ -140,35 +163,43 @@ if check_url(result):
 _, img_name, img_path = image.download_image(str(folder_path)) # Make sure this directory exists
 
 from aplustools.environment import absolute_path, remv, copy
-import aplustools.childsplay # Could be switched out to adultswork, but the str would need to get converted
+from aplustools.childsplay import ImportClass # Could be switched out to adultswork, but the string would need to get converted
+
+importer = ImportClass(hard=True)
+importer.import_all() # Destroys your runtime python
 
 a_imgpath = absolute_path(img_path)
-copy(a_imgpath, str(folder_path) + img_name.remove(".png") + " - Copy.png")
+
+try:
+	copy(a_imgpath, str(folder_path) + str(img_name).remove(".png") + str(" - Copy.png"))
+except ValueError:
+	copy(a_imgpath, str(folder_path) + str(img_name.split(".")[-1]) + str(" - Copy.png"))
 
 remv(a_imgpath) # Remove the original image
 remv(str(folder_path)) # Remove the base directory
 ```
-import aplustools as apt
+(Correct shortform for aplustools : import aplustools as apt)
 
 For more detailed usage and examples, check out our [documentation](https://github.com/adalfarus/aplustools/wiki).
 
 ## Naming convention, dependencies and more
 [PEP 8 -- Style Guide for Python Code](https://peps.python.org/pep-0008/#naming-conventions)
+
 For modules I use 'lowercase', classes are 'CapitalizedWords' and functions and methods are 'lower_case_with_underscores'.
 
 Dependencies (except standart libraries) are: 
-adultswork - datetime
-childsplay - datetime
-database - none
-environment - none
-gitupdater-cmd - requests - deprecated
-gitupdater-gui - requests, pyqt5 - deprecated
-gitupdater - requests
-imagetools - Pillow
-logs - none
-setdirtoex - none
-updaters - requests
-webtools - duckduckgo_search, bs4 - duckduckgo_search is only used for Search.duckduckgo_provider, if you don't want to use it use Search._duckduckgo_provider instead.
+- adultswork - datetime
+- childsplay - datetime
+- database - none
+- environment - none
+- gitupdater-cmd - requests - deprecated
+- gitupdater-gui - requests, pyqt5 - deprecated
+- gitupdater - requests
+- imagetools - Pillow
+- logs - none
+- setdirtoex - none
+- updaters - requests
+- webtools - duckduckgo_search, bs4 - duckduckgo_search is only used for Search.duckduckgo_provider, if you don't want to use it use Search._duckduckgo_provider instead.
 
 ## Contributing
 

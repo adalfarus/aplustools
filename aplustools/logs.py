@@ -1,5 +1,7 @@
 import sys
 import time
+from typing import TextIO, Union, Optional
+import builtins
 
 class Logger(object):
     def __init__(self, filename: str="Default.log", show_time: bool=True, 
@@ -22,7 +24,7 @@ class Logger(object):
 
     def log(self, message: str):
         """Logs a message to the file and optionally to stdout."""
-        message_with_timestamp = self._add_timestamp(message)
+        message_with_timestamp = self._add_timestamp(message) + "\n"
         self.log_file.write(message_with_timestamp)
         self.log_file.flush()
         if self.print_log_to_stdout:
@@ -35,6 +37,7 @@ class Logger(object):
             self.log_file.write(message_with_timestamp)
             self.log_file.flush()
         if self.print_passthrough:
+            message_with_timestamp = self._add_timestamp(content)
             self._write_to_stdout(message_with_timestamp)
 
     def _write_to_stdout(self, message: str):
@@ -62,8 +65,8 @@ class Logger(object):
         self.log_file.close()
         if self.terminal:
             sys.stdout = self.terminal
-        
-def monitor_stdout(log_file: str=None, logger: Logger=None) -> Logger:
+
+def monitor_stdout(log_file: Optional[str]=None, logger: Optional[Logger]=None) -> Union[TextIO, Logger]:
     """Monitors and logs stdout messages based on given parameters.
 
     Args:
@@ -80,3 +83,12 @@ def monitor_stdout(log_file: str=None, logger: Logger=None) -> Logger:
     
     sys.stdout = logger
     return sys.stdout
+
+def cprint(*args, sep=' ', end='\n', file=None, flush=False):
+    # Concatenate all the items passed to the function
+    concatenated_args = sep.join(map(str, args))
+    # Call the original print function to output the result
+    builtins.print(concatenated_args, end=end, file=file, flush=flush)
+
+def overwrite_print():
+    print = cprint

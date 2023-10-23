@@ -6,7 +6,17 @@ from bs4 import BeautifulSoup
 import re
 import json
 from html import unescape
-from typing import Type, Union
+from typing import Type, Union, Optional, TypeVar, Generic, List
+import time
+
+
+T = TypeVar('T', bound='NonIterable')
+
+class NonIterable(Generic[T]):
+    def __init__(self, value: T) -> None:
+        if hasattr(value, '__iter__'):
+            raise ValueError(f'Value {value} is iterable, which is not allowed.')
+        self.value = value
 
 def get_useragent() -> str:
     _useragent_list = [
@@ -25,8 +35,9 @@ def get_useragent() -> str:
     ]
     return random.choice(_useragent_list)
 
-def check_url(url: str, urlTitle: str, inTitle: Type[Union['str', 'list']]=None, blacklisted_websites: list=None):
-    if inTitle == None or all([x in urlTitle.lower() for x in list(inTitle)]):
+def check_url(url: str, urlTitle: str, inTitle: Optional[Union[str, List[str]]]=None, blacklisted_websites: Optional[list]=None) -> Optional[str]:
+    if inTitle is not None and not isinstance(inTitle, list): inTitle = [inTitle]
+    if inTitle is None or all([x in urlTitle.lower() for x in inTitle]):
         # Checking if the URL is accessible or leads to a 404 error
         try:
             response = requests.head(url, allow_redirects=True)  # Using HEAD request to get the headers
@@ -37,7 +48,7 @@ def check_url(url: str, urlTitle: str, inTitle: Type[Union['str', 'list']]=None,
             print(f"Error accessing URL {url}: {e}, checking next result...")
             return None
         if is_crawlable(url):
-            if blacklisted_websites == None or not url.split("/")[2] in blacklisted_websites:
+            if blacklisted_websites is None or not url.split("/")[2] in blacklisted_websites:
                 return url
             else:
                 print("Blacklisted URL:", url)
@@ -74,7 +85,7 @@ class Search:
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"
         }
         
-    def google_provider(self, queries: Type[Union['str', 'list']]) -> str:
+    def google_provider(self, queries: Union[str, List[str]]) -> Optional[str]:
         user_agent = get_useragent()
 
         def search(query, num_results=10, lang="en", proxy=None, advanced=False, sleep_interval=0, timeout=5):
@@ -114,8 +125,9 @@ class Search:
                             else:
                                 yield link["href"]
 
-                sleep(sleep_interval)
+                time.sleep(sleep_interval)
 
+        if queries is not None and not isinstance(queries, list): queries = [queries]
         for query in queries:
             results = search(query, num_results=10, advanced=True)
             for i in results:
@@ -127,7 +139,7 @@ class Search:
         print("No crawlable URL found.")
         return None
         
-    def _duckduckgo_provider(self, queries: Type[Union['str', 'list']]) -> str:
+    def _duckduckgo_provider(self, queries: Union[str, List[str]]) -> Optional[Union[bool, str]]:
         def ddg_instant_answer_search(query):
             params = {
                 "q": query,
@@ -138,7 +150,7 @@ class Search:
             resp = requests.get(url, params=params, headers=self.headers)
             if resp.status_code != 200:
                 print("Failed to retrieve the search results.")
-                return
+                return False
             
             try:
                 data = resp.json()
@@ -152,9 +164,10 @@ class Search:
                         }
             except ValueError:
                 print("Failed to parse the search results.")
-                return
+                return False
 
-        for query in list(queries): # Added, so you can pass a single string
+        if queries is not None and not isinstance(queries, list): queries = [queries]
+        for query in queries: # Added, so you can pass a single string
             results = ddg_instant_answer_search(query)
             for r in results:
                 print(r)
@@ -166,7 +179,7 @@ class Search:
         print("No crawlable URL found.")
         return None
         
-    def duckduckgo_provider(self, queries: Type[Union['str', 'list']]) -> str:
+    def duckduckgo_provider(self, queries: Union[str, List[str]]) -> Optional[str]:
         with DDGS(timeout=20) as ddgs:
             for query in list(queries): # Added, so you can pass a single string
                 results = ddgs.text(query, timelimit=100, safesearch='off')
@@ -178,7 +191,7 @@ class Search:
         print("No crawlable URL found.")
         return None
         
-    def bing_provider(self, queries: Type[Union['str', 'list']]) -> str:
+    def bing_provider(self, queries: Union[str, List[str]]) -> Optional[str]:
         user_agent = get_useragent()
         
         def bing_search(query, num_results=10):
@@ -198,6 +211,7 @@ class Search:
             for link in links[:num_results]:  # limiting the number of results
                 yield {"title": link[0], "url": link[1]}
 
+        if queries is not None and not isinstance(queries, list): queries = [queries]
         for query in list(queries): # Added, so you can pass a single string
             results = bing_search(query, num_results=10)
             for i in results:

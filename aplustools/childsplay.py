@@ -1,9 +1,13 @@
 # childsplay.py, aims to make python standard classes easier and more consistent
 import datetime
 import warnings
+import builtins
+from . import adultswork as aw
+import sys
+import inspect
 
 
-class ExperimentalError(Exception):
+class ExperimentalError(Warning):
     pass
 
 warnings.warn("This module is still experimental. Please use with caution", 
@@ -14,139 +18,35 @@ warnings.warn("This will alter the internal variable classes of python, be sure 
               UserWarning, 
               stacklevel=2)
 
-class str(str):
-    """
-    Enhanced string class with additional methods for ease of use.
-    """
-    
-    def remove(self, substring: str) -> str:
-        if not isinstance(substring, str):
-            raise ValueError("The substring must be a string.")
-        return self.replace(substring, '')
-
-    def __add__(self, other: str) -> str:
-        if not isinstance(other, str):
-            raise TypeError(f"can only concatenate str (not '{type(other).__name__}') to str")
-        return str(super().__add__(other))
-
-
-class dict(dict):
-    """
-    Enhanced dictionary class with additional methods for ease of use.
-    """
-    
-    def add_item(self, key, value):
-        self[key] = value
-        
-    def add(self, dic: dict):
-        self.update(dic)
-        
-    def insert(self, key_or_dict, value=None):
-        if isinstance(key_or_dict, dict):
-            self.add(key_or_dict)
-        elif value is not None:
-            self.add_item(key_or_dict, value)
-        else:
-            raise ValueError("Invalid arguments: if the first argument is not a dictionary, a value must be provided")
-
-    def __add__(self, other: dict):
-        if not isinstance(other, dict):
-            raise TypeError(f"unsupported operand type(s) for +: '{type(self).__name__}' and '{type(other).__name__}'")
-        new_dict = dict(self)
-        new_dict.update(other)
-        return new_dict
-
-
-class list(list):
-    """
-    Enhanced list class with additional methods for ease of use.
-    """
-    
-    def remove_duplicates(self):
-        no_duplicates = list(set(self))
-        self.clear()
-        self.extend(no_duplicates)
-
-    def __add__(self, other: list):
-        if not isinstance(other, list):
-            raise TypeError(f"can only concatenate list (not '{type(other).__name__}') to list")
-        return list(super().__add__(other))
-
-class EnhancedInteger(int):
-    """
-    Enhanced integer class with additional methods for ease of use.
-    """
-
-    def to_binary(self) -> str:
-        return bin(self)[2:]
-
-    def to_hex(self) -> str:
-        return hex(self)[2:]
-
-    
-class float(float):
-    """
-    Enhanced float class with additional methods for ease of use.
-    """
-
-    def to_string(self, decimal_places: int) -> str:
-        return f"{self:.{decimal_places}f}"
-
-    
-class set(set):
-    """
-    Enhanced set class with additional methods for ease of use.
-    """
-
-    def power_set(self):
-        from itertools import chain, combinations
-        return set(chain.from_iterable(combinations(self, r) for r in range(len(self)+1)))
-
-class EnhancedFile:
-    """
-    Enhanced file class with additional methods for ease of use.
-    """
-
-    def __init__(self, file_name, mode):
-        self.file = open(file_name, mode)
-        
-    def __enter__(self):
-        return self
-    
-    def __exit__(self, exc_type, exc_value, traceback):
-        self.file.close()
-
-    def write_list(self, items):
-        for item in items:
-            self.file.write(str(item) + '\n')
-
-    def read_list(self):
-        return [line.strip() for line in self.file.readlines()]
-
-
-class EnhancedDateTime(datetime.datetime):
-    """
-    Enhanced datetime class with additional methods for ease of use.
-    """
-
-    def add_days(self, days):
-        return self + datetime.timedelta(days=days)
-
-    def subtract_days(self, days):
-        return self - datetime.timedelta(days=days)
-
-    def to_string(self, format: str):
-        return self.strftime(format)
-
-
-class tuple(tuple):
-    """
-    Enhanced tuple class with additional methods for ease of use.
-    """
-
-    def count_occurrences(self, value):
-        return self.count(value)
-
-    def index_of(self, value):
-        return self.index(value)
-    
+class ImportClass:
+    def __init__(self, hard: bool=False):
+        self.hard = hard
+    def str_import(self):
+        if not self.hard: str = aw.EnhancedString
+        else: sys.modules['builtins'].str = aw.EnhancedString
+    def dict_import(self):
+        if not self.hard: dict = aw.EnhancedDict
+        else: sys.modules['builtins'].dict = aw.EnhancedDict
+    def list_import(self):
+        if not self.hard: list = aw.EnhancedList
+        else: sys.modules['builtins'].list = aw.EnhancedList
+    def int_import(self):
+        if not self.hard: int = aw.EnhancedInteger
+        else: sys.modules['builtins'].int = aw.EnhancedInteger
+    def float_import(self):
+        if not self.hard: float = aw.EnhancedFloat
+        else: sys.modules['builtins'].float = aw.EnhancedFloat
+    def set_import(self):
+        if not self.hard: set = aw.EnhancedSet
+        else: sys.modules['builtins'].set = aw.EnhancedSet
+    def file_import(self):
+        from .adultswork import EnhancedFile
+    def datetime_import(self):
+        from .adultswork import EnhancedDateTime
+    def tuple_import(self):
+        if not self.hard: tuple = aw.EnhancedTuple
+        else: sys.modules['builtins'].tuple = aw.EnhancedTuple
+    def import_all(self):
+        public_method_names = [method for method in dir(self) if callable(getattr(self, method)) if not method.startswith('_')]  # 'private' methods start from _
+        for method in public_method_names:
+            if not method == "import_all": getattr(self, method)()
