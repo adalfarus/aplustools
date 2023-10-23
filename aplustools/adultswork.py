@@ -1,9 +1,9 @@
-# childsplay.py, aims to make python standard classes easier and more consistent
+# adultswork.py, aims to replace python standard classes with enhanced versions that are easier and more consistent
 import datetime
 import warnings
 
 
-class ExperimentalError(Exception):
+class ExperimentalError(Warning):
     pass
 
 warnings.warn("This module is still experimental. Please use with caution", 
@@ -19,6 +19,9 @@ class EnhancedString(str):
         if not isinstance(substring, str):
             raise ValueError("The substring must be a string.")
         return self.replace(substring, '')
+
+    def insert(self, substring):
+        pass
 
     def __add__(self, other: str) -> str:
         if not isinstance(other, str):

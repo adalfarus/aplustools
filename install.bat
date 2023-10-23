@@ -1,1 +1,5 @@
-py -m pip install dist\aplustools-0.1.3.1-py3-none-any.whl --force-reinstall
+@echo off
+for %%F in (dist\*.whl) do (
+    py -m pip install "%%F" --force-reinstall
+)
+pause
