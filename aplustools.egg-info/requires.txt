@@ -1,6 +1,0 @@
-requests
-Pillow
-requests
-bs4
-datetime
-duckduckgo_search
