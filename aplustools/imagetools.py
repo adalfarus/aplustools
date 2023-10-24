@@ -31,7 +31,7 @@ class OfflineImage:
         
     def get_data(self, path: str):
         with open(path, 'rb') as f:
-            self.data = ''.join([x for x in f.readlines()])
+            self.data = f.read()
 
     def _save_image(self, source_path: str, img_data: bytes, new_name: Optional[str]=None) -> Optional[str]: # Optional[str] from typing import Optional
         if source_path.split(".")[-1] == 'svg':
