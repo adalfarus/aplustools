@@ -24,14 +24,14 @@ class ImageManager:
         getattr(self.images[index], function)(*args, **kwargs)
 
 class OfflineImage:
-    def __init__(self, data: Optional[str]=None, path: Optional[str]=None):
+    def __init__(self, data: Optional[Union[str, bytes]]=None, path: Optional[str]=None):
         if data is not None and path is None: self.data = data
         elif path is not None and data is None: self.get_data(path)
         else: print("Please pass exactly one argument to the init method.")
         
     def get_data(self, path: str):
         with open(path, 'rb') as f:
-            self.data = ''.join([x.decode() for x in f.readlines()])
+            self.data = ''.join([x for x in f.readlines()])
 
     def _save_image(self, source_path: str, img_data: bytes, new_name: Optional[str]=None) -> Optional[str]: # Optional[str] from typing import Optional
         if source_path.split(".")[-1] == 'svg':
