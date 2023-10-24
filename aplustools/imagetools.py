@@ -6,14 +6,14 @@ import re
 from urllib.parse import urlparse, urljoin
 import base64
 import warnings
-from typing import Type, Union, Tuple, Optional
+from typing import Type, Union, Tuple, Optional, List
 import warnings
 
 
 class ImageManager:
-    def __init__(self, base_location: str):
+    def __init__(self, base_location: Optional[str]=None):
         self.base_location = base_location
-        self.images: list[Union[OfflineImage, OnlineImage]] = []
+        self.images: List[Union[OfflineImage, OnlineImage]] = []
         
     def add(self, ImageClass: Type[Union['OfflineImage', 'OnlineImage']], *args, **kwargs) -> int:
         self.images.append(ImageClass(*args, **kwargs))
