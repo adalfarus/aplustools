@@ -1,3 +1,4 @@
+from inspect import stack
 from PIL import Image
 import requests
 import os
@@ -6,6 +7,7 @@ from urllib.parse import urlparse, urljoin
 import base64
 import warnings
 from typing import Type, Union, Tuple, Optional
+import warnings
 
 
 class ImageManager:
@@ -27,7 +29,11 @@ class OfflineImage:
     def __init__(self, data: Optional[Union[str, bytes]]=None, path: Optional[str]=None):
         if data is not None and path is None: self.data = data
         elif path is not None and data is None: self.get_data(path)
-        else: print("Please pass exactly one argument to the init method.")
+        else: warnings.warn(
+                    "Please pass exactly one argument to the init method. This behaviour is deprecated and will be removed in version 0.1.4.0.",
+                    DeprecationWarning,
+                    stacklevel=2
+                    )
         
     def get_data(self, path: str):
         with open(path, 'rb') as f:
@@ -98,7 +104,7 @@ class OnlineImage(OfflineImage):
             
     def download_logo_image(self, base_path: str, new_name: str, img_format: str) -> bool:
         warnings.warn(
-            "download_logo_image is deprecated here and will be moved in version 1.4.0. Use OfflineImage.base64 or OnlineImage.download_image instead.", 
+            "download_logo_image is deprecated here and will be moved in version 0.1.4.0. Use OfflineImage.base64 or OnlineImage.download_image instead.",
             category=DeprecationWarning,
             stacklevel=2
         )
