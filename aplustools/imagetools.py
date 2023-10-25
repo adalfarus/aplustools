@@ -8,6 +8,7 @@ import base64
 import warnings
 from typing import Type, Union, Tuple, Optional, List
 import warnings
+from requests import Session
 
 
 class ImageManager:
@@ -97,7 +98,7 @@ class OfflineImage:
         return True
 
 class OnlineImage(OfflineImage):
-    def __init__(self, current_url: Optional[str]=None, one_time: bool=False):
+    def __init__(self, current_url: Optional[str]=None, session: Optional[Session]=None, one_time: bool=False):
         self.current_url = current_url
         if one_time == True:
             self.download_image(".\\")

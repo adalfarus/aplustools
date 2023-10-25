@@ -6,6 +6,7 @@ import tempfile
 import __main__
 from typing import Union, Optional
 import inspect
+import warnings
 
 def set_working_dir_to_main_script_location():
     """
@@ -20,7 +21,15 @@ def set_working_dir_to_main_script_location():
             main_dir = os.path.dirname(sys.executable)
         else:
             # If the script is running as a normal Python script
-            main_dir = os.path.dirname(os.path.abspath(__main__.__file__))
+            if hasattr(__main__, '__file__'):
+                main_dir = os.path.dirname(os.path.abspath(__main__.__file__))
+            else:
+                main_dir = os.path.dirname(os.getcwd())
+                warnings.warn(
+                    "Could not set the current working directory to the location of the main script or executable.",
+                    RuntimeWarning,
+                    stacklevel=2
+                    )
 
         # Change the current working directory to the main script directory
         os.chdir(main_dir)
