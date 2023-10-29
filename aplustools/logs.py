@@ -12,7 +12,7 @@ class Logger(object):
         self.terminal = sys.stdout if overwrite_print else None
         self.print_passthrough = print_passthrough
         self.print_log_to_stdout = print_log_to_stdout
-        self.log_file = open(filename, "a")
+        self.log_file = open(filename, "a", encoding='utf-8')
         self.buffer = ''
 
     def _add_timestamp(self, message: str) -> str:
