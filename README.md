@@ -39,7 +39,7 @@ Here are a few quick examples of how to use aplustools:
 ```python
 from aplustools import webtools as wt
 
-# Call the `google_search` with a query parameter
+# Call the `google_search` with a query
 result = wt.search.google_provider.google_search("Cute puppies", wb.get_useragent(), 1)
 
 # Print the result
