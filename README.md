@@ -37,13 +37,10 @@ Here are a few quick examples of how to use aplustools:
 
 ### Search Engine usage
 ```python
-from aplustools import webtools
-
-# Create an instance of Search
-search = webtools.Search()
+from aplustools import webtools as wt
 
 # Call the `google_provider` with a parameter
-result = search.google_provider("Cute puppies")
+result = wt.search.google_provider.google_search("Cute puppies", wb.get_useragent(), 1)
 
 # Print the result
 print(result)
@@ -101,19 +98,26 @@ from aplustools.environment import set_working_dir_to_main_script_location
 import os
 import threading
 from aplustools.environment import Path
+import sys
 
 set_working_dir_to_main_script_location()
 
+__version__ = "0.0.1"
+
 # Initialize an updater
 updater = updaters.gitupdater("exe")
-current_version = updater.get_latest_version("Adalfarus", "unicode-writer")[1] # Gives back two values, use whichever applicable
+latest_version = updaters.get_latest_version("Adalfarus", "unicode-writer")[1] # Gives back two values, use whichever applicable
+
+# Check if an update is needed
+if not updaters.gitupdater.compare_release_numbers(__version__, latest_version):
+	sys.exit()
 
 # Define the arguments for the updater method
 host, port, path = "localhost", 1264, Path(os.path.join(updaters.get_temp(), "update")
 gui_toggle, cmd_toggle = False, False
 path.create_directory()
 update_args = (os.path.join(os.getcwd(), "update"), str(path), 
-			current_version, "Adalfarus", "unicode-writer", gui_toggle, cmd_toggle, host, port)
+			latest_version, "Adalfarus", "unicode-writer", gui_toggle, cmd_toggle, host, port)
 
 # Start the update in a seperate thread
 update_thread = threading.Thread(target=updater.update, args=update_args)
