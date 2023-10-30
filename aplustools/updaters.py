@@ -32,6 +32,33 @@ class gitupdater:
             print(f"Unexpected exception occured: {e}")
         return None, None
         
+    def compare_release_numbers(self, release_version, release_version_2):
+        rv_1_lst = release_version.split(".")
+        rv_2_lst = release_version_2.split(".")
+        
+        # Equalize the length of the lists by appending zeros
+        rv_1_lst += [0] * (len(rv_2_lst) - len(rv_1_lst))
+        rv_2_lst += [0] * (len(rv_1_lst) - len(rv_2_lst))
+
+        for i, p in zip(rv_1_lst, rv_2_lst):
+            i, p = int(i), int(p)
+            if i != p:
+                if i < p:
+                    return release_version_2
+                return release_version
+        return None
+    
+    def compare_release_numbers_diff(self, release_version, release_version_2, join=True):
+        rv_1_lst = [int(i) for i in release_version.split(".")]
+        rv_2_lst = [int(i) for i in release_version_2.split(".")]
+
+        # Equalize the length of the lists by appending zeros
+        rv_1_lst += [0] * (len(rv_2_lst) - len(rv_1_lst))
+        rv_2_lst += [0] * (len(rv_1_lst) - len(rv_2_lst))
+
+        diff = [str(p - i) for i, p in zip(rv_1_lst, rv_2_lst)]
+        return ".".join(diff) if join else diff
+
     def receive_update_status(self, host: str='localhost', port: int=5000) -> UpdateStatusGenerator:
         try:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
