@@ -4,7 +4,7 @@ import requests
 import subprocess
 import socket
 import tempfile
-from typing import Tuple, Generator, Union
+from typing import Optional, Tuple, Generator, Union
 import sys
 import os
 
@@ -32,7 +32,7 @@ class gitupdater:
             print(f"Unexpected exception occured: {e}")
         return None, None
         
-    def compare_release_numbers(self, release_version, release_version_2):
+    def compare_release_numbers(self, release_version: str, release_version_2: str) -> Optional[str]:
         rv_1_lst = release_version.split(".")
         rv_2_lst = release_version_2.split(".")
         
@@ -48,7 +48,7 @@ class gitupdater:
                 return release_version
         return None
     
-    def compare_release_numbers_diff(self, release_version, release_version_2, join=True):
+    def compare_release_numbers_diff(self, release_version: str, release_version_2: str, join: Optional[bool]=True) -> Union[str, List[int]]:
         rv_1_lst = [int(i) for i in release_version.split(".")]
         rv_2_lst = [int(i) for i in release_version_2.split(".")]
 
@@ -90,7 +90,8 @@ class gitupdater:
         
     def update(self, path: str, zip_path: str, version: str, author: str, 
                repo_name: str, gui_toggle: bool=False, cmd_toggle: bool=False, 
-               host: str="localhost", port: int=5000) -> Union[Tuple[bool, None, int], Tuple[bool, Exception, int]]:
+               host: str="localhost", port: int=5000, non_blocking: Optional[bool]=False
+    ) -> Union[Tuple[bool, None, int], Tuple[bool, Exception, int]]:
         lib_path = os.path.dirname(os.path.abspath(__file__))
         def run_subprocess(file):
             return subprocess.run([os.path.join(lib_path, file), str(path), str(zip_path), str(version), str(author), str(repo_name), str(host), str(port)], shell=True, text=True, capture_output=True)
