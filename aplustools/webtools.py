@@ -1,4 +1,3 @@
-from ast import Dict
 from urllib.parse import urlencode, urlunparse, quote_plus, urlparse, urljoin
 import requests
 from duckduckgo_search import DDGS
@@ -7,8 +6,11 @@ from bs4 import BeautifulSoup
 import re
 import json
 from html import unescape
-from typing import Generator, Type, Union, Optional, TypeVar, Generic, List
+from typing import Generator, Type, Union, Optional, TypeVar, Generic, List, Dict
 import time
+import http.client
+import urllib.parse
+from abc import ABC, abstractmethod
 
 
 T = TypeVar('T', bound='NonIterable')
@@ -80,8 +82,8 @@ def is_crawlable(url: str) -> bool:
         print(f"An error occurred while checking the robots.txt file: {e}")
     return False  # Return False if there was an error or the robots.txt file couldn't be retrieved
 
-class Search:
-    def google_provider(self):
+class search:
+    class google_provider:
         def google_search(
                 query: str, 
                 user_agent: str, 
@@ -172,7 +174,7 @@ class Search:
                 else: results_lst.extend(urls)
             return results_lst
         
-    def duckduckgo_provider(self):
+    class duckduckgo_provider:
         def ddg_instant_answer_search(query: str) -> Union[Generator[Dict[str, str], None, None], bool]:
             headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"
@@ -242,7 +244,7 @@ class Search:
                 else: results_lst.extend(urls)
             return results_lst
         
-    def duckduckgo_search_provider(self):
+    class duckduckgo_search_provider:
         def dggs_search(
                 query: str, 
                 num_results: Optional[int]=10
@@ -293,7 +295,7 @@ class Search:
                 else: results_lst.extend(urls)
             return results_lst
         
-    def bing_provider(self):
+    class bing_provider:
         def bing_search(
                 query: str, 
                 user_agent: str, 
@@ -356,3 +358,68 @@ class Search:
                 if sort_per_query: results_lst.append(urls)
                 else: results_lst.extend(urls)
             return results_lst
+
+class Alpha(ABC):
+    class Response(ABC):
+        def __init__(self, status, text, reason, headers):
+            self.status = status
+            self.text = text
+            self.reason = reason
+            self.headers = headers
+
+    @abstractmethod
+    def http_request(method, url, data=None, headers=None):
+        # Parse the URL to extract the netloc (network location) and path
+        url_parts = urllib.parse.urlsplit(url)
+        netloc = url_parts.netloc
+        path = url_parts.path or '/'
+    
+        # Ensure headers is a dictionary
+        headers = headers or {}
+    
+        # If data is provided, URL encode it and set the Content-Type header
+        if data:
+            body = urllib.parse.urlencode(data).encode('ascii')
+            headers['Content-Type'] = 'application/x-www-form-urlencoded'
+        else:
+            body = None
+    
+        # Create the connection object
+        if url_parts.scheme == 'https':
+            conn = http.client.HTTPSConnection(netloc)
+        elif url_parts.scheme == 'http':
+            conn = http.client.HTTPConnection(netloc)
+        else:
+            raise ValueError(f"Unsupported URL scheme: {url_parts.scheme}")
+    
+        try:
+            # Send the HTTP request
+            conn.request(method, path, body, headers)
+            # Get the HTTP response
+            response = conn.getresponse()
+            # Read and decode the response body
+            text = response.read().decode()
+        finally:
+            # Always close the connection
+            conn.close()
+    
+        # Create and return a Response object
+        return Response(response.status, text, response.reason, response.headers)
+
+    @abstractmethod
+    def http_get(url, headers=None):
+        return http_request('GET', url, headers=headers)
+
+    @abstractmethod
+    def http_post(url, data=None, headers=None):
+        return http_request('POST', url, data=data, headers=headers)
+
+    @abstractmethod
+    def http_xhr(url, data=None, headers=None):
+        # Set the X-Requested-With header to indicate an XHR request
+        headers = headers or {}
+        headers['X-Requested-With'] = 'XMLHttpRequest'
+        # Use the http_request function to send the GET and POST requests
+        response_get = http_request('GET', url, headers=headers)
+        response_post = http_request('POST', url, data=data, headers=headers)
+        return response_get, response_post
