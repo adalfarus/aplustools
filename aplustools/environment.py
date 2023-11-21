@@ -1,5 +1,6 @@
 # environment.py
 import os
+from re import A
 import sys
 import shutil
 import tempfile
@@ -209,3 +210,121 @@ def rename(ornam: str, newnam: str) -> bool:
     except Exception as e:
         print(f"An error occurred while renaming: {e}")
         return False
+
+def functionize(cls):
+    def wrapper(*args, **kwargs):
+        # Creating an instance of the class
+        instance = cls(*args, **kwargs)
+        # Collecting the instance attributes (variables) and their values
+        attrs = {attr: getattr(instance, attr) for attr in instance.__dict__}
+        # Collecting methods and converting them to standalone functions
+        methods = {
+            name: (lambda method: lambda *args, **kwargs: method(instance, *args, **kwargs))(method)
+            for name, method in cls.__dict__.items()
+            if inspect.isfunction(method)
+        }
+        # Combining attributes and methods
+        return {**attrs, **methods}
+    return wrapper
+
+def old_strict(cls):
+    # Create the new class with the same name
+    class_name = cls.__name__
+    def create_method(name):
+        def method(self, *args, **kwargs):
+            return getattr(self._inner_instance, name)(*args, **kwargs)
+        return method
+    def create_property(name):
+        def getter(self):
+            return getattr(self._inner_instance, name)
+        return property(getter)
+    outer_class_attrs = {
+        '__init__': lambda self, *args, **kwargs: setattr(self, '_inner_instance', cls(*args, **kwargs))
+    }
+    # Add public methods and properties from the original class
+    for attr_name in dir(cls):
+        if not attr_name.startswith('_'):
+            attr = getattr(cls, attr_name)
+            if callable(attr):
+                outer_class_attrs[attr_name] = create_method(attr_name)
+            else:
+                outer_class_attrs[attr_name] = create_property(attr_name)
+    # Create the new class
+    OuterClass = type(class_name, (object,), outer_class_attrs)
+    def newgetattr(self, name):
+        if callable(name):
+            outer_class_attrs[attr_name] = create_method(attr_name)
+        else:
+            outer_class_attrs[attr_name] = create_property(attr_name)
+    return OuterClass
+
+def strict(cls):
+    # Create the new class with the same name
+    class_name = cls.__name__
+    def create_method(name):
+        def method(self, *args, **kwargs):
+            return getattr(self._inner_instance, name)(*args, **kwargs)
+        return method
+    def create_property(name):
+        def getter(self):
+            return getattr(self._inner_instance, name)
+        return property(getter)
+    def init_wrapper(self, *args, **kwargs):
+        self.__dict__['_inner_instance'] = cls(*args, **kwargs)
+    def setattr_wrapper(self, name, value):
+        if name in self.__dict__ or name == '_inner_instance':
+            object.__setattr__(self, name, value)
+        else:
+            setattr(self._inner_instance, name, value)
+    def getattr_wrapper(self, name):
+        if name in self.__dict__:
+            return object.__getattribute__(self, name)
+        return getattr(self._inner_instance, name)
+    outer_class_attrs = {
+        '__init__': init_wrapper, 
+        '__setattr__': setattr_wrapper, 
+        '__getattr__': getattr_wrapper
+    }
+    # Add public methods and properties from the original class
+    for attr_name in dir(cls):
+        if not attr_name.startswith('_'):
+            attr = getattr(cls, attr_name)
+            if callable(attr):
+                outer_class_attrs[attr_name] = create_method(attr_name)
+            else:
+                outer_class_attrs[attr_name] = create_property(attr_name)
+    # Create the new class
+    OuterClass = type(class_name, (object,), outer_class_attrs)
+    return OuterClass
+
+@strict
+class Hello:
+    def __init__(self):
+        self.counter = 0
+    def _hell(self):
+        print(1)
+    def hell(self):
+        self._hell()
+        self.counter += 1
+    
+@functionize
+class Hello2:
+    def __init__(self):
+        pass
+    def _hell(self):
+        print("self")
+    def hell(self):
+        self._hell()
+        
+class Hello3:
+    def __init__(self):
+        pass
+    def _hell(self):
+        print(1)
+    def hell(self):
+        self._hell()
+
+ins = Hello()
+ins.hell()
+print(ins.counter)
+ins._hell()

@@ -13,6 +13,10 @@ UpdateStatusGenerator = Generator[YieldType, None, ReturnType]
 def get_temp():
     return tempfile.gettempdir()
 
+class unum: # Compare version through dunder methods
+    def __init__(self, number):
+        self.number = number
+
 class gitupdater:
     def __init__(self, version: str="exe"):
         self.version = version
