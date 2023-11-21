@@ -1,0 +1,32 @@
+[2023-11-21 20:34:16] Hello Worlds
+[2023-11-21 20:34:16] Logging this
+[2023-11-21 20:36:17] Hello Worlds
+[2023-11-21 20:36:17] Logging this
+[2023-11-21 20:36:17] Logging that
+[DEBUG] [2023-11-21 20:36:17] [Debug] No ref, so just print xd
+[2023-11-21 20:36:17] DONE
+[2023-11-21 20:36:58] Hello Worlds
+[2023-11-21 20:36:58] Logging this
+[2023-11-21 20:36:58] Logging that
+[DEBUG] [2023-11-21 20:36:58] [Debug] No ref, so just print xd
+[WARN] [2023-11-21 20:36:58] [Warn] No ref, so just print xd
+[2023-11-21 20:36:58] DONE
+[2023-11-21 20:38:02] Hello Worlds
+[2023-11-21 20:38:02] Logging this
+[2023-11-21 20:38:02] Logging that
+[DEBUG] [2023-11-21 20:38:02] [Debug] No ref, so just print xd
+[WARN] [2023-11-21 20:38:02] [Warn] No ref, so just print xd
+[2023-11-21 20:38:02] Do not do this, you need to ref to close it
+[2023-11-21 20:38:02] DONE
+[2023-11-21 20:39:00] Hello Worlds
+[2023-11-21 20:39:00] Logging this
+[2023-11-21 20:39:00] Logging that
+[DEBUG] [2023-11-21 20:39:00] [Debug] No ref, so just print xd
+[WARN] [2023-11-21 20:39:00] [Warn] No ref, so just print xd
+[2023-11-21 20:39:00] Do not do this, you need to ref to close it
+[2023-11-21 20:58:36] Hello Worlds
+[2023-11-21 20:58:36] Logging this
+[2023-11-21 20:58:36] Logging that
+[DEBUG] [2023-11-21 20:58:36] [Debug] No ref, so just print xd
+[WARN] [2023-11-21 20:58:36] [Warn] No ref, so just print xd
+[2023-11-21 20:58:36] Do not do this, you need a ref to close it

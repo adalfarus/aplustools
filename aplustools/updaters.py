@@ -2,9 +2,11 @@ import requests
 import subprocess
 import socket
 import tempfile
-from typing import Optional, Tuple, Generator, Union, List
+from typing import Optional, Tuple, Generator, Union, List, Any
+from packaging.version import Version, InvalidVersion
 import sys
 import os
+import warnings
 
 YieldType = Union[int, None]
 ReturnType = Union[None, bool]
@@ -13,9 +15,81 @@ UpdateStatusGenerator = Generator[YieldType, None, ReturnType]
 def get_temp():
     return tempfile.gettempdir()
 
-class unum: # Compare version through dunder methods
-    def __init__(self, number):
-        self.number = number
+class vNum:
+    def __init__(self, number: str):
+        try:
+            self.version = Version(number)
+        except InvalidVersion:
+            raise ValueError(f"Invalid version number: {number}")
+
+    def __lt__(self, other: Any) -> bool:
+        if isinstance(other, vNum):
+            return self.version < other.version
+        elif isinstance(other, str):
+            try:
+                other = Version(other)
+                return self.version < other.version
+            except InvalidVersion:
+                raise ValueError(f"Invalid version number: {other}")
+        return NotImplemented
+
+    def __le__(self, other: Any) -> bool:
+        if isinstance(other, vNum):
+            return self.version <= other.version
+        elif isinstance(other, str):
+            try:
+                other = Version(other)
+                return self.version <= other.version
+            except InvalidVersion:
+                raise ValueError(f"Invalid version number: {other}")
+        return NotImplemented
+
+    def __eq__(self, other: Any) -> bool:
+        if isinstance(other, vNum):
+            return self.version == other.version
+        elif isinstance(other, str):
+            try:
+                other = Version(other)
+                return self.version == other.version
+            except InvalidVersion:
+                raise ValueError(f"Invalid version number: {other}")
+        return NotImplemented
+
+    def __ne__(self, other: Any) -> bool:
+        if isinstance(other, vNum):
+            return self.version != other.version
+        elif isinstance(other, str):
+            try:
+                other = Version(other)
+                return self.version != other.version
+            except InvalidVersion:
+                raise ValueError(f"Invalid version number: {other}")
+        return NotImplemented
+
+    def __gt__(self, other: Any) -> bool:
+        if isinstance(other, vNum):
+            return self.version > other.version
+        elif isinstance(other, str):
+            try:
+                other = Version(other)
+                return self.version > other.version
+            except InvalidVersion:
+                raise ValueError(f"Invalid version number: {other}")
+        return NotImplemented
+
+    def __ge__(self, other: Any) -> bool:
+        if isinstance(other, vNum):
+            return self.version >= other.version
+        elif isinstance(other, str):
+            try:
+                other = Version(other)
+                return self.version >= other.version
+            except InvalidVersion:
+                raise ValueError(f"Invalid version number: {other}")
+        return NotImplemented
+
+    def __str__(self) -> str:
+        return str(self.version)
 
 class gitupdater:
     def __init__(self, version: str="exe"):
@@ -35,6 +109,9 @@ class gitupdater:
         return None, None
         
     def compare_release_numbers(self, release_version: str, release_version_2: str) -> Optional[str]:
+        warnings.warn("This function is for an older version of this library, please stop using it as it will be removed in version 0.1.4. Use updaters.vNum instead.", 
+                      DeprecationWarning, 
+                      stacklevel=2)
         rv_1_lst = release_version.split(".")
         rv_2_lst = release_version_2.split(".")
         
@@ -51,6 +128,9 @@ class gitupdater:
         return None
     
     def compare_release_numbers_diff(self, release_version: str, release_version_2: str, join: Optional[bool]=True) -> Union[str, List[int]]:
+        warnings.warn("This function is for an older version of this library, please stop using it as it will be removed in version 0.1.4. Use updaters.vNum instead.", 
+                      DeprecationWarning, 
+                      stacklevel=2)
         rv_1_lst = [int(i) for i in release_version.split(".")]
         rv_2_lst = [int(i) for i in release_version_2.split(".")]
 

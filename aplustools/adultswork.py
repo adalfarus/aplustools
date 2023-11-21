@@ -149,3 +149,44 @@ class EnhancedTuple(tuple):
     def index_of(self, value):
         return self.index(value)
     
+def local_test():
+    # EnhancedString
+    string = EnhancedString("Hello beautiful world!")
+    print(string.remove("beautiful"))  # Output: "Hello  world!"
+
+    # EnhancedDict
+    dict = EnhancedDict({0: "Hello", 1: "world"})
+    dict2 = {1: "dark", 2: "world!"}
+    print(dict + dict2)  # Output: {0: "Hello", 1: "dark", 2: "world!"}
+
+    # EnhancedList
+    list = EnhancedList([0, 1, 0, 2, 3, 1])
+    list.remove_duplicates()
+    print(list)  # Output: [0, 1, 2, 3]
+
+    # EnhancedInteger
+    integer = EnhancedInteger(7)
+    print(integer.to_binary(), integer.to_hex())  # Output: "111" "7"
+
+    # EnhancedFloat
+    floating_point = EnhancedFloat(7.2)
+    print(floating_point.to_string(2))  # Output: "7.20"
+
+    # EnhancedSet
+    boring_set = EnhancedSet({"hell", "no"})
+    print(boring_set.power_set())  # Output: All possible subsets
+
+    # EnhancedFile
+    #with EnhancedFile("./test.txt", "r") as f:
+    #    print(f.read_list())  # Output: List of lines from test.txt
+
+    # EnhancedDateTime
+    time = EnhancedDateTime.now()
+    print(time.add_days(7).to_string("%Y-%m-%d"))  # Output: Date 7 days from now
+
+    # EnhancedTuple
+    tup = EnhancedTuple((1, 1, 3, 4, 1, 2))
+    print(tup.count_occurrences(1), tup.index_of(2))  # Output: 3 5
+
+if __name__ == "__main__":
+    local_test()
