@@ -1,0 +1,25 @@
+Remove deprecated functions and classes:
+- logs.cprint
+- logs.overwrite_print
+- setdirtoex
+- updaters.gitupdater.compare_release_numbers
+- updaters.gitupdater.compare_release_numbers_diff
+
+Make imagetools an ecosystem (class structure that makes sense)
+-> can be pushed to 0.1.5
+
+Make webtools more efficient and user friendly
+-> can be pushed to 0.1.5
+
+Finish the struct decorator and find a way to make it less resource intensive (or remove it)
+
+Update old forms of gitupdater and recompile them.
+
+Make more updaters
+-> can be pushed to 0.1.5
+
+Implement local test and if __name__ == ... for all modules
+
+Make updaters classes modules for easier imports
+
+Add all the latest changes to the wiki
