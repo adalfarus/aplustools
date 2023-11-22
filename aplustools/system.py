@@ -24,6 +24,9 @@ class System:
     def get_os_version(self):
         """Get the version of the operating system."""
         return platform.version()
+    
+    def get_major_os_version(self):
+        return platform.release()
 
     def get_cpu_arch(self):
         """Get the architecture of the CPU (e.g., x86_64, ARM)."""
