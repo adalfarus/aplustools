@@ -296,7 +296,7 @@ def strict(cls):
     # Create the new class
     OuterClass = type(class_name, (object,), outer_class_attrs)
     return OuterClass
-
+"""
 @strict
 class Hello:
     def __init__(self):
@@ -328,3 +328,4 @@ ins = Hello()
 ins.hell()
 print(ins.counter)
 ins._hell()
+"""
