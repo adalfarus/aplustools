@@ -53,21 +53,21 @@ import aplustools.setdirtoex
 from aplustools import logs
 
 # Create an instance of Logger
-logger = logs.Logger("my_logs_file.log", show_time=True, capture_print=False, 
+p_logger = logs.PrintLogger("my_logs_file.log", show_time=True, capture_print=False, 
                      overwrite_print=True, print_passthrough=False, print_log_to_stdout=True)
 # Shows the time in the logs (Like this [12:33:21]) and overwrites the normal sys.stdout
 
 # Call the `monitor_stdout` method and pass the logger object, this will overwrite sys.stdout from Text I/O to the logger object
-logger = logs.monitor_stdout(logger=logger) # Return sys.stdout, so you can make sure it worked
+logger = logs.monitor_stdout(logger=p_logger) # Return sys.stdout, so you can make sure it worked
 
 # Log something
-logger.log("Hello, world!")
+p_logger.log("Hello, world!")
 
 # Print something, it won't get captured or displayed
 print("Hello, beautiful world!")
 
 # Close the Logger object (returns sys.stdout to it's normal state)
-logger.close()
+p_logger.close()
 ```
 
 ### OnlineImage
