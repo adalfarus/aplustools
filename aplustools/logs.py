@@ -56,6 +56,12 @@ class Logger(object):
         """Closes the log file."""
         self.log_file.close()
         
+    def __enter__(self):
+        return self
+    
+    def __exit__(self):
+        self.close()
+
     def __del__(self):
         """Destructor to ensure the log file is closed properly."""
         self.close()
