@@ -42,6 +42,7 @@ class Logger(object):
     
     def log(self, message: str):
         """Logs a message to the file and optionally to stdout."""
+        message = str(message)
         message_with_timestamp = self._add_timestamp(message) + "\n"
         self.log_file.write(message_with_timestamp)
         self.log_file.flush()
@@ -153,6 +154,7 @@ class TypeLogger(PrintLogger): # The , *_, **__ need to be added as direct init 
     
     def log(self, message: str, log_type: Type[LogType]=LogType.NONE):
         """Logs a message to the file and optionally to stdout."""
+        message = str(message)
         message_with_timestamp = self._add_timestamp(message) + "\n"
         self.log_switch = True
         self.log_file.write(self._add_type(message_with_timestamp, log_type))
@@ -195,6 +197,7 @@ class FullTypeLogger:
         self.current_logging_type = current_logging_type
     
     def log(self, message: str, type: Type[LogType]=LogType.NONE):
+        message = str(message)
         pass
 
 def monitor_stdout(log_file: Optional[str]=None, logger: Optional[Type[Logger]]=None) -> Union[TextIO, Type[Logger]]:
