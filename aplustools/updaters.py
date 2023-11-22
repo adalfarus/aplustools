@@ -28,7 +28,7 @@ class vNum:
         elif isinstance(other, str):
             try:
                 other = Version(other)
-                return self.version < other.version
+                return self.version < other
             except InvalidVersion:
                 raise ValueError(f"Invalid version number: {other}")
         return NotImplemented
@@ -39,7 +39,7 @@ class vNum:
         elif isinstance(other, str):
             try:
                 other = Version(other)
-                return self.version <= other.version
+                return self.version <= other
             except InvalidVersion:
                 raise ValueError(f"Invalid version number: {other}")
         return NotImplemented
@@ -50,7 +50,7 @@ class vNum:
         elif isinstance(other, str):
             try:
                 other = Version(other)
-                return self.version == other.version
+                return self.version == other
             except InvalidVersion:
                 raise ValueError(f"Invalid version number: {other}")
         return NotImplemented
@@ -61,7 +61,7 @@ class vNum:
         elif isinstance(other, str):
             try:
                 other = Version(other)
-                return self.version != other.version
+                return self.version != other
             except InvalidVersion:
                 raise ValueError(f"Invalid version number: {other}")
         return NotImplemented
@@ -72,7 +72,7 @@ class vNum:
         elif isinstance(other, str):
             try:
                 other = Version(other)
-                return self.version > other.version
+                return self.version > other
             except InvalidVersion:
                 raise ValueError(f"Invalid version number: {other}")
         return NotImplemented
@@ -83,7 +83,7 @@ class vNum:
         elif isinstance(other, str):
             try:
                 other = Version(other)
-                return self.version >= other.version
+                return self.version >= other
             except InvalidVersion:
                 raise ValueError(f"Invalid version number: {other}")
         return NotImplemented

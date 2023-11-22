@@ -1,21 +1,42 @@
 import sys
 import time
-from typing import TextIO, Union, Optional, Type, Callable
+from typing import TextIO, Union, Optional, Type, Callable, Tuple
 import builtins # Remove, when removeing deprecated functions in 0.1.4
 from enum import Enum
 import warnings
 
 
+class LogType(Enum):
+    NONE = ""
+    DEBUG = "[DEBUG] "
+    WARN = "[WARN] "
+    ERR = "[ERR] "
+    ANY = None
+
+def overwrite_logtype(new_logtype: Type[LogType]):
+    LogType = new_logtype
+
+def classify_type_stan(message: str) -> Tuple[Type[LogType], str]:
+    mess = message.lower()
+    if any(x in mess for x in ["err", "error"]):
+        log_type = LogType.ERR
+    elif any(x in mess for x in ["warn", "warning"]):
+        log_type = LogType.WARN
+    elif any(x in mess for x in ["deb", "debug"]):
+        log_type = LogType.DEBUG
+    else: log_type = LogType.NONE
+    return log_type, ""
+
 class Logger(object):
-    def __init__(self, filename: str="Default.log", show_time: bool=True, print_log_to_stdout: bool=True, *_, **__):
-        self.show_time = show_time
+    def __init__(self, log_filename: str="Default.log", include_timestamp: bool=True, print_log_to_stdout: bool=True, *_, **__):
+        self.include_timestamp = include_timestamp
         self.print_log_to_stdout = print_log_to_stdout
-        self.log_file = open(filename, "a", encoding='utf-8')
+        self.log_file = open(log_filename, "a", encoding='utf-8')
         
     def _add_timestamp(self, message: str) -> str:
-        """Adds a timestamp to the message if show_time is True."""
-        if self.show_time and message.strip():
-            timestamp = f"[{time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime())}] " if self.show_time else ''
+        """Adds a timestamp to the message if include_timestamp is True."""
+        if self.include_timestamp and message.strip():
+            timestamp = f"[{time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime())}] " if self.include_timestamp else ''
             return timestamp + message if message != '\n' else message
         return message
     
@@ -39,33 +60,23 @@ class Logger(object):
         """Destructor to ensure the log file is closed properly."""
         self.close()
 
-class LogType(Enum):
-    NONE = ""
-    DEBUG = "[DEBUG] "
-    WARN = "[WARN] "
-    ERR = "[ERR] "
-    ANY = None
-    
-def overwrite_logtype(new_logtype: Type[LogType]):
-    LogType = new_logtype
-
 class PrintLogger(Logger):
-    def __init__(self, filename: str="Default.log", show_time: bool=True, 
-                 capture_print: bool=True, overwrite_print: bool=True, 
-                 print_passthrough: bool=True, print_log_to_stdout: bool=True, *_, **__):
-        super().__init__(filename, show_time, print_log_to_stdout)
-        self.capture_print = capture_print
-        self.terminal = sys.stdout if overwrite_print else None
-        self.print_passthrough = print_passthrough
+    def __init__(self, log_filename: str="Default.log", include_timestamp: bool=True, 
+                 capture_stdout: bool=True, overwrite_stdout: bool=True, 
+                 stdout_passthrough: bool=True, print_log_to_stdout: bool=True, *_, **__):
+        super().__init__(log_filename, include_timestamp, print_log_to_stdout)
+        self.capture_stdout = capture_stdout
+        self.terminal = sys.stdout if overwrite_stdout else None
+        self.stdout_passthrough = stdout_passthrough
         self.buffer = ''
             
     def _check_content(self, content: str):
         """Check the content from stdout traffic."""
-        if self.capture_print:
+        if self.capture_stdout:
             message_with_timestamp = self._add_timestamp(content)
             self.log_file.write(message_with_timestamp)
             self.log_file.flush()
-        if self.print_passthrough:
+        if self.stdout_passthrough:
             message_with_timestamp = self._add_timestamp(content)
             self._write_to_stdout(message_with_timestamp)
 
@@ -95,90 +106,90 @@ class PrintLogger(Logger):
         if self.terminal:
             sys.stdout = self.terminal
 
-def classify_type_stan(message: str) -> LogType:
-    mess = message.lower()
-    if any(x in mess for x in ["err", "error"]):
-        return LogType.ERR
-    elif any(x in mess for x in ["warn", "warning"]):
-        return LogType.WARN
-    elif any(x in mess for x in ["deb", "debug"]):
-        return LogType.DEBUG
-    else: return LogType.NONE
+class TypeLogger(PrintLogger): # The , *_, **__ need to be added as direct init calls lead to errors
+    def __init__(self, log_filename: str="Default.log", include_timestamp: bool=True, capture_stdout: bool=True, 
+                 overwrite_stdout: bool=True, stdout_passthrough: bool=True, print_log_to_stdout: bool=True, 
+                 display_message_type: bool=True, message_type_classifier: Callable=classify_type_stan, 
+                 classify_message_type: bool=True, enable_type_system: bool=True, write_type: bool=True, 
+                 current_display_type: Type[LogType]=LogType.ANY, current_logging_type: Type[LogType]=LogType.ANY, *_, **__):
+        super().__init__(log_filename, include_timestamp, capture_stdout, overwrite_stdout, stdout_passthrough, print_log_to_stdout)
+        self.display_message_type = display_message_type
+        self.message_type_classifier = message_type_classifier
+        self.classify_message_type = classify_message_type
+        self.enable_type_system = enable_type_system
+        self.write_type = write_type
+        self.current_display_type = current_display_type
+        self.current_logging_type = current_logging_type
+        self.log_switch = False # If the program is currently logging
 
-class TypeLogger(PrintLogger):
-    def __init__(self, filename: str="Default.log", show_time: bool=True, capture_print: bool=True, # The , *_, **__ need to be added as direct init calls lead to errors
-                 overwrite_print: bool=True, show_type: bool = True, classify_type_func: Callable = classify_type_stan, #capture_type: bool=True, 
-                 print_passthrough: bool=True, print_log_to_stdout: bool=True, use_type: bool=True, cu_type: Type[LogType]=LogType.ANY, *_, **__):
-        super().__init__(filename, show_time, capture_print, overwrite_print, print_passthrough, print_log_to_stdout)
-        self.show_type = show_type
-        self._classify_type_func = classify_type_func
-        self.use_type = use_type
-        self._cu_type = cu_type
-        #self.capture_type = capture_type # Removed this, as you can just make your own subclass if you really need it
-
-    @property
-    def classify_type_func(self):
-        return self._classify_type_func
-    
-    @classify_type_func.setter
-    def classify_type_func(self, value):
-        self._classify_type_func = value
-
-    @classify_type_func.deleter
-    def classify_type_func(self):
-        tb = sys.exception().__traceback__
-        raise NotImplementedError("...").with_traceback(tb)
-        #del self._classify_type_func
-
-    @property
-    def cu_type(self):
-        return self._cu_type
-    
-    @cu_type.setter
-    def cu_type(self, value):
-        self._cu_type = value
-
-    @cu_type.deleter
-    def cu_type(self):
-        tb = sys.exception().__traceback__
-        raise NotImplementedError("...").with_traceback(tb)
-        #del self._cu_type
-
-    def _add_type(self, message: str) -> str:
-        """Adds the type to the message if show_type is True."""
-        if self.show_type and message.strip() and self.use_type:
-            message_type = classify_type_stan(message) if self.show_type else ''
-            if self._cu_type == message_type or self._cu_type == LogType.ANY:
-                return message_type.value + message if message != '\n' else message
+    def _add_type(self, message: str, log_type: Optional[Type[LogType]]=None) -> str:
+        """Adds the type to the message if an depending on the switches."""
+        if self.enable_type_system and message.strip():
+            if (self.display_message_type and not self.log_switch):
+                if not log_type and self.classify_message_type:
+                    message_type, remove_str = self.message_type_classifier(message)
+                elif log_type:
+                    message_type, remove_str = log_type, ""
+                else: LogType.NONE, ""
+                message = message.replace(remove_str, "")
+                if self.current_display_type == message_type or self.current_display_type == LogType.ANY:
+                    message = message_type.value + message if message != '\n' else message
+            elif ((self.display_message_type and self.write_type) and self.log_switch):
+                if not log_type and self.classify_message_type:
+                    message_type, remove_str = self.message_type_classifier(message)
+                elif log_type:
+                    message_type, remove_str = log_type, ""
+                else: LogType.NONE, ""
+                message = message.replace(remove_str, "")
+                if self.current_logging_type == message_type or self.current_logging_type == LogType.ANY:
+                    message = message_type.value + message if message != '\n' else message
         return message
     
-    def _add_timestamp(self, message: str) -> str:#, add_type: bool=True) -> str:
-        """Adds a timestamp to the message if show_time is True. The type is also added, if show_type is true"""
-        if self.show_time and message.strip():
-            timestamp = f"[{time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime())}] " if self.show_time else ''
-            message = timestamp + message if message != '\n' else message
-        if self.show_type:# and add_type:
-            message = self._add_type(message)
-        return message
+    def log(self, message: str, log_type: Type[LogType]=LogType.NONE):
+        """Logs a message to the file and optionally to stdout."""
+        message_with_timestamp = self._add_timestamp(message) + "\n"
+        self.log_switch = True
+        self.log_file.write(self._add_type(message_with_timestamp, log_type))
+        self.log_file.flush()
+        if self.print_log_to_stdout:
+            message_with_timestamp = self._add_timestamp(message) + "\n"
+            self.log_switch = False
+            self._write_to_stdout(self._add_type(message_with_timestamp, log_type))
+            
+    def _check_content(self, content: str):
+        """Check the content from stdout traffic."""
+        if self.capture_stdout:
+            message_with_timestamp = self._add_timestamp(content)
+            self.log_switch = True
+            self.log_file.write(self._add_type(message_with_timestamp))
+            self.log_file.flush()
+        if self.stdout_passthrough:
+            message_with_timestamp = self._add_timestamp(content)
+            self.log_switch = False
+            self._write_to_stdout(self._add_type(message_with_timestamp))
+
+class FullTypeLogger:
+    """This class is here to implement a full type system on top of the print system
+    Please do not use it however, as it's quite complex - Use it as an inspiration for your
+    own logger subclass instead. This doesn't inherit from anything, to focus on making a good
+    logger instead on compatibility. The aim is to be better than the default logger. This also
+    acts as an inspiration for the normal TypeLogger.
+    """
+    def __init__(self, log_filename: str="Default.log", include_timestamp: bool=True, print_logger: PrintLogger=PrintLogger, 
+                 display_message_type: bool=True, message_type_classifier: Callable=lambda: None, classify_message_type: bool=True, 
+                 enable_type_system: bool=True, current_display_type: Type[LogType]=LogType.ANY, current_logging_type: Type[LogType]=LogType.ANY):
+        if print_logger and isinstance(print_logger, PrintLogger):
+            self.print_logger = PrintLogger(log_filename, include_timestamp)
+        else: raise TypeError("print_logger needs to be a (sub-)class of PrintLogger")
+        self.display_message_type = display_message_type
+        self.message_type_classifier = message_type_classifier
+        self.classify_message_type = classify_message_type
+        self.enable_type_system = enable_type_system
+        self.current_display_type = current_display_type
+        self.current_logging_type = current_logging_type
     
-#    def log(self, message: str):
-#        """Logs a message to the file and optionally to stdout."""
-#        message_with_timestamp = self._add_timestamp(message, self.capture_type) + "\n"
-#        self.log_file.write(message_with_timestamp)
-#        self.log_file.flush()
-#        if self.print_log_to_stdout:
-#            message_with_timestamp = self._add_timestamp(message, self.show_type) + "\n"
-#            self._write_to_stdout(message_with_timestamp)
-#            
-#    def _check_content(self, content: str):
-#        """Check the content from stdout traffic."""
-#        if self.capture_print:
-#            message_with_timestamp = self._add_timestamp(content, self.capture_type)
-#            self.log_file.write(message_with_timestamp)
-#            self.log_file.flush()
-#        if self.print_passthrough:
-#            message_with_timestamp = self._add_timestamp(content, self.show_type)
-#            self._write_to_stdout(message_with_timestamp)
+    def log(self, message: str, type: Type[LogType]=LogType.NONE):
+        pass
 
 def monitor_stdout(log_file: Optional[str]=None, logger: Optional[Type[Logger]]=None) -> Union[TextIO, Type[Logger]]:
     """Monitors and logs stdout messages based on given parameters.
