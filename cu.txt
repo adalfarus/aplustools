@@ -1,0 +1,6 @@
+[2023-11-26 09:42:26] Hello Worlds
+[2023-11-26 09:42:26] Logging this
+[2023-11-26 09:42:26] Logging that
+[DEBUG] [2023-11-26 09:42:26] [Debug] No ref, so just print xd
+[WARN] [2023-11-26 09:42:26] [Warn] No ref, so just print xd
+[2023-11-26 09:42:26] Do not do this, you need a ref to close it
