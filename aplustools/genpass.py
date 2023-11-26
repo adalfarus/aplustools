@@ -1,4 +1,4 @@
-﻿﻿import unicodedata
+﻿import unicodedata
 import secrets
 import sqlite3
 import random
@@ -597,3 +597,8 @@ class PasswordManager:
 ##```
 ##
 ##In the example, `debug=True` is passed to `generate_ratio_based_password_v1`, so this method prints debug information even though `debug=False` is set when initializing the `GeneratePasswords` class. The other methods do not print debug information because the `debug` attribute of the class is `False`.
+
+if __name__ == "__main__":
+    gen = GeneratePasswords(debug=True) # Exclude similar makes generated char length potentially smaller than pass length as it removes after generating
+    password = gen.generate_ratio_based_password_v2(length=10, letters_ratio=0.5, numbers_ratio=0.3, punctuations_ratio=0.2, secure_random=True)#, exclude_similar=True)
+    print(password) # Make the ... if based
