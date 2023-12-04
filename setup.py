@@ -6,8 +6,8 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name='aplustools',
-    packages=find_packages(include=['aplustools']),
-    version='0.1.4', # Change to 0.1.4 if the duckduckgo search works aswell as DGGS
+    packages=find_packages(),  # This will find all packages and sub-packages
+    version='0.1.4', # Change to 0.1.4 if the duckduckgo search works aswell as DGGS :(
     description='A collection of helpful tools',
     author='Cariel Becker',
     license='GPL-3.0',
@@ -24,7 +24,4 @@ setup(
     setup_requires=['pytest-runner'],
     tests_require=['pytest==4.4.1'],
     test_suite='tests',
-    package_data={
-        'aplustools': ['gitupdater.exe', 'gitupdater-cmd.exe', 'gitupdater-gui.exe'],
-    }
 )
