@@ -1,22 +1,22 @@
-Remove deprecated functions and classes:
-- logs.cprint
-- logs.overwrite_print
+Remove deprecated functions and classes of 0.1.4: # Done
+- loggers.cprint
+- loggers.overwrite_print
 - setdirtoex
 - updaters.gitupdater.compare_release_numbers
 - updaters.gitupdater.compare_release_numbers_diff
 
 Make imagetools an ecosystem (class structure that makes sense)
--> can be pushed to 0.1.5
+-> can be pushed to 0.1.5 # Do this
 
 Make webtools more efficient and user friendly
--> can be pushed to 0.1.5
+-> can be pushed to 0.1.5 # Do this
 
-Finish the struct decorator and find a way to make it less resource intensive (or remove it)
+Finish the strict decorator and find a way to make it less resource intensive (or remove it)
 
-Update old forms of gitupdater and recompile them.
+Update old forms of gitupdater and recompile them. (will be doing the stuff from the issue)
 
 Make more updaters
--> can be pushed to 0.1.5
+-> can be pushed to 0.1.5 # Do this
 
 Implement local test and if __name__ == ... for all modules
 
