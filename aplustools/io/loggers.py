@@ -151,10 +151,22 @@ class TypeLogger(PrintLogger): # The , *_, **__ need to be added as direct init 
                 if self.current_logging_type == message_type or self.current_logging_type == LogType.ANY:
                     message = message_type.value + message if message != '\n' else message
         return message
-    
-    def log(self, message: str, log_type: Type[LogType]=LogType.NONE):
+
+    def log(self, *message: Union[str, Type[LogType]], log_type: Optional[Type[LogType]]=None):
         """Logs a message to the file and optionally to stdout."""
-        message = str(message)
+        if isinstance(message, str):
+            message = [message]
+        elif isinstance(message, list) or isinstance(message, tuple):
+            message = list(message)
+        else: raise TypeError(f"{message.__class__} isn't supported'")
+        logT, pop_lst = LogType.NONE, []
+        for i, item in enumerate(message):
+            if isinstance(item, LogType):
+                logT = item
+                pop_lst.append(i)
+        [message.pop(x - i) for i, x in enumerate(pop_lst)]
+        message = ' '.join(message)
+        log_type = log_type or logT
         message_with_timestamp = self._add_timestamp(message) + "\n"
         self.log_switch = True
         self.log_file.write(self._add_type(message_with_timestamp, log_type))
@@ -240,6 +252,7 @@ def local_test():
     print("[Debug] No ref, so just print xd")
     print("[Warn] No ref, so just print xd")
     print("Do not do this, you need a ref to close it")
+    ref.log("Hello World [Warn]", LogType.WARN, LogType.WARN)
     ref.close()
     print("DONE")
     return True # Works
