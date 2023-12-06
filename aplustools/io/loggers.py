@@ -165,7 +165,7 @@ class TypeLogger(PrintLogger): # The , *_, **__ need to be added as direct init 
                 logT = item
                 pop_lst.append(i)
         [message.pop(x - i) for i, x in enumerate(pop_lst)]
-        message = ' '.join(message)
+        message = ' '.join([str(x) for x in message])
         log_type = log_type or logT
         message_with_timestamp = self._add_timestamp(message) + "\n"
         self.log_switch = True
