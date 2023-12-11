@@ -83,15 +83,19 @@ def remv(paths: Union[str, list]):
     if not isinstance(paths, list): paths = [paths]
     for path in paths:
         if os.path.exists(path):
-            if os.path.isfile(path):
-                os.remove(path)
-            elif os.path.isdir(path):
-                if len(os.listdir(path)) == 0:
-                    os.rmdir(path)
-                elif is_empty_directory(path):
-                    shutil.rmtree(path)
-                else:
-                    shutil.rmtree(path)
+            if is_accessible(path):
+                if os.path.isfile(path):
+                    os.remove(path)
+                elif os.path.isdir(path):
+                    if len(os.listdir(path)) == 0:
+                        os.rmdir(path)
+                    elif is_empty_directory(path):
+                        shutil.rmtree(path)
+                    else:
+                        shutil.rmtree(path)
+                else: print("Bug, please report")
+            else: print("Path not accessible")
+        else: print("Path doesn't exist")
                     
 def contains_only_directories(path: str) -> bool:
     for item in os.listdir(path):
