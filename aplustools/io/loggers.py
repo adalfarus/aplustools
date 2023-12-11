@@ -8,6 +8,7 @@ import warnings
 
 class LogType(Enum):
     NONE = ""
+    INFO = "[Info] "
     DEBUG = "[DEBUG] "
     WARN = "[WARN] "
     ERR = "[ERR] "
