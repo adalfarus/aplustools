@@ -6,11 +6,8 @@ from bs4 import BeautifulSoup
 import re
 import json
 from html import unescape
-from typing import Generator, Type, Union, Optional, TypeVar, Generic, List, Dict
+from typing import Type, Union, Optional, TypeVar, Generic, List
 import time
-import http.client
-import urllib.parse
-from abc import ABC, abstractmethod
 
 
 T = TypeVar('T', bound='NonIterable')
@@ -82,18 +79,16 @@ def is_crawlable(url: str) -> bool:
         print(f"An error occurred while checking the robots.txt file: {e}")
     return False  # Return False if there was an error or the robots.txt file couldn't be retrieved
 
-class search:
-    class google_provider:
-        def google_search(
-                query: str, 
-                user_agent: str, 
-                num_results: Optional[int]=10, 
-                lang: Optional[str]="en", 
-                proxy: Optional[str]=None, 
-                advanced: Optional[bool]=False, 
-                sleep_interval: Optional[int]=0, 
-                timeout: Optional[int]=5
-        ) -> Union[Dict[str, str], str]:
+class Search:
+    def __init__(self):
+        self.headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"
+        }
+        
+    def google_provider(self, queries: Union[str, List[str]], blacklisted_websites: Optional[list]=None) -> Optional[str]:
+        user_agent = get_useragent()
+
+        def search(query, num_results=10, lang="en", proxy=None, advanced=False, sleep_interval=0, timeout=5):
             proxies = {"https": proxy} if proxy and proxy.startswith("https") else {"http": proxy} if proxy else None
             escaped_term = query.replace(" ", "+")
             start = 0
@@ -131,62 +126,28 @@ class search:
                                 yield link["href"]
 
                 time.sleep(sleep_interval)
-        
-        def perform_search(
-                query: str, 
-                num_results: Optional[Union[int, None]]=10, 
-                batch_size: Optional[int]=10, 
-                check: Optional[bool]=True, 
-                blacklisted_websites: Optional[list]=None
-        ) -> List[str]:
-            while True:
-                user_agent = get_useragent()
-                results = google_search(query, user_agent=user_agent, num_results=batch_size, advanced=True)
-                filtered_urls = []
-                for result in results:
-                    url = check_url(result['url'], result['title'], blacklisted_websites=blacklisted_websites) if check else url
-                    if url:
-                        print("Found URL:", url)
-                        filtered_urls.append(url)
-                        if len(filtered_urls) == num_results:
-                            break
-                if not num_results:
-                    break
-                print("Not enough crawlable URLs found, continuing ...")
-            return filtered_urls
 
-        def search_queries(
-                queries: Union[str, List[str]], 
-                num_results: int, 
-                batch_size: Optional[int]=10, 
-                blacklisted_websites: Optional[list]=None, 
-                per_query: Optional[bool]=True, 
-                sort_per_query: Optional[bool]=False, 
-                check: Optional[bool]=True
-        ) -> Union[List[str], List[List[str]]]:
-            if queries is not None and not isinstance(queries, list): queries = [queries]
-            results_lst = []
-            for query in queries:
-                nnr = num_results if per_query else None
-                urls = perform_search(query, num_results=nnr, batch_size=batch_size, check=check, blacklisted_websites=blacklisted_websites)
-                
-                if sort_per_query: results_lst.append(urls)
-                else: results_lst.extend(urls)
-            return results_lst
+        if queries is not None and not isinstance(queries, list): queries = [queries]
+        for query in queries:
+            results = search(query, num_results=10, advanced=True)
+            for i in results:
+                url = check_url(i['url'], i['title'], blacklisted_websites=blacklisted_websites)
+                if url:
+                    print("Found URL:", url)
+                    return url
         
-    class duckduckgo_provider:
-        def ddg_instant_answer_search(query: str) -> Union[Generator[Dict[str, str], None, None], bool]:
-            headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"
-            }
-            
+        print("No crawlable URL found.")
+        return None
+        
+    def _duckduckgo_provider(self, queries: Union[str, List[str]], blacklisted_websites: Optional[list]=None) -> Optional[Union[bool, str]]:
+        def ddg_instant_answer_search(query):
             params = {
                 "q": query,
                 "format": "json"
             }
 
             url = "https://api.duckduckgo.com/"
-            resp = requests.get(url, params=params, headers=headers)
+            resp = requests.get(url, params=params, headers=self.headers)
             if resp.status_code != 200:
                 print("Failed to retrieve the search results.")
                 return False
@@ -205,102 +166,35 @@ class search:
                 print("Failed to parse the search results.")
                 return False
 
-        def perform_search(
-                query: str, 
-                num_results: Optional[Union[int, None]]=10, 
-                check: Optional[bool]=True, 
-                blacklisted_websites: Optional[list]=None
-        ) -> List[str]:
-            while True:
-                results = ddg_instant_answer_search(query)
-                filtered_urls = []
-                for result in results:
-                    url = check_url(result['url'], result['title'], blacklisted_websites=blacklisted_websites) if check else url
-                    if url:
-                        print("Found URL:", url)
-                        filtered_urls.append(url)
-                        if len(filtered_urls) == num_results:
-                            break
-                if not num_results:
-                    break
-                print("Not enough crawlable URLs found, continuing ...")
-            return filtered_urls
+        if queries is not None and not isinstance(queries, list): queries = [queries]
+        for query in queries: # Added, so you can pass a single string
+            results = ddg_instant_answer_search(query)
+            for r in results:
+                print(r)
+                url = check_url(r['url'], r['title'], blacklisted_websites=blacklisted_websites)
+                if url:
+                    print("Found URL:", url)
+                    return url
+
+        print("No crawlable URL found.")
+        return None
         
-        def search_queries(
-                queries: Union[str, List[str]], 
-                num_results: int, 
-                blacklisted_websites: Optional[list]=None, 
-                per_query: Optional[bool]=True, 
-                sort_per_query: Optional[bool]=False, 
-                check: Optional[bool]=True
-        ) -> Union[List[str], List[List[str]]]:
-            if queries is not None and not isinstance(queries, list): queries = [queries]
-            results_lst = []
-            for query in queries:
-                nnr = num_results if per_query else None
-                urls = perform_search(query, num_results=nnr, check=check, blacklisted_websites=blacklisted_websites)
-                
-                if sort_per_query: results_lst.append(urls)
-                else: results_lst.extend(urls)
-            return results_lst
-        
-    class duckduckgo_search_provider:
-        def dggs_search(
-                query: str, 
-                num_results: Optional[int]=10
-        ) -> Generator[Dict[str, str], None, None]:
-            with DDGS(timeout=20) as ddgs:
+    def duckduckgo_provider(self, queries: Union[str, List[str]], blacklisted_websites: Optional[list]=None) -> Optional[str]:
+        with DDGS(timeout=20) as ddgs:
+            for query in list(queries): # Added, so you can pass a single string
                 results = ddgs.text(query, timelimit=100, safesearch='off')
-                for r in results[:num_results]:
-                    yield {"title": r['title'], "url": r['href']}
-                    
-        def perform_search(
-                query: str, 
-                num_results: Optional[Union[int, None]]=10, 
-                batch_size: Optional[int]=10, 
-                check: Optional[bool]=True, 
-                blacklisted_websites: Optional[list]=None
-        ) -> List[str]:
-            while True:
-                results = dggs_search(query, num_results=batch_size)
-                filtered_urls = []
-                for result in results:
-                    url = check_url(result['url'], result['title'], blacklisted_websites=blacklisted_websites) if check else url
+                for r in results:
+                    url = check_url(r['href'], r['title'], blacklisted_websites=blacklisted_websites)
                     if url:
                         print("Found URL:", url)
-                        filtered_urls.append(url)
-                        if len(filtered_urls) == num_results:
-                            break
-                if not num_results:
-                    break
-                print("Not enough crawlable URLs found, continuing ...")
-            return filtered_urls
+                        return url
+        print("No crawlable URL found.")
+        return None
         
-        def search_queries(
-                queries: Union[str, List[str]], 
-                num_results: int, 
-                batch_size: Optional[int]=10, 
-                blacklisted_websites: Optional[list]=None, 
-                per_query: Optional[bool]=True, 
-                sort_per_query: Optional[bool]=False, 
-                check: Optional[bool]=True
-        ) -> Union[List[str], List[List[str]]]:
-            if queries is not None and not isinstance(queries, list): queries = [queries]
-            results_lst = []
-            for query in queries:
-                nnr = num_results if per_query else None
-                urls = perform_search(query, num_results=nnr, batch_size=batch_size, check=check, blacklisted_websites=blacklisted_websites)
-                
-                if sort_per_query: results_lst.append(urls)
-                else: results_lst.extend(urls)
-            return results_lst
+    def bing_provider(self, queries: Union[str, List[str]], blacklisted_websites: Optional[list]=None) -> Optional[str]:
+        user_agent = get_useragent()
         
-    class bing_provider:
-        def bing_search(
-                query: str, 
-                user_agent: str, 
-                num_results: Optional[int]=10
-        ) -> Generator[Dict[str, str], None, None]:
+        def bing_search(query, num_results=10):
             url = f'https://www.bing.com/search?q={quote_plus(query)}'
             headers = {"User-Agent": user_agent}
             response = requests.get(url, headers=headers)
@@ -317,109 +211,22 @@ class search:
             for link in links[:num_results]:  # limiting the number of results
                 yield {"title": link[0], "url": link[1]}
 
-        def perform_search(
-                query: str, 
-                num_results: Optional[Union[int, None]]=10, 
-                batch_size: Optional[int]=10, 
-                check: Optional[bool]=True, 
-                blacklisted_websites: Optional[list]=None
-        ) -> List[str]:
-            while True:
-                user_agent = get_useragent()
-                results = bing_search(query, user_agent=user_agent, num_results=batch_size)
-                filtered_urls = []
-                for result in results:
-                    url = check_url(result['url'], result['title'], blacklisted_websites=blacklisted_websites) if check else url
-                    if url:
-                        print("Found URL:", url)
-                        filtered_urls.append(url)
-                        if len(filtered_urls) == num_results:
-                            break
-                if not num_results:
-                    break
-                print("Not enough crawlable URLs found, continuing ...")
-            return filtered_urls
-
-        def search_queries(
-                queries: Union[str, List[str]], 
-                num_results: int, 
-                batch_size: Optional[int]=10, 
-                blacklisted_websites: Optional[list]=None, 
-                per_query: Optional[bool]=True, 
-                sort_per_query: Optional[bool]=False, 
-                check: Optional[bool]=True
-        ) -> Union[List[str], List[List[str]]]:
-            if queries is not None and not isinstance(queries, list): queries = [queries]
-            results_lst = []
-            for query in queries:
-                nnr = num_results if per_query else None
-                urls = perform_search(query, num_results=nnr, batch_size=batch_size, check=check, blacklisted_websites=blacklisted_websites)
-                
-                if sort_per_query: results_lst.append(urls)
-                else: results_lst.extend(urls)
-            return results_lst
-
-class Alpha(ABC):
-    class Response(ABC):
-        def __init__(self, status, text, reason, headers):
-            self.status = status
-            self.text = text
-            self.reason = reason
-            self.headers = headers
-
-    @abstractmethod
-    def http_request(method, url, data=None, headers=None):
-        # Parse the URL to extract the netloc (network location) and path
-        url_parts = urllib.parse.urlsplit(url)
-        netloc = url_parts.netloc
-        path = url_parts.path or '/'
+        if queries is not None and not isinstance(queries, list): queries = [queries]
+        for query in list(queries): # Added, so you can pass a single string
+            results = bing_search(query, num_results=10)
+            for i in results:
+                url = check_url(i['url'], i['title'], blacklisted_websites=blacklisted_websites)
+                if url:
+                    print("Found URL:", url)
+                    return url
+        
+        print("No crawlable URL found.")
+        return None
     
-        # Ensure headers is a dictionary
-        headers = headers or {}
-    
-        # If data is provided, URL encode it and set the Content-Type header
-        if data:
-            body = urllib.parse.urlencode(data).encode('ascii')
-            headers['Content-Type'] = 'application/x-www-form-urlencoded'
-        else:
-            body = None
-    
-        # Create the connection object
-        if url_parts.scheme == 'https':
-            conn = http.client.HTTPSConnection(netloc)
-        elif url_parts.scheme == 'http':
-            conn = http.client.HTTPConnection(netloc)
-        else:
-            raise ValueError(f"Unsupported URL scheme: {url_parts.scheme}")
-    
-        try:
-            # Send the HTTP request
-            conn.request(method, path, body, headers)
-            # Get the HTTP response
-            response = conn.getresponse()
-            # Read and decode the response body
-            text = response.read().decode()
-        finally:
-            # Always close the connection
-            conn.close()
-    
-        # Create and return a Response object
-        return Response(response.status, text, response.reason, response.headers)
+def local_test():
+    search = Search()
+    result = search.duckduckgo_provider("Cats")
+    print(result)
 
-    @abstractmethod
-    def http_get(url, headers=None):
-        return http_request('GET', url, headers=headers)
-
-    @abstractmethod
-    def http_post(url, data=None, headers=None):
-        return http_request('POST', url, data=data, headers=headers)
-
-    @abstractmethod
-    def http_xhr(url, data=None, headers=None):
-        # Set the X-Requested-With header to indicate an XHR request
-        headers = headers or {}
-        headers['X-Requested-With'] = 'XMLHttpRequest'
-        # Use the http_request function to send the GET and POST requests
-        response_get = http_request('GET', url, headers=headers)
-        response_post = http_request('POST', url, data=data, headers=headers)
-        return response_get, response_post
+if __name__ == "__main__":
+    local_test()
