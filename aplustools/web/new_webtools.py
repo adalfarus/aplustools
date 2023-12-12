@@ -430,7 +430,14 @@ class Alpha(ABC):
         return response_get, response_post
 
 def local_test():
-    pass
+    try:
+        pass
+    except Exception as e:
+        print(f"Exception occured {e}.")
+        return False
+    else:
+        print("Test completed successfully.")
+        return True
 
 if __name__ == "__main__":
     local_test()

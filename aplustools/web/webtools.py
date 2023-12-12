@@ -224,9 +224,16 @@ class Search:
         return None
     
 def local_test():
-    search = Search()
-    result = search.duckduckgo_provider("Cats")
-    print(result)
+    try:
+        search = Search()
+        result = search.duckduckgo_provider("Cats")
+        print(result)
+    except Exception as e:
+        print(f"Exception occured {e}.")
+        return False
+    else:
+        print("Test completed successfully.")
+        return True
 
 if __name__ == "__main__":
     local_test()

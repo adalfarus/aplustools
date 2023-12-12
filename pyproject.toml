@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "aplustools"
+version = "0.1.4"
+description = "A collection of helpful tools"
+authors = [{ name = "Cariel Becker" }]
+license = "GPL-3.0-or-later"  # or "GPL-3.0-only"
+readme = "README.md"
+
+[project.urls]
+Home = "https://pypi.org/project/aplustools/"
+Repository = "https://github.com/adalfarus/aplustools"
+Documentation = "https://github.com/adalfarus/aplustools/wiki"
+"Issue tracker" = "https://github.com/adalfarus/aplustools/issues"
+
+[project.dependencies]
+requests = "*"
+Pillow = "*"
+bs4 = "*"
+datetime = "*"
+# 'duckduckgo_search' can be removed
+
+#[tool.pytest.ini_options]
+## This is equivalent to setup_requires and tests_require
+## Add your pytest configuration here
+#addopts = "your pytest options"
+
+#[project.scripts]
+## If you have any scripts to include
+#script_name = "path.to.your.script"
+#mycommand = "mypackage.cli:main"
+
+[project.optional-dependencies]
+dev = ["pytest"]
