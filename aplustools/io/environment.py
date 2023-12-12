@@ -446,7 +446,14 @@ def print_system_info():
     print(f"System Theme: {sys_info.theme}")
     
 def local_test():
-    print_system_info()
+    try:
+        print_system_info()
+    except Exception as e:
+        print(f"Exception occured {e}.")
+        return False
+    else:
+        print("Test completed successfully.")
+        return True
 
 if __name__ == "__main__":
     local_test()

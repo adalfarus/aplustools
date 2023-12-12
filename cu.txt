@@ -1,128 +1,30 @@
-[2023-11-26 09:42:26] Hello Worlds
-[2023-11-26 09:42:26] Logging this
-[2023-11-26 09:42:26] Logging that
-[DEBUG] [2023-11-26 09:42:26] [Debug] No ref, so just print xd
-[WARN] [2023-11-26 09:42:26] [Warn] No ref, so just print xd
-[2023-11-26 09:42:26] Do not do this, you need a ref to close it
-[2023-12-06 17:13:50] Hello Worlds
-[2023-12-06 17:13:50] Logging this
-[2023-12-06 17:13:50] Logging that
-[DEBUG] [2023-12-06 17:13:50] [Debug] No ref, so just print xd
-[WARN] [2023-12-06 17:13:50] [Warn] No ref, so just print xd
-[2023-12-06 17:13:50] Do not do this, you need a ref to close it
-[2023-12-06 17:14:22] Hello Worlds
-[2023-12-06 17:14:22] Logging this
-[2023-12-06 17:14:22] Logging that
-[DEBUG] [2023-12-06 17:14:22] [Debug] No ref, so just print xd
-[WARN] [2023-12-06 17:14:22] [Warn] No ref, so just print xd
-[2023-12-06 17:14:22] Do not do this, you need a ref to close it
-[2023-12-06 17:14:22] <__main__.TypeLogger object at 0x000001F4A2EAA790> ('Hello World [Warn]',)
-[2023-12-06 17:14:34] Hello Worlds
-[2023-12-06 17:14:34] Logging this
-[2023-12-06 17:14:34] Logging that
-[DEBUG] [2023-12-06 17:14:34] [Debug] No ref, so just print xd
-[WARN] [2023-12-06 17:14:34] [Warn] No ref, so just print xd
-[2023-12-06 17:14:34] Do not do this, you need a ref to close it
-[2023-12-06 17:14:34] <__main__.TypeLogger object at 0x0000026061C1A790> ('Hello World [Warn]',)
-[2023-12-06 17:14:52] Hello Worlds
-[2023-12-06 17:14:52] Logging this
-[2023-12-06 17:14:52] Logging that
-[DEBUG] [2023-12-06 17:14:52] [Debug] No ref, so just print xd
-[WARN] [2023-12-06 17:14:52] [Warn] No ref, so just print xd
-[2023-12-06 17:14:52] Do not do this, you need a ref to close it
-[2023-12-06 17:14:52] <__main__.TypeLogger object at 0x000001AB4032A790> ('Hello World [Warn]', <LogType.WARN: '[WARN] '>)
-[2023-12-06 17:15:20] Hello Worlds
-[2023-12-06 17:15:20] Logging this
-[2023-12-06 17:15:20] Logging that
-[DEBUG] [2023-12-06 17:15:20] [Debug] No ref, so just print xd
-[WARN] [2023-12-06 17:15:20] [Warn] No ref, so just print xd
-[2023-12-06 17:15:20] Do not do this, you need a ref to close it
-[2023-12-06 17:15:20] <__main__.TypeLogger object at 0x000001D0510FA790> ('Hello World [Warn]', <LogType.WARN: '[WARN] '>)
-[2023-12-06 17:16:20] Hello Worlds
-[2023-12-06 17:16:20] Logging this
-[2023-12-06 17:16:20] Logging that
-[DEBUG] [2023-12-06 17:16:20] [Debug] No ref, so just print xd
-[WARN] [2023-12-06 17:16:20] [Warn] No ref, so just print xd
-[2023-12-06 17:16:20] Do not do this, you need a ref to close it
-[WARN] [2023-12-06 17:16:20] ('Hello World [Warn]', <LogType.WARN: '[WARN] '>)
-[2023-12-06 17:16:20] <__main__.TypeLogger object at 0x000002718861A790> ('Hello World [Warn]', <LogType.WARN: '[WARN] '>)
-[2023-12-06 17:18:02] Hello Worlds
-[2023-12-06 17:18:02] Logging this
-[2023-12-06 17:18:02] Logging that
-[DEBUG] [2023-12-06 17:18:02] [Debug] No ref, so just print xd
-[WARN] [2023-12-06 17:18:02] [Warn] No ref, so just print xd
-[2023-12-06 17:18:02] Do not do this, you need a ref to close it
-[WARN] [2023-12-06 17:18:02] ('Hello World [Warn]', <LogType.WARN: '[WARN] '>)
-[2023-12-06 17:18:02] <__main__.TypeLogger object at 0x00000189A7BCA790> ('Hello World [Warn]', <LogType.WARN: '[WARN] '>)
-[2023-12-06 17:18:17] Hello Worlds
-[2023-12-06 17:18:17] Logging this
-[2023-12-06 17:18:17] Logging that
-[DEBUG] [2023-12-06 17:18:17] [Debug] No ref, so just print xd
-[WARN] [2023-12-06 17:18:17] [Warn] No ref, so just print xd
-[2023-12-06 17:18:17] Do not do this, you need a ref to close it
-[WARN] [2023-12-06 17:18:17] ('Hello World [Warn]', <LogType.WARN: '[WARN] '>)
-[WARN] [2023-12-06 17:18:17] <__main__.TypeLogger object at 0x000001F1319CA790> ('Hello World [Warn]', <LogType.WARN: '[WARN] '>)
-[2023-12-06 17:18:17] <__main__.TypeLogger object at 0x000001F1319CA790> ('Hello World [Warn]', <LogType.WARN: '[WARN] '>)
-[2023-12-06 17:19:06] Hello Worlds
-[2023-12-06 17:19:06] Logging this
-[2023-12-06 17:19:06] Logging that
-[DEBUG] [2023-12-06 17:19:06] [Debug] No ref, so just print xd
-[WARN] [2023-12-06 17:19:06] [Warn] No ref, so just print xd
-[2023-12-06 17:19:06] Do not do this, you need a ref to close it
-[WARN] [2023-12-06 17:19:06] ('Hello World [Warn]', <LogType.WARN: '[WARN] '>)
-[WARN] [2023-12-06 17:19:06] <__main__.TypeLogger object at 0x000002F9DE99A790> ('Hello World [Warn]', <LogType.WARN: '[WARN] '>)
-[2023-12-06 17:19:06] <__main__.TypeLogger object at 0x000002F9DE99A790> ('Hello World [Warn]', <LogType.WARN: '[WARN] '>)
-[2023-12-06 17:19:51] Hello Worlds
-[2023-12-06 17:19:51] Logging this
-[2023-12-06 17:19:51] Logging that
-[DEBUG] [2023-12-06 17:19:51] [Debug] No ref, so just print xd
-[WARN] [2023-12-06 17:19:51] [Warn] No ref, so just print xd
-[2023-12-06 17:19:51] Do not do this, you need a ref to close it
-[WARN] [2023-12-06 17:19:51] ('Hello World [Warn]', <LogType.WARN: '[WARN] '>)
-[2023-12-06 17:19:51] < _ _ m a i n _ _ . T y p e L o g g e r   o b j e c t   a t   0 x 0 0 0 0 0 1 B C D F F E A 7 9 0 >   ( ' H e l l o   W o r l d   [ W a r n ] ' ,   < L o g T y p e . W A R N :   ' [ W A R N ]   ' > )
-[2023-12-06 17:23:43] Hello Worlds
-[2023-12-06 17:23:43] Logging this
-[2023-12-06 17:23:43] Logging that
-[DEBUG] [2023-12-06 17:23:43] [Debug] No ref, so just print xd
-[WARN] [2023-12-06 17:23:43] [Warn] No ref, so just print xd
-[2023-12-06 17:23:43] Do not do this, you need a ref to close it
-[2023-12-06 17:24:10] Hello Worlds
-[2023-12-06 17:24:10] Logging this
-[2023-12-06 17:24:10] Logging that
-[DEBUG] [2023-12-06 17:24:10] [Debug] No ref, so just print xd
-[WARN] [2023-12-06 17:24:10] [Warn] No ref, so just print xd
-[2023-12-06 17:24:10] Do not do this, you need a ref to close it
-[2023-12-06 17:24:10] <__main__.TypeLogger object at 0x000002A25031A790> ['Hello World [Warn]']
-[2023-12-06 17:25:01] Hello Worlds
-[2023-12-06 17:25:01] Logging this
-[2023-12-06 17:25:01] Logging that
-[DEBUG] [2023-12-06 17:25:01] [Debug] No ref, so just print xd
-[WARN] [2023-12-06 17:25:01] [Warn] No ref, so just print xd
-[2023-12-06 17:25:01] Do not do this, you need a ref to close it
-[WARN] [2023-12-06 17:25:01] Hello World [Warn]
-[2023-12-06 17:25:18] Hello Worlds
-[2023-12-06 17:25:18] Logging this
-[2023-12-06 17:25:18] Logging that
-[DEBUG] [2023-12-06 17:25:18] [Debug] No ref, so just print xd
-[WARN] [2023-12-06 17:25:18] [Warn] No ref, so just print xd
-[2023-12-06 17:25:18] Do not do this, you need a ref to close it
-[2023-12-06 17:25:54] Hello Worlds
-[2023-12-06 17:25:54] Logging this
-[2023-12-06 17:25:54] Logging that
-[DEBUG] [2023-12-06 17:25:54] [Debug] No ref, so just print xd
-[WARN] [2023-12-06 17:25:54] [Warn] No ref, so just print xd
-[2023-12-06 17:25:54] Do not do this, you need a ref to close it
-[2023-12-06 17:25:54] Hello World [Warn]
-[2023-12-06 17:26:03] Hello Worlds
-[2023-12-06 17:26:03] Logging this
-[2023-12-06 17:26:03] Logging that
-[DEBUG] [2023-12-06 17:26:03] [Debug] No ref, so just print xd
-[WARN] [2023-12-06 17:26:03] [Warn] No ref, so just print xd
-[2023-12-06 17:26:03] Do not do this, you need a ref to close it
-[2023-12-06 17:27:18] Hello Worlds
-[2023-12-06 17:27:18] Logging this
-[2023-12-06 17:27:18] Logging that
-[DEBUG] [2023-12-06 17:27:18] [Debug] No ref, so just print xd
-[WARN] [2023-12-06 17:27:18] [Warn] No ref, so just print xd
-[2023-12-06 17:27:18] Do not do this, you need a ref to close it
-[WARN] [2023-12-06 17:27:18] Hello World [Warn]
+[2023-12-12 11:36:07] Logging this
+[2023-12-12 11:36:07] Logging that
+[DEBUG] [2023-12-12 11:36:07] [Debug] No ref, so just print xd
+[WARN] [2023-12-12 11:36:07] [Warn] No ref, so just print xd
+[2023-12-12 11:36:07] Do not do this, you need a ref to close it
+[WARN] [2023-12-12 11:36:07] Hello World [Warn]
+[2023-12-12 11:37:00] Logging this
+[2023-12-12 11:37:00] Logging that
+[DEBUG] [2023-12-12 11:37:00] [Debug] No ref, so just print xd
+[WARN] [2023-12-12 11:37:00] [Warn] No ref, so just print xd
+[2023-12-12 11:37:00] Do not do this, you need a ref to close it
+[WARN] [2023-12-12 11:37:00] Hello World [Warn]
+[2023-12-12 11:39:16] Logging this
+[2023-12-12 11:39:16] Logging that
+[DEBUG] [2023-12-12 11:39:16] [Debug] No ref, so just print xd
+[WARN] [2023-12-12 11:39:16] [Warn] No ref, so just print xd
+[2023-12-12 11:39:16] Do not do this, you need a ref to close it
+[WARN] [2023-12-12 11:39:16] Hello World [Warn]
+[2023-12-12 11:41:02] Logging this
+[2023-12-12 11:41:02] Logging that
+[DEBUG] [2023-12-12 11:41:02] [Debug] No ref, so just print xd
+[WARN] [2023-12-12 11:41:02] [Warn] No ref, so just print xd
+[2023-12-12 11:41:02] Do not do this, you need a ref to close it
+[WARN] [2023-12-12 11:41:02] Hello World [Warn]
+[2023-12-12 11:45:16] Logging this
+[2023-12-12 11:45:16] Logging that
+[DEBUG] [2023-12-12 11:45:16] [Debug] No ref, so just print xd
+[WARN] [2023-12-12 11:45:16] [Warn] No ref, so just print xd
+[2023-12-12 11:45:16] Do not do this, you need a ref to close it
+[WARN] [2023-12-12 11:45:16] Hello World [Warn]

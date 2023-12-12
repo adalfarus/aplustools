@@ -177,31 +177,39 @@ class gitupdater:
             return True, None, process.returncode
 
 def local_test():
-    import threading
+    try:
+        import threading
+        from aplustools.io.environment import Path
     
-    # Initialize the updater
-    updater = gitupdater("exe")
+        # Initialize the updater
+        updater = gitupdater("exe")
 
-    # Setup arguments for the update
-    host, port = "localhost", 1264
-    path, zip_path = "./update", "./zip"
-    os.mkdir(path); os.mkdir(zip_path)
-    version, author, repo_name = "0.0.1", "Adalfarus", "unicode-writer"
+        # Setup arguments for the update
+        host, port = "localhost", 1264
+        path, zip_path = Path("./test_data/update"), Path("./test_data/zip")
+        path.mkdir("."); zip_path.mkdir(".")
+        version, author, repo_name = "0.0.1", "Adalfarus", "unicode-writer"
     
-    update_args = (str(zip_path), str(path), 
-                   version, author, repo_name, False, False, host, port)
+        update_args = (str(zip_path), str(path), 
+                       version, author, repo_name, False, False, host, port)
 
-    # Start the update in a new thread
-    update_thread = threading.Thread(target=updater.update, args=update_args)
-    update_thread.start()
+        # Start the update in a new thread
+        update_thread = threading.Thread(target=updater.update, args=update_args)
+        update_thread.start()
 
-    # Receive the update status generator and print them
-    progress_bar = 1
-    print("Starting test update ...")
-    for i in updater.receive_update_status(host, port):
-        print(f"{i}%", end=f" PB{progress_bar}\n")
-        if i == 100:
-            progress_bar += 1 # Switch to second progress bar, when the downloading is finished
+        # Receive the update status generator and print them
+        progress_bar = 1
+        print("Starting test update ...")
+        for i in updater.receive_update_status(host, port):
+            print(f"{i}%", end=f" PB{progress_bar}\n")
+            if i == 100:
+                progress_bar += 1 # Switch to second progress bar, when the downloading is finished
+    except Exception as e:
+        print(f"Exception occured {e}.")
+        return False
+    else:
+        print("Test completed successfully.")
+        return True
 
 if __name__ == "__main__":
     local_test()

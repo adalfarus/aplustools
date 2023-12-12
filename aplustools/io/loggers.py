@@ -237,26 +237,29 @@ def monitor_stdout(log_file: Optional[str]=None, logger: Optional[Type[Logger]]=
     return sys.stdout
 
 def local_test():
-    #cprint("Test") # Deprecated, no need to test
-    #overwrite_print()
-    #print("Test22")
-    logger = Logger("./cu.txt")
-    logger.log("Hello Worlds")
-    logger2 = PrintLogger("./cu.txt")
-    print("Hellow worldddsssss")
-    monitor_stdout(logger=logger2)
-    print("Logging this")
-    logger2.log("Logging that")
-    logger2.close()
-    print("Just print lol")
-    ref = monitor_stdout(logger=TypeLogger("./cu.txt"))
-    print("[Debug] No ref, so just print xd")
-    print("[Warn] No ref, so just print xd")
-    print("Do not do this, you need a ref to close it")
-    ref.log("Hello World [Warn]", LogType.WARN, LogType.WARN)
-    ref.close()
-    print("DONE")
-    return True # Works
+    try:
+        logger = Logger("./test_data/cu.txt")
+        logger.log("Hello Worlds")
+        logger2 = PrintLogger("./cu.txt")
+        print("Hellow worldddsssss")
+        monitor_stdout(logger=logger2)
+        print("Logging this")
+        logger2.log("Logging that")
+        logger2.close()
+        print("Just print lol")
+        ref = monitor_stdout(logger=TypeLogger("./cu.txt"))
+        print("[Debug] No ref, so just print xd")
+        print("[Warn] No ref, so just print xd")
+        print("Do not do this, you need a ref to close it")
+        ref.log("Hello World [Warn]", LogType.WARN, LogType.WARN)
+        ref.close()
+        print("DONE")
+    except Exception as e:
+        print(f"Exception occured {e}.")
+        return False
+    else:
+        print("Test completed successfully.")
+        return True
     
 if __name__ == "__main__":
     local_test()

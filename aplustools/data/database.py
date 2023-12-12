@@ -78,13 +78,20 @@ def local_test():
         for key, value in new_settings.items():
             db.update_info((key, value), "settings", ["key", "value"])
     
-    db = DBManager("./test.db")
-    setup_database(db, {"test": "value"})
-    settings = fetch_data(db)
-    print(f"{settings == {'test': 'value'}}")
-    update_data(db, {"test": "value2"})
-    settings = fetch_data(db)
-    print(f"{settings != {'test': 'value'}}")
+    try:
+        db = DBManager("./test_data/test.db")
+        setup_database(db, {"test": "value"})
+        settings = fetch_data(db)
+        print(f"{settings == {'test': 'value'}}")
+        update_data(db, {"test": "value2"})
+        settings = fetch_data(db)
+        print(f"{settings != {'test': 'value'}}")
+    except Exception as e:
+        print(f"Exception occured {e}.")
+        return False
+    else:
+        print("Test completed successfully.")
+        return True
     
 if __name__ == "__main__":
     local_test()

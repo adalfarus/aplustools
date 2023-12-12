@@ -32,3 +32,7 @@ Implement local test and if __name__ == ... for all modules
 Make updaters classes modules for easier imports # No
 
 Add all the latest changes to the wiki # Can be done at a later point
+
+Make better tests # Done
+
+Phase out setup.py in favor of pyproject.toml # Done
