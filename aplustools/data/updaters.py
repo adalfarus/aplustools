@@ -7,6 +7,7 @@ from packaging.version import Version, InvalidVersion
 import sys
 import os
 import warnings
+from collections import namedtuple # Can be removed if executables are added and the code to execute them here is re-instated
 
 YieldType = Union[int, None]
 ReturnType = Union[None, bool]
@@ -148,14 +149,59 @@ class gitupdater:
             return subprocess.run([sys.executable, os.path.join(lib_path, file), str(path), str(zip_path), str(version), str(author), str(repo_name), str(host), str(port)], shell=True, text=True, capture_output=True)
         try:
             if bool(cmd_toggle) and not bool(gui_toggle):
-                process = run_subprocess("gitupdater-cmd.exe") if self.version=="exe" else run_python_subprocess("gitupdater-cmd.py")
+                if self.version=="exe":
+                    print("Executable Updaters have to be compiled by you now.")
+                    ProcessResult = namedtuple('ProcessResult', 'returncode')
+                    process = ProcessResult(returncode=0)
+                    #process = run_subprocess("gitupdater-cmd.exe")
+                else: process = run_python_subprocess("gitupdater-cmd.py")
             elif bool(gui_toggle) and not bool(cmd_toggle):
-                process = run_subprocess("gitupdater-gui.exe") if self.version=="exe" else run_python_subprocess("gitupdater-gui.py")
+                if self.version=="exe":
+                    print("Executable Updaters have to be compiled by you now.")
+                    ProcessResult = namedtuple('ProcessResult', 'returncode')
+                    process = ProcessResult(returncode=0)
+                    #process = run_subprocess("gitupdater-gui.exe")
+                else: process = run_python_subprocess("gitupdater-gui.py")
             elif not bool(cmd_toggle) and not bool(gui_toggle):
-                process = run_subprocess("gitupdater.exe") if self.version=="exe" else run_python_subprocess("gitupdater.py")
+                if self.version=="exe":
+                    print("Executable Updaters have to be compiled by you now.")
+                    ProcessResult = namedtuple('ProcessResult', 'returncode')
+                    process = ProcessResult(returncode=0)
+                    #process = run_subprocess("gitupdater.exe")
+                else: process = run_python_subprocess("gitupdater.py")
             else:
                 raise RuntimeError()
         except Exception as e:
             return False, e, process.returncode
         finally:
             return True, None, process.returncode
+
+def local_test():
+    import threading
+    
+    # Initialize the updater
+    updater = gitupdater("exe")
+
+    # Setup arguments for the update
+    host, port = "localhost", 1264
+    path, zip_path = "./update", "./zip"
+    os.mkdir(path); os.mkdir(zip_path)
+    version, author, repo_name = "0.0.1", "Adalfarus", "unicode-writer"
+    
+    update_args = (str(zip_path), str(path), 
+                   version, author, repo_name, False, False, host, port)
+
+    # Start the update in a new thread
+    update_thread = threading.Thread(target=updater.update, args=update_args)
+    update_thread.start()
+
+    # Receive the update status generator and print them
+    progress_bar = 1
+    print("Starting test update ...")
+    for i in updater.receive_update_status(host, port):
+        print(f"{i}%", end=f" PB{progress_bar}\n")
+        if i == 100:
+            progress_bar += 1 # Switch to second progress bar, when the downloading is finished
+
+if __name__ == "__main__":
+    local_test()

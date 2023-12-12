@@ -53,3 +53,38 @@ class DBManager:
             self.conn.close()
         except Exception as e:
             print(f"Error closing the database: {e}")
+            
+def local_test():
+    def setup_database(db, settings):
+        # Define tables and their columns
+        tables = {
+            "settings": ["key TEXT", "value TEXT"]
+        }
+        # Code to set up the database, initialize password hashes, etc.
+        for table_name, columns in tables.items():
+            db.create_table(table_name, columns)
+        for key, value in settings.items():
+            db.update_info([key, value], "settings", ["key", "value"])
+        
+    def fetch_data(db):
+        settings = {}
+        fetched_data = db.get_info("settings", ["key", "value"])
+        for item in fetched_data:
+            key, value = item
+            settings[key] = value
+        return settings
+
+    def update_data(db, new_settings):
+        for key, value in new_settings.items():
+            db.update_info((key, value), "settings", ["key", "value"])
+    
+    db = DBManager("./test.db")
+    setup_database(db, {"test": "value"})
+    settings = fetch_data(db)
+    print(f"{settings == {'test': 'value'}}")
+    update_data(db, {"test": "value2"})
+    settings = fetch_data(db)
+    print(f"{settings != {'test': 'value'}}")
+    
+if __name__ == "__main__":
+    local_test()

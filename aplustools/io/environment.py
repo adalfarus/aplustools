@@ -152,6 +152,17 @@ class Path:
         except Exception as e:
             print(f"An error occurred: {e}")
             raise  # Reraise the exception after logging or printing the error message
+        
+    def mkdir(self, new_inner_dir):
+        own_dir = self.path
+        new_dir = os.path.join(self.path, new_inner_dir)
+        self.path = new_dir
+        self.create_directory()
+        self.path = own_dir
+        return new_dir
+        
+    def join(self, rel_inner_path):
+        self.path = os.path.join(self.path, rel_inner_path)
 
     def list_files(self) -> list:
         """List all files in the directory."""
@@ -216,6 +227,9 @@ def rename(ornam: str, newnam: str) -> bool:
         return False
 
 def functionize(cls):
+    warnings.warn("This is still experimental and may not be working as expected. A finished version should be available in release 0.1.5.", 
+                  UserWarning, 
+                  stacklevel=2)
     def wrapper(*args, **kwargs):
         # Creating an instance of the class
         instance = cls(*args, **kwargs)
@@ -232,6 +246,9 @@ def functionize(cls):
     return wrapper
 
 def old_strict(cls):
+    warnings.warn("This is still experimental and may not be working as expected. A finished version should be available in release 0.1.5.", 
+                  UserWarning, 
+                  stacklevel=2)
     # Create the new class with the same name
     class_name = cls.__name__
     def create_method(name):
@@ -263,6 +280,9 @@ def old_strict(cls):
     return OuterClass
 
 def strict(cls):
+    warnings.warn("This is still experimental and may not be working as expected. A finished version should be available in release 0.1.5.", 
+                  UserWarning, 
+                  stacklevel=2)
     # Create the new class with the same name
     class_name = cls.__name__
     def create_method(name):

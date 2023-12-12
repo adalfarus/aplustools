@@ -11,15 +11,24 @@ Make imagetools an ecosystem (class structure that makes sense)
 Make webtools more efficient and user friendly
 -> can be pushed to 0.1.5 # Do this
 
-Finish the strict decorator and find a way to make it less resource intensive (or remove it)
+Finish the strict decorator and find a way to make it less resource intensive (or remove it) # Added warning
 
-Update old forms of gitupdater and recompile them. (will be doing the stuff from the issue)
+Update old forms of gitupdater and recompile them. (will be doing the stuff from the issue -> User has to compile them) # Done
 
 Make more updaters
 -> can be pushed to 0.1.5 # Do this
 
 Implement local test and if __name__ == ... for all modules
+- loggers done
+- environment done
+- genpass done
+- updaters done
+- database done
+- webtools done
+- new_webtools done
+- imagetools done
+- mappers done
 
-Make updaters classes modules for easier imports
+Make updaters classes modules for easier imports # No
 
-Add all the latest changes to the wiki
+Add all the latest changes to the wiki # Can be done at a later point
