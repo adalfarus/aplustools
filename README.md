@@ -37,7 +37,7 @@ Here are a few quick examples of how to use aplustools:
 
 ### Search Engine usage
 ```python
-from aplustools import webtools as wt
+from aplustools.web import webtools as wt
 
 # Call the `google_search` with a query
 result = wt.search.google_provider.google_search("Cute puppies", wb.get_useragent(), 1)
@@ -48,17 +48,19 @@ print(result)
 
 ### Logger
 ```python
-import aplustools.setdirtoex
-# Just the import is needed to set the current working directory to the main script or executable
-from aplustools import logs
+from aplustools.io import environment as env
+from aplustools.io import loggers
+
+# Set the current working directory to the main script or executable
+env.set_working_dir_to_main_script_location()
 
 # Create an instance of Logger
-p_logger = logs.PrintLogger("my_logs_file.log", show_time=True, capture_print=False, 
+p_logger = loggers.PrintLogger("my_logs_file.log", show_time=True, capture_print=False, 
                      overwrite_print=True, print_passthrough=False, print_log_to_stdout=True)
 # Shows the time in the logs (Like this [12:33:21]) and overwrites the normal sys.stdout
 
 # Call the `monitor_stdout` method and pass the logger object, this will overwrite sys.stdout from Text I/O to the logger object
-logger = logs.monitor_stdout(logger=p_logger) # Return sys.stdout, so you can make sure it worked
+logger = loggers.monitor_stdout(logger=p_logger) # Return sys.stdout, so you can make sure it worked
 
 # Log something
 p_logger.log("Hello, world!")
@@ -72,8 +74,8 @@ p_logger.close()
 
 ### OnlineImage
 ```python
-from aplustools import imagetools
-from aplustools.environment import Path
+from aplustools.utils import imagetools
+from aplustools.io.environment import Path
 
 # Download the image to the current working directory
 imagetools.OnlineImage("someImage.url", True)
@@ -93,11 +95,10 @@ _, img_name, img_path = image.download_image(str(folder_path)) # Make sure this 
 
 ### Git-Updater
 ```python
-from aplustools import updaters
-from aplustools.environment import set_working_dir_to_main_script_location
+from aplustools.data import updaters
+from aplustools.io.environment import set_working_dir_to_main_script_location, Path
 import os
 import threading
-from aplustools.environment import Path
 import sys
 
 set_working_dir_to_main_script_location()
@@ -137,7 +138,7 @@ for i in updater.receive_update_status(host, port):
 # Print the result
 print(result)
 
-from aplustools.webtools import check_url, is_crawlable
+from aplustools.web.webtools import check_url, is_crawlable
 import requests
 
 if check_url(result, ''): # Not really nessesary, search does this automatically
@@ -151,7 +152,7 @@ if check_url(result, ''): # Not really nessesary, search does this automatically
 
 _, img_name, img_path = image.download_image(str(folder_path)) # Make sure this directory exists
 
-from aplustools.environment import absolute_path, remv, copy
+from aplustools.io.environment import absolute_path, remv, copy
 from aplustools.childsplay import ImportClass # Could be switched out to adultswork, but the string would need to get converted
 
 importer = ImportClass(hard=True)
@@ -179,16 +180,18 @@ For modules I use 'lowercase', classes are 'CapitalizedWords' and functions and 
 Dependencies (except standart libraries) are: 
 - adultswork - datetime
 - childsplay - datetime
-- database - none
-- environment - none
-- gitupdater-cmd - requests - deprecated
-- gitupdater-gui - requests, pyqt5 - deprecated
-- gitupdater - requests
-- imagetools - Pillow
-- logs - none
-- setdirtoex - none
-- updaters - requests
-- webtools - duckduckgo_search, bs4 - duckduckgo_search is only used for Search.duckduckgo_provider, if you don't want to use it use Search._duckduckgo_provider instead.
+- data.database - none
+- io.environment - none
+- data.gitupdater-cmd & data.integrated-gitupdater-cmd - requests
+- data.gitupdater-gui & data.integrated-gitupdater-gui - requests, PySide6
+- data.gitupdater - requests
+- utils.imagetools - Pillow
+- io.loggers - none
+- data.updaters - requests
+- web.webtools - duckduckgo_search, bs4 - duckduckgo_search is only used for Search.duckduckgo_provider, if you don't want to use it use Search._duckduckgo_provider instead.
+- utils.genpass - pycryptodome, rich
+- utils.mappers - none
+- web.new_webtools - duckduckgo_search, bs4 - duckduckgo_search is only used for Search.duckduckgo_provider, if you don't want to use it use Search._duckduckgo_provider instead.
 
 ## Contributing
 
