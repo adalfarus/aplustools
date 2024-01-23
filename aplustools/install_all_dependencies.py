@@ -18,9 +18,9 @@ for dep in ["requests==2.31.0",
       proc = execute_python_command(arguments=
                      ["pip", "install", dep])
       if proc.returncode != 0:
-         raise() # fix
+         raise
    except Exception as e:
-      print("An error occurred:" + e)
+      print("An error occurred:" + str(e))
                
 input("Done, press ENTER to exit ...")
     
