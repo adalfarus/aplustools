@@ -22,5 +22,5 @@ for dep in ["requests==2.31.0",
    except Exception as e:
       print("An error occurred:" + str(e))
                
-input("Done, press ENTER to exit ...")
+print("Done, all dependencies possible installed ...")
     
