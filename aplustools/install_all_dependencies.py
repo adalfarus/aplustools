@@ -12,7 +12,7 @@ for dep in ["requests==2.31.0",
             "datetime==5.2", 
             "duckduckgo_search==3.9.3", 
             "rich==13.7.0", 
-            "pycryptodome==3.19.0"]
+            "pycryptodome==3.19.0"]:
     execute_python_command(arguments=
                ["pip", "install", dep])
                
