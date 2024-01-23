@@ -1,6 +1,6 @@
-print("placeholder")
+import subprocess
 
-def execute_python_command(arguments: list=None, run: bool=False, *args, **kwargs) -> CompletedProcess[str]:
+def execute_python_command(arguments: list=None, run: bool=False, *args, **kwargs) -> subprocess.CompletedProcess[str]:
     if arguments == None: arguments = []
     log(' '.join([sys.executable] + arguments), LogType.DEBUG)
     if run: arguments.append("--run") # Added to remain consistent with executing in same python environment
@@ -15,4 +15,6 @@ for dep in ["requests==2.31.0",
             "pycryptodome==3.19.0"]
     execute_python_command(arguments=
                ["pip", "install", dep])
+               
+input("Done, press ENTER to exit ...")
     
