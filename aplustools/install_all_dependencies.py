@@ -3,7 +3,7 @@ import sys
 
 def execute_python_command(arguments: list=None, *args, **kwargs) -> subprocess.CompletedProcess[str]:
     if arguments == None: arguments = []
-    print(' '.join([sys.executable] + arguments), LogType.DEBUG)
+    print(' '.join([sys.executable] + arguments))
     # Added to remain consistent with executing in same python environment
     return subprocess.run([sys.executable] + arguments, *args, **kwargs)
     
@@ -15,8 +15,10 @@ for dep in ["requests==2.31.0",
             "rich==13.7.0", 
             "pycryptodome==3.19.0"]:
    try:
-      execute_python_command(arguments=
-                  ["pip", "install", dep])
+      proc = execute_python_command(arguments=
+                     ["pip", "install", dep])
+      if proc.returncode != 0:
+         raise() # fix
    except Exception as e:
       print("An error occurred:" + e)
                
