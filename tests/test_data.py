@@ -1,4 +1,4 @@
-from aplustools.data import database, updaters
+from aplustools.data import database, updaters, faker
 
 
 class TestUpdaters:
@@ -11,3 +11,7 @@ class TestUpdaters:
 class TestDatabase:
     def test_local(self):
         assert database.local_test()
+
+class TestFaker:
+    def test_local(self):
+        assert faker.local_test()

@@ -1,4 +1,4 @@
-from aplustools.utils import genpass, imagetools, mappers
+from aplustools.utils import genpass, imagetools, mappers, dummy, hasher
 
 
 class TestGenpass:
@@ -12,3 +12,11 @@ class TestImagetools:
 class TestMappers:
     def test_local(self):
         assert mappers.local_test()
+
+class TestDummy:
+    def test_local(self):
+        assert dummy.local_test()
+
+class TestHasher:
+    def test_local(self):
+        assert hasher.local_test()

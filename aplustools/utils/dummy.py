@@ -142,43 +142,52 @@ class Dummy3(DummyBase):
 
     def __hash__(self):
         return int()
-        
-if __name__ == "__main__":
-    dummy = Dummy3()
-    dummy.attr.func("", "")
-    del dummy[1]
-    reversed(dummy)
-    print("" in dummy)
-    print(dummy["HELP"])
-    print(dummy.keys())
-    dummy.keys = ""
-    print(dummy.keys + dummy)
-    print(+dummy)
-    print(-dummy)
-    print(hash(dummy))
-    print(abs(dummy))
-    ~dummy
-    round(dummy)
-    import math
-    print(math.ceil(dummy))
-    dummy<<dummy
-    dummy += 1
-    intt = 1
-    intt *= dummy
-    complex(dummy)
-    oct(dummy)
-    math.trunc(dummy)
-    repr(dummy)
-    print(bytes(dummy))
-    print(format(dummy, ""))
-    dummy.format()
-    if dummy:
-        print(True)
-    else:
-        print(False)
-    for x in dummy:
-        print("HELLO")
-    type(dummy)
-    print(dummy, str(dummy), int(dummy), list(dummy), tuple(dummy), float(dummy))
 
-        
+def local_test():
+    try:
+        dummy = Dummy3()
+        dummy.attr.func("", "")
+        del dummy[1]
+        reversed(dummy)
+        print("" in dummy)
+        print(dummy["HELP"])
+        print(dummy.keys())
+        dummy.keys = ""
+        print(dummy.keys + dummy)
+        print(+dummy)
+        print(-dummy)
+        print(hash(dummy))
+        print(abs(dummy))
+        ~dummy
+        round(dummy)
+        import math
+        print(math.ceil(dummy))
+        dummy << dummy
+        dummy += 1
+        intt = 1
+        intt *= dummy
+        complex(dummy)
+        oct(dummy)
+        math.trunc(dummy)
+        repr(dummy)
+        print(bytes(dummy))
+        print(format(dummy, ""))
+        dummy.format()
+        if dummy:
+            print(True)
+        else:
+            print(False)
+        for x in dummy:
+            print("HELLO")
+        type(dummy)
+        print(dummy, str(dummy), int(dummy), list(dummy), tuple(dummy), float(dummy))
+    except Exception as e:
+        print(f"Exception occured {e}.")
+        return False
+    else:
+        print("Test completed successfully.")
+        return True
+
+
+if __name__ == "__main__":
+    local_test()

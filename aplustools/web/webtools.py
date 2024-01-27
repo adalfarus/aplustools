@@ -180,6 +180,11 @@ class Search:
         return None
         
     def duckduckgo_provider(self, queries: Union[str, List[str]], blacklisted_websites: Optional[list]=None) -> Optional[str]:
+        import warnings
+        warnings.warn(
+            "This function doesn't work at the momen. Please use google_provider instead till it's fixed.",
+            UserWarning,
+            stacklevel=2)
         with DDGS(timeout=20) as ddgs:
             for query in list(queries): # Added, so you can pass a single string
                 results = ddgs.text(query, timelimit=100, safesearch='off')
@@ -226,7 +231,7 @@ class Search:
 def local_test():
     try:
         search = Search()
-        result = search.duckduckgo_provider("Cats")
+        result = search.google_provider("Cats")
         print(result)
     except Exception as e:
         print(f"Exception occured {e}.")

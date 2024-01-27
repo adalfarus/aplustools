@@ -20,7 +20,8 @@ def install_all_dependencies():
                 "datetime==5.4",
                 "duckduckgo_search==3.9.3",
                 "rich==13.7.0",
-                "pycryptodome==3.19.0"]:
+                "pycryptodome==3.19.0",
+                "PySide6==6.5.1.1"]:
        try:
           proc = execute_python_command(arguments=
                          ["-m", "pip", "install", dep])

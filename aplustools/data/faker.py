@@ -113,14 +113,24 @@ class TestDataGenerator:
             print(f"Error inserting events: {e}")
 
 
+def local_test():
+    try:
+        test_data = TestDataGenerator()
+        print(test_data.generate_random_identity())
+        print("\n", end="")
+        print(test_data.generate_random_name())
+        print(test_data.generate_random_email())
+        print(test_data.generate_random_password())
+        print(test_data.generate_random_phone_number())
+        print(test_data.generate_random_address())
+        print(test_data.generate_random_birth_date())
+    except Exception as e:
+        print(f"Exception occured {e}.")
+        return False
+    else:
+        print("Test completed successfully.")
+        return True
+
+
 if __name__ == "__main__":
-    test_data = TestDataGenerator()
-    print(test_data.generate_random_identity())
-    print("\n", end="")
-    print(test_data.generate_random_name())
-    print(test_data.generate_random_email())
-    print(test_data.generate_random_password())
-    print(test_data.generate_random_phone_number())
-    print(test_data.generate_random_address())
-    print(test_data.generate_random_birth_date())
-    
+    local_test()

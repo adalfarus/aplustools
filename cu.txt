@@ -1,0 +1,18 @@
+[2024-01-27 11:51:33] Logging this
+[2024-01-27 11:51:33] Logging that
+[DEBUG] [2024-01-27 11:51:33] [Debug] No ref, so just print xd
+[WARN] [2024-01-27 11:51:33] [Warn] No ref, so just print xd
+[2024-01-27 11:51:33] Do not do this, you need a ref to close it
+[WARN] [2024-01-27 11:51:33] Hello World [Warn]
+[2024-01-27 11:54:07] Logging this
+[2024-01-27 11:54:07] Logging that
+[DEBUG] [2024-01-27 11:54:07] [Debug] No ref, so just print xd
+[WARN] [2024-01-27 11:54:07] [Warn] No ref, so just print xd
+[2024-01-27 11:54:07] Do not do this, you need a ref to close it
+[WARN] [2024-01-27 11:54:07] Hello World [Warn]
+[2024-01-27 11:55:25] Logging this
+[2024-01-27 11:55:25] Logging that
+[DEBUG] [2024-01-27 11:55:25] [Debug] No ref, so just print xd
+[WARN] [2024-01-27 11:55:25] [Warn] No ref, so just print xd
+[2024-01-27 11:55:25] Do not do this, you need a ref to close it
+[WARN] [2024-01-27 11:55:25] Hello World [Warn]
