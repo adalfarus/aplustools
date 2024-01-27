@@ -1,6 +1,6 @@
 from urllib.parse import urlencode, urlunparse, quote_plus, urlparse, urljoin
 import requests
-from duckduckgo_search import DDGS
+#from duckduckgo_search import DDGS
 import random
 from bs4 import BeautifulSoup
 import re
@@ -250,6 +250,7 @@ class search:
             return results_lst
         
     class duckduckgo_search_provider:
+        return
         def dggs_search(
                 query: str, 
                 num_results: Optional[int]=10
