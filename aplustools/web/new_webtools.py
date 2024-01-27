@@ -1,6 +1,6 @@
 from urllib.parse import urlencode, urlunparse, quote_plus, urlparse, urljoin
 import requests
-from duckduckgo_search import DDGS
+#from duckduckgo_search import DDGS
 import random
 from bs4 import BeautifulSoup
 import re
@@ -250,55 +250,56 @@ class search:
             return results_lst
         
     class duckduckgo_search_provider:
-        def dggs_search(
-                query: str, 
-                num_results: Optional[int]=10
-        ) -> Generator[Dict[str, str], None, None]:
-            with DDGS(timeout=20) as ddgs:
-                results = ddgs.text(query, timelimit=100, safesearch='off')
-                for r in results[:num_results]:
-                    yield {"title": r['title'], "url": r['href']}
-                    
-        def perform_search(
-                query: str, 
-                num_results: Optional[Union[int, None]]=10, 
-                batch_size: Optional[int]=10, 
-                check: Optional[bool]=True, 
-                blacklisted_websites: Optional[list]=None
-        ) -> List[str]:
-            while True:
-                results = dggs_search(query, num_results=batch_size)
-                filtered_urls = []
-                for result in results:
-                    url = check_url(result['url'], result['title'], blacklisted_websites=blacklisted_websites) if check else url
-                    if url:
-                        print("Found URL:", url)
-                        filtered_urls.append(url)
-                        if len(filtered_urls) == num_results:
-                            break
-                if not num_results:
-                    break
-                print("Not enough crawlable URLs found, continuing ...")
-            return filtered_urls
+        pass
+        #def dggs_search(
+        #        query: str, 
+        #        num_results: Optional[int]=10
+        #) -> Generator[Dict[str, str], None, None]:
+        #    with DDGS(timeout=20) as ddgs:
+        #        results = ddgs.text(query, timelimit=100, safesearch='off')
+        #        for r in results[:num_results]:
+        #            yield {"title": r['title'], "url": r['href']}
+        #            
+        #def perform_search(
+        #        query: str, 
+        #        num_results: Optional[Union[int, None]]=10, 
+        #        batch_size: Optional[int]=10, 
+        #        check: Optional[bool]=True, 
+        #        blacklisted_websites: Optional[list]=None
+        #) -> List[str]:
+        #    while True:
+        #        results = dggs_search(query, num_results=batch_size)
+        #        filtered_urls = []
+        #        for result in results:
+        #            url = check_url(result['url'], result['title'], blacklisted_websites=blacklisted_websites) if check else url
+        #            if url:
+        #                print("Found URL:", url)
+        #                filtered_urls.append(url)
+        #                if len(filtered_urls) == num_results:
+        #                    break
+        #        if not num_results:
+        #            break
+        #        print("Not enough crawlable URLs found, continuing ...")
+        #    return filtered_urls
         
-        def search_queries(
-                queries: Union[str, List[str]], 
-                num_results: int, 
-                batch_size: Optional[int]=10, 
-                blacklisted_websites: Optional[list]=None, 
-                per_query: Optional[bool]=True, 
-                sort_per_query: Optional[bool]=False, 
-                check: Optional[bool]=True
-        ) -> Union[List[str], List[List[str]]]:
-            if queries is not None and not isinstance(queries, list): queries = [queries]
-            results_lst = []
-            for query in queries:
-                nnr = num_results if per_query else None
-                urls = perform_search(query, num_results=nnr, batch_size=batch_size, check=check, blacklisted_websites=blacklisted_websites)
+        #def search_queries(
+        #        queries: Union[str, List[str]], 
+        #        num_results: int, 
+        #        batch_size: Optional[int]=10, 
+        #        blacklisted_websites: Optional[list]=None, 
+        #        per_query: Optional[bool]=True, 
+        #        sort_per_query: Optional[bool]=False, 
+        #        check: Optional[bool]=True
+        #) -> Union[List[str], List[List[str]]]:
+        #    if queries is not None and not isinstance(queries, list): queries = [queries]
+        #    results_lst = []
+        #    for query in queries:
+        #        nnr = num_results if per_query else None
+        #        urls = perform_search(query, num_results=nnr, batch_size=batch_size, check=check, blacklisted_websites=blacklisted_websites)
                 
-                if sort_per_query: results_lst.append(urls)
-                else: results_lst.extend(urls)
-            return results_lst
+        #        if sort_per_query: results_lst.append(urls)
+        #        else: results_lst.extend(urls)
+        #    return results_lst
         
     class bing_provider:
         def bing_search(
