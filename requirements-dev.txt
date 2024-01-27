@@ -4,5 +4,5 @@ BeautifulSoup4==4.12.3
 datetime==5.4
 duckduckgo_search==3.9.3 # 4.2
 rich==13.7.0
-pycryptodome==3.19.0 # 3.20.0
+pycryptodome==3.20.0
 PySide6==6.5.1.1
