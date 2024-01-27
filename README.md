@@ -270,13 +270,11 @@ For modules I use 'lowercase', classes are 'CapitalizedWords' and functions and 
 
 Dependencies (except standart libraries) are: 
 - data.database, io.environment, io.loggers, utils.mappers, data.faker, utils.dummy, utils.hasher - none
-- adultswork - datetime
-- childsplay - datetime
+- adultswork, childsplay - datetime
 - data.gitupdater-cmd & data.integrated-gitupdater-cmd - requests
 - data.gitupdater-gui & data.integrated-gitupdater-gui - requests, PySide6
-- data.gitupdater - requests
+- data.gitupdater, data.updaters - requests
 - utils.imagetools - Pillow
-- data.updaters - requests
 - web.webtools - requests, duckduckgo_search, BeautifulSoup4 - duckduckgo_search is only used for Search.duckduckgo_provider, if you don't want to use it, use Search._duckduckgo_provider instead.
 - utils.genpass - pycryptodome, rich
 - web.new_webtools - requests, BeautifulSoup4
