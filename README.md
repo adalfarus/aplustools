@@ -40,7 +40,7 @@ Here are a few quick examples of how to use aplustools:
 from aplustools.web import webtools as wt
 
 # Call the `google_search` with a query
-result = wt.search.google_provider.google_search("Cute puppies", wb.get_useragent(), 1)
+result = wt.Search.google_provider("Cute puppies", wt.get_useragent(), 1)
 
 # Print the result
 print(result)
