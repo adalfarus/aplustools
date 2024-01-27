@@ -16,5 +16,5 @@ def install_dependencies():
        except Exception as e:
           print("An error occurred:" + str(e))
 
-    print("Done, all possible dependencies installed ...")
+    print("Done, all possible dependencies for the data module installed ...")
     
