@@ -681,14 +681,25 @@ def num_hasher(input_str: str, length: int, char_range: range=range(32, 126), se
     return ''.join(result[:length])
 
 
+def local_test():
+    try:
+        print(hashed_wrapper_latest("Hello World, kitty", 50, hash_func=hashed_latest))
+
+        # Example usage
+        input_string = "Hello World, kitty"  # "example"
+        desired_length = 50  # 8
+        acceptable_chars = range(100, 200)
+        print(num_hasher(input_string, desired_length, acceptable_chars))
+
+        inp = "To hash: "
+        print(num_hasher(inp, len(inp)))
+    except Exception as e:
+        print(f"Exception occured {e}.")
+        return False
+    else:
+        print("Test completed successfully.")
+        return True
+
+
 if __name__ == "__main__":
-    print(hashed_wrapper_latest("Hello World, kitty", 50, hash_func=hashed_latest))
-
-    # Example usage
-    input_string = "Hello World, kitty"#"example"
-    desired_length = 50#8
-    acceptable_chars = range(100, 200)
-    print(num_hasher(input_string, desired_length, acceptable_chars))
-
-    inp = input("To hash: ")
-    print(num_hasher(inp, len(inp)))
+    local_test()

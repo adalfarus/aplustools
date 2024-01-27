@@ -28,7 +28,7 @@ Or clone the repository and install manually:
 ```sh
 git clone https://github.com/Adalfarus/aplustools.git
 cd aplustools
-python setup.py install
+python -m build
 ```
 
 ## Usage
@@ -168,7 +168,98 @@ except ValueError:
 remv(a_imgpath) # Remove the original image
 remv(str(folder_path)) # Remove the base directory
 ```
-(Correct shortform for aplustools is apt, so use import aplustools as apt)
+
+### Faker
+```python
+from aplustools.data.faker import TestDataGenerator
+
+test_data = TestDataGenerator()
+print(test_data.generate_random_identity())
+
+print("\n", end="")
+print(test_data.generate_random_name())
+print(test_data.generate_random_email())
+print(test_data.generate_random_password())
+print(test_data.generate_random_phone_number())
+print(test_data.generate_random_address())
+print(test_data.generate_random_birth_date())
+```
+
+### Dummy
+```python
+from aplustools.utils.dummy import Dummy3 # Dummy3 is for Python 3
+import math, sys
+
+dummy = Dummy3()
+
+# Do a bunch of operations that would normally throw errors
+dummy.attr.func("", int3="")
+dummy["Hello"]
+del dummy[1]
+reversed(dummy)
+"Dummy" in dummy
+dummy.keys()
+dummy.keys = ["1"]
+print(dummy.keys + dummy)
++dummy
+-dummy
+~dummy
+
+hash(dummy)
+abs(dummy)
+round(dummy)
+complex(dummy)
+oct(dummy)
+repr(dummy)
+bytes(dummy)
+format(dummy, "DD")
+
+math.trunc(dummy)
+dummy << dummy
+dummy >> dummy
+dummy -= 1_000_000
+num = 1
+num *= dummy
+
+if dummy:
+	print(True)
+else:
+	print(False)
+
+for x in dummy:
+	print(x)
+
+type(dummy)
+print(dummy, "->", int(dummy), list(dummy), tuple(dummy), float(dummy))
+```
+
+### Hasher
+```python
+from aplustools.utils.hasher import hashed_latest, hashed_wrapper_latest, reducer, big_reducer, num_hasher
+
+inp = "Hello beautiful world, how are you today, lovely star?"
+inp2 = "Hello World, kitty"
+
+desired_length = 64
+
+hashed_inp = hashed_wrapper_latest(inp, desired_length, hash_func=hashed_latest)
+hashed_inp2 = hashed_wrapper_latest(inp2, desired_length, hash_func=hashed_latest)
+
+print(f"{inp} ({len(inp)}) -> {hashed_inp} ({len(hashed_inp)})\n{inp2} ({len(inp2)}) -> {hashed_inp2} ({len(hashed_inp2)})")
+
+num_hashed_inp = num_hasher(inp, desired_length)
+num_hashed_inp2 = num_hasher(inp2, desired_length)
+
+print(f"{inp} ({len(inp)}) -> {num_hashed_inp} ({len(num_hashed_inp)})\n{inp2} ({len(inp2)}) -> {num_hashed_inp2} ({len(num_hashed_inp2)})")
+
+acceptable_chars = range(100, 200)
+
+num_hashed_inp_uni = num_hasher(inp, desired_length, acceptable_chars)
+num_hashed_inp_uni = num_hasher(inp2, desired_length, acceptable_chars)
+
+print(f"{inp} ({len(inp)}) -> {num_hashed_inp_uni} ({len(num_hashed_inp_uni)})\n{inp2} ({len(inp2)}) -> {num_hashed_inp_uni} ({len(num_hashed_inp_uni)})")
+```
+(Correct shortform for aplustools is apt, so please use ```import aplustools as apt``` for consistency)
 
 For more detailed usage and examples, check out our [documentation](https://github.com/adalfarus/aplustools/wiki).
 
@@ -188,10 +279,10 @@ Dependencies (except standart libraries) are:
 - utils.imagetools - Pillow
 - io.loggers - none
 - data.updaters - requests
-- web.webtools - duckduckgo_search, bs4 - duckduckgo_search is only used for Search.duckduckgo_provider, if you don't want to use it use Search._duckduckgo_provider instead.
+- web.webtools - requests, duckduckgo_search, bs4 - duckduckgo_search is only used for Search.duckduckgo_provider, if you don't want to use it use Search._duckduckgo_provider instead.
 - utils.genpass - pycryptodome, rich
 - utils.mappers - none
-- web.new_webtools - duckduckgo_search, bs4 - duckduckgo_search is only used for Search.duckduckgo_provider, if you don't want to use it use Search._duckduckgo_provider instead.
+- web.new_webtools - requests, duckduckgo_search, bs4 - duckduckgo_search is only used for Search.duckduckgo_provider, if you don't want to use it use Search._duckduckgo_provider instead.
 
 ## Contributing
 
