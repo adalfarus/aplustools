@@ -34,5 +34,8 @@ data = _LazyModuleLoader('aplustools.data')
 utils = _LazyModuleLoader('aplustools.utils')
 web = _LazyModuleLoader('aplustools.web')
 
+# Install all possible dependencies, execute python command, ...
+from .direct_functions import *
+
 # Define __all__ to limit what gets imported with 'from <package> import *'
 __all__ = ['io', 'data', 'utils', 'web']
