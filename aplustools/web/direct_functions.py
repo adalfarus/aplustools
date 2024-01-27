@@ -1,7 +1,7 @@
 import subprocess
 import sys
 
-def install_all_dependencies():
+def install_dependencies():
     def execute_python_command(arguments: list = None, *args, **kwargs) -> subprocess.CompletedProcess[str]:
         if arguments == None: arguments = []
         print(' '.join([sys.executable] + arguments))
@@ -18,5 +18,5 @@ def install_all_dependencies():
        except Exception as e:
           print("An error occurred:" + str(e))
 
-    print("Done, all possible dependencies installed ...")
+    print("Done, all possible dependencies for the web module installed ...")
     
