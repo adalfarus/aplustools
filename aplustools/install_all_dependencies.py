@@ -8,19 +8,19 @@ def execute_python_command(arguments: list=None, *args, **kwargs) -> subprocess.
     return subprocess.run([sys.executable] + arguments, *args, **kwargs)
     
 for dep in ["requests==2.31.0", 
-            "Pillow==10.1.0", 
-            "bs4==4.12.2", 
-            "datetime==5.2", 
+            "Pillow==10.2.0",
+            "BeautifulSoup4==4.12.3",
+            "datetime==5.4",
             "duckduckgo_search==3.9.3", 
             "rich==13.7.0", 
             "pycryptodome==3.19.0"]:
    try:
       proc = execute_python_command(arguments=
-                     ["pip", "install", dep])
+                     ["-m", "pip", "install", dep])
       if proc.returncode != 0:
          raise
    except Exception as e:
       print("An error occurred:" + str(e))
                
-print("Done, all dependencies possible installed ...")
+print("Done, all possible dependencies installed ...")
     
