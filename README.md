@@ -279,7 +279,7 @@ Dependencies (except standart libraries) are:
 - data.updaters - requests
 - web.webtools - requests, duckduckgo_search, BeautifulSoup4 - duckduckgo_search is only used for Search.duckduckgo_provider, if you don't want to use it, use Search._duckduckgo_provider instead.
 - utils.genpass - pycryptodome, rich
-- web.new_webtools - requests, duckduckgo_search, BeautifulSoup4 - duckduckgo_search is only used for Search.duckduckgo_provider, if you don't want to use it, use Search._duckduckgo_provider instead.
+- web.new_webtools - requests, BeautifulSoup4
 
 ## Contributing
 
