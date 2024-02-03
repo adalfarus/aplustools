@@ -125,7 +125,7 @@ def local_test():
         print(test_data.generate_random_address())
         print(test_data.generate_random_birth_date())
     except Exception as e:
-        print(f"Exception occured {e}.")
+        print(f"Exception occurred {e}.")
         return False
     else:
         print("Test completed successfully.")
