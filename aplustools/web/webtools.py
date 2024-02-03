@@ -234,7 +234,7 @@ def local_test():
         result = search.google_provider("Cats")
         print(result)
     except Exception as e:
-        print(f"Exception occured {e}.")
+        print(f"Exception occurred {e}.")
         return False
     else:
         print("Test completed successfully.")
