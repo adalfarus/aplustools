@@ -1,13 +1,20 @@
 # environment.py
-import os
-from re import A
-import sys
-import shutil
-import tempfile
-import __main__
-from typing import Union, Optional
-import inspect
+from typing import Union, Optional, Callable
+import subprocess
 import warnings
+import platform
+import tempfile
+import inspect
+import shutil
+import sys
+import os
+
+
+try:
+    import winreg
+except ImportError:
+    winreg = None  # winreg is not available on non-Windows platforms
+
 
 def set_working_dir_to_main_script_location():
     """
@@ -15,6 +22,7 @@ def set_working_dir_to_main_script_location():
     or executable. It considers whether the script is frozen using PyInstaller
     or is running as a normal Python script.
     """
+    import __main__
     try:
         # Get the directory where the main script (or frozen exe) is located
         if getattr(sys, 'frozen', False):
@@ -38,7 +46,8 @@ def set_working_dir_to_main_script_location():
 
     except Exception as e:
         print(f"An error occurred while changing the working directory: {e}")
-        raise # Re-raise the error
+        raise  # Re-raise the error
+
 
 def change_working_dir_to_script_location():
     # Get the directory where the script (or frozen exe) is located
@@ -51,19 +60,24 @@ def change_working_dir_to_script_location():
 
     # Change the current working directory to the script directory
     os.chdir(script_dir)
-    
+
+
 def change_working_dir_to_temp_folder():
     os.chdir(tempfile.gettempdir())
-    
-def change_working_dir_to_userprof_folder(folder: str):
+
+
+def change_working_dir_to_userprofile_folder(folder: str):
     system = os.name
     if system == 'posix':
-        wDir = os.path.join(os.path.join(os.path.expanduser('~')), folder) # os.path.expanduser("~/Desktop")
+        home_dir = os.path.join(os.path.join(os.path.expanduser('~')), folder)  # os.path.expanduser("~/Desktop")
     elif system == 'nt':
-        wDir = os.path.join(os.path.join(os.environ['USERPROFILE']), folder)
-    os.chdir(wDir)
-    
-def inject_file_path(func):
+        home_dir = os.path.join(os.path.join(os.environ['USERPROFILE']), folder)
+    else:
+        raise OSError(f"System {system} isn't supported by this function.")
+    os.chdir(home_dir)
+
+
+def inject_file_path(func: Callable):
     def wrapper(relative_path: str):
         frame = inspect.currentframe().f_back
         module = inspect.getmodule(frame)
@@ -74,13 +88,16 @@ def inject_file_path(func):
         return func(relative_path, file_path)
     return wrapper
 
+
 @inject_file_path
 def absolute_path(relative_path: str, file_path: str) -> str:
     base_dir = os.path.dirname(os.path.abspath(file_path))
     return os.path.join(base_dir, relative_path)
-    
+
+
 def remv(paths: Union[str, list]):
-    if not isinstance(paths, list): paths = [paths]
+    if not isinstance(paths, list):
+        paths = [paths]
     for path in paths:
         if os.path.exists(path):
             if is_accessible(path):
@@ -93,18 +110,24 @@ def remv(paths: Union[str, list]):
                         shutil.rmtree(path)
                     else:
                         shutil.rmtree(path)
-                else: print("Bug, please report")
-            else: print("Path not accessible")
-        else: print("Path doesn't exist")
-                    
+                else:
+                    print("Bug, please report")
+            else:
+                print("Path not accessible")
+        else:
+            print("Path doesn't exist")
+
+
 def contains_only_directories(path: str) -> bool:
     for item in os.listdir(path):
         if not os.path.isdir(os.path.join(path, item)):
             return False
     return True
 
-def is_accessible(path):
+
+def is_accessible(path: str):
     return os.access(path, os.R_OK)
+
 
 def is_empty_directory(path: str) -> bool:
     if os.path.isfile(path):
@@ -124,6 +147,7 @@ def is_empty_directory(path: str) -> bool:
         return True
     else:
         raise FileNotFoundError(f"No such file or directory '{path}'")
+
 
 class Path:
     def __init__(self, path: str):
@@ -153,7 +177,7 @@ class Path:
             print(f"An error occurred: {e}")
             raise  # Reraise the exception after logging or printing the error message
         
-    def mkdir(self, new_inner_dir):
+    def mkdir(self, new_inner_dir: str):
         own_dir = self.path
         new_dir = os.path.join(self.path, new_inner_dir)
         self.path = new_dir
@@ -161,7 +185,7 @@ class Path:
         self.path = own_dir
         return new_dir
         
-    def join(self, rel_inner_path):
+    def join(self, rel_inner_path: str):
         self.path = os.path.join(self.path, rel_inner_path)
 
     def list_files(self) -> list:
@@ -190,7 +214,7 @@ class Path:
             print(f"{self.path} is not a file.")
             return None
 
-    def rename(self, new_path):
+    def rename(self, new_path: str):
         """Rename the path to a new path."""
         os.rename(self.path, new_path)
         print(f"{self.path} renamed to {new_path}.")
@@ -211,20 +235,24 @@ class Path:
     def __len__(self):
         return len(self.path.split("\\"))
 
-def copy(orloc: str, newloc: str):
-    shutil.copy(orloc, newloc)
 
-def move(orloc: str, newloc: str):
-    shutil.move(orloc, newloc)
-    
-def rename(ornam: str, newnam: str) -> bool:
+def copy(org_loc: str, new_loc: str):
+    shutil.copy(org_loc, new_loc)
+
+
+def move(org_loc: str, new_loc: str):
+    shutil.move(org_loc, new_loc)
+
+
+def rename(org_nam: str, new_nam: str) -> bool:
     try:
-        os.rename(ornam, newnam)
-        print(f"{ornam} renamed to {newnam}.")
+        os.rename(org_nam, new_nam)
+        print(f"{org_nam} renamed to {new_nam}.")
         return True
     except Exception as e:
         print(f"An error occurred while renaming: {e}")
         return False
+
 
 def functionize(cls):
     warnings.warn("This is still experimental and may not be working as expected. A finished version should be available in release 0.1.5.", 
@@ -353,14 +381,7 @@ ins.hell()
 print(ins.counter)
 ins._hell()
 """
-import platform
-import subprocess
-import os
 
-try:
-    import winreg
-except ImportError:
-    winreg = None  # winreg is not available on non-Windows platforms
 
 
 class System:
