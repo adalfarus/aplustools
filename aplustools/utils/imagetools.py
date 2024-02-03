@@ -175,7 +175,7 @@ def local_test():
         image2 = OnlineImage("https://www.simplilearn.com/ice9/free_resources_article_thumb/what_is_image_Processing.jpg")
         _, img_path, img_name = image2.download_image(str(folder_path))
     except Exception as e:
-        print(f"Exception occured {e}.")
+        print(f"Exception occurred {e}.")
         return False
     else:
         print("Test completed successfully.")

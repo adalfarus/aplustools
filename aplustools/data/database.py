@@ -87,7 +87,7 @@ def local_test():
         settings = fetch_data(db)
         print(f"{settings != {'test': 'value'}}")
     except Exception as e:
-        print(f"Exception occured {e}.")
+        print(f"Exception occurred {e}.")
         return False
     else:
         print("Test completed successfully.")

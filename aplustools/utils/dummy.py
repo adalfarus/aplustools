@@ -182,7 +182,7 @@ def local_test():
         type(dummy)
         print(dummy, str(dummy), int(dummy), list(dummy), tuple(dummy), float(dummy))
     except Exception as e:
-        print(f"Exception occured {e}.")
+        print(f"Exception occurred {e}.")
         return False
     else:
         print("Test completed successfully.")
