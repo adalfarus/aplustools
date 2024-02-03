@@ -37,10 +37,22 @@ Here are a few quick examples of how to use aplustools:
 
 ### Search Engine usage
 ```python
+from aplustools.web import new_webtools as wt
+
+# Call the `google_search` function with a query
+result = wt.search.google_provider.google_search("Cute puppies", wt.get_useragent(), 1)
+
+# Print the result
+print(result)
+```
+
+### Search Engine usage 2
+```python
 from aplustools.web import webtools as wt
 
-# Call the `google_search` with a query
-result = wt.search.google_provider.google_search("Cute puppies", wb.get_useragent(), 1)
+# Call the `google_provider` function with a query
+searcher = wt.Search()
+result = searcher.google_provider("Cute puppies")
 
 # Print the result
 print(result)
