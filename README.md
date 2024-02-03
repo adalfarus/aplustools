@@ -280,9 +280,8 @@ For more detailed usage and examples, check out our [documentation](https://gith
 
 For modules I use 'lowercase', classes are 'CapitalizedWords' and functions and methods are 'lower_case_with_underscores'.
 
-Dependencies (except standart libraries) are: 
-- data.database, io.environment, io.loggers, utils.mappers, data.faker, utils.dummy, utils.hasher - none
-- adultswork, childsplay - datetime
+Dependencies (except for the standart libraries) are: 
+- data.database, io.environment, io.loggers, utils.mappers, data.faker, utils.dummy, utils.hasher, adultswork, childsplay - none
 - data.gitupdater-cmd & data.integrated-gitupdater-cmd - requests
 - data.gitupdater-gui & data.integrated-gitupdater-gui - requests, PySide6
 - data.gitupdater, data.updaters - requests
