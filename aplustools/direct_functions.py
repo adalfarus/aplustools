@@ -23,7 +23,6 @@ def install_all_dependencies():
     for dep in ["requests==2.31.0",
                 "Pillow==10.2.0",
                 "BeautifulSoup4==4.12.3",
-                "datetime==5.4",
                 "duckduckgo_search==3.9.3",
                 "rich==13.7.0",
                 "pycryptodome==3.20.0",
