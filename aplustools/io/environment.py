@@ -362,6 +362,7 @@ try:
 except ImportError:
     winreg = None  # winreg is not available on non-Windows platforms
 
+
 class System:
     def __init__(self):
         self.os = self.get_os()
@@ -437,6 +438,7 @@ class System:
         except Exception:
             return None
 
+
 def print_system_info():
     sys_info = System()
     print(f"Operating System: {sys_info.os}")
@@ -444,16 +446,18 @@ def print_system_info():
     print(f"CPU Architecture: {sys_info.cpu_arch}")
     print(f"CPU Brand: {sys_info.cpu_brand}")
     print(f"System Theme: {sys_info.theme}")
-    
+
+
 def local_test():
     try:
         print_system_info()
     except Exception as e:
-        print(f"Exception occured {e}.")
+        print(f"Exception occurred {e}.")
         return False
     else:
         print("Test completed successfully.")
         return True
+
 
 if __name__ == "__main__":
     local_test()

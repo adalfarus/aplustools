@@ -1,4 +1,6 @@
-class _LazyModuleLoader:
+
+
+class LazyModuleLoader:
     def __init__(self, module_name):
         self.module_name = module_name
         self.module = None
@@ -24,3 +26,18 @@ class _LazyModuleLoader:
     def __dir__(self):
         self._load_module()
         return dir(self.module)
+
+
+def local_test():
+    try:
+        loader = LazyModuleLoader("aplustools.package.timid")
+    except Exception as e:
+        print(f"Exception occurred {e}.")
+        return False
+    else:
+        print("Test completed successfully.")
+        return True
+
+
+if __name__ == "__main__":
+    local_test()

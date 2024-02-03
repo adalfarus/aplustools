@@ -694,7 +694,7 @@ def local_test():
         inp = "To hash: "
         print(num_hasher(inp, len(inp)))
     except Exception as e:
-        print(f"Exception occured {e}.")
+        print(f"Exception occurred {e}.")
         return False
     else:
         print("Test completed successfully.")

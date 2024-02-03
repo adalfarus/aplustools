@@ -205,7 +205,7 @@ def local_test():
             if i == 100:
                 progress_bar += 1 # Switch to second progress bar, when the downloading is finished
     except Exception as e:
-        print(f"Exception occured {e}.")
+        print(f"Exception occurred {e}.")
         return False
     else:
         print("Test completed successfully.")
