@@ -3,7 +3,7 @@ requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-packages = ["aplustools", "aplustools.data", "aplustools.io", "aplustools.utils", "aplustools.web"]
+packages = ["aplustools", "aplustools.data", "aplustools.io", "aplustools.utils", "aplustools.web", "aplustools.package"]
 
 [project]
 name = "aplustools"
@@ -12,7 +12,6 @@ dependencies = [
   "requests>=2.31.0",
   "Pillow>=10.1.0",
   "BeautifulSoup4>=4.12.2",
-  "datetime",
   "winreg; os_name != 'nt'",
 ]
 requires-python = ">= 3.9"

@@ -253,7 +253,7 @@ def local_test():
         print("TimidTimerDelay", TimidTimer.test_delay())
         print("TimidTimer2Delay", TimidTimer2.test_delay())
         print("All other delays are too small as to measure them with themselves, \
-        so we measure them with TimidTimer2 and subtract the average delay.")
+so we measure them with TimidTimer2 and subtract the average delay.")
         print("NormalTimerDelay", test_delay(NormalTimer))
         print("LazyTimerDelay", test_delay(LazyTimer))
 
