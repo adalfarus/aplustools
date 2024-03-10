@@ -102,7 +102,7 @@ success = image.base64(str(folder_path), "Image", "png") # Make sure this direct
 
 # Download the image to a specified path
 image2 = imagetools.OnlineImage("someImage.url")
-_, img_name, img_path = image.download_image(str(folder_path)) # Make sure this directory exists
+_, img_name, img_path = image2.download_image(base_path=str(folder_path))  # Make sure this directory exists
 ```
 
 ### Git-Updater
@@ -115,37 +115,38 @@ import sys
 
 set_working_dir_to_main_script_location()
 
-__version__ = "0.0.1"
+__version__ = updaters.vNum("0.0.1")
 
 # Initialize an updater
 updater = updaters.gitupdater("exe")
-latest_version = updaters.get_latest_version("Adalfarus", "unicode-writer")[1] # Gives back two values, use whichever applicable
+latest_version = updater.get_latest_version("Adalfarus", "unicode-writer")[1]  # Gives back two values, use whichever applicable
 
 # Check if an update is needed
-if not updaters.gitupdater.compare_release_numbers(__version__, latest_version):
-	sys.exit()
+if __version__ >= updaters.vNum(latest_version):
+    sys.exit()
 
 # Define the arguments for the updater method
-host, port, path = "localhost", 1264, Path(os.path.join(updaters.get_temp(), "update")
+host, port, path = "localhost", 1264, Path(os.path.join(updaters.get_temp(), "update"))
 gui_toggle, cmd_toggle = False, False
 path.create_directory()
-update_args = (os.path.join(os.getcwd(), "update"), str(path), 
-			latest_version, "Adalfarus", "unicode-writer", gui_toggle, cmd_toggle, host, port)
+update_args = (os.path.join(os.getcwd(), "update"), str(path),
+                latest_version, "Adalfarus", "unicode-writer", gui_toggle, cmd_toggle, host, port)
 
-# Start the update in a seperate thread
+# Start the update in a separate thread
 update_thread = threading.Thread(target=updater.update, args=update_args)
 update_thread.start()
 
 # Receive the update status generator and print them
 progress_bar = 1
 for i in updater.receive_update_status(host, port):
-	print(f"{i}%", end=f" PB{progress_bar}\n")
-	if i == 100: progress_bar += 1 # Switch to second progress bar, when the downloading is finished
+    print(f"{i}%", end=f" PB{progress_bar}\n")
+    if i == 100:
+        progress_bar += 1  # Switch to second progress bar, when the downloading is finished
 ```
 
 ### Webtools
 ```python
-... # Continuing the first example
+... # Continuing the first two examples
 
 # Print the result
 print(result)
@@ -162,23 +163,23 @@ if check_url(result, ''): # Not really nessesary, search does this automatically
 ```python
 ... # Continuing the image example
 
-_, img_name, img_path = image.download_image(str(folder_path)) # Make sure this directory exists
+_, img_name, img_path = image2.download_image(base_path=str(folder_path))  # Make sure this directory exists
 
 from aplustools.io.environment import absolute_path, remv, copy
-from aplustools.childsplay import ImportClass # Could be switched out to adultswork, but the string would need to get converted
+from aplustools.childsplay import ImportClass  # Could be switched out to adultswork, but the string would need to get converted
 
 importer = ImportClass(hard=True)
-importer.import_all() # Destroys your runtime python
+importer.import_all()  # Destroys your runtime python
 
-a_imgpath = absolute_path(img_path)
+a_img_path = absolute_path(img_path)
 
 try:
-	copy(a_imgpath, str(folder_path) + str(img_name).remove(".png") + str(" - Copy.png"))
+    copy(a_img_path, str(folder_path) + str(img_name).remove(".png") + str(" - Copy.png"))
 except ValueError:
-	copy(a_imgpath, str(folder_path) + str(img_name.split(".")[-1]) + str(" - Copy.png"))
+    copy(a_img_path, str(folder_path) + str(img_name.split(".")[-1]) + str(" - Copy.png"))
 
-remv(a_imgpath) # Remove the original image
-remv(str(folder_path)) # Remove the base directory
+remv(a_img_path)  # Remove the original image
+remv(str(folder_path))  # Remove the base directory
 ```
 
 ### Faker
@@ -271,6 +272,15 @@ num_hashed_inp_uni = num_hasher(inp2, desired_length, acceptable_chars)
 
 print(f"{inp} ({len(inp)}) -> {num_hashed_inp_uni} ({len(num_hashed_inp_uni)})\n{inp2} ({len(inp2)}) -> {num_hashed_inp_uni} ({len(num_hashed_inp_uni)})")
 ```
+
+### GenPass
+```python
+from aplustools.utils.genpass import GeneratePasswords
+
+gen = GeneratePasswords(debug=True)
+password = gen.generate_ratio_based_password_v2(length=10, letters_ratio=0.5, numbers_ratio=0.3, punctuations_ratio=0.2, secure_random=True, exclude_similar=True)
+print(password)
+```
 (Correct shortform for aplustools is apt, so please use ```import aplustools as apt``` for consistency)
 
 For more detailed usage and examples, check out our [documentation](https://github.com/adalfarus/aplustools/wiki).
@@ -285,7 +295,8 @@ Dependencies (except for the standart libraries) are:
 - data.gitupdater-cmd & data.integrated-gitupdater-cmd - requests
 - data.gitupdater-gui & data.integrated-gitupdater-gui - requests, PySide6
 - data.gitupdater, data.updaters - requests
-- utils.imagetools - Pillow
+- data.imagetools - Pillow
+- data.imagetools - Pillow
 - web.webtools - requests, duckduckgo_search, BeautifulSoup4 - duckduckgo_search is only used for Search.duckduckgo_provider, if you don't want to use it, use Search._duckduckgo_provider instead.
 - utils.genpass - pycryptodome, rich
 - web.new_webtools - requests, BeautifulSoup4
