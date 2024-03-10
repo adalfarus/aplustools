@@ -7,6 +7,12 @@ from urllib.parse import quote_plus, urlparse, urljoin
 import time
 
 
+import warnings
+warnings.warn("This module is new and not usable yet. Please use aplustools.web.webtools instead till release 1.5.0",
+              UserWarning,
+              stacklevel=2)
+
+
 def get_user_agent() -> str:
     _user_agent_list = [
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:66.0) Gecko/20100101 Firefox/66.0',

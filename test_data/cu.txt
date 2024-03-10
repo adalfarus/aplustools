@@ -1,7 +1,7 @@
-[2024-02-03 16:28:14] Hello Worlds
-[2024-02-03 16:28:14] Logging this
-[2024-02-03 16:28:14] Logging that
-[DEBUG] [2024-02-03 16:28:14] [Debug] No ref, so just print xd
-[WARN] [2024-02-03 16:28:14] [Warn] No ref, so just print xd
-[2024-02-03 16:28:14] Do not do this, you need a ref to close it
-[WARN] [2024-02-03 16:28:14] Hello World [Warn]
+[2024-03-10 13:58:03] Hello Worlds
+[2024-03-10 13:58:03] Logging this
+[2024-03-10 13:58:03] Logging that
+[DEBUG] [2024-03-10 13:58:03] [Debug] No ref, so just print xd
+[WARN] [2024-03-10 13:58:03] [Warn] No ref, so just print xd
+[2024-03-10 13:58:03] Do not do this, you need a ref to close it
+[WARN] [2024-03-10 13:58:03] Hello World [Warn]
