@@ -14,7 +14,7 @@ from abc import ABC, abstractmethod
 
 
 import warnings
-warnings.warn("This module is new and not useable yet. Please use aplustools.web.webtools instead till release 0.1.5.", 
+warnings.warn("This module is new and not usable yet. Please use aplustools.web.webtools instead till release 1.5.0",
               UserWarning, 
               stacklevel=2)
 

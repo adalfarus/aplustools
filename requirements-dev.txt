@@ -5,3 +5,4 @@ duckduckgo_search==3.9.3 # 4.2
 rich==13.7.0
 pycryptodome==3.20.0
 PySide6==6.5.1.1
+opencv-python==4.9.0.80
