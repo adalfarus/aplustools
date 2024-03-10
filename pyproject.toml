@@ -10,7 +10,6 @@ name = "aplustools"
 version = "1.4.3"
 dependencies = [
   "requests>=2.31.0",
-  "Pillow>=10.1.0",
   "BeautifulSoup4>=4.12.2",
   "winreg; os_name != 'nt'",
 ]
@@ -32,7 +31,13 @@ classifiers = [
 ]
 
 [project.optional-dependencies]
-data = ["PySide6>=6.5.1.1"]
+data = [
+  "PySide6>=6.5.1.1", 
+  "Pillow>=10.1.0",
+  "aiohttp>=3.9.3", 
+  "asyncio>=3.4.3", 
+  "opencv-python>=4.9.0.80"
+]
 web = ["duckduckgo_search>=3.9.6"]
 utils = [
   "rich>=13.7.0",
