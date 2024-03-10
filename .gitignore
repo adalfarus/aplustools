@@ -1,8 +1,9 @@
-# .vs folder
-/.vs
+# Editor folders
+.vs/
+.idea/
 
 # test_data folder
-/test_data
+test_data/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
