@@ -50,6 +50,12 @@ class TimidTimer:
         return TimidTimer().end()
 
     @staticmethod
+    def test_tock_delay() -> timedelta:
+        timer = TimidTimer()
+        timer.tock()
+        return timer.end()
+
+    @staticmethod
     def time() -> float:
         return default_timer()
 
@@ -98,6 +104,12 @@ class TimidTimer2:
     @staticmethod
     def test_delay() -> timedelta:
         return TimidTimer2().end()
+
+    @staticmethod
+    def test_tock_delay() -> timedelta:
+        timer = TimidTimer2()
+        timer.tock()
+        return timer.end()
 
     @staticmethod
     def time() -> float:
