@@ -26,7 +26,8 @@ def install_all_dependencies():
                 "duckduckgo_search==3.9.3",
                 "rich==13.7.0",
                 "pycryptodome==3.20.0",
-                "PySide6==6.5.1.1"]:
+                "PySide6==6.5.1.1",
+                "opencv-python==4.9.0.80"]:
         try:
             proc = execute_python_command(arguments=
                                           ["-m", "pip", "install", dep])

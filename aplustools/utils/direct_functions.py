@@ -4,7 +4,8 @@ import sys
 
 def install_dependencies():
     def execute_python_command(arguments: list = None, *args, **kwargs) -> subprocess.CompletedProcess[str]:
-        if arguments is None: arguments = []
+        if arguments is None:
+            arguments = []
         print(' '.join([sys.executable] + arguments))
         # Added to remain consistent with executing in same python environment
         return subprocess.run([sys.executable] + arguments, *args, **kwargs)
@@ -19,4 +20,3 @@ def install_dependencies():
             print("An error occurred:" + str(e))
 
     print("Done, all possible dependencies for the utils module installed ...")
-    
