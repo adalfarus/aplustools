@@ -162,7 +162,7 @@ class ImageManager:
         await asyncio.gather(*tasks)
 
 
-class Resizers:
+class ResizeTypes:
     FAST = Image.Resampling.NEAREST
     BOX = Image.Resampling.BOX
     UP = Image.Resampling.BILINEAR

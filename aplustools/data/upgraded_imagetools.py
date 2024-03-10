@@ -6,7 +6,7 @@ from io import BytesIO
 from typing import Optional, Tuple, Union
 
 
-class Resizers:
+class ResizeTypes:
     FAST = cv2.INTER_NEAREST
     LINEAR = cv2.INTER_LINEAR
     AREA = cv2.INTER_AREA
@@ -102,28 +102,6 @@ class OnlineImage(OfflineImage):
         if one_time and current_url:
             self.download_image()
 
-    def download_logo_image(self, base_path: str, new_name: str, img_format: str) -> bool:
-        if not self.current_url:
-            return False
-
-        try:
-            format_match = re.match(r'^data:image/[^;]+;base64,', self.current_url)
-            if format_match:
-                if "image/svg+xml" in self.current_url:
-                    print("SVG format is not supported.")
-                    return False
-
-                image_data = base64.b64decode(self.current_url.split(',')[1])
-                file_path = os.path.join(base_path, f"{new_name}.{img_format}")
-                self._save_image(file_path, image_data)
-                return True
-            else:
-                return self.download_image(self.current_url, base_path, new_name, img_format)[0]
-
-        except Exception as e:
-            print(f"An error occurred while downloading the logo image: {e}")
-            return False
-
     def download_image(self, img_url: Optional[str] = None, base_path: Optional[str] = None,
                        new_name: Optional[str] = None, img_format: Optional[str] = None
                        ) -> Union[Tuple[bool, None, None], Tuple[bool, str, str]]:
@@ -137,18 +115,21 @@ class OnlineImage(OfflineImage):
         try:
             response = requests.get(img_url)
             response.raise_for_status()  # Will raise an HTTPError for bad requests (4xx or 5xx)
+            image_data = np.frombuffer(response.content, dtype=np.uint8)
+            img = cv2.imdecode(image_data, cv2.IMREAD_UNCHANGED)
 
             # Determine the file extension if not provided
             if not img_format:
                 guessed_extension = mimetypes.guess_extension(response.headers.get('content-type'))
-                img_format = guessed_extension.strip('.') if guessed_extension else 'jpg'
+                img_format = guessed_extension.strip('.') if guessed_extension else 'png'  # 'jpg'
 
             file_name = new_name if new_name else os.path.basename(urlparse(img_url).path).split('.')[0]
             file_path = os.path.join(base_path, f"{file_name}.{img_format}")
 
             # Save the image data
-            self._save_image(file_path, response.content)
-            print(f"Downloaded image from {img_url} to {file_path}")
+            cv2.imwrite(file_path, img)
+            print(f"Downloaded and saved image from {img_url} to {file_path}")
+            super().__init__(path=file_path)
             return True, file_name, file_path
 
         except requests.ConnectionError:
@@ -170,7 +151,7 @@ class OnlineImage(OfflineImage):
 def local_test():
     try:
         # Setup
-        os.makedirs("./test_data", exist_ok=True)  # Ensure the test directory exists
+        os.makedirs("./test_data/images", exist_ok=True)  # Ensure the test directory exists
 
         # Initialize OfflineImage with a base64-encoded image
         base64_image_str = ("data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wCEAAkGBwgHBgkIBwgKCgkLDRYPDQ"
@@ -231,7 +212,7 @@ def local_test():
         image.apply_blur((5, 5))
 
         # Save the final image to disk
-        image.save_image_to_disk("./test_data/processed_image.png")
+        image.save_image_to_disk("./test_data/images/processed_image.png")
 
         print("OfflineImage processing and saving completed successfully.")
 
@@ -240,6 +221,7 @@ def local_test():
         return False
 
     return True
+
 
 if __name__ == "__main__":
     local_test()

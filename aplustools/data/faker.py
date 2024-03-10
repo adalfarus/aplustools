@@ -20,8 +20,8 @@ class TestDataGenerator:
     MAIL_SECOND_PARTS = ["communication", "help", "gaming", "assistant", "trinity", "sponsor", "love_you", "nicelife",
                          "sun", "mukbangs", "assistant", "support", "info", "work", "school", "help", "care", "random",
                          "admin", "moderator", "adm", "mod"]
-    MAIL_THIRD_PARTS = ["gmail", "outlook", "me", "yahoo", "github", "microsoft", "youtube", "guns", "coolmail",
-                        "google", "hotmail", "insta", "facebook", "msn", "gore", "braces"]
+    MAIL_THIRD_PARTS = ["gmail", "outlook", "me", "yahoo", "github", "microsoft", "youtube", "gunser", "coolmail",
+                        "google", "hotmail", "insta", "facebook", "msn", "gone", "braces"]
     MAIL_PART_CONNECTORS = ["-", "_", ".", ""]
     MAIL_FOURTH_PARTS = ["net", "de", "com", "you", "me", "online", "here"]
 
@@ -116,7 +116,7 @@ class TestDataGenerator:
 def local_test():
     try:
         test_data = TestDataGenerator()
-        print(test_data.generate_random_identity())
+        print(f"{", \n".join([str(test_data.generate_random_identity()) for _ in range(9000)])}")  # 900000 takes ~5 sec
         print("\n", end="")
         print(test_data.generate_random_name())
         print(test_data.generate_random_email())
