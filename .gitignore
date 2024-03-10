@@ -1,6 +1,9 @@
 # .vs folder
 /.vs
 
+# test_data folder
+/test_data
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
