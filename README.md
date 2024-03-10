@@ -295,11 +295,12 @@ Dependencies (except for the standart libraries) are:
 - data.gitupdater-cmd & data.integrated-gitupdater-cmd - requests
 - data.gitupdater-gui & data.integrated-gitupdater-gui - requests, PySide6
 - data.gitupdater, data.updaters - requests
-- data.imagetools - Pillow
-- data.imagetools - Pillow
+- data.imagetools - Pillow, asyncio, aiohttp
+- data.upgraded_imagetools - opencv-python, asyncio, aiohttp
 - web.webtools - requests, duckduckgo_search, BeautifulSoup4 - duckduckgo_search is only used for Search.duckduckgo_provider, if you don't want to use it, use Search._duckduckgo_provider instead.
 - utils.genpass - pycryptodome, rich
 - web.new_webtools - requests, BeautifulSoup4
+- web.actual_webtools - requests, BeautifulSoup4
 
 ## Contributing
 
