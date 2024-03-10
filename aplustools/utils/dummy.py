@@ -107,6 +107,8 @@ class DummyBase:
         return self
     def __rxor__(self, other):
         return self
+    def __format__(self, format_str: str = ""):
+        return ""
         
 class Dummy2(DummyBase):
     # Dummy for Python2
