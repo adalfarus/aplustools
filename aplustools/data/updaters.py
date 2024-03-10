@@ -95,8 +95,9 @@ class vNum:
 class gitupdater:
     def __init__(self, version: str="exe"):
         self.version = version
-        
-    def get_latest_version(self, author: str, repo_name: str) -> Union[Tuple[None, None], Tuple[str, str]]:
+
+    @staticmethod
+    def get_latest_version(author: str, repo_name: str) -> Union[Tuple[None, None], Tuple[str, str]]:
         try:
             response = requests.get(f"https://api.github.com/repos/{author}/{repo_name}/releases/latest")
             response2 = requests.get(f"https://api.github.com/repos/{author}/{repo_name}/tags")
@@ -106,7 +107,7 @@ class gitupdater:
         except KeyError:
             print("Github repo not correctly set-up, please check the documentation and try again.")
         except Exception as e:
-            print(f"Unexpected exception occured: {e}")
+            print(f"Unexpected exception occurred: {e}")
         return None, None
         
     def receive_update_status(self, host: str='localhost', port: int=5000) -> UpdateStatusGenerator:
