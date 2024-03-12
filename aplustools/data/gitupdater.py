@@ -5,6 +5,7 @@ import os
 import socket
 import traceback
 
+
 def get_release_asset_download_url(owner, repo, tag, asset_name):
     try:
         releases_url = f"https://api.github.com/repos/{owner}/{repo}/releases/tags/{tag}"
@@ -19,6 +20,7 @@ def get_release_asset_download_url(owner, repo, tag, asset_name):
             return asset['browser_download_url']
 
     raise Exception(f"Asset with name '{asset_name}' not found.")
+
 
 def download_file(url, zip_path, version, callback):
     file_path = os.path.join(zip_path, f"win-{version}.zip")
@@ -40,6 +42,7 @@ def download_file(url, zip_path, version, callback):
             yield progress
     
     callback(file_path)
+
 
 def main(path, zip_path, version, author, repo_name, connection):
     try:
@@ -64,6 +67,7 @@ def main(path, zip_path, version, author, repo_name, connection):
         print(traceback.format_exc().encode())
         connection.sendall((f"Error in main: {e}\n" + traceback.format_exc()).encode())
         connection.sendall(str(False).encode())
+
 
 if __name__ == "__main__":
     try:

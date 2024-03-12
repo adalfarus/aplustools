@@ -1,7 +1,6 @@
 import sys
 import time
 from typing import TextIO, Union, Optional, Type, Callable, Tuple
-import builtins # Remove, when removeing deprecated functions in 0.1.4
 from enum import Enum
 import warnings
 
@@ -15,8 +14,9 @@ class LogType(Enum):
     ANY = None
 
 
-def overwrite_logtype(new_logtype: Type[LogType]):
-    LogType = new_logtype
+# Doesn't work at the moment
+# def overwrite_log_type(new_log_type: Type[LogType]):
+#     LogType = new_log_type
 
 
 def classify_type_stan(message: str) -> Tuple[LogType, str]:

@@ -1,14 +1,9 @@
 # utils/mappers.py
-
-class EmptyType:
-    pass
-
-def reverse_map(functions, input_value=EmptyType()):
-    if type(input_value) == EmptyType:
-        return [func() for func in functions]
-    return [func(input_value) for func in functions]
+def reverse_map(functions, *args, **kwargs):
+    return [func(*args, **kwargs) for func in functions]
 
 # Implement map with generator like arguments?
+
 
 def local_test():
     try:
