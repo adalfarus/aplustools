@@ -21,7 +21,7 @@ echo Running tests...
 
 REM Using the pytest test runner and the
 REM tests are in the 'tests' directory
-pytest tests
+pytest aplustools/tests
 
 echo Tests completed.
 pause
