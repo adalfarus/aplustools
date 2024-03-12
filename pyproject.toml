@@ -57,6 +57,6 @@ Documentation = "https://github.com/adalfarus/aplustools/wiki"
 #addopts = "your pytest options"
 
 [project.scripts]
-run_apt_tests = "aplustools.run_tests:main"
+run_apt_tests = "aplustools.cli:run_tests"
 pype = "aplustools.cli:pype_command"
 upype = "aplustools.cli:upype_command"

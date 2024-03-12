@@ -50,13 +50,15 @@ def set_working_dir_to_main_script_location():
 
 
 def change_working_dir_to_script_location():
-    # Get the directory where the script (or frozen exe) is located
     if getattr(sys, 'frozen', False):
         # If the script is running as a bundled executable created by PyInstaller
         script_dir = os.path.dirname(sys.executable)
     else:
-        # If the script is running as a normal Python script
-        script_dir = os.path.dirname(os.path.realpath(__file__))
+        # Get the path of the caller of this function
+        frame = inspect.currentframe()
+        caller_frame = frame.f_back
+        caller_file = caller_frame.f_globals["__file__"]
+        script_dir = os.path.dirname(os.path.abspath(caller_file))
 
     # Change the current working directory to the script directory
     os.chdir(script_dir)
