@@ -344,7 +344,7 @@ Enter Python code (type 'end' on a new line to finish):
 Hello, ya dunce!
 ```
 ### run_apt_tests
-Will run the aplustools tests using pytest. For me it causes an error at the moment because of a strange error with asyncio, so maybe it won't work.
+Will run the aplustools tests using pytest.
 
 
 For more detailed usage and examples, check out our [documentation](https://github.com/adalfarus/aplustools/wiki).
