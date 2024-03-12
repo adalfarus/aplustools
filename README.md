@@ -281,7 +281,71 @@ gen = GeneratePasswords(debug=True)
 password = gen.generate_ratio_based_password_v2(length=10, letters_ratio=0.5, numbers_ratio=0.3, punctuations_ratio=0.2, secure_random=True, exclude_similar=True)
 print(password)
 ```
+
+### web_requests
+```python
+from aplustools.web.web_request import UnifiedRequestHandler, UnifiedRequestHandlerAdvanced
+
+# Default request handler
+handler = UnifiedRequestHandler()
+
+# Synchronous request
+handler.fetch('http://example.com', async_mode=False)
+# Asynchronous request
+handler.fetch('http://example.com', async_mode=True)
+
+# Advanced request handler (you can pass extra keyword arguments, and it automatically raises for status)
+adv_handler = UnifiedRequestHandlerAdvanced()  # It can also handle image content
+
+# Synchronous GET request
+adv_handler.request('GET', 'http://example.com', async_mode=False)
+# Asynchronous GET request
+adv_handler.request('GET', 'http://example.com', async_mode=True)
+
+folder_path = "../test_data/images"
+os.makedirs(folder_path, exist_ok=True)
+
+# Synchronous binary request (e.g., image)
+image_content = adv_handler.request('GET', 'http://example.com/image.png', async_mode=False, return_type='binary')
+with open(os.path.join(folder_path, './image.png'), 'wb') as file:
+    file.write(image_content)
+
+# Asynchronous binary request (e.g., image)
+image_content_async = adv_handler.request('GET', 'http://example.com/image.png', async_mode=True, return_type='binary')
+with open(os.path.join(folder_path, './image_async.png'), 'wb') as file:
+    file.write(image_content_async)
+```
 (Correct shortform for aplustools is apt, so please use ```import aplustools as apt``` for consistency)
+
+There are multiple clis added through this package:
+
+### pype (python pipe)
+```bash
+C:\Users\user_>pype
+Enter Python expression: 1+2
+3
+
+C:\Users\user_>pype 1// 3
+0
+```
+### upype (unified python pipe)
+```bash
+C:\Users\user_>upype import aplustools; print(aplustools.__version__)
+1.4.4
+
+C:\Users\user_>upype
+Enter Python code (type 'end' on a new line to finish):
+... class Test:
+...     def hello_word(self):
+...             print("Hello, ya dunce!")
+... test = Test()
+... test.hello_word()
+... end
+Hello, ya dunce!
+```
+### run_apt_tests
+Will run the aplustools tests using pytest. For me it causes an error at the moment because of a strange error with asyncio, so maybe it won't work.
+
 
 For more detailed usage and examples, check out our [documentation](https://github.com/adalfarus/aplustools/wiki).
 
