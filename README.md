@@ -325,7 +325,7 @@ C:\Users\user_>pype
 Enter Python expression: 1+2
 3
 
-C:\Users\user_>pype 1// 3
+C:\Users\user_>pype 1//3
 0
 ```
 ### upype (unified python pipe)
