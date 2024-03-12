@@ -10,8 +10,7 @@ def install_dependencies():
         # Added to remain consistent with executing in the same python environment
         return subprocess.run([sys.executable] + arguments, *args, **kwargs)
     for dep in ["requests==2.31.0",
-                "aiohttp==3.9.3",
-                "asyncio==3.4.3"]:
+                "aiohttp==3.9.3"]:
         try:
             proc = execute_python_command(arguments=["-m", "pip", "install", dep])
             if proc.returncode != 0:
