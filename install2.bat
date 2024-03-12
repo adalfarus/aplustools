@@ -3,4 +3,8 @@ for %%F in (dist\*.whl) do (
     py -m pip uninstall "%%F" -y
     py -m pip install "%%F"
 )
-pause
+
+if "%cmdcmdline%"=="" (
+  echo Finished ...
+  pause
+)

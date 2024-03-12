@@ -1,3 +1,8 @@
+from aplustools._direct_functions import execute_python_command
+from aplustools.io.environment import change_working_dir_to_script_location
+import subprocess
+import os
+import shutil
 import sys
 
 
@@ -43,3 +48,33 @@ def upype_command():
             exec('\n'.join(lines))
         except Exception as e:
             print(f"Error: {e}")
+
+
+class APTTestRunner:
+    def install_pytest(self):
+        print("Ensuring pytest is installed...")
+        execute_python_command(["-m", "pip", "install", "pytest"])
+
+    def prepare_test_directory(self, dir_name):
+        if os.path.exists(dir_name):
+            print(f"Clearing directory {dir_name}...")
+            shutil.rmtree(dir_name)
+        print(f"Creating directory {dir_name}...")
+        os.mkdir(dir_name)
+
+    def run_tests(self):
+        print("Running tests...")
+        subprocess.run(["pytest", "-vv", "tests"])
+
+
+def run_tests():
+    apt_test_runner = APTTestRunner()
+    change_working_dir_to_script_location()
+    apt_test_runner.install_pytest()
+    apt_test_runner.prepare_test_directory("test_data")
+    apt_test_runner.run_tests()
+    print("Tests completed.")
+
+
+if __name__ == "__main__":
+    run_tests()
