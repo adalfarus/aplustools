@@ -1,6 +1,6 @@
 from urllib.parse import urlencode, urlunparse, quote_plus, urlparse, urljoin
 import requests
-#from duckduckgo_search import DDGS
+# from duckduckgo_search import DDGS
 import random
 from bs4 import BeautifulSoup
 import re
