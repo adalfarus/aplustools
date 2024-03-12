@@ -34,8 +34,7 @@ classifiers = [
 data = [
   "PySide6>=6.6.1",
   "Pillow>=10.1.0",
-  "aiohttp>=3.9.3", 
-  "asyncio>=3.4.3", 
+  "aiohttp>=3.9.3",
   "opencv-python>=4.9.0.80"
 ]
 web = ["duckduckgo_search>=3.9.6"]
