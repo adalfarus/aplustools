@@ -1,4 +1,4 @@
-from imagetools import *
+# from imagetools import *
 import cv2
 import numpy as np
 import base64
@@ -6,6 +6,13 @@ from io import BytesIO
 from typing import Optional, Tuple, Union
 import asyncio
 from aiohttp import ClientSession
+from typing import Type, Union, Tuple, Optional, List
+from concurrent.futures import ThreadPoolExecutor
+import functools
+import mimetypes
+import requests
+import os
+from urllib.parse import urlparse, urljoin
 
 
 class ImageManager:
@@ -153,7 +160,6 @@ class ImageManager:
     async def _execute_funcs_async(self, function_name: str, args_list: List[Tuple[int, list, dict]]):
         tasks = [self._execute_func_async(index, function_name, *args, **kwargs) for index, args, kwargs in args_list]
         await asyncio.gather(*tasks)
-
 
 
 class ResizeTypes:

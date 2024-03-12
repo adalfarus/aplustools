@@ -1,4 +1,5 @@
-import math, sys
+import math
+import sys
 
 class DummyBase:
     def __init__(*args, **kwargs):
