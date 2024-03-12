@@ -36,7 +36,7 @@ dummy = _LazyModuleLoader('aplustools.utils.dummy')
 hasher = _LazyModuleLoader('aplustools.utils.hasher')
 
 # Install all possible dependencies, execute python command, ...
-from .direct_functions import *
+from ._direct_functions import *
 
 # Define __all__ to limit what gets imported with 'from <package> import *'
 __all__ = ['genpass', 'imagetools', 'mappers', 'dummy', 'hasher']
