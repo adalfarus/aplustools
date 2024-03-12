@@ -64,7 +64,7 @@ class APTTestRunner:
 
     def run_tests(self):
         print("Running tests...")
-        subprocess.run(["pytest", "tests"])
+        subprocess.run(["pytest", "-vv", "tests"])
 
 
 def run_tests():
