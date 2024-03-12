@@ -8,7 +8,7 @@ def execute_python_command(arguments: list = None, *args, **kwargs) -> subproces
     if arguments is None:
         arguments = []
     print(' '.join([sys.executable] + arguments))
-    # Added to remain consistent with executing in same python environment
+    # Added to remain consistent with executing in the same python environment
     return subprocess.run([sys.executable] + arguments, *args, **kwargs)
 
 
