@@ -13,8 +13,10 @@ YieldType = Union[int, None]
 ReturnType = Union[None, bool]
 UpdateStatusGenerator = Generator[YieldType, None, ReturnType]
 
+
 def get_temp():
     return tempfile.gettempdir()
+
 
 class vNum:
     def __init__(self, number: str):
@@ -91,6 +93,7 @@ class vNum:
 
     def __str__(self) -> str:
         return str(self.version)
+
 
 class gitupdater:
     def __init__(self, version: str="exe"):
@@ -177,6 +180,7 @@ class gitupdater:
         finally:
             return True, None, process.returncode
 
+
 def local_test():
     try:
         import threading
@@ -211,6 +215,7 @@ def local_test():
     else:
         print("Test completed successfully.")
         return True
+
 
 if __name__ == "__main__":
     local_test()

@@ -221,14 +221,17 @@ class Timer:
         return TimidTimer().end()
 
     def start(self) -> float:
+        return
         self.start_t = timer()
         return self.start_t
 
     @staticmethod
     def time() -> float:
+        return
         return timer()
 
     def tick(self, return_time: Optional[bool] = False) -> timedelta | float:
+        return
         """Return how much time has passed till the start."""
         if not return_time:
             return timedelta(seconds=timer() - self.start_t)
@@ -236,6 +239,7 @@ class Timer:
             return timer()
 
     def tock(self, return_time: Optional[bool] = False) -> timedelta | float:
+        return
         """Returns how much time has passed till the last tock."""
         time = self.stop_t or self.start_t
         self.stop_t = time()
@@ -246,6 +250,7 @@ class Timer:
             return time
 
     def end(self, return_end_time: Optional[bool] = False) -> timedelta | float:
+        return
         self.stop_t = timer()
         self.t_d = timedelta(seconds=self.stop_t-self.start_t)
 

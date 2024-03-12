@@ -1,4 +1,3 @@
-from ctypes.wintypes import tagMSG
 from aplustools.data import updaters
 import threading
 from aplustools.io import environment as env
