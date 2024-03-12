@@ -1,3 +1,7 @@
 @echo off
 py -m build
-pause
+
+if "%cmdcmdline%"=="" (
+  echo Finished ...
+  pause
+)

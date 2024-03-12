@@ -1,4 +1,4 @@
-from aplustools import direct_functions
+from aplustools import _direct_functions
 from aplustools.web import web_request
 
 

@@ -24,4 +24,8 @@ REM tests are in the 'tests' directory
 pytest aplustools/tests
 
 echo Tests completed.
-pause
+
+if "%cmdcmdline%"=="" (
+  echo Finished ...
+  pause
+)

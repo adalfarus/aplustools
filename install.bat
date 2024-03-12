@@ -2,4 +2,7 @@
 for %%F in (dist\*.whl) do (
     py -m pip install "%%F" --force-reinstall
 )
-pause
+if "%cmdcmdline%"=="" (
+  echo Finished ...
+  pause
+)
