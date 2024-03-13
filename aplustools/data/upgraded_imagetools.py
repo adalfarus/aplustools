@@ -258,7 +258,7 @@ class OnlineImage(OfflineImage):
         if one_time and current_url:
             self.download_image()
 
-    def download_image(self, img_url: Optional[str] = None, base_path: Optional[str] = None,
+    def download_image(self, base_path: Optional[str] = None, img_url: Optional[str] = None,
                        new_name: Optional[str] = None, img_format: Optional[str] = None
                        ) -> Union[Tuple[bool, None, None], Tuple[bool, str, str]]:
         if not img_url:
