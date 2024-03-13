@@ -10,6 +10,8 @@ def install_dependencies():
         # Added to remain consistent with executing in the same python environment
         return subprocess.run([sys.executable] + arguments, *args, **kwargs)
     for dep in ["requests==2.31.0",
+                "BeautifulSoup4==4.12.3",
+                "duckduckgo_search==3.9.3",
                 "aiohttp==3.9.3"]:
         try:
             proc = execute_python_command(arguments=["-m", "pip", "install", dep])
