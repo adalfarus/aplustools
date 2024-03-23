@@ -16,7 +16,7 @@ def interruptCTRL():
     """
     Simulates a user CTRL+C exit.
     """
-    exit(-1073741510)  # 130
+    exit(-1073741510)  # 130 / 0xC000013A
 
 
 def install_all_dependencies():
