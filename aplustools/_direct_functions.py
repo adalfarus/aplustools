@@ -12,9 +12,9 @@ def execute_python_command(arguments: list = None, *args, **kwargs) -> subproces
     return subprocess.run([sys.executable] + arguments, *args, **kwargs)
 
 
-def interrupt_ctrl():
+def interruptCTRL():
     """Simulates a hard user CTRL+C exit. This means it skips any try ... except KeyboardInterrupts"""
-    exit(-1073741510)
+    exit(-1073741510)  # 130 / 0xC000013A
 
 
 def install_all_dependencies():
