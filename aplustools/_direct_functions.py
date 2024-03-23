@@ -13,9 +13,7 @@ def execute_python_command(arguments: list = None, *args, **kwargs) -> subproces
 
 
 def interruptCTRL():
-    """
-    Simulates a user CTRL+C exit.
-    """
+    """Simulates a hard user CTRL+C exit. This means it skips any try ... except KeyboardInterrupts"""
     exit(-1073741510)  # 130 / 0xC000013A
 
 

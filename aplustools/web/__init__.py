@@ -30,9 +30,11 @@ class _LazyModuleLoader:
 
 # Lazy loading modules
 webtools = _LazyModuleLoader('aplustools.web.webtools')
+actual_webtools = _LazyModuleLoader('aplustools.web.actual_webtools')
+web_request = _LazyModuleLoader('aplustools.web.web_request')
 
 # Install all possible dependencies, execute python command, ...
 from ._direct_functions import *
 
 # Define __all__ to limit what gets imported with 'from <package> import *'
-__all__ = ['webtools']
+__all__ = ['webtools', 'actual_webtools', 'web_request']
