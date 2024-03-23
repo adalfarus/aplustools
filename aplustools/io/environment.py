@@ -385,7 +385,6 @@ ins._hell()
 """
 
 
-
 class System:
     def __init__(self):
         self.os = self.get_os()

@@ -70,7 +70,7 @@ def is_crawlable(url: str) -> bool:
         # If the request was successful, check if the User-agent is allowed to crawl the URL
         if response.status_code == 200:
             # If "Disallow: /" is found for User-agent: *, it means the website can't be crawled
-            if 'User-agent: *\nDisallow: /' in response.text:
+            if 'User-agent: *\nDisallow: /\n' in response.text:
                 return False
             return True
         else:
