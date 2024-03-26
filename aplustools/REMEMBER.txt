@@ -1,0 +1,1 @@
+Update all _direct_functions to the __init__ all when a better solution is found

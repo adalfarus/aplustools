@@ -1,56 +1,53 @@
+from aplustools.io.environment import get_temp
 from aplustools.data import updaters
-import threading
-from aplustools.io import environment as env
+from typing import List
 import sys
+import os
 
-def main(path, zip_path, version, author, repo_name):
-    # Set the working directory to the main script location
-    env.set_working_dir_to_main_script_location()
 
+def main(path, repo_version, author, repo_name, host, port):
     # Initialize the updater
-    updater = updaters.gitupdater("exe")
-    tmpdir, path = env.Path(zip_path), env.Path(path)
+    updater = updaters.GithubUpdater(author, repo_name, "py")
+    tmpdir = os.path.join(get_temp(), f"update_{repo_name}")
 
-    # Setup arguments for the update
-    host, port = "localhost", 1264
-    #path.join("update") # path = 
-    path.create_directory()
-    #tmpdir = tmpdir.mkdir("update")
-    tmpdir.create_directory()
-    update_args = (str(tmpdir), str(path), 
-                   version, author, repo_name, False, False, host, port)
+    os.makedirs(path, exist_ok=True)
+    os.makedirs(tmpdir, exist_ok=True)
 
-    # Start the update in a new thread
-    update_thread = threading.Thread(target=updater.update, args=update_args)
+    # Setup update thread for the update
+    update_thread = updater.update(path, tmpdir, repo_version, "none", host, port, True, True)
     update_thread.start()
 
     # Receive the update status generator and print them
     progress_bar = 1
     print("Starting update ...")
-    for i in updater.receive_update_status(host, port):
+    for i in updater.receive_update_status():
         print(f"{i}%", end=f" PB{progress_bar}\n")
         if i == 100:
-            progress_bar += 1 # Switch to second progress bar, when the downloading is finished
+            progress_bar += 1  # Switch to second progress bar, when the downloading is finished
+    update_thread.join()
+
 
 try:
-    if len(sys.argv) >= 5: # If enough arguments were passed
-        path = str(sys.argv[1]) # path e.g. ./save
-        zip_path = str(sys.argv[2]) # Path of zip temp by default
-        version = str(sys.argv[3]) # Version e.g. 1.0.0
-        author = str(sys.argv[4]) # Author of repo
-        repo_name = str(sys.argv[5]) # Repo name
-    else:
+    in_array: List[any] = sys.argv[1:8]  # Exclude script path and bool flags
+    if len(in_array) - 1 < 4:  # If enough arguments were passed
         print("Not enough arguments provided. Please input them manually.")
-        path = str(input("Path: "))
-        zip_path = str(input("Zip_path: "))
-        version = str(input("Version: "))
-        author = str(input("Author: "))
-        repo_name = str(input("Repo_name: "))
-    main(path, zip_path, version, author, repo_name)
+        in_array[0] = str(input("Path: "))  # path e.g. ./save
+        in_array[2] = str(input("Repo_version: "))  # Repo Version e.g. 1.0.0
+        in_array[3] = str(input("Author: "))  # Author of repo
+        in_array[4] = str(input("Repo_name: "))  # Repo name
+        in_array[5] = str(input("Host: "))  # Server host
+        in_array[6] = int(input("Port: "))  # Server port
+    else:
+        if len(in_array) - 1 < 5:
+            in_array.append('localhost')
+            in_array.append(5000)
+        elif len(in_array) - 1 < 6:
+            in_array.append(5000)
+        else:
+            in_array[6] = int(in_array[6])
+    in_array.pop(1)
+    main(*in_array)
 except Exception as e:
     print(f"Error: {e}")
-finally:
+else:
     print("Update done!")
-
-    if len(sys.argv) < 4:
-        input("Press Enter to exit...")  # Wait for user input to exit

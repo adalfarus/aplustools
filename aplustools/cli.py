@@ -4,6 +4,7 @@ import subprocess
 import os
 import shutil
 import sys
+from aplustools.package.argu_mint import ArguMint, ArgStruct
 
 
 def pype_command():
@@ -67,6 +68,34 @@ class APTTestRunner:
         subprocess.run(["pytest", "-vv", "tests"])
 
 
+def apt_cli():
+    def sorry():
+        print("Not implemented yet, sorry.")
+
+    def help_():
+        print("apt --> tests -> run\n    |\n     -> help")
+
+    def help_2_():
+        print("This command doesn't work like that, please use it like this:")
+        help_()
+
+    builder = ArgStruct()
+    builder.add_command("apt")
+    builder.add_nested_command("apt", "tests", "run")
+    builder.add_subcommand("apt", "help")
+
+    arg_struct = builder.get_structure()
+
+    argu_mint = ArguMint(sorry, arg_struct=arg_struct)
+    argu_mint.add_endpoint("apt.tests.run", run_tests)
+    argu_mint.add_endpoint("apt.help", help_)
+    argu_mint.add_endpoint("apt", help_2_)
+
+    sys.argv[0] = "apt"
+
+    argu_mint.parse_cli(sys, "native_light")
+
+
 def run_tests():
     apt_test_runner = APTTestRunner()
     change_working_dir_to_script_location()
@@ -77,4 +106,5 @@ def run_tests():
 
 
 if __name__ == "__main__":
-    run_tests()
+    sys.argv = ["apt", "tests", "run"]
+    apt_cli()
