@@ -168,7 +168,10 @@ class ArgStruct:
                 raise ValueError(f"Command '{parent}' not found or is not a valid parent.")
             current_level = current_level[part]
 
-        current_level[command] = subcommand
+        if isinstance(subcommand, str):
+            current_level[command] = {subcommand: {}}
+        else:
+            current_level[command] = subcommand
 
     def get_structure(self):
         return self.commands

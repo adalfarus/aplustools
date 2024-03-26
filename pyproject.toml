@@ -60,6 +60,6 @@ Documentation = "https://github.com/adalfarus/aplustools/wiki"
 #addopts = "your pytest options"
 
 [project.scripts]
-run_apt_tests = "aplustools.cli:run_tests"
+apt = "aplustools.cli:apt_cli"
 pype = "aplustools.cli:pype_command"
 upype = "aplustools.cli:upype_command"
