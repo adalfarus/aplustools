@@ -173,7 +173,7 @@ class ResizeTypes:
 
 class OfflineImage:
     def __init__(self, data: Optional[Union[str, bytes]] = None, path: Optional[str] = None, _use_async: bool = False,
-                 base_location: Optional[str] = None):
+                 base_location: Optional[str] = None, original_name: Optional[str] = None):
         if data is not None and path is None:
             self.data = data
         elif path is not None and data is None:
@@ -182,12 +182,19 @@ class OfflineImage:
             raise ValueError("Please pass exactly one argument ('data' or 'path') to the init method.")
         self._use_async = _use_async
         self.base_location = base_location
+        self.original_name = original_name
         
     def get_data(self, path: str):
+        """
+        Loads the data from path into self.data.
+        """
         with open(path, 'rb') as f:
             self.data = f.read()
 
     def load_image_from_data(self):
+        """
+        Loads various data formats like base64 and bytes from self.data into a Pillow.Image object returns it.
+        """
         if isinstance(self.data, str):
             # Assuming data is a base64 string
             image_data = base64.b64decode(self.data.split(',')[1])
@@ -209,6 +216,9 @@ class OfflineImage:
     def save_image(self, img_data: bytes, original_name: str, base_location: Optional[str] = None,
                    original_format: Optional[str] = None, new_name: Optional[str] = None,
                    target_format: Optional[str] = None) -> Optional[str]:
+        """
+        Saves image with a new name and potentially new format.
+        """
         base_location = base_location or self.base_location
         if original_format == '.svg':  # Optional[str] from typing import Optional
             print("SVG format is not supported.")
@@ -234,6 +244,9 @@ class OfflineImage:
     def convert_image_format(self, original_name: str, base_location: Optional[str] = None,
                              original_format: Optional[str] = None, new_name: Optional[str] = None,
                              target_format: Optional[str] = 'png') -> Optional[str]:
+        """
+        Converts image to a new format.
+        """
         source_path = os.path.join(base_location, f"{original_name}"
                                                   f".{original_format}" if original_format else original_name)
         base_location = base_location or self.base_location
@@ -272,7 +285,8 @@ class OfflineImage:
 
             # Updating self.data with the new image data
             img_byte_arr = BytesIO()
-            resized_image.save(img_byte_arr, format=img.format)
+            img_format = img.format if img.format is not None else 'PNG'
+            resized_image.save(img_byte_arr, format=img_format)
             self.data = img_byte_arr.getvalue()
 
     def resize_image_quick(self, new_size: Tuple[int, int], resample=Image.Resampling.NEAREST) -> None:
@@ -319,9 +333,15 @@ class OfflineImage:
             filtered_image.save(img_byte_arr, format=img_format)
             self.data = img_byte_arr.getvalue()
 
-    def save_image_to_disk(self, file_path: str) -> None:
+    def save_image_to_disk(self, file_path: Optional[str] = None) -> None:
         if not isinstance(self.data, (bytes, str)):
             raise ValueError("self.data must be a byte string or a base64 string.")
+
+        if not file_path:
+            if self.base_location and self.original_name:
+                file_path = os.path.join(self.base_location, self.original_name)
+            else:
+                raise ValueError("You can't omit file_path, if self.base_location and self.original_name aren't both set.")
 
         with open(file_path, "wb") as file:
             file.write(self.data if isinstance(self.data, bytes) else base64.b64decode(self.data.split(',')[1]))
@@ -384,7 +404,7 @@ class OnlineImage(OfflineImage):
             # Save the image data
             self._save_image(file_path, response.content)
             print(f"Downloaded image from {img_url} to {file_path}")
-            super().__init__(path=file_path)
+            super().__init__(path=file_path, base_location=self.base_location, original_name=f"{file_name}.{img_format}", _use_async=self._use_async)
             return True, file_name, file_path
 
         except requests.ConnectionError:
@@ -401,6 +421,90 @@ class OnlineImage(OfflineImage):
             print(f"An unexpected error occurred while downloading the image: {e}")
 
         return False, None, None
+
+
+class SVGCompatibleImage(OfflineImage):
+    def __init__(self, file_path_or_url, resolution: Optional[int] = None,
+                 output_size: Optional[Tuple[int, int]] = None, magick_path: Optional[str] = None,
+                 _use_async: bool = False, base_location: Optional[str] = None, keep_online_svg: bool = False):
+        if magick_path:
+            os.environ['MAGICK_HOME'] = magick_path
+        self.base_location = base_location
+        self.resolution = resolution  # Resolution in DPI (dots per inch)
+        self.output_size = output_size  # Output size as (width, height)
+        file_path, online_svg = self.handle_path_or_url(file_path_or_url)
+        # self.image = self.load_image(file_path)
+        self.data = self.load_data(file_path)
+        if not keep_online_svg and online_svg:
+            os.remove(file_path)
+        super().__init__(self.data, _use_async=_use_async, base_location=base_location,
+                         original_name='.'.join(os.path.basename(file_path).rsplit(".")[:-1])+".png")
+
+    def handle_path_or_url(self, file_path_or_url):
+        if self.is_url(file_path_or_url):
+            # It's a URL, download the file
+            return self.download_image(file_path_or_url), True
+        else:
+            # It's a local file path
+            return file_path_or_url, False
+
+    @staticmethod
+    def is_url(string):
+        try:
+            result = urlparse(string)
+            return all([result.scheme, result.netloc])
+        except ValueError:
+            return False
+
+    def load_data(self, file_path):
+        if file_path.lower().endswith('.svg'):
+            return self._convert_svg_to_raster(file_path, True)
+        else:
+            return super().get_data(file_path)
+
+    def load_image(self, file_path):
+        if file_path.lower().endswith('.svg'):
+            return self._convert_svg_to_raster(file_path)
+        else:
+            return Image.open(file_path)
+
+    def _convert_svg_to_raster(self, svg_file, return_as_bytes=False):
+        from wand.image import Image as WandImage
+
+        with WandImage(filename=svg_file, format='png') as img:
+            if self.resolution:
+                img.density = self.resolution
+            if self.output_size:
+                img.resize(*self.output_size)
+            png_blob = img.make_blob()
+        if return_as_bytes:
+            return png_blob
+        return Image.open(BytesIO(png_blob))
+        # img = Image.open(BytesIO(png_blob))
+        # if return_as_bytes:
+        #     with BytesIO() as output:
+        #         img.save(output, format='PNG')
+        #         return output.getvalue()
+        # else:
+        #     return img
+
+    def download_image(self, url):
+        try:
+            response = requests.get(url)
+            response.raise_for_status()
+            file_name = os.path.basename(urlparse(url).path)
+            file_path = os.path.join(self.base_location, file_name)
+            with open(file_path, 'wb') as file:
+                file.write(response.content)
+            print(f"Downloaded image from {url} to {file_path}")
+            return file_path
+        except Exception as e:
+            print(f"An error occurred while downloading the image: {e}")
+            return None
+
+
+class SVGImage:
+    pass
 
 
 def local_test():
@@ -460,7 +564,7 @@ def local_test():
 
         # Test downloading an online image
         online_image = OnlineImage(current_url=test_url, base_location=folder_path, one_time=True)
-        download_result = online_image.download_image(online_image.current_url, folder_path, "downloaded_image", "jpg")
+        download_result = online_image.download_image(folder_path, online_image.current_url, "downloaded_image", "jpg")
         if not download_result[0]:
             raise Exception("Failed to download image.")
         else:
@@ -479,6 +583,12 @@ def local_test():
         offline_image.convert_to_grayscale()
         offline_image.apply_filter(ImageFilter.BLUR)
         offline_image.save_image_to_disk(os.path.join(folder_path, "transformed_image.png"))
+
+        # Example svg image usage
+        image_processor = SVGCompatibleImage("https://upload.wikimedia.org/wikipedia/commons/b/b0/NewTux.svg", 300,
+                                             (667, 800), magick_path=r"C:\Program Files\ImageMagick-7.1.1-Q16-HDRI",
+                                             base_location='./')
+        image_processor.save_image_to_disk()
 
     except Exception as e:
         print(f"Exception occurred: {e}")

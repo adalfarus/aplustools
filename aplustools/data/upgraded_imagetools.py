@@ -13,6 +13,10 @@ import mimetypes
 import requests
 import os
 from urllib.parse import urlparse, urljoin
+from PIL import Image
+import pillow_heif
+import xml.etree.ElementTree as ET
+from xml.dom import minidom
 
 
 class ImageManager:
@@ -172,7 +176,7 @@ class ResizeTypes:
 
 class OfflineImage:
     def __init__(self, data: Optional[Union[str, bytes]] = None, path: Optional[str] = None, _use_async: bool = False,
-                 base_location: Optional[str] = None):
+                 base_location: Optional[str] = None, original_name: Optional[str] = None):
         if data is not None and path is None:
             self.data = data
         elif path is not None and data is None:
@@ -181,6 +185,7 @@ class OfflineImage:
             raise ValueError("Please pass exactly one argument ('data' or 'path') to the init method.")
         self._use_async = _use_async
         self.base_location = base_location
+        self.original_name = original_name
 
     def get_data(self, path: str):
         with open(path, 'rb') as f:
@@ -226,9 +231,16 @@ class OfflineImage:
         _, buffer = cv2.imencode('.png', img)
         self.data = buffer.tobytes()
 
-    def save_image_to_disk(self, file_path: str) -> None:
+    def save_image_to_disk(self, file_path: Optional[str] = None) -> None:
         if not isinstance(self.data, (bytes, str)):
             raise ValueError("self.data must be a byte string or a base64 string.")
+
+        if not file_path:
+            if self.base_location and self.original_name:
+                file_path = os.path.join(self.base_location, self.original_name)
+            else:
+                raise ValueError("You can't omit file_path, if self.base_location and self.original_name aren't both set.")
+
         with open(file_path, "wb") as file:
             file.write(self.data if isinstance(self.data, bytes) else base64.b64decode(self.data.split(',')[1]))
 
@@ -285,7 +297,7 @@ class OnlineImage(OfflineImage):
             # Save the image data
             cv2.imwrite(file_path, img)
             print(f"Downloaded and saved image from {img_url} to {file_path}")
-            super().__init__(path=file_path)
+            super().__init__(path=file_path, base_location=self.base_location, original_name=f"{file_name}.{img_format}", _use_async=self._use_async)
             return True, file_name, file_path
 
         except requests.ConnectionError:
@@ -302,6 +314,206 @@ class OnlineImage(OfflineImage):
             print(f"An unexpected error occurred while downloading the image: {e}")
 
         return False, None, None
+
+
+class SVGCompatibleImage(OfflineImage):
+    def __init__(self, file_path_or_url, resolution: Optional[int] = None,
+                 output_size: Optional[Tuple[int, int]] = None, magick_path: Optional[str] = None,
+                 _use_async: bool = False, base_location: Optional[str] = None, keep_online_svg: bool = False):
+        if magick_path:
+            os.environ['MAGICK_HOME'] = magick_path
+        self.base_location = base_location
+        self.resolution = resolution  # Resolution in DPI (dots per inch)
+        self.output_size = output_size  # Output size as (width, height)
+        file_path, online_svg = self.handle_path_or_url(file_path_or_url)
+        # self.image = self.load_image(file_path)
+        self.data = self.load_data(file_path)
+        if not keep_online_svg and online_svg:
+            os.remove(file_path)
+        super().__init__(self.data, _use_async=_use_async, base_location=base_location,
+                         original_name='.'.join(os.path.basename(file_path).rsplit(".")[:-1])+".png")
+
+    def handle_path_or_url(self, file_path_or_url):
+        if self.is_url(file_path_or_url):
+            # It's a URL, download the file
+            return self.download_image(file_path_or_url), True
+        else:
+            # It's a local file path
+            return file_path_or_url, False
+
+    @staticmethod
+    def is_url(string):
+        try:
+            result = urlparse(string)
+            return all([result.scheme, result.netloc])
+        except ValueError:
+            return False
+
+    def load_data(self, file_path):
+        if file_path.lower().endswith('.svg'):
+            return self._convert_svg_to_raster(file_path, True)
+        else:
+            return super().get_data(file_path)
+
+    def load_image(self, file_path):
+        if file_path.lower().endswith('.svg'):
+            return self._convert_svg_to_raster(file_path)
+        else:
+            return cv2.imread(file_path, cv2.IMREAD_UNCHANGED)
+
+    def _convert_svg_to_raster(self, svg_file, return_as_bytes=False):
+        from wand.image import Image as WandImage
+
+        with WandImage(filename=svg_file, format='png') as img:
+            if self.resolution:
+                img.density = self.resolution
+            if self.output_size:
+                img.resize(*self.output_size)
+            png_blob = img.make_blob()
+        if return_as_bytes:
+            return png_blob
+
+        # Convert PNG blob to an OpenCV image
+        nparr = np.frombuffer(png_blob, np.uint8)
+        opencv_image = cv2.imdecode(nparr, cv2.IMREAD_UNCHANGED)
+        return opencv_image
+        # img = Image.open(BytesIO(png_blob))
+        # if return_as_bytes:
+        #     with BytesIO() as output:
+        #         img.save(output, format='PNG')
+        #         return output.getvalue()
+        # else:
+        #     return img
+
+    def download_image(self, url):
+        try:
+            response = requests.get(url)
+            response.raise_for_status()
+            file_name = os.path.basename(urlparse(url).path)
+            file_path = os.path.join(self.base_location, file_name)
+            with open(file_path, 'wb') as file:
+                file.write(response.content)
+            print(f"Downloaded image from {url} to {file_path}")
+            return file_path
+        except Exception as e:
+            print(f"An error occurred while downloading the image: {e}")
+            return None
+
+
+def reduce_color_depth(image: np.ndarray, bits_per_channel: int=8):
+    """ Reduce the color depth of an image. """
+    factor = 2 ** (8 - bits_per_channel)
+    return (image // factor) * factor
+
+
+def remove_icc_profile(image_path: str, image_output_path: str):
+    with Image.open(image_path) as img:
+        # Check if there is an 'icc_profile' in the info dictionary
+        if "icc_profile" in img.info:
+            del img.info["icc_profile"]  # Remove the ICC profile
+        img.save(image_output_path)
+
+
+def process_and_save_as_heic(image_path: str, output_dir_path: str):
+    # Remove the icc profile (can make the image smaller and prevents and icc profile warnings)
+    # remove_icc_profile(image_path, image_path + ".riccp")
+
+    # Load the image using OpenCV
+    cv_img = cv2.imread(image_path, cv2.IMREAD_UNCHANGED)
+
+    # Apply modifications such as color depth reduction
+    cv_img = reduce_color_depth(cv_img)
+
+    # Convert from OpenCV's BGR format to RGB, if it's a color image
+    if cv_img.ndim == 3:  # Color image
+        cv_img = cv2.cvtColor(cv_img, cv2.COLOR_BGR2RGB)
+
+    # Ensure the image is 8-bit per channel
+    if cv_img.dtype != np.uint8:
+        cv_img = cv_img.astype(np.uint8)
+
+    # Create a Pillow Image from the OpenCV image
+    pil_img = Image.fromarray(cv_img)
+
+    # Save as HEIC
+    heif_image = pillow_heif.from_pillow(pil_img)
+    heif_image.save(os.path.join(output_dir_path, os.path.basename(image_path).rsplit(".", 1)[0] + ".HEIC"))
+
+
+class SVGImage:
+    raise NotImplementedError
+
+    def __init__(self, file_path=None, svg_content=None):
+        ET.register_namespace('', 'http://www.w3.org/2000/svg')
+        if file_path:
+            self.tree = ET.parse(file_path)
+        elif svg_content:
+            self.tree = ET.ElementTree(ET.fromstring(svg_content))
+        else:
+            svg_root = ET.Element('svg', xmlns="http://www.w3.org/2000/svg")
+            self.tree = ET.ElementTree(svg_root)
+        self.root = self.tree.getroot()
+
+    def add_rectangle(self, insert, size, fill='none', stroke='black', stroke_width='1'):
+        rect = ET.SubElement(self.root, 'rect', {
+            'x': str(insert[0]),
+            'y': str(insert[1]),
+            'width': str(size[0]),
+            'height': str(size[1]),
+            'fill': fill,
+            'stroke': stroke,
+            'stroke-width': stroke_width
+        })
+
+    def rotate(self, angle, cx=None, cy=None):
+        for element in self.root.iter():
+            transform = element.get('transform', '').strip()
+            rotation_transform = f'rotate({angle})' if cx is None or cy is None else f'rotate({angle}, {cx}, {cy})'
+
+            # Append or prepend the new transform depending on existing transforms
+            if transform:
+                new_transform = f'{rotation_transform} {transform}'  # or transform + ' ' + rotation_transform
+            else:
+                new_transform = rotation_transform
+
+            element.set('transform', new_transform)
+
+    @staticmethod
+    def to_grayscale(color):
+        if color.startswith('#') and len(color) == 7:
+            r, g, b = int(color[1:3], 16), int(color[3:5], 16), int(color[5:], 16)
+            gray = int(0.299 * r + 0.587 * g + 0.114 * b)
+            return f'#{gray:02x}{gray:02x}{gray:02x}'
+        return color
+
+    def convert_to_grayscale(self):
+        for element in self.root.findall('.//*'):
+            style_attrib = element.attrib.get('style', '')
+            color_attribs = ['fill', 'stroke', 'color']
+            new_styles = []
+
+            # Process style attribute
+            if style_attrib:
+                styles = style_attrib.split(';')
+                for style in styles:
+                    if ':' in style:
+                        key, value = style.split(':')
+                        if key.strip() in color_attribs:
+                            new_styles.append(f'{key}: {self.to_grayscale(value.strip())}')
+                        else:
+                            new_styles.append(style)
+                element.set('style', ';'.join(new_styles))
+
+            # Process individual color attributes
+            for attrib in color_attribs:
+                if attrib in element.attrib:
+                    element.set(attrib, self.to_grayscale(element.attrib[attrib]))
+
+    def save(self, file_path):
+        rough_string = ET.tostring(self.root, 'utf-8')
+        reparsed = minidom.parseString(rough_string)
+        with open(file_path, "w") as file:
+            file.write(reparsed.toprettyxml(indent="  "))
 
 
 def local_test():
@@ -371,6 +583,23 @@ def local_test():
         image.save_image_to_disk("./test_data/images/processed_image.png")
 
         print("OfflineImage processing and saving completed successfully.")
+
+        # Example svg image usage
+        image_processor = SVGCompatibleImage("https://upload.wikimedia.org/wikipedia/commons/b/b0/NewTux.svg", 300,
+                                             (667, 800), magick_path=r"C:\Program Files\ImageMagick-7.1.1-Q16-HDRI",
+                                             base_location='./')
+        image_processor.save_image_to_disk()
+
+        # Example usage of process_and_save_as_heic
+        # for img_path in os.listdir("./images"):
+        #     process_and_save_as_heic(os.path.join("images", img_path), "./images")
+
+        # SVGImage class usage
+        # svg_img = SVGImage(file_path='./NewTux.svg')
+        # svg_img.add_rectangle((10, 10), (100, 50), fill='blue')
+        # svg_img.rotate(45)
+        # svg_img.convert_to_grayscale()
+        # svg_img.save('./modified_file.svg')
 
     except Exception as e:
         print(f"An exception occurred during testing: {e}")

@@ -26,7 +26,11 @@ def install_all_dependencies():
                 "pycryptodome==3.20.0",
                 "PySide6==6.6.1",
                 "aiohttp==3.9.3",
-                "opencv-python==4.9.0.80"]:
+                "opencv-python==4.9.0.80",
+                "brotli==1.1.0",
+                "zstandard==0.22.0",
+                "py7zr==0.21.0",
+                "pillow_heif==0.15.0"]:
         try:
             proc = execute_python_command(arguments=
                                           ["-m", "pip", "install", dep])
