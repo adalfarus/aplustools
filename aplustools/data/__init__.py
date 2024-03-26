@@ -33,10 +33,10 @@ database = _LazyModuleLoader('aplustools.data.database')
 updaters = _LazyModuleLoader('aplustools.data.updaters')
 faker = _LazyModuleLoader('aplustools.data.faker')
 imagetools = _LazyModuleLoader('aplustools.data.imagetools')
-upgraded_imagetools = _LazyModuleLoader('aplustools.data.upgraded_imagetools')
+upgraded_imagetools = _LazyModuleLoader('aplustools.data.advanced_imagetools')
 
 # Install all possible dependencies, execute python command, ...
 from ._direct_functions import *
 
 # Define __all__ to limit what gets imported with 'from <package> import *'
-__all__ = ['database', 'updaters', 'faker', 'imagetools', 'upgraded_imagetools']
+__all__ = ['database', 'updaters', 'faker', 'imagetools', 'advanced_imagetools']
