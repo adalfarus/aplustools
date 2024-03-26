@@ -1,0 +1,22 @@
+{
+  "config_dir": "C:\\Users\\Till\\Desktop\\Unicode_Writer\\.pyupdater",
+  "filename": "C:\\Users\\Till\\Desktop\\Unicode_Writer\\.pyupdater\\config.pyu",
+  "count": 0,
+  "app_config": {
+    "APP_NAME": "Unicode Writer",
+    "CLIENT_CONFIG_PATH": [
+      "client_config.py"
+    ],
+    "COMPANY_NAME": "Adalfarus",
+    "PLUGIN_CONFIGS": {},
+    "UPDATE_PATCHES": true,
+    "MAX_DOWNLOAD_RETRIES": 3,
+    "HTTP_TIMEOUT": 30,
+    "UPDATE_URLS": [
+      "https://github.com/adalfarus/unicode-writer/releases",
+      "https://github.com/adalfarus/unicode_writer/releases",
+      "https://github.com/adalfarus/unicodewriter/releases"
+    ],
+    "DATA_DIR": "C:\\Users\\Till\\Desktop\\Unicode_Writer"
+  }
+}
