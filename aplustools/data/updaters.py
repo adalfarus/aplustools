@@ -1,122 +1,97 @@
-import requests
-import subprocess
-import socket
-import tempfile
-from typing import Optional, Tuple, Generator, Union, List, Any
 from packaging.version import Version, InvalidVersion
+from typing import Tuple, Generator, Union, Literal
+from collections import namedtuple
+import subprocess
+import threading
+import requests
+import socket
 import sys
 import os
-import warnings
-from collections import namedtuple # Can be removed if executables are added and the code to execute them here is re-instated
 
+
+# Often used types and classes
 YieldType = Union[int, None]
 ReturnType = Union[None, bool]
 UpdateStatusGenerator = Generator[YieldType, None, ReturnType]
+ProcessResult = namedtuple('ProcessResult', 'returncode')
 
 
-def get_temp():
-    return tempfile.gettempdir()
-
-
-class vNum:
+class VersionNumber:
     def __init__(self, number: str):
         try:
             self.version = Version(number)
         except InvalidVersion:
             raise ValueError(f"Invalid version number: {number}")
 
-    def __lt__(self, other: Any) -> bool:
-        if isinstance(other, vNum):
-            return self.version < other.version
-        elif isinstance(other, str):
-            try:
-                other = Version(other)
-                return self.version < other
-            except InvalidVersion:
-                raise ValueError(f"Invalid version number: {other}")
-        return NotImplemented
-
-    def __le__(self, other: Any) -> bool:
-        if isinstance(other, vNum):
-            return self.version <= other.version
-        elif isinstance(other, str):
-            try:
-                other = Version(other)
-                return self.version <= other
-            except InvalidVersion:
-                raise ValueError(f"Invalid version number: {other}")
-        return NotImplemented
-
-    def __eq__(self, other: Any) -> bool:
-        if isinstance(other, vNum):
-            return self.version == other.version
-        elif isinstance(other, str):
-            try:
-                other = Version(other)
-                return self.version == other
-            except InvalidVersion:
-                raise ValueError(f"Invalid version number: {other}")
-        return NotImplemented
-
-    def __ne__(self, other: Any) -> bool:
-        if isinstance(other, vNum):
-            return self.version != other.version
-        elif isinstance(other, str):
-            try:
-                other = Version(other)
-                return self.version != other
-            except InvalidVersion:
-                raise ValueError(f"Invalid version number: {other}")
-        return NotImplemented
-
-    def __gt__(self, other: Any) -> bool:
-        if isinstance(other, vNum):
-            return self.version > other.version
-        elif isinstance(other, str):
-            try:
-                other = Version(other)
-                return self.version > other
-            except InvalidVersion:
-                raise ValueError(f"Invalid version number: {other}")
-        return NotImplemented
-
-    def __ge__(self, other: Any) -> bool:
-        if isinstance(other, vNum):
-            return self.version >= other.version
-        elif isinstance(other, str):
-            try:
-                other = Version(other)
-                return self.version >= other
-            except InvalidVersion:
-                raise ValueError(f"Invalid version number: {other}")
-        return NotImplemented
-
-    def __str__(self) -> str:
+    def __str__(self):
         return str(self.version)
 
+    def __eq__(self, other):
+        return self.compare(other, method="__eq__")
 
-class gitupdater:
-    def __init__(self, version: str="exe"):
+    def __ne__(self, other):
+        return self.compare(other, method="__ne__")
+
+    def __lt__(self, other):
+        return self.compare(other, method="__lt__")
+
+    def __le__(self, other):
+        return self.compare(other, method="__le__")
+
+    def __gt__(self, other):
+        return self.compare(other, method="__gt__")
+
+    def __ge__(self, other):
+        return self.compare(other, method="__ge__")
+
+    def compare(self, other, method):
+        if isinstance(other, VersionNumber):
+            return getattr(self.version, method)(other.version)
+        if isinstance(other, str):
+            try:
+                other_version = Version(other)
+                return getattr(self.version, method)(other_version)
+            except InvalidVersion:
+                raise ValueError(f"Invalid version number: {other}")
+        return NotImplemented
+
+
+class GithubUpdater:
+    def __init__(self, author: str, repo_name: str, version: Literal["exe", "py"] = "exe"):
+        self.author = author
+        self.repo_name = repo_name
         self.version = version
 
-    @staticmethod
-    def get_latest_version(author: str, repo_name: str) -> Union[Tuple[None, None], Tuple[str, str]]:
+        self.host = self.port = None
+
+    def get_latest_release_title_version(self) -> Union[None, str]:
         try:
-            response = requests.get(f"https://api.github.com/repos/{author}/{repo_name}/releases/latest")
-            response2 = requests.get(f"https://api.github.com/repos/{author}/{repo_name}/tags")
-            repo_version = ''.join([x if sum(c.isnumeric() for c in x) >= 3 else "" for x in response.json()["name"].split("v")])
-            repo_version_2 = response2.json()[0]["name"].replace("v", "")
-            return repo_version, repo_version_2
+            response = requests.get(f"https://api.github.com/repos/{self.author}/{self.repo_name}/releases/latest")
+            repo_version = ''.join([x if sum(c.isnumeric() for c in x) >= 3 else "" for x in
+                                    response.json()["name"].split("v")])
+            return repo_version
         except KeyError:
             print("Github repo not correctly set-up, please check the documentation and try again.")
         except Exception as e:
             print(f"Unexpected exception occurred: {e}")
-        return None, None
+        return None
+
+    def get_latest_tag_version(self) -> Union[None, str]:
+        try:
+            response = requests.get(f"https://api.github.com/repos/{self.author}/{self.repo_name}/tags")
+            repo_version = response.json()[0]["name"].replace("v", "")
+            return repo_version
+        except KeyError:
+            print("Github repo not correctly set-up, please check the documentation and try again.")
+        except Exception as e:
+            print(f"Unexpected exception occurred: {e}")
+        return None
         
-    def receive_update_status(self, host: str='localhost', port: int=5000) -> UpdateStatusGenerator:
+    def receive_update_status(self) -> UpdateStatusGenerator:
+
         try:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                s.connect((host, port))
+                s.connect((self.host, self.port))
                 bool_map = {'True': True, 'False': False}
                 try:
                     while True:
@@ -141,74 +116,72 @@ class gitupdater:
         except Exception as e:
             print(f"Unexpected exception occurred: {e}")
         return None
-        
-    def update(self, path: str, zip_path: str, version: str, author: str, 
-               repo_name: str, gui_toggle: bool=False, cmd_toggle: bool=False, 
-               host: str="localhost", port: int=5000, non_blocking: Optional[bool]=False
-    ) -> Union[Tuple[bool, None, int], Tuple[bool, Exception, int]]:
+
+    def update(self, path: str, zip_path: str, repo_version: str, implementation: Literal["gui", "cmd", "none"],
+               host: str = 'localhost', port: int = 5000, non_blocking: bool = False,
+               wait_for_connection: bool = False) -> Union[Tuple[bool, None, int],
+                                                           Tuple[bool, Exception, int],
+                                                           threading.Thread]:
+        if implementation not in ["gui", "cmd", "none"]:
+            raise ValueError("Invalid implementation option")
+        self.host = host
+        self.port = port
+        returns = (False, Exception(), 1)
+
         lib_path = os.path.dirname(os.path.abspath(__file__))
-        def run_subprocess(file):
-            return subprocess.run([os.path.join(lib_path, file), str(path), str(zip_path), str(version), str(author), str(repo_name), str(host), str(port)], shell=True, text=True, capture_output=True)
-        def run_python_subprocess(file):
-            return subprocess.run([sys.executable, os.path.join(lib_path, file), str(path), str(zip_path), str(version), str(author), str(repo_name), str(host), str(port)], shell=True, text=True, capture_output=True)
+        process = ProcessResult(returncode=0)
+        arg_base = []
+
+        def subprocess_task():
+            proc = subprocess.run(
+                arg_base
+                + [os.path.join(lib_path, f"gitupdater-{implementation}.{self.version}")]
+                + [str(arg) for arg in [path, zip_path, repo_version, self.author, self.repo_name, host, port,
+                                        wait_for_connection]]
+                , shell=True, text=True, capture_output=True
+            )
+            return proc
+
         try:
-            if bool(cmd_toggle) and not bool(gui_toggle):
-                if self.version=="exe":
-                    print("Executable Updaters have to be compiled by you now.")
-                    ProcessResult = namedtuple('ProcessResult', 'returncode')
-                    process = ProcessResult(returncode=0)
-                    #process = run_subprocess("gitupdater-cmd.exe")
-                else: process = run_python_subprocess("gitupdater-cmd.py")
-            elif bool(gui_toggle) and not bool(cmd_toggle):
-                if self.version=="exe":
-                    print("Executable Updaters have to be compiled by you now.")
-                    ProcessResult = namedtuple('ProcessResult', 'returncode')
-                    process = ProcessResult(returncode=0)
-                    #process = run_subprocess("gitupdater-gui.exe")
-                else: process = run_python_subprocess("gitupdater-gui.py")
-            elif not bool(cmd_toggle) and not bool(gui_toggle):
-                if self.version=="exe":
-                    print("Executable Updaters have to be compiled by you now.")
-                    ProcessResult = namedtuple('ProcessResult', 'returncode')
-                    process = ProcessResult(returncode=0)
-                    #process = run_subprocess("gitupdater.exe")
-                else: process = run_python_subprocess("gitupdater.py")
-            else:
-                raise RuntimeError()
+            if self.version == "py":
+                arg_base = [sys.executable]
+            else:  # You can remove this if you've compliled the updaters
+                raise Exception("Executable Updaters have to be compiled by you now.")
+            if non_blocking:
+                update_thread = threading.Thread(target=subprocess_task)
+                # update_thread.start()
+                return update_thread
+            process = subprocess_task()
+            returns = (True, None, process.returncode)
         except Exception as e:
-            return False, e, process.returncode
-        finally:
-            return True, None, process.returncode
+            returns = (False, e, process.returncode)
+        self.host = self.port = None
+        return returns
 
 
 def local_test():
     try:
-        import threading
         from aplustools.io.environment import Path
     
         # Initialize the updater
-        updater = gitupdater("exe")
+        updater = GithubUpdater("Adalfarus", "unicode-writer")
 
         # Setup arguments for the update
-        host, port = "localhost", 1264
         path, zip_path = Path("./test_data/update"), Path("./test_data/zip")
-        path.mkdir("."); zip_path.mkdir(".")
-        version, author, repo_name = "0.0.1", "Adalfarus", "unicode-writer"
+        path.mkdir(".")
+        zip_path.mkdir(".")
+        repo_version = "0.0.1"
     
-        update_args = (str(zip_path), str(path), 
-                       version, author, repo_name, False, False, host, port)
-
-        # Start the update in a new thread
-        update_thread = threading.Thread(target=updater.update, args=update_args)
-        update_thread.start()
+        update_thread = updater.update(str(path), str(zip_path), repo_version, "none", "localhost", 1264, True, True)
 
         # Receive the update status generator and print them
         progress_bar = 1
         print("Starting test update ...")
-        for i in updater.receive_update_status(host, port):
+        for i in updater.receive_update_status():
             print(f"{i}%", end=f" PB{progress_bar}\n")
             if i == 100:
-                progress_bar += 1 # Switch to second progress bar, when the downloading is finished
+                progress_bar += 1  # Switch to second progress bar, when the downloading is finished
+        update_thread.join()
     except Exception as e:
         print(f"Exception occurred {e}.")
         return False

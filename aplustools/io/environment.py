@@ -16,6 +16,10 @@ except ImportError:
     winreg = None  # winreg is not available on non-Windows platforms
 
 
+def get_temp():
+    return tempfile.gettempdir()
+
+
 def set_working_dir_to_main_script_location():
     """
     Set the current working directory to the location of the main script
