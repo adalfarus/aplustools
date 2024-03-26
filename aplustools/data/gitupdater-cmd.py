@@ -7,14 +7,15 @@ import os
 
 def main(path, repo_version, author, repo_name, host, port):
     # Initialize the updater
-    updater = updaters.GitUpdater(author, repo_name, "py")
+    updater = updaters.GithubUpdater(author, repo_name, "py")
     tmpdir = os.path.join(get_temp(), f"update_{repo_name}")
 
     os.makedirs(path, exist_ok=True)
     os.makedirs(tmpdir, exist_ok=True)
 
     # Setup update thread for the update
-    update_thread_result = updater.update(path, tmpdir, repo_version, "none", host, port, True, True)
+    update_thread = updater.update(path, tmpdir, repo_version, "none", host, port, True, True)
+    update_thread.start()
 
     # Receive the update status generator and print them
     progress_bar = 1
@@ -23,7 +24,7 @@ def main(path, repo_version, author, repo_name, host, port):
         print(f"{i}%", end=f" PB{progress_bar}\n")
         if i == 100:
             progress_bar += 1  # Switch to second progress bar, when the downloading is finished
-    print(update_thread_result)
+    update_thread.join()
 
 
 try:
