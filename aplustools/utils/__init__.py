@@ -33,9 +33,10 @@ genpass = _LazyModuleLoader('aplustools.utils.genpass')
 mappers = _LazyModuleLoader('aplustools.utils.mappers')
 dummy = _LazyModuleLoader('aplustools.utils.dummy')
 hasher = _LazyModuleLoader('aplustools.utils.hasher')
+compressor = _LazyModuleLoader('aplustools.utils.compressor')
 
 # Install all possible dependencies, execute python command, ...
 from ._direct_functions import *
 
 # Define __all__ to limit what gets imported with 'from <package> import *'
-__all__ = ['genpass', 'mappers', 'dummy', 'hasher']
+__all__ = ['genpass', 'mappers', 'dummy', 'hasher', 'compressor']
