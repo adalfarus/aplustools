@@ -32,8 +32,8 @@ class _LazyModuleLoader:
 database = _LazyModuleLoader('aplustools.data.database')
 updaters = _LazyModuleLoader('aplustools.data.updaters')
 faker = _LazyModuleLoader('aplustools.data.faker')
-imagetools = _LazyModuleLoader('aplustools.utils.imagetools')
-upgraded_imagetools = _LazyModuleLoader('aplustools.utils.upgraded_imagetools')
+imagetools = _LazyModuleLoader('aplustools.data.imagetools')
+upgraded_imagetools = _LazyModuleLoader('aplustools.data.upgraded_imagetools')
 
 # Install all possible dependencies, execute python command, ...
 from ._direct_functions import *

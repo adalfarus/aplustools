@@ -168,7 +168,10 @@ class ArgStruct:
                 raise ValueError(f"Command '{parent}' not found or is not a valid parent.")
             current_level = current_level[part]
 
-        current_level[command] = subcommand
+        if isinstance(subcommand, str):
+            current_level[command] = {subcommand: {}}
+        else:
+            current_level[command] = subcommand
 
     def get_structure(self):
         return self.commands
@@ -420,28 +423,32 @@ if __name__ == "__main__":
 
     timer = timid.TimidTimer()
 
-    arg_struct = {'build': {'file': {}, 'dir': {'main': {}, 'all': {}}}, 'help': {}}
+    arg_struct = {'apt': {'build': {'file': {}, 'dir': {'main': {}, 'all': {}}}, 'help': {}}}
 
     # Example usage
     builder = ArgStruct()
-    builder.add_command("build")
-    builder.add_subcommand("build", "file")
+    builder.add_command("apt")
+    builder.add_nested_command("apt", "build", "file")
 
-    builder.add_nested_command("build", "dir", {'main': {}, 'all': {}})
-    # builder.add_subcommand("build", "dir")
-    # builder.add_nested_command("build.dir", "main")
-    # builder.add_nested_command("build.dir", "all")
+    builder.add_nested_command("apt.build", "dir", {'main': {}, 'all': {}})
+    # builder.add_subcommand("apt.build", "dir")
+    # builder.add_nested_command("apt.build.dir", "main")
+    # builder.add_nested_command("apt.build.dir", "all")
 
-    builder.add_command("help")
+    builder.add_command("apt.help")
+    # builder.add_nested_command("apt", "help")
 
     print(builder.get_structure())  # Best to cache this for better times (by ~15 microseconds)
 
     parser = ArguMint(default_endpoint=sorry, arg_struct=arg_struct)
-    parser.add_endpoint("help", help_text)
+    parser.add_endpoint("apt.help", help_text)
 
-    parser.add_endpoint("build.file", build_file)
+    parser.add_endpoint("apt.build.file", build_file)
 
-    # If it's a script, the first argument is the script location, but if it's a command it's not in the list
-    sys.argv = ["build", "file", "./file.py", "--num=19"]  # sys.argv[1:]  # To fix it not being a command yet
+    sys.argv[0] = "apt"
+
+    # Testing
+    # sys.argv = ["apt", "help"]
+    # sys.argv = ["apt", "build", "file", "./file.py", "--num=19"]
     parser.parse_cli(sys, "native_light")
     print(timer.end())
