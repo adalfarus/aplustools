@@ -20,15 +20,16 @@ class UpdateThread(QThread):
 
     def run(self):
         try:
-            updater = updaters.GitUpdater(self.author, self.repo_name)
+            updater = updaters.GithubUpdater(self.author, self.repo_name, "py")
             tmpdir = os.path.join(get_temp(), f"update_{self.repo_name}")
 
             os.makedirs(self.path, exist_ok=True)
             os.makedirs(tmpdir, exist_ok=True)
 
-            updater.update(self.path, tmpdir, self.repo_version, "none", self.host, self.port, False, True)
+            self.update_thread = updater.update(self.path, tmpdir, self.repo_version, "none", self.host, self.port, True, True)
+            self.update_thread.start()
 
-            # Assuming the updater provides progress updates in some way
+            # The updater provides progress updates
             for progress_status in updater.receive_update_status():
                 self.update_signal.emit(progress_status)
 
@@ -95,6 +96,9 @@ class App(QWidget):
 
     def update_info_box(self, text):
         self.info_box.append(text)
+
+    def closeEvent(self, event):
+        self.update_thread.update_thread.join()
 
 
 if __name__ == "__main__":

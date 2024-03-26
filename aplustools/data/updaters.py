@@ -56,7 +56,7 @@ class VersionNumber:
         return NotImplemented
 
 
-class GitUpdater:
+class GithubUpdater:
     def __init__(self, author: str, repo_name: str, version: Literal["exe", "py"] = "exe"):
         self.author = author
         self.repo_name = repo_name
@@ -149,15 +149,14 @@ class GitUpdater:
                 raise Exception("Executable Updaters have to be compiled by you now.")
             if non_blocking:
                 update_thread = threading.Thread(target=subprocess_task)
-                update_thread.start()
+                # update_thread.start()
                 return update_thread
             process = subprocess_task()
             returns = (True, None, process.returncode)
         except Exception as e:
             returns = (False, e, process.returncode)
-        finally:
-            self.host = self.port = None
-            return returns
+        self.host = self.port = None
+        return returns
 
 
 def local_test():
@@ -165,7 +164,7 @@ def local_test():
         from aplustools.io.environment import Path
     
         # Initialize the updater
-        updater = GitUpdater("Adalfarus", "unicode-writer")
+        updater = GithubUpdater("Adalfarus", "unicode-writer")
 
         # Setup arguments for the update
         path, zip_path = Path("./test_data/update"), Path("./test_data/zip")
