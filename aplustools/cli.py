@@ -1,4 +1,4 @@
-from aplustools._direct_functions import execute_python_command
+from aplustools import execute_python_command
 from aplustools.io.environment import change_working_dir_to_script_location
 import subprocess
 import os
