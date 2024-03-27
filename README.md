@@ -86,62 +86,82 @@ p_logger.close()
 
 ### OnlineImage
 ```python
-from aplustools.utils import imagetools
-from aplustools.io.environment import Path
+from aplustools.data.imagetools import OnlineImage, OfflineImage, ImageFilter, SVGCompatibleImage
+import os
 
-# Download the image to the current working directory
-imagetools.OnlineImage("someImage.url", True)
+# Setup
+folder_path = "./images"
+os.makedirs(folder_path, exist_ok=True)
+test_url = "someImage.url"
+base64_image_str = ("data:image/jpeg;base64,...")
 
-# Making sure that folder_path exists
-folder_path = Path(".\\images")
-folder_path.create_directory()
+# Test downloading an online image
+online_image = OnlineImage(current_url=test_url, base_location=folder_path, one_time=True)
+download_result = online_image.download_image(folder_path, online_image.current_url, "downloaded_image", "jpg")
+if not download_result[0]:
+    raise Exception("Failed to download image.")
+else:
+    online_image.convert_to_grayscale()
+    online_image.save_image_to_disk(os.path.join(folder_path, "image.png"))
 
-# Converting the image and moving it to a specified path
-image = imagetools.OfflineImage("data:image/jpeg;base64,/9j...")
-success = image.base64(str(folder_path), "Image", "png") # Make sure this directory exists
+# Test loading and saving a base64 image with OfflineImage
+offline_image = OfflineImage(data=base64_image_str, base_location=folder_path)
+save_result = offline_image.base64(folder_path, "base64_image", "png")
+if not save_result:
+    raise Exception("Failed to save base64 image.")
 
-# Download the image to a specified path
-image2 = imagetools.OnlineImage("someImage.url")
-_, img_name, img_path = image2.download_image(base_path=str(folder_path))  # Make sure this directory exists
+# Test image transformations
+offline_image.resize_image((100, 100))
+offline_image.rotate_image(45)
+offline_image.convert_to_grayscale()
+offline_image.apply_filter(ImageFilter.BLUR)
+offline_image.save_image_to_disk(os.path.join(folder_path, "transformed_image.png"))
+
+# Example svg image usage
+image_processor = SVGCompatibleImage("someSvg.svg", 300,
+                                     (667, 800), magick_path=r".\ImageMagick",
+                                     base_location='./')
+image_processor.save_image_to_disk()
 ```
 
 ### Git-Updater
 ```python
-from aplustools.data import updaters
-from aplustools.io.environment import set_working_dir_to_main_script_location, Path
-import os
-import threading
+from aplustools.data.updaters import GithubUpdater, VersionNumber
+from aplustools.io.environment import get_temp
+from aplustools import set_dir_to_ex
 import sys
+import os
 
-set_working_dir_to_main_script_location()
+set_dir_to_ex()
 
-__version__ = updaters.vNum("0.0.1")
+__version__ = VersionNumber("0.0.1")
 
 # Initialize an updater
-updater = updaters.gitupdater("exe")
-latest_version = updater.get_latest_version("Adalfarus", "unicode-writer")[1]  # Gives back two values, use whichever applicable
-
-# Check if an update is needed
-if __version__ >= updaters.vNum(latest_version):
+updater = GithubUpdater("Adalfarus", "unicode-writer", "py")  # If you want to use exe
+latest_version = updater.get_latest_tag_version()             # you need to compile them
+                                                              # yourself, otherwise it
+# Check if an update is needed                                # won't work
+if __version__ >= latest_version:
     sys.exit()
 
-# Define the arguments for the updater method
-host, port, path = "localhost", 1264, Path(os.path.join(updaters.get_temp(), "update"))
-gui_toggle, cmd_toggle = False, False
-path.create_directory()
-update_args = (os.path.join(os.getcwd(), "update"), str(path),
-                latest_version, "Adalfarus", "unicode-writer", gui_toggle, cmd_toggle, host, port)
+# Updater method
+path, zip_path = os.path.join(os.getcwd(), "update"), os.path.join(get_temp(), f"apt-update_{latest_version}")
+
+os.makedirs(path, exist_ok=True)
+os.makedirs(zip_path, exist_ok=True)
 
 # Start the update in a separate thread
-update_thread = threading.Thread(target=updater.update, args=update_args)
+update_thread = updater.update(path, zip_path, latest_version, implementation="none", 
+                               host="localhost", port=1264, non_blocking=True, wait_for_connection=True)
 update_thread.start()
 
 # Receive the update status generator and print them
 progress_bar = 1
-for i in updater.receive_update_status(host, port):
+for i in updater.receive_update_status():
     print(f"{i}%", end=f" PB{progress_bar}\n")
     if i == 100:
         progress_bar += 1  # Switch to second progress bar, when the downloading is finished
+update_thread.join()
 ```
 
 ### Webtools
@@ -207,16 +227,16 @@ dummy = Dummy3()
 
 # Do a bunch of operations that would normally throw errors
 dummy.attr.func("", int3="")
-dummy["Hello"]
+dummy["Hello"] = 1
 del dummy[1]
 reversed(dummy)
-"Dummy" in dummy
-dummy.keys()
-dummy.keys = ["1"]
+if not "Dummy" in dummy:
+    dummy.keys = ["1"]
 print(dummy.keys + dummy)
-+dummy
--dummy
-~dummy
+var1 = +dummy
+var2 = -dummy
+var3 = ~dummy
+print(var1, var2, var3)
 
 hash(dummy)
 abs(dummy)
@@ -268,9 +288,9 @@ print(f"{inp} ({len(inp)}) -> {num_hashed_inp} ({len(num_hashed_inp)})\n{inp2} (
 acceptable_chars = range(100, 200)
 
 num_hashed_inp_uni = num_hasher(inp, desired_length, acceptable_chars)
-num_hashed_inp_uni = num_hasher(inp2, desired_length, acceptable_chars)
+num_hashed_inp_uni_2 = num_hasher(inp2, desired_length, acceptable_chars)
 
-print(f"{inp} ({len(inp)}) -> {num_hashed_inp_uni} ({len(num_hashed_inp_uni)})\n{inp2} ({len(inp2)}) -> {num_hashed_inp_uni} ({len(num_hashed_inp_uni)})")
+print(f"{inp} ({len(inp)}) -> {num_hashed_inp_uni} ({len(num_hashed_inp_uni)})\n{inp2} ({len(inp2)}) -> {num_hashed_inp_uni_2} ({len(num_hashed_inp_uni_2)})")
 ```
 
 ### GenPass
@@ -285,6 +305,7 @@ print(password)
 ### web_requests
 ```python
 from aplustools.web.web_request import UnifiedRequestHandler, UnifiedRequestHandlerAdvanced
+import os
 
 # Default request handler
 handler = UnifiedRequestHandler()
@@ -314,6 +335,67 @@ with open(os.path.join(folder_path, './image.png'), 'wb') as file:
 image_content_async = adv_handler.request('GET', 'http://example.com/image.png', async_mode=True, return_type='binary')
 with open(os.path.join(folder_path, './image_async.png'), 'wb') as file:
     file.write(image_content_async)
+```
+
+### web_requests
+
+```python
+from aplustools.package.argumint import ArgStruct, ArguMint
+from typing import Literal
+import sys
+
+
+def sorry(*args, **kwargs):
+    print("Not implemented yet, sorry!")
+
+
+def help_text():
+    print("Build -> dir/file or help.")
+
+
+def build_file(path: Literal["./main.py", "./file.py"] = "./main.py", num: int = 0):
+    """
+    build_file
+    :param path: The path to the file that should be built.
+    :param num:
+    :return None:
+    """
+    print(f"Building file {path} ..., {num}")
+
+
+from aplustools.package import timid
+
+timer = timid.TimidTimer()
+
+arg_struct = {'apt': {'build': {'file': {}, 'dir': {'main': {}, 'all': {}}}, 'help': {}}}
+
+# Example usage
+builder = ArgStruct()
+builder.add_command("apt")
+builder.add_nested_command("apt", "build", "file")
+
+builder.add_nested_command("apt.build", "dir", {'main': {}, 'all': {}})
+# builder.add_subcommand("apt.build", "dir")
+# builder.add_nested_command("apt.build.dir", "main")
+# builder.add_nested_command("apt.build.dir", "all")
+
+builder.add_command("apt.help")
+# builder.add_nested_command("apt", "help")
+
+print(builder.get_structure())  # Best to cache this for better times (by ~15 microseconds)
+
+parser = ArguMint(default_endpoint=sorry, arg_struct=arg_struct)
+parser.add_endpoint("apt.help", help_text)
+
+parser.add_endpoint("apt.build.file", build_file)
+
+sys.argv[0] = "apt"
+
+# Testing
+# sys.argv = ["apt", "help"]
+# sys.argv = ["apt", "build", "file", "./file.py", "--num=19"]
+parser.parse_cli(sys, "native_light")
+print(timer.end())
 ```
 (Correct shortform for aplustools is apt, so please use ```import aplustools as apt``` for consistency)
 
@@ -356,9 +438,9 @@ For modules I use 'lowercase', classes are 'CapitalizedWords' and functions and 
 
 Dependencies (except for the standart libraries) are: 
 - data.database, io.environment, io.loggers, utils.mappers, data.faker, utils.dummy, utils.hasher, package.lazy_loader, package.timid, adultswork, childsplay - none
-- data.gitupdater-cmd & data.integrated-gitupdater-cmd - requests
-- data.gitupdater-gui & data.integrated-gitupdater-gui - requests, PySide6
-- data.gitupdater, data.updaters - requests
+- data.github-updater-cmd - requests
+- data.github-updater-gui - requests, PySide6
+- data.github-updater, data.updaters - requests
 - data.imagetools - Pillow, aiohttp, requests, wand
 - data.advanced_imagetools - opencv-python, aiohttp, wand, pillow_heif
 - web.webtools - requests, duckduckgo_search, BeautifulSoup4 - duckduckgo_search is only used for Search.duckduckgo_provider, if you don't want to use it, use Search._duckduckgo_provider instead.
@@ -366,6 +448,13 @@ Dependencies (except for the standart libraries) are:
 - web.new_webtools, web.actual_webtools - requests, BeautifulSoup4
 - web.web_request - requests, aiohttp
 - utils.compressor - brotli, zstandard, py7zr
+
+Sub-Modules that may be removed in future updates due to being hard to support or simply unneeded.
+
+- database (maybe unneeded and hard to support if more dbs are added)
+- actual_webtools, new_webtools, webtools search-machines (hard to support)
+- loggers (maybe unneeded)
+- childsplay & adultswork (maybe unneeded)
 
 ## Contributing
 
