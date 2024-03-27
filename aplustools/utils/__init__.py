@@ -42,7 +42,7 @@ from ._direct_functions import *
 __all__ = ['genpass', 'mappers', 'dummy', 'hasher', 'compressor']
 
 # Dynamically add exports from _direct_functions
-import _direct_functions
+from aplustools.utils import _direct_functions
 __all__.extend([attr for attr in dir(_direct_functions) if not attr.startswith('_')])
 del _direct_functions
 

@@ -1,4 +1,5 @@
 from typing import Type, Union, Tuple, Optional, List
+from aplustools.web.webtools import get_useragent
 from concurrent.futures import ThreadPoolExecutor
 from urllib.parse import urlparse, urljoin
 from PIL import Image, ImageFilter
@@ -490,7 +491,9 @@ class SVGCompatibleImage(OfflineImage):
 
     def download_image(self, url):
         try:
-            response = requests.get(url)
+            user_agent = get_useragent()
+            headers = {"User-Agent": user_agent}
+            response = requests.get(url, headers=headers)
             response.raise_for_status()
             file_name = os.path.basename(urlparse(url).path)
             file_path = os.path.join(self.base_location, file_name)
