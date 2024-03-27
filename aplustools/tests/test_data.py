@@ -3,7 +3,8 @@ from aplustools.data import database, imagetools, updaters, faker
 
 class TestUpdaters:
     def test_get_last_version(self):
-        assert updaters.gitupdater.get_latest_version("adalfarus", "unicode-writer") == ("0.0.2", "0.0.2")
+        updater = updaters.GithubUpdater("adalfarus", "unicode-writer")
+        assert (updater.get_latest_tag_version(), updater.get_latest_release_title_version()) == ("0.0.2", "0.0.2")
         
     def test_local(self):
         assert updaters.local_test()
