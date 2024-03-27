@@ -40,3 +40,9 @@ from ._direct_functions import *
 
 # Define __all__ to limit what gets imported with 'from <package> import *'
 __all__ = ['genpass', 'mappers', 'dummy', 'hasher', 'compressor']
+
+# Dynamically add exports from _direct_functions
+import _direct_functions
+__all__.extend([attr for attr in dir(_direct_functions) if not attr.startswith('_')])
+del _direct_functions
+
