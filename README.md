@@ -337,7 +337,7 @@ with open(os.path.join(folder_path, './image_async.png'), 'wb') as file:
     file.write(image_content_async)
 ```
 
-### web_requests
+### ArguMint
 
 ```python
 from aplustools.package.argumint import ArgStruct, ArguMint
@@ -425,8 +425,8 @@ Enter Python code (type 'end' on a new line to finish):
 ... end
 Hello, ya dunce!
 ```
-### run_apt_tests
-Will run the aplustools package tests using pytest.
+### apt
+Can currently run tests with ```apt tests run``` and show a basic help using ```apt help```.
 
 
 For more detailed usage and examples, check out our [documentation](https://github.com/adalfarus/aplustools/wiki).
