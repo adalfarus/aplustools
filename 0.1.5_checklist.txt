@@ -1,9 +1,9 @@
-Make webtools more efficient and user friendly
--> can be pushed to 0.1.5 # Do this
+Make webtools more efficient and user-friendly (or remove them)
+-> can be pushed to 0.1.5
 
 Finish the strict decorator and find a way to make it less resource intensive (or remove it) # Added warning
 
 Make more updaters
--> can be pushed to 0.1.5 # Do this
+-> can be pushed to 1.6 # Do this
 
-Add all the latest changes to the wiki # Can be done at a later point
+Add all the latest changes to the wiki # Do till 1.5
