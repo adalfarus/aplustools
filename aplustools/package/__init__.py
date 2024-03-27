@@ -31,6 +31,7 @@ class _LazyModuleLoader:
 # Lazy loading modules
 lazy_loader = _LazyModuleLoader('aplustools.package.lazy_loader')
 timid = _LazyModuleLoader('aplustools.package.timid')
+argumint = _LazyModuleLoader('aplustools.package.argumint')
 
 # Define __all__ to limit what gets imported with 'from <package> import *'
-__all__ = ['lazy_loader', 'timid']
+__all__ = ['lazy_loader', 'timid', 'argumint']

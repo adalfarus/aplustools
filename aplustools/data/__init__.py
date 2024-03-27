@@ -42,7 +42,7 @@ from ._direct_functions import *
 __all__ = ['database', 'updaters', 'faker', 'imagetools', 'advanced_imagetools']
 
 # Dynamically add exports from _direct_functions
-import _direct_functions
+from aplustools.data import _direct_functions
 __all__.extend([attr for attr in dir(_direct_functions) if not attr.startswith('_')])
 del _direct_functions
 
