@@ -186,17 +186,10 @@ if check_url(result, ''): # Not really nessesary, search does this automatically
 _, img_name, img_path = image2.download_image(base_path=str(folder_path))  # Make sure this directory exists
 
 from aplustools.io.environment import absolute_path, remv, copy
-from aplustools.childsplay import ImportClass  # Could be switched out to adultswork, but the string would need to get converted
-
-importer = ImportClass(hard=True)
-importer.import_all()  # Destroys your runtime python
 
 a_img_path = absolute_path(img_path)
 
-try:
-    copy(a_img_path, str(folder_path) + str(img_name).remove(".png") + str(" - Copy.png"))
-except ValueError:
-    copy(a_img_path, str(folder_path) + str(img_name.split(".")[-1]) + str(" - Copy.png"))
+copy(a_img_path, str(folder_path) + img_name.rsplit(".", 1)[0] + " - Copy.png")
 
 remv(a_img_path)  # Remove the original image
 remv(str(folder_path))  # Remove the base directory
