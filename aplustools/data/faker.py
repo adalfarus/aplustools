@@ -78,45 +78,12 @@ class TestDataGenerator:
         birth_date = self.generate_random_birth_date()
         return Identity(name, last_name, email, password, phone_number, address, birth_date)
 
-    def insert_test_data(self, num_accounts=10, num_events=5):
-        return
-        """
-        Inserts test data into the system.
-        :param num_accounts: Number of test accounts to generate.
-        :param num_events: Number of test events to generate.
-        """
-        emails = [self.generate_random_email() for _ in range(num_accounts)]
-        passwords = [self.generate_random_password() for _ in range(num_accounts)]
-
-        test_accounts = [
-            # Assuming account structure: (account_id, role, first_name, last_name, email, phone, address, birth_date, gender)
-            # Generate and add more test accounts as needed
-        ]
-
-        test_events = [
-            # Assuming event structure: (event_id, organizer_id, title, description, date)
-            # Generate and add more test events as needed
-        ]
-
-        # Insert test accounts
-        try:
-            for account in test_accounts:
-                self.update_account_info(account[0], account[1:])
-        except Exception as e:
-            print(f"Error inserting accounts: {e}")
-
-        # Insert test events
-        try:
-            for event in test_events:
-                self.update_event_info(event[0], event[1:])
-        except Exception as e:
-            print(f"Error inserting events: {e}")
-
 
 def local_test():
     try:
         test_data = TestDataGenerator()
-        print(f"{", \n".join([str(test_data.generate_random_identity()) for _ in range(9000)])}")  # 900000 takes ~5 sec
+        lst_string = ', \n'.join([str(test_data.generate_random_identity()) for _ in range(9000)])
+        print(lst_string)  # 900000 takes ~5 sec
         print("\n", end="")
         print(test_data.generate_random_name())
         print(test_data.generate_random_email())
