@@ -1,4 +1,6 @@
 import random
+from typing import Optional, List, Callable
+
 
 class UM:
     """
@@ -11,8 +13,8 @@ class UM:
     the output quality or the efficiency.
     """
     @staticmethod
-    def umreihen(num_lst, depth):
-        if not num_lst: # Check if the list is empty
+    def umreihen(num_lst: list, depth: int) -> list:
+        if not num_lst:  # Check if the list is empty
             return []
         
         curr_num_lst = num_lst
@@ -28,7 +30,7 @@ class UM:
         return curr_num_lst
         
     @staticmethod
-    def umreihenTWO(num_lst, depth):
+    def umreihenTWO(num_lst: list, depth: int) -> list:
         if not num_lst:  # Check if the list is empty
             return []
 
@@ -47,7 +49,7 @@ class UM:
         return curr_num_lst
     
     @staticmethod
-    def umreihenTHREE(num_lst, depth):
+    def umreihenTHREE(num_lst: list, depth: int) -> list:
         if not num_lst:  # Check if the list is empty
             return []
 
@@ -70,7 +72,7 @@ class UM:
         return curr_num_lst
     
     @staticmethod
-    def umreihenFOUR(num_lst, depth):
+    def umreihenFOUR(num_lst: list, depth: int) -> list:
         if not num_lst:  # Check if the list is empty
             return []
 
@@ -91,7 +93,7 @@ class UM:
         return curr_num_lst
     
     @staticmethod
-    def umsplitten(num_lst, width=2):
+    def umsplitten(num_lst: list, width: int = 2) -> Optional[list]:
         try:
             raise DeprecationWarning("This function is deprecated, please use umsplittedTWO or umsplittenCH")
         except Exception as e:
@@ -110,7 +112,7 @@ class UM:
         return lst_1 + lst_2
         
     @staticmethod
-    def umsplittenCH(num_lst, width=2):
+    def umsplittenCH(num_lst: list) -> Optional[list]:
         if len(num_lst) % 2 != 0:  # Ensure the list has an even number of elements
             return None
 
@@ -125,8 +127,8 @@ class UM:
         return result
         
     @staticmethod
-    def umsplittenTWO(num_lst, width=2):
-        if width > len(num_lst) // 2:# or len(num_lst) % 2 != 0:
+    def umsplittenTWO(num_lst: list, width: int = 2) -> Optional[list]:
+        if width > len(num_lst) // 2:  # or len(num_lst) % 2 != 0:
             return None
 
         result = []
@@ -136,7 +138,7 @@ class UM:
         return result
         
     @staticmethod
-    def umsetzen(lst):
+    def umsetzen(lst: list) -> list:
         """
         The umsetzen function is designed to 
         move each element to a new spot and 
@@ -163,16 +165,17 @@ class UM:
             #    new_lst.append(x
         return new_lst
 
-def hashed_old(input, length, debug=False):
+
+def hashed_old(input_str: str, length: int, debug: bool = False):
     def debug_print(*args, **kwargs):
         if debug:
             print(*args, **kwargs)
-    original_length = len(input)
+    original_length = len(input_str)
     if original_length > length: return "Please only input inputs shorter than length"
-    elif not isinstance(input, str): return "Please only pass strings as input"
-    filled_input = input.ljust(length, "0")
+    elif not isinstance(input_str, str): return "Please only pass strings as input"
+    filled_input = input_str.ljust(length, "0")
     debug_print("Filled: " + filled_input)
-    seed, input_lst = input, list(input)
+    seed, input_lst = input_str, list(input_str)
     shuffled_input = ""
     for i, char in enumerate(filled_input):
         if char == "0":
@@ -207,18 +210,19 @@ def hashed_old(input, length, debug=False):
         i += 1
     return ''.join(split_lst)
 
-def hashed(input, length, debug=False):
+
+def hashed(input_str: str, length: int, debug: bool = False):
     def debug_print(*args, **kwargs):
         if debug:
             print(*args, **kwargs)
-    original_length = len(input)
+    original_length = len(input_str)
     if original_length > length: return "Please only input inputs shorter than length"
-    elif not isinstance(input, str): return "Please only pass strings as input"
-    filled_input = input.ljust(length, "0")
+    elif not isinstance(input_str, str): return "Please only pass strings as input"
+    filled_input = input_str.ljust(length, "0")
     debug_print("Filled: " + filled_input)
-    seed, input_lst = input, list(input)
+    seed, input_lst = input_str, list(input_str)
     shuffled_input = ""
-    ord_lst = [ord(x) + original_length for x in input]
+    ord_lst = [ord(x) + original_length for x in input_str]
     print(ord_lst)
     for i, char in enumerate(filled_input):
         if char == "0":
@@ -253,7 +257,8 @@ def hashed(input, length, debug=False):
         i += 1
     return ''.join(split_lst)
 
-def hashed_LS(input, length, debug=False):
+
+def hashed_LS(input_str: str, length: int, debug: bool = False):
     def debug_print(*args, **kwargs):
         if debug:
             print(*args, **kwargs)
@@ -282,14 +287,14 @@ def hashed_LS(input, length, debug=False):
         reduced_lst = [int(math.log(x + 1)) % 100 for x in lst]
 
         return reduced_lst
-    original_length = len(input)
+    original_length = len(input_str)
     if original_length > length: return "Please only input inputs shorter than length"
-    elif not isinstance(input, str): return "Please only pass strings as input"
-    filled_input = input.ljust(length, "0")
+    elif not isinstance(input_str, str): return "Please only pass strings as input"
+    filled_input = input_str.ljust(length, "0")
     debug_print("Filled: " + filled_input)
-    seed, input_lst = input, list(input)
+    seed, input_lst = input_str, list(input_str)
     shuffled_input = ""
-    ord_lst = order_lst(original_length, input) #[ord(x) + original_length for x in input]
+    ord_lst = order_lst(original_length, input_str) #[ord(x) + original_length for x in input]
     debug_print("Ord List: ", ord_lst)
     ord_lst = reduce_lst(ord_lst)
     for i, char in enumerate(filled_input):
@@ -325,7 +330,8 @@ def hashed_LS(input, length, debug=False):
         i += 1
     return ''.join(split_lst)
 
-def hashed_LS2(input, length, debug=False):
+
+def hashed_LS2(input_str: str, length: int, debug: bool = False):
     def debug_print(*args, **kwargs):
         if debug:
             print(*args, **kwargs)
@@ -354,14 +360,14 @@ def hashed_LS2(input, length, debug=False):
         reduced_lst = [int(math.log(x + 1)) % 100 for x in lst]
 
         return reduced_lst
-    original_length = len(input)
+    original_length = len(input_str)
     if original_length > length: return "Please only input inputs shorter than length"
-    elif not isinstance(input, str): return "Please only pass strings as input"
-    filled_input = input.ljust(length, "0")
+    elif not isinstance(input_str, str): return "Please only pass strings as input"
+    filled_input = input_str.ljust(length, "0")
     debug_print("Filled: " + filled_input)
-    seed, input_lst = input, list(input)
+    seed, input_lst = input_str, list(input_str)
     shuffled_input = ""
-    ord_lst = order_lst(original_length, input) #[ord(x) + original_length for x in input]
+    ord_lst = order_lst(original_length, input_str) #[ord(x) + original_length for x in input]
     debug_print("Ord List: ", ord_lst)
     #ord_lst = reduce_lst(ord_lst)
     for i, char in enumerate(filled_input):
@@ -397,7 +403,8 @@ def hashed_LS2(input, length, debug=False):
         i += 1
     return ''.join(split_lst)
 
-def hashed_latest(input_str, length, debug=False):
+
+def hashed_latest(input_str: str, length: int, debug: bool = False):
     def debug_print(*args, **kwargs):
         if debug:
             print(*args, **kwargs)
@@ -461,21 +468,23 @@ def hashed_latest(input_str, length, debug=False):
         random.shuffle(split_lst)
         i += 1
     return "".join(split_lst)
-    
-def hashed_wrapper(input, length, debug=False, sub_debug=False, sub_sub_debug=False, hash_func=lambda x, y, z: None):
+
+
+def hashed_wrapper(input_str: str, length: int, debug: bool = False, sub_debug: bool = False,
+                   sub_sub_debug: bool = False, hash_func: Callable[[str, int, bool], str] = lambda x, y, z: None):
     def debug_print(*args, **kwargs):
         if debug:
             print(*args, **kwargs)
-    if len(input) <= length:
+    if len(input_str) <= length:
         debug_print("No need to chunk, hashing now ...")
-        final_hash = hash_func(input, length, sub_debug)
+        final_hash = hash_func(input_str, length, sub_debug)
     else:
         debug_print("Input is longer than requested length, chunking needed ...")
-        if len(input) % length != 0:
-            filled_input = input.ljust(((len(input)//length)+1)*length, "0") # What if it's exactly e.g. 3*length? Fixed
-            input = filled_input
+        if len(input_str) % length != 0:
+            filled_input = input_str.ljust(((len(input_str) // length) + 1) * length, "0") # What if it's exactly e.g. 3*length? Fixed
+            input_str = filled_input
             debug_print("Filled input: ", filled_input)
-        input_chunks = list(map(''.join, zip(*[iter(input)]*length))) # https://stackoverflow.com/questions/22571259/split-a-string-into-n-equal-parts from comment: This method comes straight from the docs for zip().
+        input_chunks = list(map(''.join, zip(*[iter(input_str)] * length))) # https://stackoverflow.com/questions/22571259/split-a-string-into-n-equal-parts from comment: This method comes straight from the docs for zip().
         debug_print("Input chunks: ", input_chunks)
         hashes_lst = []
         for inp_chunk in input_chunks:
@@ -496,20 +505,23 @@ def hashed_wrapper(input, length, debug=False, sub_debug=False, sub_sub_debug=Fa
         debug_print(final_hash, "<-", final_input, "\n", len(final_hash), "<-", len(final_input))
     return final_hash
 
-def hashed_wrapper_latest(input, length, debug=False, sub_debug=False, sub_sub_debug=False, hash_func=lambda x, y, z: None):
+
+def hashed_wrapper_latest(input_str: str, length: int, debug: bool = False, sub_debug: bool = False,
+                          sub_sub_debug: bool = False,
+                          hash_func: Callable[[str, int, bool], str] = lambda x, y, z: None):
     def debug_print(*args, **kwargs):
         if debug:
             print(*args, **kwargs)
-    if len(input) <= length:
+    if len(input_str) <= length:
         debug_print("No need to chunk, hashing now ...")
-        final_hash = hash_func(input, length, sub_debug)
+        final_hash = hash_func(input_str, length, sub_debug)
     else:
         debug_print("Input is longer than requested length, chunking needed ...")
-        if len(input) % length != 0:
-            filled_input = input.ljust(((len(input)//length)+1)*length, "0") # What if it's exactly e.g. 3*length? Fixed
-            input = filled_input
+        if len(input_str) % length != 0:
+            filled_input = input_str.ljust(((len(input_str) // length) + 1) * length, "0") # What if it's exactly e.g. 3*length? Fixed
+            input_str = filled_input
             debug_print("Filled input: ", filled_input)
-        input_chunks = list(map(''.join, zip(*[iter(input)]*length))) # https://stackoverflow.com/questions/22571259/split-a-string-into-n-equal-parts from comment: This method comes straight from the docs for zip().
+        input_chunks = list(map(''.join, zip(*[iter(input_str)] * length))) # https://stackoverflow.com/questions/22571259/split-a-string-into-n-equal-parts from comment: This method comes straight from the docs for zip().
         debug_print("Input chunks: ", input_chunks)
         hashes_lst = []
         for inp_chunk in input_chunks:
@@ -530,13 +542,14 @@ def hashed_wrapper_latest(input, length, debug=False, sub_debug=False, sub_sub_d
         debug_print(final_hash, "<-", final_input, "\n", len(final_hash), "<-", len(final_input))
     return final_hash
 
-def reducer(input, ord_range, jump_size, debug=False):
+
+def reducer(input_str: str, ord_range: List[range], jump_size: int, debug: bool = False):
     def debug_print(*args, **kwargs):
         if debug:
             print(*args, **kwargs)
     max_range, min_range = max(ord_range), min(ord_range)
     output = ""
-    for i in input:
+    for i in input_str:
         ord_i = ord(i)
         debug_print(f"Char {repr(i)} -> Ord {ord_i}")
         if ord_i not in ord_range: # Just send it through both
@@ -551,7 +564,8 @@ def reducer(input, ord_range, jump_size, debug=False):
         output += i
     return output
 
-def big_reducer(input_str, ord_ranges, jump_size, tries, debug=False): # It works, but it's very ugly ...
+
+def big_reducer(input_str: str, ord_ranges: List[range], jump_size: int, tries: int, debug: bool = False): # It works, but it's very ugly ...
     def debug_print(*args, **kwargs):
         if debug:
             print(*args, **kwargs) # Maybe don't prepare ranges? Iterating over a dict is probably also more expensive than accessing the attributes of a range object
@@ -624,7 +638,7 @@ def big_reducer(input_str, ord_ranges, jump_size, tries, debug=False): # It work
     return output
     
 
-def num_hasher(input_str: str, length: int, char_range: range=range(32, 126), seed: int=1):
+def num_hasher(input_str: str, length: int, char_range: range = range(32, 126), seed: int = 1):
     """
     This hasher function hashes an input and gives out something
     with around the same length. This can be changed by appending
