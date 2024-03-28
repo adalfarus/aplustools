@@ -1,4 +1,4 @@
-from typing import Optional, Callable, Union, Literal, List, get_type_hints
+from typing import Optional, Callable, Union, Literal, List, get_type_hints, Any
 from pydantic import BaseModel, ValidationError, Field, create_model
 from argparse import ArgumentParser
 import sys
@@ -6,7 +6,7 @@ import re
 
 
 class ArgumentParsingError(Exception):
-    def __init__(self, message, index):
+    def __init__(self, message: str, index: int):
         super().__init__(message)
         self.index = index
 
@@ -39,7 +39,7 @@ class Argument:
         return self._default
 
     @default.setter
-    def default(self, value):
+    def default(self, value: type):
         self._default = value
         self.is_optional = value
         #if value in self.choices:
@@ -52,7 +52,7 @@ class Argument:
         return self._help
 
     @help.setter
-    def help(self, value):
+    def help(self, value: str):
         self._help = value or ""
 
     def __repr__(self):
@@ -143,12 +143,12 @@ class ArgStruct:
     def __init__(self):
         self.commands = {}
 
-    def add_command(self, command, subcommands=None):
+    def add_command(self, command: str, subcommands: Optional[dict] = None):
         if subcommands is None:
             subcommands = {}
         self.commands[command] = subcommands
 
-    def add_subcommand(self, parent, subcommand):
+    def add_subcommand(self, parent: str, subcommand: str):
         if parent not in self.commands:
             raise ValueError(f"Command '{parent}' not found.")
         if isinstance(self.commands[parent], dict):
@@ -156,7 +156,7 @@ class ArgStruct:
         else:
             raise ValueError(f"Command '{parent}' cannot have subcommands.")
 
-    def add_nested_command(self, parent, command, subcommand=None):
+    def add_nested_command(self, parent: str, command: str, subcommand: Optional[Union[str, dict]] = None):
         if subcommand is None:
             subcommand = {}
 
@@ -179,7 +179,7 @@ class ArgStruct:
 
 class ArguMint:
     @staticmethod
-    def error(i, command_string):
+    def _error(i, command_string):
         print(command_string)
         print(" "*i+"^")
 
@@ -196,12 +196,16 @@ class ArguMint:
                  arg_struct: Optional[Union[ArgStruct, dict]] = None):
         self.default_endpoint = self._ender(default_endpoint)
         self.description = description or ""
+        if isinstance(arg_struct, ArgStruct):
+            arg_struct = arg_struct.get_structure()
         self.arg_struct = arg_struct or {}
         self.endpoints = {}
 
         self.formats = {1: "Usage: nuisco <subcommand> [--args]", 2: "Usage: nuisco create-template [project_name] [--args]"}
 
-    def _check_path(self, path: str, overwrite_pre_args: Optional[ArgStruct] = None):
+    def _check_path(self, path: str, overwrite_pre_args: Optional[Union[ArgStruct, dict]] = None):
+        if isinstance(overwrite_pre_args, ArgStruct):
+            overwrite_pre_args = overwrite_pre_args.get_structure()
         current_level = overwrite_pre_args or self.arg_struct
         for point in path.split("."):
             if point not in current_level or not isinstance(current_level[point], dict):
@@ -217,7 +221,9 @@ class ArguMint:
             endpoint = EndPoint(potential_endpoint)
         return endpoint
 
-    def replace_pre_args(self, new_pre_args):
+    def replace_pre_args(self, new_pre_args: Union[ArgStruct, dict]):
+        if isinstance(new_pre_args, ArgStruct):
+            new_pre_args = new_pre_args.get_structure()
         to_del = []
         for path, endpoint in self.endpoints.items():
             if self._check_path(endpoint, new_pre_args):

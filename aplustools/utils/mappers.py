@@ -1,8 +1,13 @@
-# utils/mappers.py
-def reverse_map(functions, *args, **kwargs):
+from typing import Iterable, Iterator, Callable, Any
+
+
+def reverse_map(functions: Iterable[Callable], *args, **kwargs):
     return [func(*args, **kwargs) for func in functions]
 
-# Implement map with generator like arguments?
+
+def gen_map(functions: Iterable[Callable], args_iter: Iterator[Any], kwargs_iter: Iterator[dict]):
+    for func, args, kwargs in zip(functions, args_iter, kwargs_iter):
+        yield func(*args, **kwargs)
 
 
 def local_test():

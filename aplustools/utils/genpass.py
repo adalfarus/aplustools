@@ -8,14 +8,9 @@ from Crypto.Hash import SHA512
 from Crypto.Hash import SHA256
 from Crypto.Random import get_random_bytes
 from Crypto.Random.random import sample
-import base64
 import string
-from rich.console import Console
-from rich import print
 import os
 
-console = Console()
-error_console = Console(stderr=True, style="bold red")
 
 class CryptUtils:
     @staticmethod
@@ -92,6 +87,7 @@ class CryptUtils:
             print("Encrypt can only be True or False")
         return outtext
 
+
 class Database:
     def __init__(self):
         pass
@@ -114,11 +110,11 @@ class Database:
 
     @staticmethod
     def connect_to_database(database_file):
+        db = None
         try:
             db = sqlite3.connect(database_file)
         except Exception as e:
             print("SQLite3 Error:", e)
-            console.print_exception(show_locals=True)
         return db
 
     def encrypt_all_data(self, database_file, key):
@@ -141,7 +137,6 @@ class Database:
                 db.commit()
         except Exception as e:
             print("SQLite3 Error:", e)
-            console.print_exception(show_locals=True)
             x = 'a'
         return x.isnumeric()
 
@@ -171,7 +166,6 @@ class Database:
                 db.commit()
         except Exception as e:
             print("SQLite3 Error:", e)
-            console.print_exception(show_locals=True)
             x = '1'
         return x.isnumeric()
 
@@ -242,7 +236,6 @@ class Database:
                 print("Database", database_file, "is corrupted.")
         except Exception as e:
             print("SQLite3 Error:", e)
-            console.print_exception(show_locals=True)
         return ""
 
     @staticmethod
@@ -263,6 +256,7 @@ class Database:
                 print("SQLite3 Error:", e)
         else:
             print("Database", database_file, "does not exist.")
+
 
 class GeneratePasswords:
     def __init__(self, debug=False):
