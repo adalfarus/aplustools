@@ -5,10 +5,11 @@ import os
 import zstandard as zstd
 import py7zr
 import io
+from typing import Type, Union
 
 
 class FileContainer:
-    def __init__(self, compressor, block_size=1024 * 1024):  # Block size of 1 MB
+    def __init__(self, compressor: "ChunkCompressorBase", block_size: int = 1024 * 1024):  # Block size of 1 MB
         self.compressor = compressor
         self.block_size = block_size
         self.current_block = bytearray()
@@ -23,7 +24,7 @@ class FileContainer:
             self.compressed_data.extend(compressed_block)
             self.current_block = bytearray()
 
-    def add_file(self, filename, data):
+    def add_file(self, filename: str, data: bytes):
         if len(self.current_block) + len(data) > self.block_size:
             self._compress_current_block()
 
@@ -38,13 +39,13 @@ class FileContainer:
         if len(self.current_block) >= self.block_size:
             self._compress_current_block()
 
-    def get_compressed_container(self):
+    def get_compressed_container(self) -> bytes:
         self._compress_current_block()  # Compress any remaining data in the current block
         index_data = json.dumps({'files': self.files, 'blocks': self.block_offsets}).encode()
         index_length = len(index_data).to_bytes(4, 'big')
         return index_length + index_data + self.compressed_data
 
-    def extract_file(self, compressed_container, filename):
+    def extract_file(self, compressed_container: bytes, filename: str) -> bytes:
         index_length = int.from_bytes(compressed_container[:4], 'big')
         index_data = compressed_container[4:4 + index_length]
         index = json.loads(index_data)
@@ -65,7 +66,7 @@ class FileContainer:
 
 
 class FileContainerV2:
-    def __init__(self, compressor, block_size=1024 * 1024):  # Block size of 1 MB
+    def __init__(self, compressor: "ChunkCompressorBase", block_size: int = 1024 * 1024):  # Block size of 1 MB
         self.compressor = compressor
         self.block_size = block_size
         self.current_block = bytearray()
@@ -81,7 +82,7 @@ class FileContainerV2:
             self.compressed_data.extend(compressed_block)
             self.current_block = bytearray()
 
-    def add_file(self, filename, data):
+    def add_file(self, filename: str, data: bytes) -> int:
         if len(self.current_block) + len(data) > self.block_size:
             self._compress_current_block()
 
@@ -98,13 +99,15 @@ class FileContainerV2:
         if len(self.current_block) >= self.block_size:
             self._compress_current_block()
 
-    def get_compressed_container(self):
+        return file_index
+
+    def get_compressed_container(self) -> bytes:
         self._compress_current_block()  # Compress any remaining data in the current block
         index_data = json.dumps({'file_info': self.file_info, 'block_offsets': self.block_offsets, 'index_to_name': self.index_to_name}).encode()
         index_length = len(index_data).to_bytes(4, 'big')
         return index_length + index_data + self.compressed_data
 
-    def extract_file(self, compressed_container, file_identifier):
+    def extract_file(self, compressed_container: bytes, file_identifier: Union[str, int]) -> bytes:
         index_length = int.from_bytes(compressed_container[:4], 'big')
         index_data = compressed_container[4:4 + index_length]
         index = json.loads(index_data)
@@ -125,7 +128,7 @@ class FileContainerV2:
 
 
 class FileContainerV3:
-    def __init__(self, compressor, block_size=1024 * 1024):  # Block size of 1 MB
+    def __init__(self, compressor: "ChunkCompressorBase", block_size: int = 1024 * 1024):  # Block size of 1 MB
         self.compressor = compressor
         self.block_size = block_size
         self.current_block = bytearray()
@@ -141,7 +144,7 @@ class FileContainerV3:
             self.compressed_data.extend(compressed_block)
             self.current_block = bytearray()
 
-    def add_file(self, filename, data):
+    def add_file(self, filename: str, data: bytes) -> int:
         if len(self.current_block) + len(data) > self.block_size:
             self._compress_current_block()
 
@@ -158,14 +161,16 @@ class FileContainerV3:
         if len(self.current_block) >= self.block_size:
             self._compress_current_block()
 
-    def get_compressed_container(self):
+        return file_index
+
+    def get_compressed_container(self) -> bytes:
         self._compress_current_block()  # Compress any remaining data in the current block
         index_data = json.dumps({'file_info': self.file_info, 'block_offsets': self.block_offsets, 'index_to_name': self.index_to_name}).encode()
         compressed_index_data = self.compressor.compress(index_data)
         index_length = len(compressed_index_data).to_bytes(4, 'big')
         return index_length + compressed_index_data + self.compressed_data
 
-    def extract_file(self, compressed_container, file_identifier):
+    def extract_file(self, compressed_container: bytes, file_identifier: Union[str, int]) -> bytes:
         compressed_index_length = int.from_bytes(compressed_container[:4], 'big')
         compressed_index_data = compressed_container[4:4 + compressed_index_length]
         index_data = self.compressor.decompress(compressed_index_data)
@@ -187,22 +192,22 @@ class FileContainerV3:
 
 
 class ChunkCompressorBase:
-    def compress(self, data_chunk):
+    def compress(self, data_chunk: bytes) -> bytes:
         return data_chunk
 
-    def decompress(self, compressed_chunk):
+    def decompress(self, compressed_chunk: bytes) -> bytes:
         return compressed_chunk
 
 
 class BrotliChunkCompressor(ChunkCompressorBase):
-    def __init__(self, quality=11):  # Maximum compression quality
+    def __init__(self, quality: int = 11):  # Maximum compression quality
         self.quality = quality
 
-    def compress(self, data_chunk):
+    def compress(self, data_chunk: bytes) -> bytes:
         # Compress the data chunk with Brotli
         return brotli.compress(data_chunk, quality=self.quality)
 
-    def decompress(self, compressed_chunk):
+    def decompress(self, compressed_chunk: bytes) -> bytes:
         # Decompress the data chunk with Brotli
         return brotli.decompress(compressed_chunk)
 
@@ -216,29 +221,29 @@ class LZMAChunkCompressor(ChunkCompressorBase):
     def __init__(self, preset=lzma.PRESET_EXTREME):
         self.preset = preset
 
-    def compress(self, data_chunk):
+    def compress(self, data_chunk: bytes) -> bytes:
         # Compress the data chunk with LZMA
         return lzma.compress(data_chunk, preset=self.preset)
 
-    def decompress(self, compressed_chunk):
+    def decompress(self, compressed_chunk: bytes) -> bytes:
         # Decompress the data chunk with LZMA
         return lzma.decompress(compressed_chunk)
 
 
 class ZstdCompressor(ChunkCompressorBase):
-    def __init__(self, level=3):
+    def __init__(self, level: int=3):
         self.compressor = zstd.ZstdCompressor(level=level)
         self.decompressor = zstd.ZstdDecompressor()
 
-    def compress(self, data_chunk):
+    def compress(self, data_chunk: bytes) -> bytes:
         return self.compressor.compress(data_chunk)
 
-    def decompress(self, compressed_chunk):
+    def decompress(self, compressed_chunk: bytes) -> bytes:
         return self.decompressor.decompress(compressed_chunk)
 
 
 class LZMA2Compressor(ChunkCompressorBase):
-    def compress(self, data_chunk):
+    def compress(self, data_chunk: bytes) -> bytes:
         with io.BytesIO() as buffer, py7zr.SevenZipFile(buffer, 'w', filters=[{'id': py7zr.FILTER_LZMA2}]) as archive:
             # Create a file-like object from data_chunk
             file_like_data = io.BytesIO(data_chunk)
@@ -246,7 +251,7 @@ class LZMA2Compressor(ChunkCompressorBase):
             buffer.seek(0)  # Reset buffer position to the beginning
             return buffer.getvalue()
 
-    def decompress(self, compressed_chunk):
+    def decompress(self, compressed_chunk: bytes) -> bytes:
         with io.BytesIO(compressed_chunk) as input_buffer, py7zr.SevenZipFile(input_buffer, 'r') as archive:
             output_buffer = io.BytesIO()
             archive.extractall(path=output_buffer)
