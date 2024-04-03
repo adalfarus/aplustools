@@ -1,6 +1,6 @@
 # environment.py
-import typing
-from typing import Union, Optional, Callable
+from typing import Union, Optional, Callable, Any, Type, cast
+from types import FrameType
 import subprocess
 import warnings
 import platform
@@ -285,7 +285,7 @@ def functionize(cls):
     return wrapper
 
 
-def strict(cls: typing.Type):
+def strict(cls: Type[Any]):
     class_name = cls.__name__ + "Cover"
     original_setattr = cls.__setattr__
 
@@ -342,6 +342,32 @@ def strict(cls: typing.Type):
 
     CoverClass = type(class_name, (object,), cover_class_attrs)
     return CoverClass
+
+
+def privatize(cls: Type[Any]):
+    """A class decorator that protects private attributes."""
+
+    original_getattr = cls.__getattribute__
+    original_setattr = cls.__setattr__
+
+    def _get_caller_name() -> str:
+        """Return the calling function's name."""
+        return cast(FrameType, cast(FrameType, inspect.currentframe()).f_back).f_code.co_name
+
+    def protected_getattr(self, name: str) -> Any:
+        if name.startswith('_') and _get_caller_name() not in dir(cls):
+            raise AttributeError(f"Access to private attribute {name} is forbidden")
+        return original_getattr(self, name)
+
+    def protected_setattr(self, name: str, value: Any) -> None:
+        if name.startswith('_') and _get_caller_name() not in dir(cls):
+            raise AttributeError(f"Modification of private attribute {name} is forbidden")
+        original_setattr(self, name, value)
+
+    cls.__getattribute__ = protected_getattr
+    cls.__setattr__ = protected_setattr
+
+    return cls
 
 
 class System:

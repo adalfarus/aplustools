@@ -2,8 +2,14 @@
 del /Q ".\dist\*.*"
 call ./build.bat
 call ./install2.bat
-if "%cmdcmdline%"=="" (
-  echo Started directly
+
+REM https://superuser.com/questions/1301373/how-can-i-tell-whether-a-batch-file-was-run-from-a-command-window
+if "%CMDCMDLINE:"=%" == "%COMSPEC% " (
+  pause
+) else if "%CMDCMDLINE%" == "cmd.exe" (
+  pause
+) else if "%CMDCMDLINE:"=%" == "%COMSPEC% /c %~dpf0 " (
+  REM started in command window
 ) else (
-  echo Started from command line
+  REM started from other batch file
 )
