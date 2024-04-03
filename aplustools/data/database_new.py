@@ -3,6 +3,7 @@ import sqlite3
 from typing import Union
 from datetime import datetime
 import os
+from aplustools.package import AttributeObject
 
 
 class _TableColumn:
@@ -19,7 +20,7 @@ class _Table:
         self.name = name
         self.db_manager = db_manager
 
-        self.column = object()
+        self.column = AttributeObject()
         self.columns = {}
         columns = columns if columns is not None else {}
         for column_name, column_type in columns.items():
@@ -148,19 +149,19 @@ class SQLiteDBManager(AbstractDBManager):
 
     def update(self, table: Union[str, _Table], data: dict, where: dict):
         set_clause = ', '.join([f"{k} = ?" for k in data.keys()])
-        where_clause = ' AND '.join([f"{k} = ?" for k in where.keys()])
+        where_clause = ' AND '.join([f"{k.column_name if type(k) is not str else k} = ?" for k in where.keys()])
         query = f"UPDATE {table} SET {set_clause} WHERE {where_clause}"
         self._execute_query(query, tuple(data.values()) + tuple(where.values()))
         self._commit()
 
     def delete(self, table: Union[str, _Table], where: dict):
-        where_clause = ' AND '.join([f"{k} = ?" for k in where.keys()])
+        where_clause = ' AND '.join([f"{k.column_name if type(k) is not str else k} = ?" for k in where.keys()])
         query = f"DELETE FROM {table} WHERE {where_clause}"
         self._execute_query(query, tuple(where.values()))
         self._commit()
 
     def select(self, table: Union[str, _Table], columns: list = ["*"], where: dict = None, order_by: str = None):
-        cols = ', '.join(columns)
+        cols = ', '.join([column if type(column) is str else column.column_name for column in columns])
         query = f"SELECT {cols} FROM {table}"
 
         if where:
@@ -217,14 +218,14 @@ def local_test():
             db.update(users_table, {"name": "Alice Smith"}, {users_table.column.user_id: 1})
 
             # Create a new column
-            order_id_column = users_table.add_attribute("order_id", int)
+            order_id_column = users_table.create_column("order_id", int)
 
             # Select data from 'users'
             users = db.select(users_table, [users_table.column.user_id, users_table.column.name])
             print("Users:", users)
 
             # Delete data from 'users'
-            db.delete(users_table, {users_table.column.order_id: 2})
+            db.delete(users_table, {users_table.column.user_id: 2})
 
             # Re-fetch data from 'users'
             users_after_delete = db.select(users_table, ["user_id", "name"])

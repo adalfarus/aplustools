@@ -4,5 +4,5 @@ for %%F in (dist\*.whl) do (
 )
 if "%cmdcmdline%"=="" (
   echo Finished ...
-  pause
 )
+pause

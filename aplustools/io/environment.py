@@ -1,4 +1,5 @@
 # environment.py
+import typing
 from typing import Union, Optional, Callable
 import subprocess
 import warnings
@@ -284,16 +285,16 @@ def functionize(cls):
     return wrapper
 
 
-def strict(cls):
+def strict(cls: typing.Type):
     class_name = cls.__name__ + "Cover"
     original_setattr = cls.__setattr__
 
     # Overridden __setattr__ for the original class
     def new_setattr(self, name, value):
-        # Update the cover class if attribute is public
-        if not name.startswith('_') and hasattr(self, 'cover'):
-            setattr(self.cover, name, value)
         original_setattr(self, name, value)
+        # Update the cover class if attribute is public
+        if not name.startswith('_') and hasattr(self, '_cover') and getattr(self._cover, name) != value:
+            setattr(self._cover, name, value)
 
     # Replace __setattr__ in the original class
     cls.__setattr__ = new_setattr
@@ -302,24 +303,38 @@ def strict(cls):
     def new_init(self, *args, **kwargs):
         # Create an instance of the original class
         original_instance = cls(*args, **kwargs)
-        original_instance.cover = self  # Reference to the cover class
+        original_instance._cover = self  # Reference to the cover class
 
         # Bind public methods and attributes to the cover class instance
         for attr_name in dir(original_instance):
-            if not attr_name.startswith('_'):
+            if not attr_name.startswith('_'):  # or attr_name in ('__dict__', '__module__'):
                 attr_value = getattr(original_instance, attr_name)
                 if inspect.isfunction(attr_value):
                     setattr(self, attr_name, attr_value.__get__(self, cls))
                 else:
                     setattr(self, attr_name, attr_value)
 
+        def custom_setattr(instance, name, value):
+            object.__setattr__(instance, name, value)
+            if not name.startswith('_') and getattr(original_instance, name) != value:
+                setattr(original_instance, name, value)
+
+        self._dynamic_setattr = custom_setattr
+
         # Remove reference to original instance
-        del original_instance
+        # del original_instance
+
+    def setattr_overwrite(self, name, value):
+        if hasattr(self, '_dynamic_setattr'):
+            self._dynamic_setattr(self, name, value)
+        else:
+            object.__setattr__(self, name, value)
 
     # Create a new cover class with the new __init__ and other methods/attributes
     cover_class_attrs = {
         '__init__': new_init,
         '__class__': cls,
+        '__setattr__': setattr_overwrite,
     }
     for attr_name in dir(cls):
         if callable(getattr(cls, attr_name)) and not attr_name.startswith('_'):

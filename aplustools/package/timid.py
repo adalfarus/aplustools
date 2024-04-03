@@ -181,7 +181,6 @@ class LazyTimer:
 # Timer
 
 class TimerOut:
-    raise NotImplementedError("This class isn't implemented yet, please visit back in version 1.5 or later.")
     WEEKS = 0
     DAYS = 1
     HOURS = 2
@@ -192,8 +191,8 @@ class TimerOut:
 
 
 class TimeDisplay:
-    raise NotImplementedError("This class isn't implemented yet, please visit back in version 1.5 or later.")
     def __init__(self, td: timedelta, out: TimerOut):
+        raise NotImplementedError("This class isn't implemented yet, please visit back in version 1.5 or later.")
         self.microsec = td.microseconds
         self.seconds = td.seconds
         self.days = td.days
@@ -207,9 +206,9 @@ class TimeDisplay:
 
 
 class Timer:
-    raise NotImplementedError("This class isn't implemented yet, please visit back in version 1.5 or later.")
     def __init__(self, output_target: Optional[TimerOut] = TimerOut.SECONDS,
                  start_now: Optional[bool] = True):
+        raise NotImplementedError("This class isn't implemented yet, please visit back in version 1.5 or later.")
         self.output_target = output_target
 
         self.start_t = None
@@ -265,7 +264,7 @@ class Timer:
 
 def local_test():
     try:
-        def test_delay(cls: Type[Union[NormalTimer], Type[LazyTimer]]):
+        def test_delay(cls: Type[Union[NormalTimer, LazyTimer]]):
             timer = TimidTimer2()
             cls().stop()
             return timer.end() - timedelta(microseconds=1)

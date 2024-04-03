@@ -55,3 +55,21 @@ def install_dependencies():
     if not success:
         return
     print("Done, all possible dependencies for the package module installed ...")
+
+
+class AttributeObject:
+    _types = {}
+
+    def __init__(self, **kwargs):
+        for name, value in kwargs.items():
+            self.__setattr__(name, value)
+
+    def __setattr__(self, name, value):
+        if name in self._types and not isinstance(value, self._types[name]):
+            raise TypeError(f"Attribute '{name}' must be of type {self._types[name]}")
+        super().__setattr__(name, value)
+
+    def __getattr__(self, name):
+        if name not in self.__dict__:
+            raise AttributeError(f"'{type(self).__name__}' object has no attribute '{name}'")
+        return self.__dict__[name]
