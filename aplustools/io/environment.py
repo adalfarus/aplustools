@@ -370,6 +370,19 @@ def privatize(cls: Type[Any]):
     return cls
 
 
+def auto_repr(cls):
+    """
+    Decorator that automatically generates a __repr__ method for a class.
+    """
+    if cls.__repr__ is object.__repr__:
+        def __repr__(self):
+            attributes = ', '.join(f"{key}={getattr(self, key)}" for key in self.__dict__)
+            return f"{cls.__name__}({attributes})"
+
+        cls.__repr__ = __repr__
+    return cls
+
+
 class System:
     def __init__(self):
         self.os = self.get_os()

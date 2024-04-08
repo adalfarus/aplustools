@@ -24,12 +24,15 @@ import random
 
 
 class DummyProtocol:
+    @staticmethod
     def get_exec_code_delimiters(self) -> tuple:
         return "", ""
 
+    @staticmethod
     def get_control_code(self, control_code: str, add_in: str = None) -> str:
         return control_code + add_in
 
+    @staticmethod
     def validate_control_code(self, exec_code: str) -> str:
         return exec_code
 
@@ -1255,20 +1258,20 @@ class GeneratePasswords:
             return None
         password = ""
         if shuffle_words:
-            debug_print("Words before shuffeling", words)
+            debug_print("Words before shuffling", words)
             random.shuffle(words)
-            debug_print("Words after shuffeling", words)
+            debug_print("Words after shuffling", words)
         used_words = set()
         for word in words:
             if not repeat_words and word in used_words:
                 debug_print("Ignoring repeated word")
                 continue
             if shuffle_characters:
-                debug_print("Word before shuffeling", list(word))
+                debug_print("Word before shuffling", list(word))
                 word_chars = list(word)
                 random.shuffle(word_chars)
                 word = "".join(word_chars)
-                debug_print("Word after shuffeling", word)
+                debug_print("Word after shuffling", word)
             password += word
             used_words.add(word)
             debug_print("Used Words", used_words)
@@ -1476,6 +1479,7 @@ def local_test():
     else:
         print("Test completed successfully.")
         return True
+
 
 if __name__ == "__main__":
     local_test()

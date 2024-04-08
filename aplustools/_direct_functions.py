@@ -19,8 +19,8 @@ def interruptCTRL():
 
 
 def install_all_dependencies():
-    success = _install_dependencies_lst(["requests==2.31.0", "Pillow==10.2.0", "BeautifulSoup4==4.12.3",
-                                         "duckduckgo_search==3.9.3", "pycryptodome==3.20.0", "PySide6==6.6.1",
+    success = _install_dependencies_lst(["requests==2.31.0", "Pillow==10.3.0", "BeautifulSoup4==4.12.3",
+                                         "duckduckgo_search==3.9.3", "cryptography==42.0.5", "PySide6==6.6.1",
                                          "aiohttp==3.9.3", "opencv-python==4.9.0.80", "brotli==1.1.0",
                                          "zstandard==0.22.0", "py7zr==0.21.0", "pillow_heif==0.15.0"])
     if not success:

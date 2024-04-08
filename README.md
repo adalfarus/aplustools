@@ -124,7 +124,22 @@ image_processor = SVGCompatibleImage("someSvg.svg", 300,
 image_processor.save_image_to_disk()
 ```
 
-### Git-Updater
+### ImageManager
+````python
+from aplustools.data.imagetools import ImageManager, OnlineImage
+
+manager = ImageManager("./test", use_async=True)
+image_index = manager.add_image(OnlineImage, "https://somewhere.com/image.jpg")
+
+manager.execute_func(image_index, "download_image")
+manager.execute_func(image_index, "convert_to_grayscale")
+manager.execute_func(image_index, "apply_filter")  # Default is blur
+manager.execute_func(image_index, "rotate_image", 12)
+manager.execute_func(image_index, "save_image_to_disk")  # Overwrites downloaded file
+````
+
+
+### Github-Updater
 ```python
 from aplustools.data.updaters import GithubUpdater, VersionNumber
 from aplustools.io.environment import get_temp
@@ -337,7 +352,7 @@ prot = ControlCodeProtocol()
 # Create message handlers for server and client
 encoder = ClientMessageHandler(prot)
 
-# Make a connection using the client host and chosen port
+# Make a connection using the clients host and chosen port
 connection = None
 
 decoder = ServerMessageHandler(connection, prot)
@@ -456,7 +471,7 @@ C:\Users\user_>pype
 Enter Python expression: 1+2
 3
 
-C:\Users\user_>pype 1//3
+C:\Users\user_>pype 1 // 3
 0
 ```
 ### upype (unified python pipe)
@@ -468,11 +483,11 @@ C:\Users\user_>upype
 Enter Python code (type 'end' on a new line to finish):
 ... class Test:
 ...     def hello_word(self):
-...             print("Hello, ya dunce!")
+...             print("Hello, you!")
 ... test = Test()
 ... test.hello_word()
 ... end
-Hello, ya dunce!
+Hello, you!
 ```
 ### apt
 Can currently run tests with ```apt tests run``` and show a basic help using ```apt help```.
@@ -489,11 +504,11 @@ Dependencies (except for the standart libraries) are:
 - data.database, io.environment, io.loggers, utils.mappers, data.faker, utils.dummy, utils.hasher, package.lazy_loader, package.timid, adultswork, childsplay - none
 - data.github-updater-cmd - requests
 - data.github-updater-gui - requests, PySide6
-- data.github-updater, data.updaters - requests
+- data.github-updater-none, data.updaters - requests
 - data.imagetools - Pillow, aiohttp, requests, wand
 - data.advanced_imagetools - opencv-python, aiohttp, wand, pillow_heif
 - web.webtools - requests, duckduckgo_search, BeautifulSoup4 - duckduckgo_search is only used for Search.duckduckgo_provider, if you don't want to use it, use Search._duckduckgo_provider instead.
-- utils.genpass - pycryptodome, rich
+- utils.genpass - cryptography
 - web.new_webtools, web.actual_webtools - requests, BeautifulSoup4
 - web.web_request - requests, aiohttp
 - utils.compressor - brotli, zstandard, py7zr
@@ -503,7 +518,6 @@ Sub-Modules that may be removed in future updates due to being hard to support o
 - database (maybe unneeded and hard to support if more dbs are added)
 - actual_webtools, new_webtools, webtools search-machines (hard to support)
 - loggers (maybe unneeded)
-- childsplay & adultswork (maybe unneeded)
 
 ## Contributing
 

@@ -1,4 +1,5 @@
 # actual_webtools - By me :)
+import bs4
 import requests
 from bs4 import BeautifulSoup
 import random
@@ -1780,79 +1781,106 @@ def get_user_agent() -> str:
     return random.choice(_user_agent_list)
 
 
-def generate_user_agent():
-    # Define possible components of a user agent string
-    platforms = [
-        "Windows NT 10.0; Win64; x64",
-        "Macintosh; Intel Mac OS X 10_15_7",
-        "X11; Linux x86_64"
-    ]
+class WebPage:
+    def __init__(self, url, in_url: Optional[list] = None):
+        self.url = url
 
-    browsers = [
-        "Mozilla/5.0 ({platform}) Gecko/20100101 Firefox/{firefox_version}",
-        "Mozilla/5.0 ({platform}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/{chrome_version} Safari/537.36",
-        "Mozilla/5.0 ({platform}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/{chrome_version} Safari/537.36 Edg/{edge_version}"
-    ]
+        self.crawlable = self.is_crawlable(url)
+        self.in_url = all(inn.lower() in url.lower() for inn in in_url) if in_url else True
+        self.accessible, self.status_code = self.check_url(url, [])
 
-    # Randomly select components
-    platform = random.choice(platforms)
-    browser_template = random.choice(browsers)
-    firefox_version = f"{random.randint(50, 80)}.0"
-    chrome_version = f"{random.randint(70, 100)}.0.0.0"
-    edge_version = f"{random.randint(70, 100)}.0.1661.62"
+        self.page = None
+        self.soup = None
+        self.user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:66.0) Gecko/20100101 Firefox/66.0"  # get_user_agent()
 
-    # Generate the final user agent string
-    user_agent = browser_template.format(platform=platform, firefox_version=firefox_version,
-                                         chrome_version=chrome_version, edge_version=edge_version)
-    return user_agent
+        if self.accessible and self.crawlable:
+            self.page = requests.get(url, headers={"User-Agent": self.user_agent})
+            self.soup = bs4.BeautifulSoup(self.page.content, 'html.parser')
 
-
-def check_url(url: str, url_title: str, in_title: Optional[Union[str, List[str]]] = None,
-              blacklisted_websites: Optional[list] = None) -> Optional[str]:
-    if in_title is not None and not isinstance(in_title, list):
-        in_title = [in_title]
-
-    if in_title is None or all([str(x).lower() in url_title.lower() for x in in_title]):
-        # Checking if the URL is accessible or leads to a 404 error
+    @staticmethod
+    def is_crawlable(url: str) -> bool:
+        """
+        Check if the URL can be crawled by checking the robots.txt file of the website.
+        """
         try:
-            response = requests.head(url, allow_redirects=True)  # Using HEAD request to get the headers
-            if response.status_code == 404:
-                print(f"The URL {url} leads to a 404 error, checking next result...")
-                return None
-        except requests.RequestException as e:
-            print(f"Error accessing URL {url}: {e}, checking next result...")
-            return None
+            # Parse the given URL to get the netloc (domain) part
+            domain = urlparse(url).netloc
+            robots_txt_url = urljoin(f'https://{domain}', 'robots.txt')
+            response = requests.get(robots_txt_url)
 
-        if is_crawlable(url):
-            if blacklisted_websites is None or not url.split("/")[2] in blacklisted_websites:
-                return url
+            if response.status_code == 200:
+                # If "Disallow: /" is found for User-agent: *, it means the website can't be crawled
+                if 'User-agent: *\nDisallow: /' in response.text:
+                    return False
+                return True
             else:
-                print("Blacklisted URL:", url)
-        else:
-            print(f"The URL {url} cannot be crawled, checking next result...")
-    return None
+                print(f"Failed to retrieve the robots.txt file, status code: {response.status_code}")
+        except Exception as e:
+            print(f"An error occurred while checking the robots.txt file: {e}")
+        return False  # Return False if there was an error or the robots.txt file couldn't be retrieved
+
+    @staticmethod
+    def check_url(url: str, blacklisted_websites: Optional[list] = None) -> (bool, Optional[int]):
+        """
+        Check if the URL is accessible and not blacklisted, return a tuple (accessible, status_code).
+        """
+        try:
+            response = requests.head(url, allow_redirects=True)
+            status_code = response.status_code
+
+            if blacklisted_websites and any(blacklisted in url for blacklisted in blacklisted_websites):
+                print(f"Blacklisted URL: {url}")
+                return False, status_code
+
+            if status_code == 404:
+                print(f"The URL {url} leads to a 404 error.")
+                return False, status_code
+
+            return True, status_code
+        except requests.RequestException as e:
+            print(f"Error accessing URL {url}: {e}")
+            return False, None
+
+    @staticmethod
+    def generate_user_agent():
+        platforms = [
+            f"Windows NT {random.choice([10, 11])}.0; Win64; x64",
+            "Macintosh; Intel Mac OS X 10_15_7",
+            "X11; Linux x86_64",
+            f"iPhone; CPU iPhone OS {random.choice(range(10, 13))}_{random.choice(range(0, 7))} like Mac OS X",
+            f"Android {random.choice(range(8, 12))}; Mobile"
+        ]
+
+        browsers = [
+            "Mozilla/5.0 ({platform}) Gecko/20100101 Firefox/{firefox_version}",
+            "Mozilla/5.0 ({platform}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/{chrome_version} Safari/537.36",
+            "Mozilla/5.0 ({platform}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/{chrome_version} Safari/537.36 Edg/{edge_version}",
+            "Mozilla/5.0 ({platform}) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.0.3 Safari/605.1.15",
+            "Mozilla/5.0 ({platform}) AppleWebKit/537.36 (KHTML, like Gecko) Opera/{opera_version} Safari/537.36"
+        ]
+
+        # Randomly select components
+        platform = random.choice(platforms)
+        browser_template = random.choice(browsers)
+        firefox_version = f"{random.randint(50, 90)}.0"
+        chrome_version = f"{random.randint(70, 110)}.0.0.0"
+        edge_version = f"{random.randint(70, 100)}.0.{random.randrange(1000, 2000)}.{random.randrange(50, 99)}"
+        opera_version = f"{random.randint(60, 75)}.0.0.0"
+
+        # Generate the final user agent string
+        user_agent = browser_template.format(platform=platform, firefox_version=firefox_version,
+                                             chrome_version=chrome_version, edge_version=edge_version,
+                                             opera_version=opera_version)
+        return user_agent
+
+    def __repr__(self):
+        return (f"WebPage(url={self.url}, crawlable={self.crawlable}, in_url={self.in_url}, "
+                f"accessible={self.accessible}, status_code={self.status_code}, ..., user_agent={self.user_agent})")
 
 
-def is_crawlable(url: str) -> bool:
-    """
-    Check if the URL can be crawled by checking the robots.txt file of the website.
-    """
-    try:
-        # Parse the given URL to get the netloc (domain) part
-        domain = urlparse(url).netloc
-        robots_txt_url = urljoin(f'https://{domain}', 'robots.txt')
-        response = requests.get(robots_txt_url)
-
-        if response.status_code == 200:
-            # If "Disallow: /" is found for User-agent: *, it means the website can't be crawled
-            if 'User-agent: *\nDisallow: /' in response.text:
-                return False
-            return True
-        else:
-            print(f"Failed to retrieve the robots.txt file, status code: {response.status_code}")
-    except Exception as e:
-        print(f"An error occurred while checking the robots.txt file: {e}")
-    return False  # Return False if there was an error or the robots.txt file couldn't be retrieved
+if __name__ == "__main__":
+    webpage = WebPage("https://chat.openai.com")
+    input(webpage)
 
 
 class Search:
