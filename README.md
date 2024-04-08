@@ -461,6 +461,60 @@ sys.argv[0] = "apt"
 parser.parse_cli(sys, "native_light")
 print(timer.end())
 ```
+
+### compressor
+
+```python
+from aplustools.data.compressor import FileContainerV3, BrotliChunkCompressor
+import os
+
+
+compressor = BrotliChunkCompressor()
+container = FileContainerV3(compressor, block_size=2048*2048)
+
+image_data = {}
+for file in os.listdir("./images"):
+    if file.lower().endswith(".png"):
+        with open(os.path.join("./images", file), "rb") as f:
+            image_file_data = b''.join(f.readlines())
+            image_data[file] = image_file_data
+
+for file_name, image in image_data.items():
+    container.add_file(file_name, image)
+
+# Get the compressed data
+compressed_data = container.get_compressed_container()
+
+print("Compression done")
+
+with open("./files.bin", "wb") as f:
+    f.write(compressed_data)
+
+print("Wrote bin")
+
+# To extract a specific file from the compressed data
+try:
+    decompressed_images = []
+    for i in range(len(image_data)):
+        decompressed_image = container.extract_file(compressed_data, i)
+        decompressed_images.append(decompressed_image)
+except Exception as e:
+    print("Indexing not possible, error", e, "\n")
+    decompressed_images = []
+    for file_name in image_data.keys():
+        decompressed_image = container.extract_file(compressed_data, file_name)
+        decompressed_images.append(decompressed_image)
+compression_ratio = len(compressed_data) / sum(len(x) for x in image_data.values())
+
+print(f"Original size: {sum(len(x) for x in image_data.values())} bytes")
+print(f"Compressed size: {len(compressed_data)} bytes")
+print(f"Compression ratio: {compression_ratio:.2f}")
+
+for i, decompressed_image in enumerate(decompressed_images):
+    with open(f"./decompressed_images/image{i}.png", "wb") as f:
+        f.write(decompressed_image)
+
+```
 (Correct shortform for aplustools is apt, so please use ```import aplustools as apt``` for consistency)
 
 There are multiple clis added through this package:
