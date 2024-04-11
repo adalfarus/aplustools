@@ -1,8 +1,14 @@
 import platform
-import os
-import winreg
-import subprocess
-from typing import Literal
+from typing import Literal, Union
+import warnings
+
+# For Windows Systems
+try:
+    import winreg
+    import wmi
+    from win10toast import ToastNotifier
+except ImportError:
+    winreg = wmi = ToastNotifier = None
 
 
 class _BaseSystem:
@@ -28,7 +34,10 @@ class _BaseSystem:
         pass
 
     def send_notification(self, title, message):
-        pass
+        raise NotImplementedError("send_notification is not implemented")
+
+    def get_gpu_info(self):
+        raise NotImplementedError("get_gpu_info is not implemented")
 
 
 class _WindowsSystem(_BaseSystem):
@@ -38,7 +47,11 @@ class _WindowsSystem(_BaseSystem):
         self.theme = self.get_system_theme()
 
     def get_gpu_info(self):
-        return None
+        c = wmi.WMI()
+        gpulist = []
+        for gpu in c.Win32_VideoController():
+            gpulist.append(gpu.Name)
+        return gpulist
 
     def get_system_theme(self):
         if not winreg:
@@ -54,15 +67,23 @@ class _WindowsSystem(_BaseSystem):
         except Exception:
             return None
 
+    def schedule_event(self, event: Literal["startup", "login"]):
+        pass
 
-class _MacOSSystem(_BaseSystem):
+    def send_notification(self, title, message):
+        toaster = ToastNotifier()
+        toaster.show_toast(title, message)
+
+
+class _DarwinSystem(_BaseSystem):
     def __init__(self):
         super().__init__()
         self.gpu_info = None
         self.theme = self.get_system_theme()
 
     def get_gpu_info(self):
-        return None
+        result = subprocess.check_output(['system_profiler', 'SPDisplaysDataType'])
+        return result.decode()
 
     def get_system_theme(self):
         try:
@@ -70,6 +91,13 @@ class _MacOSSystem(_BaseSystem):
             return 'Dark' if theme == 'Dark' else 'Light'
         except subprocess.CalledProcessError:
             return 'Light'  # Default to Light since Dark mode is not set
+
+    def schedule_event(self, event: Literal["startup", "login"]):
+        pass
+
+    def send_notification(self, title, message):
+        script = f'display notification "{message}" with title "{title}"'
+        subprocess.run(["osascript", "-e", script])
 
 
 class _LinuxSystem(_BaseSystem):
@@ -79,7 +107,8 @@ class _LinuxSystem(_BaseSystem):
         self.theme = self.get_system_theme()
 
     def get_gpu_info(self):
-        return None
+        result = subprocess.check_output(['lspci', '|', 'grep', 'VGA'])
+        return result.decode()
 
     def get_system_theme(self):
         # This method is very basic and might not work on all Linux distributions.
@@ -91,41 +120,36 @@ class _LinuxSystem(_BaseSystem):
         except Exception:
             return None
 
+    def schedule_event(self, event: Literal["startup", "login"]):
+        pass
+
+    def send_notification(self, title, message):
+        subprocess.run(["notify-send", title, message])
+
 
 class System:
     @staticmethod
-    def system():
+    def system() -> Union[_WindowsSystem, _DarwinSystem, _LinuxSystem, _BaseSystem]:
         os_name = platform.system()
         if os_name == 'Windows':
             return _WindowsSystem()
         elif os_name == 'Darwin':
-            return _MacOSSystem()
+            return _DarwinSystem()
         elif os_name == 'Linux':
             return _LinuxSystem()
         else:
-            raise ValueError("Unsupported Operating System")
-    def __init__(self):
-        self.gpu_info = self.get_gpu_info()
-        self.theme = self.get_system_theme()
-
-
-
-    def get_gpu_info(self):
-        return None
-
-
-
-    def schedule_event(self, event: Literal["startup", "login"]):
-        pass
-
+            warnings.warn("Unsupported Operating System, returning _BaseSystem instance.", RuntimeWarning, 2)
+            return _BaseSystem()
 
 def print_system_info():
-    sys_info = System()
+    sys_info = System.system()
     print(f"Operating System: {sys_info.os}")
-    print(f"OS Version: {sys_info.os_version}")
+    print(f"OS Version: {sys_info.major_os_version}")
     print(f"CPU Architecture: {sys_info.cpu_arch}")
     print(f"CPU Brand: {sys_info.cpu_brand}")
     print(f"System Theme: {sys_info.theme}")
+
+print_system_info()
 
 
 import os

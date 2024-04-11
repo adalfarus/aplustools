@@ -5,7 +5,7 @@ import os
 import zstandard as zstd
 import py7zr
 import io
-from typing import Type, Union
+from typing import Type, Union, Tuple
 
 
 class FileContainer:
@@ -189,6 +189,15 @@ class FileContainerV3:
         start_file = file_info['start']
         length_file = file_info['length']
         return decompressed_block[start_file:start_file + length_file]
+
+    def get_compressed_container_info(self, compressed_container: bytes) -> Tuple[int, dict, list]:
+        """Returns a tuple(Number of Files, Index to name dictionary and an in-order name list)"""
+        compressed_index_length = int.from_bytes(compressed_container[:4], 'big')
+        compressed_index_data = compressed_container[4:4 + compressed_index_length]
+        index_data = self.compressor.decompress(compressed_index_data)
+        index = json.loads(index_data)
+        return (len(index['file_info']),
+                {i: name for i, name in enumerate(index['index_to_name'])}, index['index_to_name'])
 
 
 class ChunkCompressorBase:

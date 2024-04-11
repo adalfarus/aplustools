@@ -1873,6 +1873,15 @@ class WebPage:
                                              opera_version=opera_version)
         return user_agent
 
+    def get_by_tag(self, tag):
+        return None
+
+    def get_by_class(self, cls):
+        return None
+
+    def get_soup(self, func: str, *args, **kwargs):
+        return getattr(self.soup, func)(*args, **kwargs)
+
     def __repr__(self):
         return (f"WebPage(url={self.url}, crawlable={self.crawlable}, in_url={self.in_url}, "
                 f"accessible={self.accessible}, status_code={self.status_code}, ..., user_agent={self.user_agent})")
