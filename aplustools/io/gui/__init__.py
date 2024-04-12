@@ -1,6 +1,6 @@
-# package __init__
+# io.gui __init__
 
-from aplustools.package._direct_functions import LazyModuleLoader as _LazyModuleLoader
+from aplustools.package import LazyModuleLoader as _LazyModuleLoader
 
 # Lazy loading modules
 chat = _LazyModuleLoader('aplustools.package.gui.chat')
