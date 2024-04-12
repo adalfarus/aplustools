@@ -11,7 +11,7 @@ version = "1.4.8.1"
 dependencies = [
   "requests>=2.31.0",
   "BeautifulSoup4>=4.12.2",
-  "winreg; os_name == 'nt'",
+  "winreg; os_name != 'nt'",
 ]
 requires-python = ">= 3.9"
 authors = [
