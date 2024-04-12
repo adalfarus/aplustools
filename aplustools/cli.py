@@ -4,7 +4,7 @@ import subprocess
 import os
 import shutil
 import sys
-from aplustools.package.argu_mint_old import ArguMint, ArgStruct
+from aplustools.package.argumint import ArguMint, ArgStruct
 
 
 def pype_command():
