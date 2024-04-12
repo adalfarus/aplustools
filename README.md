@@ -20,7 +20,7 @@ aplustools is a simple, user-friendly Python library for performing amazing task
 You can install aplustools via pip:
 
 ```sh
-pip install aplustools
+pip install aplustools --upgrade
 ```
 
 Or clone the repository and install manually:
