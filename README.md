@@ -367,8 +367,9 @@ decoder.listen_for_messages()  # Blocking
 ```
 
 ### web_requests
+
 ```python
-from aplustools.web.web_request import UnifiedRequestHandler, UnifiedRequestHandlerAdvanced
+from aplustools.web.request import UnifiedRequestHandler, UnifiedRequestHandlerAdvanced
 import os
 
 # Default request handler
