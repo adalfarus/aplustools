@@ -1,5 +1,5 @@
 # aplustools __init__
-__version__ = "1.4.8.2"
+__version__ = "1.4.8.4"
 
 from aplustools.package import LazyModuleLoader as _LazyModuleLoader
 
