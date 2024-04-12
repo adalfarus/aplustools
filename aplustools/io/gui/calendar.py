@@ -11,6 +11,12 @@ from typing import List, Dict, Union, Tuple, Optional
 import hashlib
 
 
+import warnings
+warnings.warn("This module is new and not usable yet. Please use aplustools.web.webtools instead till release 1.5.0",
+              UserWarning,
+              stacklevel=2)
+
+
 class QMoment:
     def __init__(self, date: Union[QDate, str], time: Union[QTime, str], tz: Union[QTimeZone, str, None] = None):
         self.datetime = QDateTime()

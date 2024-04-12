@@ -271,7 +271,7 @@ def local_test():
 
         print("TimidTimerDelay", TimidTimer.test_delay())
         print("TimidTimer2Delay", TimidTimer2.test_delay())
-        print("All other delays are too small as to measure them with themselves, \
+        print("All other timers are too inaccurate as to measure them with themselves, \
 so we measure them with TimidTimer2 and subtract the average delay.")
         print("NormalTimerDelay", test_delay(NormalTimer))
         print("LazyTimerDelay", test_delay(LazyTimer))
@@ -322,9 +322,8 @@ so we measure them with TimidTimer2 and subtract the average delay.")
     except Exception as e:
         print(f"Exception occurred {e}.")
         return False
-    else:
-        print("Test completed successfully.")
-        return True
+    print("Test completed successfully.")
+    return True
 
 
 if __name__ == "__main__":

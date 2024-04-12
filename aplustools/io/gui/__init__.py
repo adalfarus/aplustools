@@ -10,7 +10,7 @@ calendar = _LazyModuleLoader('aplustools.package.gui.calendar')
 __all__ = ['chat', 'calendar']
 
 # Dynamically add exports from _direct_functions
-from aplustools.package._direct_functions import *
+from aplustools.io.gui._direct_functions import *
 
 # Update __all__ with the public members from _direct_functions and clean up globals
 for name in list(globals()):

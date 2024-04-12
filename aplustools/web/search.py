@@ -202,10 +202,16 @@ class DuckDuckGoSearchCore:
 
 
 def local_test():
-    searcher = Search()  # BingSearchCore())
-    # searcher.search("Hello World")
-    searcher.replace_core(GoogleSearchCore())
-    print(searcher.search("Hello World"))
+    try:
+        searcher = Search()  # BingSearchCore())
+        # searcher.search("Hello World")
+        searcher.replace_core(GoogleSearchCore())
+        print(searcher.search("Hello World"))
+    except Exception as e:
+        print(f"Exception occurred: {e}")
+        return False
+    print("Test completed successfully.")
+    return True
 
 
 if __name__ == "__main__":

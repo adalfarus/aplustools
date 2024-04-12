@@ -24,6 +24,8 @@ class DummyBase:
         return True
     def __getitem__(self, item):
         return self
+    def __setitem__(self, key, new_value):
+        return
     def __delitem__(self, key):
         return None
         
@@ -187,9 +189,8 @@ def local_test():
     except Exception as e:
         print(f"Exception occurred {e}.")
         return False
-    else:
-        print("Test completed successfully.")
-        return True
+    print("Test completed successfully.")
+    return True
 
 
 if __name__ == "__main__":

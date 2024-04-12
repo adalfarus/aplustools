@@ -41,17 +41,20 @@ from aplustools.web.search import Search, GoogleSearchCore
 
 # Call the `google_provider` function with a query
 searcher = Search(GoogleSearchCore(advanced=True))
-result = searcher.search("Cute puppies", num_results=1)[0]
+results = searcher.search("Cute puppies", num_results=10)
 
 # Print the result
-print(result)
+print(results)
 
 from aplustools.web.utils import WebPage
 
-page = WebPage(result)
+web_page = WebPage(results[0].get("url"))
 
-if page.crawlable:  # Google search does this automatically at the moment
-	response = page.page
+response = None
+if web_page.crawlable:  # Google search does this automatically at the moment
+    response = web_page.page.content
+print(response)
+
 ```
 
 ### web requests
@@ -75,7 +78,7 @@ adv_handler.request('GET', 'http://example.com', async_mode=False)
 # Asynchronous GET request
 adv_handler.request('GET', 'http://example.com', async_mode=True)
 
-folder_path = "../test_data/images"
+folder_path = "./test_data/images"
 os.makedirs(folder_path, exist_ok=True)
 
 # Synchronous binary request (e.g., image)
@@ -87,20 +90,24 @@ with open(os.path.join(folder_path, './image.png'), 'wb') as file:
 image_content_async = adv_handler.request('GET', 'http://example.com/image.png', async_mode=True, return_type='binary')
 with open(os.path.join(folder_path, './image_async.png'), 'wb') as file:
     file.write(image_content_async)
+
 ```
 
 ### ImageManager
 ````python
 from aplustools.data.imagetools import ImageManager, OnlineImage
+import os
 
+os.makedirs("./test", exist_ok=True)
 manager = ImageManager("./test", use_async=True)
-image_index = manager.add_image(OnlineImage, "https://somewhere.com/image.jpg")
+image_index = manager.add_image(OnlineImage, "somewhere.com/image.jpg")
 
 manager.execute_func(image_index, "download_image")
 manager.execute_func(image_index, "convert_to_grayscale")
 manager.execute_func(image_index, "apply_filter")  # Default is blur
 manager.execute_func(image_index, "rotate_image", 12)
 manager.execute_func(image_index, "save_image_to_disk")  # Overwrites downloaded file
+
 ````
 
 ### ImageTypes
@@ -129,15 +136,6 @@ save_result = offline_image.base64(folder_path, "base64_image", "png")
 if not save_result:
     raise Exception("Failed to save base64 image.")
 
-from aplustools.io.environment import absolute_path, remv, copy
-
-a_img_path = absolute_path(os.path.join(folder_path, "downloaded_image.jpg"))
-
-copy(a_img_path, str(folder_path) + "downloaded_image" + " - Copy.jpg")
-
-remv(a_img_path)  # Remove the original image
-remv(folder_path)  # Remove the base directory
-
 # Test image transformations
 offline_image.resize_image((100, 100))
 offline_image.rotate_image(45)
@@ -150,6 +148,17 @@ image_processor = SVGCompatibleImage("someSvg.svg", 300,
                                      (667, 800), magick_path=r".\ImageMagick",
                                      base_location='./')
 image_processor.save_image_to_disk()
+
+
+from aplustools.io.environment import absolute_path, remv, copy
+
+a_img_path = absolute_path(os.path.join(folder_path, "downloaded_image.jpg"))
+
+copy(a_img_path, str(folder_path) + "downloaded_image" + " - Copy.jpg")
+
+remv(a_img_path)  # Remove the original image
+remv(folder_path)  # Remove the base directory
+
 ```
 
 ### Faker
@@ -166,6 +175,7 @@ print(test_data.generate_random_password())
 print(test_data.generate_random_phone_number())
 print(test_data.generate_random_address())
 print(test_data.generate_random_birth_date())
+
 ```
 
 ### Dummy
@@ -214,6 +224,7 @@ for x in dummy:
 
 type(dummy)
 print(dummy, "->", int(dummy), list(dummy), tuple(dummy), float(dummy))
+
 ```
 
 ### Hasher
@@ -241,6 +252,7 @@ num_hashed_inp_uni = num_hasher(inp, desired_length, acceptable_chars)
 num_hashed_inp_uni_2 = num_hasher(inp2, desired_length, acceptable_chars)
 
 print(f"{inp} ({len(inp)}) -> {num_hashed_inp_uni} ({len(num_hashed_inp_uni)})\n{inp2} ({len(inp2)}) -> {num_hashed_inp_uni_2} ({len(num_hashed_inp_uni_2)})")
+
 ```
 
 ### GenPass
@@ -309,6 +321,7 @@ encoder.send_control_message("shutdown")
 encoder.start()
 threading.Thread(decoder.listen_for_messages()).start()  # Blocking
 encoder.flush()  # Blocking until connection is established
+
 ```
 
 ### Github-Updater
@@ -349,6 +362,7 @@ for i in updater.receive_update_status():
     if i == 100:
         progress_bar += 1  # Switch to second progress bar, when the downloading is finished
 update_thread.join()
+
 ```
 
 ### ArguMint
@@ -409,6 +423,7 @@ sys.argv[0] = "apt"
 # sys.argv = ["apt", "build", "file", "./file.py", "--num=19"]
 parser.parse_cli(sys, "native_light")
 print(timer.end())
+
 ```
 
 ### compressor
@@ -461,6 +476,7 @@ print(f"Compression ratio: {compression_ratio:.2f}")
 for i, decompressed_image in enumerate(decompressed_images):
     with open(f"./decompressed_images/image{i}.png", "wb") as f:
         f.write(decompressed_image)
+
 ```
 
 ### Logger
@@ -487,6 +503,7 @@ print("Hello, beautiful world!")
 
 # Close the Logger object (returns sys.stdout to it's normal state)
 p_logger.close()
+
 ```
 
 (Correct shortform for aplustools is apt, so please use ```import aplustools as apt``` for consistency)

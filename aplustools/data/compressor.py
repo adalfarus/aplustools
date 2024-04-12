@@ -268,48 +268,58 @@ class LZMA2Compressor(ChunkCompressorBase):
             return output_buffer.read()
 
 
-if __name__ == "__main__":
-    compressor = BrotliChunkCompressor()
-    container = FileContainerV3(compressor, block_size=2048*2048)
-
-    image_data = {}
-    for file in os.listdir("./images_htfs"):
-        if file.endswith(".HTSF"):
-            with open(os.path.join("./images_htfs", file), "rb") as f:
-                image_file_data = b''.join(f.readlines())
-                image_data[file] = image_file_data
-
-    for file_name, image in image_data.items():
-        container.add_file(file_name, image)
-
-    # Get the compressed data
-    compressed_data = container.get_compressed_container()
-
-    print("Compression done")
-
-    with open("./htfs_files.bin", "wb") as f:
-        f.write(compressed_data)
-
-    print("Wrote bin")
-
-    # To extract a specific file from the compressed data
+def local_test():
     try:
-        decompressed_images = []
-        for i in range(len(image_data)):
-            decompressed_image = container.extract_file(compressed_data, i)
-            decompressed_images.append(decompressed_image)
+        compressor = BrotliChunkCompressor()
+        container = FileContainerV3(compressor, block_size=2048 * 2048)
+
+        data = {}
+        for root, dirs, files in os.walk("./test_data"):
+            for file in files:
+                with open(os.path.join(root, file), "rb") as f:
+                    image_file_data = b''.join(f.readlines())
+                    data[file] = image_file_data
+
+        for file_name, image in data.items():
+            container.add_file(file_name, image)
+
+        # Get the compressed data
+        compressed_data = container.get_compressed_container()
+
+        print("Compression done")
+
+        with open("./test_data/files.bin", "wb") as f:
+            f.write(compressed_data)
+
+        print("Wrote bin")
+
+        # To extract a specific file from the compressed data
+        try:
+            decompressed_files = []
+            for i in range(len(data)):
+                decompressed_file = container.extract_file(compressed_data, i)
+                decompressed_files.append(decompressed_file)
+        except Exception as e:
+            print("Indexing not possible, error", e, "\n")
+            decompressed_files = []
+            for file_name in data.keys():
+                decompressed_file = container.extract_file(compressed_data, file_name)
+                decompressed_files.append(decompressed_file)
+        compression_ratio = len(compressed_data) / sum(len(x) for x in data.values())
+
+        print(f"Original size: {sum(len(x) for x in data.values())} bytes")
+        print(f"Compressed size: {len(compressed_data)} bytes")
+        print(f"Compression ratio: {compression_ratio:.2f}")
+
+        for i, decompressed_file in enumerate(decompressed_files):
+            with open(f"./test_data/file_{i}.ext", "wb") as f:
+                f.write(decompressed_file)
     except Exception as e:
-        print("Indexing not possible, error", e, "\n")
-        decompressed_images = []
-        for file_name in image_data.keys():
-            decompressed_image = container.extract_file(compressed_data, file_name)
-            decompressed_images.append(decompressed_image)
-    compression_ratio = len(compressed_data) / sum(len(x) for x in image_data.values())
+        print(f"An error occurred: {e}")
+        return False
+    print("Test completed successfully.")
+    return True
 
-    print(f"Original size: {sum(len(x) for x in image_data.values())} bytes")
-    print(f"Compressed size: {len(compressed_data)} bytes")
-    print(f"Compression ratio: {compression_ratio:.2f}")
 
-    for i, decompressed_image in enumerate(decompressed_images):
-        with open(f"./decompressed_images/image{i}.HTSF", "wb") as f:
-            f.write(decompressed_image)
+if __name__ == "__main__":
+    local_test()
