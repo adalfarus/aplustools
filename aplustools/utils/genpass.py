@@ -994,11 +994,13 @@ class ClientMessageHandler:
 
 
 class ServerStream:
-    pass
+    def __init__(self):
+        raise NotImplementedError("This class isn't fully implemented yet, check back in version 1.5")
 
 
 class ClientStream:
-    pass
+    def __init__(self):
+        raise NotImplementedError("This class isn't fully implemented yet, check back in version 1.5")
 
 
 class CryptUtils:
