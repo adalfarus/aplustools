@@ -505,7 +505,7 @@ print("Hello, beautiful world!")
 p_logger.close()
 
 ```
-
+(If you want to ensure that all dependencies are installed please run `upype import aplustools; aplustools.install_all_dependencies()`)
 (Correct shortform for aplustools is apt, so please use ```import aplustools as apt``` for consistency)
 
 There are multiple clis added through this package:
