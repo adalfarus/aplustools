@@ -37,54 +37,73 @@ Here are a few quick examples of how to use aplustools:
 
 ### Search Engine usage
 ```python
-from aplustools.web import new_webtools as wt
-
-# Call the `google_search` function with a query
-result = wt.search.google_provider.google_search("Cute puppies", wt.get_useragent(), 1)
-
-# Print the result
-print(result)
-```
-
-### Search Engine usage 2
-```python
-from aplustools.web import webtools as wt
+from aplustools.web.search import Search, GoogleSearchCore
 
 # Call the `google_provider` function with a query
-searcher = wt.Search()
-result = searcher.google_provider("Cute puppies")
+searcher = Search(GoogleSearchCore(advanced=True))
+result = searcher.search("Cute puppies", num_results=1)[0]
 
 # Print the result
 print(result)
+
+from aplustools.web.utils import WebPage
+
+page = WebPage(result)
+
+if page.crawlable:  # Google search does this automatically at the moment
+	response = page.page
 ```
 
-### Logger
+### web requests
 ```python
-from aplustools.io import environment as env
-from aplustools.io import loggers
+from aplustools.web.request import UnifiedRequestHandler, UnifiedRequestHandlerAdvanced
+import os
 
-# Set the current working directory to the main script or executable
-env.set_working_dir_to_main_script_location()
+# Default request handler
+handler = UnifiedRequestHandler()
 
-# Create an instance of Logger
-p_logger = loggers.PrintLogger("my_logs_file.log", show_time=True, capture_print=False, 
-                     overwrite_print=True, print_passthrough=False, print_log_to_stdout=True)
-# Shows the time in the logs (Like this [12:33:21]) and overwrites the normal sys.stdout
+# Synchronous request
+handler.fetch('http://example.com', async_mode=False)
+# Asynchronous request
+handler.fetch('http://example.com', async_mode=True)
 
-# Call the `monitor_stdout` method and pass the logger object, this will overwrite sys.stdout from Text I/O to the logger object
-logger = loggers.monitor_stdout(logger=p_logger) # Return sys.stdout, so you can make sure it worked
+# Advanced request handler (you can pass extra keyword arguments, and it automatically raises for status)
+adv_handler = UnifiedRequestHandlerAdvanced()  # It can also handle image content
 
-# Log something
-p_logger.log("Hello, world!")
+# Synchronous GET request
+adv_handler.request('GET', 'http://example.com', async_mode=False)
+# Asynchronous GET request
+adv_handler.request('GET', 'http://example.com', async_mode=True)
 
-# Print something, it won't get captured or displayed
-print("Hello, beautiful world!")
+folder_path = "../test_data/images"
+os.makedirs(folder_path, exist_ok=True)
 
-# Close the Logger object (returns sys.stdout to it's normal state)
-p_logger.close()
+# Synchronous binary request (e.g., image)
+image_content = adv_handler.request('GET', 'http://example.com/image.png', async_mode=False, return_type='binary')
+with open(os.path.join(folder_path, './image.png'), 'wb') as file:
+    file.write(image_content)
+
+# Asynchronous binary request (e.g., image)
+image_content_async = adv_handler.request('GET', 'http://example.com/image.png', async_mode=True, return_type='binary')
+with open(os.path.join(folder_path, './image_async.png'), 'wb') as file:
+    file.write(image_content_async)
 ```
 
-### OnlineImage
+### ImageManager
+````python
+from aplustools.data.imagetools import ImageManager, OnlineImage
+
+manager = ImageManager("./test", use_async=True)
+image_index = manager.add_image(OnlineImage, "https://somewhere.com/image.jpg")
+
+manager.execute_func(image_index, "download_image")
+manager.execute_func(image_index, "convert_to_grayscale")
+manager.execute_func(image_index, "apply_filter")  # Default is blur
+manager.execute_func(image_index, "rotate_image", 12)
+manager.execute_func(image_index, "save_image_to_disk")  # Overwrites downloaded file
+````
+
+### ImageTypes
 ```python
 from aplustools.data.imagetools import OnlineImage, OfflineImage, ImageFilter, SVGCompatibleImage
 import os
@@ -110,6 +129,15 @@ save_result = offline_image.base64(folder_path, "base64_image", "png")
 if not save_result:
     raise Exception("Failed to save base64 image.")
 
+from aplustools.io.environment import absolute_path, remv, copy
+
+a_img_path = absolute_path(os.path.join(folder_path, "downloaded_image.jpg"))
+
+copy(a_img_path, str(folder_path) + "downloaded_image" + " - Copy.jpg")
+
+remv(a_img_path)  # Remove the original image
+remv(folder_path)  # Remove the base directory
+
 # Test image transformations
 offline_image.resize_image((100, 100))
 offline_image.rotate_image(45)
@@ -122,92 +150,6 @@ image_processor = SVGCompatibleImage("someSvg.svg", 300,
                                      (667, 800), magick_path=r".\ImageMagick",
                                      base_location='./')
 image_processor.save_image_to_disk()
-```
-
-### ImageManager
-````python
-from aplustools.data.imagetools import ImageManager, OnlineImage
-
-manager = ImageManager("./test", use_async=True)
-image_index = manager.add_image(OnlineImage, "https://somewhere.com/image.jpg")
-
-manager.execute_func(image_index, "download_image")
-manager.execute_func(image_index, "convert_to_grayscale")
-manager.execute_func(image_index, "apply_filter")  # Default is blur
-manager.execute_func(image_index, "rotate_image", 12)
-manager.execute_func(image_index, "save_image_to_disk")  # Overwrites downloaded file
-````
-
-
-### Github-Updater
-```python
-from aplustools.data.updaters import GithubUpdater, VersionNumber
-from aplustools.io.environment import get_temp
-from aplustools import set_dir_to_ex
-import sys
-import os
-
-set_dir_to_ex()
-
-__version__ = VersionNumber("0.0.1")
-
-# Initialize an updater
-updater = GithubUpdater("Adalfarus", "unicode-writer", "py")  # If you want to use exe
-latest_version = updater.get_latest_tag_version()             # you need to compile them
-                                                              # yourself, otherwise it
-# Check if an update is needed                                # won't work
-if __version__ >= latest_version:
-    sys.exit()
-
-# Updater method
-path, zip_path = os.path.join(os.getcwd(), "update"), os.path.join(get_temp(), f"apt-update_{latest_version}")
-
-os.makedirs(path, exist_ok=True)
-os.makedirs(zip_path, exist_ok=True)
-
-# Start the update in a separate thread
-update_thread = updater.update(path, zip_path, latest_version, implementation="none", 
-                               host="localhost", port=1264, non_blocking=True, wait_for_connection=True)
-update_thread.start()
-
-# Receive the update status generator and print them
-progress_bar = 1
-for i in updater.receive_update_status():
-    print(f"{i}%", end=f" PB{progress_bar}\n")
-    if i == 100:
-        progress_bar += 1  # Switch to second progress bar, when the downloading is finished
-update_thread.join()
-```
-
-### Webtools
-```python
-... # Continuing the first two examples
-
-# Print the result
-print(result)
-
-from aplustools.web.webtools import check_url, is_crawlable
-import requests
-
-if check_url(result, ''): # Not really nessesary, search does this automatically
-	response = requests.get(result)
-	...
-```
-
-### Environment
-```python
-... # Continuing the image example
-
-_, img_name, img_path = image2.download_image(base_path=str(folder_path))  # Make sure this directory exists
-
-from aplustools.io.environment import absolute_path, remv, copy
-
-a_img_path = absolute_path(img_path)
-
-copy(a_img_path, str(folder_path) + img_name.rsplit(".", 1)[0] + " - Copy.png")
-
-remv(a_img_path)  # Remove the original image
-remv(str(folder_path))  # Remove the base directory
 ```
 
 ### Faker
@@ -342,10 +284,12 @@ client.sendall()  # The message is still received as it sends one chunk here
 
 # Server shuts down the client connection
 server.shutdown_client()
+print("DONE1")
 
 # There are also classes for one directional communication that are
 # more integrated.
 from aplustools.utils.genpass import ControlCodeProtocol, ServerMessageHandler, ClientMessageHandler
+import threading
 
 prot = ControlCodeProtocol()
 
@@ -353,57 +297,61 @@ prot = ControlCodeProtocol()
 encoder = ClientMessageHandler(prot)
 
 # Make a connection using the clients host and chosen port
-connection = None
+connection = encoder.get_socket()
 
 decoder = ServerMessageHandler(connection, prot)
 
 # Client prepares and sends a message
 encoder.add_message("Hello Server")
 encoder.send_control_message("shutdown")
-encoder.flush()
 
 # Server receives and processes each chunk
-decoder.listen_for_messages()  # Blocking
+encoder.start()
+threading.Thread(decoder.listen_for_messages()).start()  # Blocking
+encoder.flush()  # Blocking until connection is established
 ```
 
-### web_requests
-
+### Github-Updater
 ```python
-from aplustools.web.request import UnifiedRequestHandler, UnifiedRequestHandlerAdvanced
+from aplustools.data.updaters import GithubUpdater, VersionNumber
+from aplustools.io.environment import get_temp
+from aplustools import set_dir_to_ex
+import sys
 import os
 
-# Default request handler
-handler = UnifiedRequestHandler()
+set_dir_to_ex()
 
-# Synchronous request
-handler.fetch('http://example.com', async_mode=False)
-# Asynchronous request
-handler.fetch('http://example.com', async_mode=True)
+__version__ = VersionNumber("0.0.1")
 
-# Advanced request handler (you can pass extra keyword arguments, and it automatically raises for status)
-adv_handler = UnifiedRequestHandlerAdvanced()  # It can also handle image content
+# Initialize an updater
+updater = GithubUpdater("Adalfarus", "unicode-writer", "py")  # If you want to use exe
+latest_version = updater.get_latest_tag_version()             # you need to compile them
+                                                              # yourself, otherwise it
+# Check if an update is needed                                # won't work
+if __version__ >= latest_version:
+    sys.exit()
 
-# Synchronous GET request
-adv_handler.request('GET', 'http://example.com', async_mode=False)
-# Asynchronous GET request
-adv_handler.request('GET', 'http://example.com', async_mode=True)
+# Updater method
+path, zip_path = os.path.join(os.getcwd(), "update"), os.path.join(get_temp(), f"apt-update_{latest_version}")
 
-folder_path = "../test_data/images"
-os.makedirs(folder_path, exist_ok=True)
+os.makedirs(path, exist_ok=True)
+os.makedirs(zip_path, exist_ok=True)
 
-# Synchronous binary request (e.g., image)
-image_content = adv_handler.request('GET', 'http://example.com/image.png', async_mode=False, return_type='binary')
-with open(os.path.join(folder_path, './image.png'), 'wb') as file:
-    file.write(image_content)
+# Start the update in a separate thread
+update_thread = updater.update(path, zip_path, latest_version, implementation="none", 
+                               host="localhost", port=1264, non_blocking=True, wait_for_connection=True)
+update_thread.start()
 
-# Asynchronous binary request (e.g., image)
-image_content_async = adv_handler.request('GET', 'http://example.com/image.png', async_mode=True, return_type='binary')
-with open(os.path.join(folder_path, './image_async.png'), 'wb') as file:
-    file.write(image_content_async)
+# Receive the update status generator and print them
+progress_bar = 1
+for i in updater.receive_update_status():
+    print(f"{i}%", end=f" PB{progress_bar}\n")
+    if i == 100:
+        progress_bar += 1  # Switch to second progress bar, when the downloading is finished
+update_thread.join()
 ```
 
 ### ArguMint
-
 ```python
 from aplustools.package.argumint import ArgStruct, ArguMint
 from typing import Literal
@@ -464,7 +412,6 @@ print(timer.end())
 ```
 
 ### compressor
-
 ```python
 from aplustools.data.compressor import FileContainerV3, BrotliChunkCompressor
 import os
@@ -514,8 +461,34 @@ print(f"Compression ratio: {compression_ratio:.2f}")
 for i, decompressed_image in enumerate(decompressed_images):
     with open(f"./decompressed_images/image{i}.png", "wb") as f:
         f.write(decompressed_image)
-
 ```
+
+### Logger
+```python
+from aplustools.io import environment as env
+from aplustools.io import loggers
+
+# Set the current working directory to the main script or executable
+env.set_working_dir_to_main_script_location()
+
+# Create an instance of Logger
+p_logger = loggers.PrintLogger("my_logs_file.log", show_time=True, capture_print=False, 
+                     overwrite_print=True, print_passthrough=False, print_log_to_stdout=True)
+# Shows the time in the logs (Like this [12:33:21]) and overwrites the normal sys.stdout
+
+# Call the `monitor_stdout` method and pass the logger object, this will overwrite sys.stdout from Text I/O to the logger object
+logger = loggers.monitor_stdout(logger=p_logger) # Return sys.stdout, so you can make sure it worked
+
+# Log something
+p_logger.log("Hello, world!")
+
+# Print something, it won't get captured or displayed
+print("Hello, beautiful world!")
+
+# Close the Logger object (returns sys.stdout to it's normal state)
+p_logger.close()
+```
+
 (Correct shortform for aplustools is apt, so please use ```import aplustools as apt``` for consistency)
 
 There are multiple clis added through this package:
@@ -555,23 +528,32 @@ For more detailed usage and examples, check out our [documentation](https://gith
 
 For modules I use 'lowercase', classes are 'CapitalizedWords' and functions and methods are 'lower_case_with_underscores'.
 
-Dependencies (except for the standart libraries) are: 
-- data.database, io.environment, io.loggers, utils.mappers, data.faker, utils.dummy, utils.hasher, package.lazy_loader, package.timid, adultswork, childsplay - none
-- data.github-updater-cmd - requests
-- data.github-updater-gui - requests, PySide6
-- data.github-updater-none, data.updaters - requests
-- data.imagetools - Pillow, aiohttp, requests, wand
-- data.advanced_imagetools - opencv-python, aiohttp, wand, pillow_heif
-- web.webtools - requests, duckduckgo_search, BeautifulSoup4 - duckduckgo_search is only used for Search.duckduckgo_provider, if you don't want to use it, use Search._duckduckgo_provider instead.
-- utils.genpass - cryptography
-- web.new_webtools, web.actual_webtools - requests, BeautifulSoup4
-- web.web_request - requests, aiohttp
-- utils.compressor - brotli, zstandard, py7zr
+Dependencies (except for the standard libraries) are: 
+- [`none`]
+  - data.database
+  - io.environment
+  - io.loggers
+  - data.faker
+  - utils.dummy
+  - utils.hasher
+  - package.lazy_loader
+  - package.timid
+- [`requests`]
+  - data.github-updater-none
+  - data.updaters
+  - data.github-updater-cmd
+- data.github-updater-gui - [`requests`, `PySide6`]
+- data.imagetools - [`Pillow`, `aiohttp`, `requests`, `wand`]
+- data.advanced_imagetools - [`opencv-python`, `aiohttp`, `wand`, `pillow_heif`]
+- web.search, web.utils - [`requests`, `BeautifulSoup4`]
+- utils.genpass - [`cryptography`]
+- web.request - [`requests`, `aiohttp`]
+- utils.compressor - [`brotli`, `zstandard`, `py7zr`]
+- io.gui - [`PySide6`]
 
 Sub-Modules that may be removed in future updates due to being hard to support or simply unneeded.
 
-- database (maybe unneeded and hard to support if more dbs are added)
-- actual_webtools, new_webtools, webtools search-machines (hard to support)
+- database (maybe unneeded and hard to support if more dbs are added -> new_database is being developed)
 - loggers (maybe unneeded)
 
 ## Contributing

@@ -7,7 +7,7 @@ packages = ["aplustools", "aplustools.data", "aplustools.io", "aplustools.utils"
 
 [project]
 name = "aplustools"
-version = "1.4.7"
+version = "1.4.9"
 dependencies = [
   "requests>=2.31.0",
   "BeautifulSoup4>=4.12.2",

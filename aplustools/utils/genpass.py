@@ -504,7 +504,7 @@ class MessageDecoder:
     def _validate_sequence_number(self, sequence_number):
         if sequence_number <= self._last_sequence_number:
             return False
-        self.last_sequence_number = sequence_number
+        self._last_sequence_number = sequence_number
         return True
 
     def _unpack_chunk(self, chunk):
@@ -571,7 +571,7 @@ class MessageDecoder:
                 last_end = i
                 self.complete_buffer.extend([ControlCode(validation_result, add_in)] + validations + [""])
                 validations.clear()
-            elif validation_result == "None":
+            elif validation_result in ["Invalid control code", "Invalid key"]:
                 # Malformed or invalid expression, add to buffer
                 self.complete_buffer[-1] += expression
             else:
@@ -601,7 +601,7 @@ class MessageDecoder:
 
 @strict  # Strict decorator makes any private attributes truly private
 class ServerMessageHandler:
-    def __init__(self, connection: socket.SocketType, protocol: ControlCodeProtocol, chunk_size=1024, private_key_bytes_overwrite=None):
+    def __init__(self, connection: UndefinedSocket, protocol: ControlCodeProtocol, chunk_size=1024, private_key_bytes_overwrite=None):
         # Generate RSA key pair
         self._private_key = self._load_private_key(private_key_bytes_overwrite) if private_key_bytes_overwrite else (
             rsa.generate_private_key(public_exponent=65537, key_size=2048))
@@ -614,11 +614,20 @@ class ServerMessageHandler:
         self._last_timestamp = datetime.datetime.now()
         self.rate_limit = 10  # Allow 1 message per second
 
+        self._connection = connection
+        self._host = None
+        self._port = None
+
         self._last_sequence_number = -1
         self.time_window = datetime.timedelta(minutes=5)  # Time window for valid timestamps
         self._chunk_size = chunk_size
-        self._connection = connection
         self._protocol = protocol
+
+        if type(self._connection.conn) is not socket.socket:
+            self._host, self._port = self._connection.conn
+            self._connection = None
+        else:
+            self._connection = self._connection.conn
 
     def _load_private_key(self, pem_data):
         return serialization.load_pem_private_key(
@@ -678,7 +687,7 @@ class ServerMessageHandler:
     def _validate_sequence_number(self, sequence_number):
         if sequence_number <= self._last_sequence_number:
             return False
-        self.last_sequence_number = sequence_number
+        self._last_sequence_number = sequence_number
         return True
 
     def _unpack_chunk(self, chunk):
@@ -709,6 +718,15 @@ class ServerMessageHandler:
             raise Exception("Invalid message: timestamp or sequence number is not valid.")
 
         return actual_message
+
+    def _setup_connection(self):
+        if not getattr(self, "_connection"):
+            server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            server_socket.bind((self._host, self._port))
+            server_socket.listen(1)
+            print(f"Server listening on {self._host}:{self._port}...")
+            self._connection, addr = server_socket.accept()
+            print(f"Connection established with {addr}")
 
     def encrypt_and_pad_message(self, message):
         # Generate an AES key and encrypt the message with AES-GCM
@@ -741,6 +759,9 @@ class ServerMessageHandler:
     def listen_for_messages(self):
         buffer = ""
         complete_buffer = ""
+
+        if not self._connection:
+            self._setup_connection()
 
         while True:
             encrypted_chunk = self._connection.recv(self._chunk_size)
@@ -777,18 +798,11 @@ class ServerMessageHandler:
                     # Consider message as complete
                     completed_parts.append(parsed_parts[last_end:i+1])
                     last_end = i
-                elif validation_result == "None":
+                elif validation_result in ["Invalid control code", "Invalid key"]:
                     # Malformed or invalid expression, add to buffer
                     complete_buffer += expression
                 elif validation_result == "shutdown":
                     return  # Returning is equal to a shutdown
-                elif validation_result == "input":
-                    inp = input(add_in)
-                    parsed_parts[i] = ""
-                    start_index = buffer.find(expression)
-                    end_index = start_index + len(expression)
-                    buffer = buffer[:start_index] + buffer[end_index:]
-                    self.send
                 else:
                     # There are no other expressions at the moment
                     pass
@@ -821,13 +835,21 @@ class ClientMessageHandler:
         self._port = self.find_available_port() if not forced_port else forced_port
         self._connection = None
         self._connection_established = False
-        threading.Thread(target=self.connect_to_server).start()
 
     def get_host(self):
         return self._host
 
     def get_port(self):
         return self._port
+
+    def get_socket(self):
+        return UndefinedSocket((self._host, self._port))
+
+    def get_connected_socket(self):
+        return UndefinedSocket(self._connection)
+
+    def start(self):
+        threading.Thread(target=self.connect_to_server).start()
 
     @staticmethod
     def find_available_port():
