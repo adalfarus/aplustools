@@ -27,5 +27,5 @@ echo Tests completed.
 
 if "%cmdcmdline%"=="" (
   echo Finished ...
-  pause
 )
+pause

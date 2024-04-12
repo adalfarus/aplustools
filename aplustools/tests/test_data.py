@@ -1,4 +1,4 @@
-from aplustools.data import database, imagetools, updaters, faker
+from aplustools.data import database, imagetools, updaters, faker, advanced_imagetools, compressor
 
 
 class TestUpdaters:
@@ -23,3 +23,13 @@ class TestFaker:
 class TestImagetools:
     def test_local(self):
         assert imagetools.local_test()
+
+
+class TestAdvancedImagetools:
+    def test_local(self):
+        assert advanced_imagetools.local_test()
+
+
+class TestCompressor:
+    def test_local(self):
+        assert compressor.local_test()

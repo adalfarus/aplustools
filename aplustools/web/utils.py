@@ -1,16 +1,8 @@
-# actual_webtools - By me :)
-import requests
-from bs4 import BeautifulSoup
 import random
 from typing import List, Union, Optional, Generator, Dict
+from bs4 import BeautifulSoup, element
+import requests
 from urllib.parse import quote_plus, urlparse, urljoin
-import time
-
-
-import warnings
-warnings.warn("This module is new and not usable yet. Please use aplustools.web.webtools instead till release 1.5.0",
-              UserWarning,
-              stacklevel=2)
 
 
 def get_user_agent() -> str:
@@ -1780,189 +1772,147 @@ def get_user_agent() -> str:
     return random.choice(_user_agent_list)
 
 
-def generate_user_agent():
-    # Define possible components of a user agent string
-    platforms = [
-        "Windows NT 10.0; Win64; x64",
-        "Macintosh; Intel Mac OS X 10_15_7",
-        "X11; Linux x86_64"
-    ]
+class WebPage:
+    def __init__(self, url: str, in_url_keywords: Optional[List[str]] = None):
+        self.url = url
+        self.user_agent = self.generate_user_agent()
+        self.headers = {"User-Agent": self.user_agent}
 
-    browsers = [
-        "Mozilla/5.0 ({platform}) Gecko/20100101 Firefox/{firefox_version}",
-        "Mozilla/5.0 ({platform}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/{chrome_version} Safari/537.36",
-        "Mozilla/5.0 ({platform}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/{chrome_version} Safari/537.36 Edg/{edge_version}"
-    ]
+        self.crawlable = self.is_crawlable(url)
+        self.in_url = all(keyword.lower() in url.lower() for keyword in in_url_keywords) if in_url_keywords else True
+        self.accessible, self.status_code = self.check_url(url, [])
 
-    # Randomly select components
-    platform = random.choice(platforms)
-    browser_template = random.choice(browsers)
-    firefox_version = f"{random.randint(50, 80)}.0"
-    chrome_version = f"{random.randint(70, 100)}.0.0.0"
-    edge_version = f"{random.randint(70, 100)}.0.1661.62"
+        self.page = None
+        self.soup = None
 
-    # Generate the final user agent string
-    user_agent = browser_template.format(platform=platform, firefox_version=firefox_version,
-                                         chrome_version=chrome_version, edge_version=edge_version)
-    return user_agent
+        if self.accessible and self.crawlable:
+            self.fetch_page()
 
-
-def check_url(url: str, url_title: str, in_title: Optional[Union[str, List[str]]] = None,
-              blacklisted_websites: Optional[list] = None) -> Optional[str]:
-    if in_title is not None and not isinstance(in_title, list):
-        in_title = [in_title]
-
-    if in_title is None or all([str(x).lower() in url_title.lower() for x in in_title]):
-        # Checking if the URL is accessible or leads to a 404 error
+    @staticmethod
+    def is_crawlable(url: str) -> bool:
+        """
+        Check if the URL can be crawled by checking the robots.txt file of the website.
+        """
         try:
-            response = requests.head(url, allow_redirects=True)  # Using HEAD request to get the headers
-            if response.status_code == 404:
-                print(f"The URL {url} leads to a 404 error, checking next result...")
-                return None
-        except requests.RequestException as e:
-            print(f"Error accessing URL {url}: {e}, checking next result...")
-            return None
+            # Parse the given URL to get the netloc (domain) part
+            domain = urlparse(url).netloc
+            robots_txt_url = urljoin(f'https://{domain}', 'robots.txt')
+            response = requests.get(robots_txt_url)
 
-        if is_crawlable(url):
-            if blacklisted_websites is None or not url.split("/")[2] in blacklisted_websites:
-                return url
+            if response.status_code == 200:
+                # If "Disallow: /" is found for User-agent: *, it means the website can't be crawled
+                if 'User-agent: *\nDisallow: /' in response.text:
+                    return False
+                return True
             else:
-                print("Blacklisted URL:", url)
-        else:
-            print(f"The URL {url} cannot be crawled, checking next result...")
-    return None
+                print(f"Failed to retrieve the robots.txt file, status code: {response.status_code}")
+        except Exception as e:
+            print(f"An error occurred while checking the robots.txt file: {e}")
+        return False  # Return False if there was an error or the robots.txt file couldn't be retrieved
+
+    @staticmethod
+    def check_url(url: str, blacklisted_websites: Optional[list] = None) -> (bool, Optional[int]):
+        """
+        Check if the URL is accessible and not blacklisted, return a tuple (accessible, status_code).
+        """
+        try:
+            response = requests.head(url, allow_redirects=True)
+            status_code = response.status_code
+
+            if blacklisted_websites and any(blacklisted in url for blacklisted in blacklisted_websites):
+                print(f"Blacklisted URL: {url}")
+                return False, status_code
+
+            if status_code == 404:
+                print(f"The URL {url} leads to a 404 error.")
+                return False, status_code
+
+            return True, status_code
+        except requests.RequestException as e:
+            print(f"Error accessing URL {url}: {e}")
+            return False, None
+
+    @staticmethod
+    def generate_user_agent():
+        platforms = [
+            f"Windows NT {random.choice([10, 11])}.0; Win64; x64",
+            "Macintosh; Intel Mac OS X 10_15_7",
+            "X11; Linux x86_64",
+            f"iPhone; CPU iPhone OS {random.choice(range(10, 13))}_{random.choice(range(0, 7))} like Mac OS X",
+            f"Android {random.choice(range(8, 12))}; Mobile"
+        ]
+
+        browsers = [
+            "Mozilla/5.0 ({platform}) Gecko/20100101 Firefox/{firefox_version}",
+            "Mozilla/5.0 ({platform}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/{chrome_version} Safari/537.36",
+            "Mozilla/5.0 ({platform}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/{chrome_version} Safari/537.36 Edg/{edge_version}",
+            "Mozilla/5.0 ({platform}) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.0.3 Safari/605.1.15",
+            "Mozilla/5.0 ({platform}) AppleWebKit/537.36 (KHTML, like Gecko) Opera/{opera_version} Safari/537.36"
+        ]
+
+        # Randomly select components
+        platform = random.choice(platforms)
+        browser_template = random.choice(browsers)
+        firefox_version = f"{random.randint(50, 90)}.0"
+        chrome_version = f"{random.randint(70, 110)}.0.0.0"
+        edge_version = f"{random.randint(70, 100)}.0.{random.randrange(1000, 2000)}.{random.randrange(50, 99)}"
+        opera_version = f"{random.randint(60, 75)}.0.0.0"
+
+        # Generate the final user agent string
+        user_agent = browser_template.format(platform=platform, firefox_version=firefox_version,
+                                             chrome_version=chrome_version, edge_version=edge_version,
+                                             opera_version=opera_version)
+        return user_agent
+
+    def fetch_page(self):
+        try:
+            self.page = requests.get(self.url, headers=self.headers)
+            self.soup = BeautifulSoup(self.page.content, 'html.parser')
+        except requests.RequestException as e:
+            print(f"Failed to fetch page content: {e}")
+
+    def get_by_tag(self, tag: str) -> List[element.Tag]:
+        """Retrieve a list of all elements with the specified tag."""
+        if self.soup:
+            return self.soup.find_all(tag)
+        return []
+
+    def get_by_class(self, class_name: str) -> List[element.Tag]:
+        """Retrieve a list of all elements with the specified class."""
+        if self.soup:
+            return self.soup.find_all(class_=class_name)
+        return []
+
+    def get_soup(self, func: str, *args, **kwargs):
+        """Dynamically call a method from the BeautifulSoup instance with provided arguments."""
+        if self.soup and hasattr(self.soup, func):
+            method = getattr(self.soup, func)
+            if callable(method):
+                try:
+                    return method(*args, **kwargs)
+                except Exception as e:
+                    print(f"Error calling soup method {func}: {e}")
+        return None
+
+    def __repr__(self):
+        return (f"WebPage(url={self.url}, crawlable={self.crawlable}, in_url={self.in_url}, "
+                f"accessible={self.accessible}, status_code={self.status_code}, user_agent={self.user_agent})")
 
 
-def is_crawlable(url: str) -> bool:
-    """
-    Check if the URL can be crawled by checking the robots.txt file of the website.
-    """
+def local_test():
     try:
-        # Parse the given URL to get the netloc (domain) part
-        domain = urlparse(url).netloc
-        robots_txt_url = urljoin(f'https://{domain}', 'robots.txt')
-        response = requests.get(robots_txt_url)
-
-        if response.status_code == 200:
-            # If "Disallow: /" is found for User-agent: *, it means the website can't be crawled
-            if 'User-agent: *\nDisallow: /' in response.text:
-                return False
-            return True
-        else:
-            print(f"Failed to retrieve the robots.txt file, status code: {response.status_code}")
+        web_page = WebPage("https://github.com")
+        tags = web_page.get_by_tag('a')  # Get all anchor tags
+        classes = web_page.get_by_class('menu-item')  # Get all elements with class 'menu-item'
+        dynamic_call = web_page.get_soup('find_all', 'div',
+                                         class_='sidebar')  # Dynamically find all divs with class 'sidebar'
+        print(web_page, tags, classes, dynamic_call)
     except Exception as e:
-        print(f"An error occurred while checking the robots.txt file: {e}")
-    return False  # Return False if there was an error or the robots.txt file couldn't be retrieved
-
-
-class Search:
-    def __init__(self, core=None, local_user_agent_num: int = 5):
-        self.core = core
-        self.local_user_agent_list = [get_user_agent() for _ in range(local_user_agent_num)]
-
-    def get_useragent(self) -> str:
-        return random.choice(self.local_user_agent_list)
-
-    def replace_core(self, new_core):
-        self.core = new_core
-
-    def search(self, prompt: str, num_results: int = 10):
-        if self.core:
-            return self.core.search(query=prompt, num_results=num_results, user_agent=self.get_useragent())
-        return prompt
-
-    def api_search(self, prompt: str, api_key: str, num_results: int = 10):
-        if self.core:
-            return self.core.api_search(query=prompt, api_key=api_key, num_results=num_results)
-        return prompt
-
-
-class BingSearchCore:
-    def search(self, prompt, user_agent):
-        return prompt
-
-    def api_search(self, query, api_key, custom_config_id: str = "", num_results=10):
-        search_url = "https://api.bing.microsoft.com/v7.0/search"
-        headers = {"Ocp-Apim-Subscription-Key": api_key}
-        params = {
-            "q": query,
-            "customconfig": custom_config_id,
-            "count": num_results
-        }
-        response = requests.get(search_url, headers=headers, params=params)
-        response.raise_for_status()
-        return response.json()
-
-
-class GoogleSearchCore:
-    def search(self, query: str, num_results: int = 10, user_agent: str = "", advanced: bool = False, check: bool = True,
-               blacklisted_websites: Optional[List[str]] = None) -> Union[List[str], List[Dict[str, str]]]:
-        proxies = None  # If you have proxy settings, configure them here
-        escaped_term = query.replace(" ", "+")
-        start = 0
-        results = []
-
-        while start < num_results:
-            resp = requests.get(
-                url="https://www.google.com/search",
-                headers={"User-Agent": user_agent},
-                params={
-                    "q": escaped_term,
-                    "num": num_results + 2,
-                    "start": start,
-                },
-                proxies=proxies,
-                timeout=5,
-            )
-            resp.raise_for_status()
-            soup = BeautifulSoup(resp.text, "html.parser")
-            result_block = soup.find_all("div", attrs={"class": "g"})
-
-            for result in result_block:
-                link = result.find("a", href=True)
-                title = result.find("h3")
-                description_box = result.find("div", {"style": "-webkit-line-clamp:2"})
-
-                if description_box:
-                    description = description_box.text
-
-                    if link and title and description:
-                        url = link["href"]
-                        if check and blacklisted_websites and any(
-                                blacklisted_website in url for blacklisted_website in blacklisted_websites):
-                            continue
-                        start += 1
-                        if advanced:
-                            results.append({"url": url, "title": title.text, "description": description})
-                        else:
-                            results.append(url)
-                        if len(results) == num_results:
-                            break
-
-            time.sleep(1)  # Sleep interval to prevent rapid requests
-
-        return results
-
-    def api_search(query, api_key, cse_id, num_results=10, start=1):
-        url = "https://www.googleapis.com/customsearch/v1"
-        params = {
-            "key": api_key,
-            "cx": cse_id,
-            "q": query,
-            "num": num_results,
-            "start": start
-        }
-        response = requests.get(url, params=params)
-        response.raise_for_status()  # Raises an exception for HTTP errors
-        return response.json()
-
-
-class DuckDuckGoSearchCore:
-    pass
+        print(f"An error occurred: {e}")
+        return False
+    print("Test completed successfully.")
+    return True
 
 
 if __name__ == "__main__":
-    searcher = Search()#BingSearchCore())
-    #searcher.search("Hello World")
-    searcher.replace_core(GoogleSearchCore())
-    searcher.search("Hello World")
+    local_test()

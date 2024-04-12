@@ -7,3 +7,9 @@ Make more updaters
 -> can be pushed to 1.6 # Do this
 
 Add all the latest changes to the wiki # Do till 1.5
+
+ArguMint - Make the "ANY" typed so it becomes some sort of argument
+
+genpass - Polish the networking stuff # Pretty much done for 1.4.9
+
+new_database - get type hinting to work with ides

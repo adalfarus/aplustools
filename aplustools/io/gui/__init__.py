@@ -1,20 +1,16 @@
-# aplustools __init__
-__version__ = "1.4.8"
+# package __init__
 
-from aplustools.package import LazyModuleLoader as _LazyModuleLoader
+from aplustools.package._direct_functions import LazyModuleLoader as _LazyModuleLoader
 
 # Lazy loading modules
-io = _LazyModuleLoader('aplustools.io')
-data = _LazyModuleLoader('aplustools.data')
-utils = _LazyModuleLoader('aplustools.utils')
-web = _LazyModuleLoader('aplustools.web')
-package = _LazyModuleLoader('aplustools.package')
+chat = _LazyModuleLoader('aplustools.package.gui.chat')
+calendar = _LazyModuleLoader('aplustools.package.gui.calendar')
 
 # Define __all__ to limit what gets imported with 'from <package> import *'
-__all__ = ['io', 'data', 'utils', 'web', 'package']
+__all__ = ['chat', 'calendar']
 
 # Dynamically add exports from _direct_functions
-from aplustools._direct_functions import *
+from aplustools.io.gui._direct_functions import *
 
 # Update __all__ with the public members from _direct_functions and clean up globals
 for name in list(globals()):
