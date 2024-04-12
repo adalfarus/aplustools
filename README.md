@@ -534,6 +534,15 @@ Enter Python code (type 'end' on a new line to finish):
 ... end
 Hello, you!
 ```
+These can also be used in e.g. batch files like this
+```batch
+@echo off
+set /p id=Enter ID: 
+upype from aplustools.utils.genpass import GeneratePasswords; print(GeneratePasswords.generate_custom_sentence_based_password_v1("""%id%""", random_case=True, extra_char="""_""", char_position=0, num_length=5, special_chars_length=2))
+pause
+
+```
+
 ### apt
 Can currently run tests with ```apt tests run``` and show a basic help using ```apt help```.
 
