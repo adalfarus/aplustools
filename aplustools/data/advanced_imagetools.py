@@ -441,9 +441,8 @@ def process_and_save_as_heic(image_path: str, output_dir_path: str):
 
 
 class SVGImage:
-    raise NotImplementedError
-
     def __init__(self, file_path=None, svg_content=None):
+        raise NotImplementedError
         ET.register_namespace('', 'http://www.w3.org/2000/svg')
         if file_path:
             self.tree = ET.parse(file_path)
@@ -604,7 +603,7 @@ def local_test():
     except Exception as e:
         print(f"An exception occurred during testing: {e}")
         return False
-
+    print("Test completed successfully.")
     return True
 
 

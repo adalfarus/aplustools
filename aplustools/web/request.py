@@ -71,7 +71,7 @@ def local_test():
         # Asynchronous GET request
         adv_handler.request('GET', 'http://example.com', async_mode=True)
 
-        folder_path = "../test_data/images"
+        folder_path = "./test_data/images"
         os.makedirs(folder_path, exist_ok=True)
 
         # Synchronous binary request (e.g., image)
@@ -86,9 +86,8 @@ def local_test():
     except Exception as e:
         print(f"An error occurred {e}")
         return False
-    else:
-        print("All tests succeeded successfully")
-        return True
+    print("All tests succeeded successfully")
+    return True
 
 
 if __name__ == "__main__":

@@ -89,9 +89,8 @@ def local_test():
     except Exception as e:
         print(f"Exception occurred {e}.")
         return False
-    else:
-        print("Test completed successfully.")
-        return True
+    print("Test completed successfully.")
+    return True
     
 if __name__ == "__main__":
     local_test()

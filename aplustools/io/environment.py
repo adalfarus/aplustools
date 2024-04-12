@@ -502,9 +502,8 @@ def local_test():
     except Exception as e:
         print(f"Exception occurred {e}.")
         return False
-    else:
-        print("Strict decorator not working.")
-        return False
+    print("Strict decorator not working.")
+    return False
 
 
 if __name__ == "__main__":

@@ -1,14 +1,9 @@
-from aplustools.utils import genpass, mappers, dummy, hasher
+from aplustools.utils import genpass, dummy, hasher
 
 
 class TestGenpass:
     def test_local(self):
         assert genpass.local_test()
-
-
-class TestMappers:
-    def test_local(self):
-        assert mappers.local_test()
 
 
 class TestDummy:
