@@ -1,11 +1,16 @@
-from aplustools.web import new_webtools, webtools
+from aplustools.web import utils, request, search
 
 
-class TestNewWebtools:
+class TestUtils:
     def test_local(self):
-        assert new_webtools.local_test() # Doens't do anything yet
+        assert utils.local_test()
 
 
-class TestWebtools:
+class TestRequest:
     def test_local(self):
-        assert webtools.local_test()
+        assert request.local_test()
+
+
+class TestSearch:
+    def test_local(self):
+        assert search.local_test()

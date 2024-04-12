@@ -1,5 +1,4 @@
 from aplustools import execute_python_command, set_dir_to_ex
-from aplustools.web import web_request
 
 
 class TestDirectFunctions:
@@ -12,8 +11,3 @@ class TestDirectFunctions:
             assert False
         else:
             assert True
-
-
-class TestWebRequest:
-    def test_local(self):
-        assert web_request.local_test()

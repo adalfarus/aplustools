@@ -1,5 +1,6 @@
 # environment.py
-from typing import Union, Optional, Callable
+from typing import Union, Optional, Callable, Any, Type, cast
+from types import FrameType
 import subprocess
 import warnings
 import platform
@@ -261,132 +262,125 @@ def rename(org_nam: str, new_nam: str) -> bool:
 
 
 def functionize(cls):
-    warnings.warn("This is still experimental and may not be working as expected. A finished version should be available in release 0.1.5.", 
+    warnings.warn("This is still experimental and may not be working as expected. A finished version should be available in release 1.5",
                   UserWarning, 
                   stacklevel=2)
+
     def wrapper(*args, **kwargs):
         # Creating an instance of the class
         instance = cls(*args, **kwargs)
+
         # Collecting the instance attributes (variables) and their values
-        attrs = {attr: getattr(instance, attr) for attr in instance.__dict__}
+        attrs = {attr: getattr(instance, attr) for attr in instance.__dict__ if not attr.startswith("_")}  # instance.__dict__.copy()
+
         # Collecting methods and converting them to standalone functions
         methods = {
-            name: (lambda method: lambda *args, **kwargs: method(instance, *args, **kwargs))(method)
-            for name, method in cls.__dict__.items()
-            if inspect.isfunction(method)
+            name: getattr(instance, name)
+            for name, method in inspect.getmembers(cls, predicate=inspect.isfunction) if not name.startswith("_")
         }
+
         # Combining attributes and methods
         return {**attrs, **methods}
+
     return wrapper
 
-def old_strict(cls):
-    warnings.warn("This is still experimental and may not be working as expected. A finished version should be available in release 0.1.5.", 
-                  UserWarning, 
-                  stacklevel=2)
-    # Create the new class with the same name
-    class_name = cls.__name__
-    def create_method(name):
-        def method(self, *args, **kwargs):
-            return getattr(self._inner_instance, name)(*args, **kwargs)
-        return method
-    def create_property(name):
-        def getter(self):
-            return getattr(self._inner_instance, name)
-        return property(getter)
-    outer_class_attrs = {
-        '__init__': lambda self, *args, **kwargs: setattr(self, '_inner_instance', cls(*args, **kwargs))
-    }
-    # Add public methods and properties from the original class
-    for attr_name in dir(cls):
-        if not attr_name.startswith('_'):
-            attr = getattr(cls, attr_name)
-            if callable(attr):
-                outer_class_attrs[attr_name] = create_method(attr_name)
-            else:
-                outer_class_attrs[attr_name] = create_property(attr_name)
-    # Create the new class
-    OuterClass = type(class_name, (object,), outer_class_attrs)
-    def newgetattr(self, name):
-        if callable(name):
-            outer_class_attrs[attr_name] = create_method(attr_name)
-        else:
-            outer_class_attrs[attr_name] = create_property(attr_name)
-    return OuterClass
 
-def strict(cls):
-    warnings.warn("This is still experimental and may not be working as expected. A finished version should be available in release 0.1.5.", 
-                  UserWarning, 
-                  stacklevel=2)
-    # Create the new class with the same name
-    class_name = cls.__name__
-    def create_method(name):
-        def method(self, *args, **kwargs):
-            return getattr(self._inner_instance, name)(*args, **kwargs)
-        return method
-    def create_property(name):
-        def getter(self):
-            return getattr(self._inner_instance, name)
-        return property(getter)
-    def init_wrapper(self, *args, **kwargs):
-        self.__dict__['_inner_instance'] = cls(*args, **kwargs)
-    def setattr_wrapper(self, name, value):
-        if name in self.__dict__ or name == '_inner_instance':
+def strict(cls: Type[Any]):
+    class_name = cls.__name__ + "Cover"
+    original_setattr = cls.__setattr__
+
+    # Overridden __setattr__ for the original class
+    def new_setattr(self, name, value):
+        original_setattr(self, name, value)
+        # Update the cover class if attribute is public
+        if not name.startswith('_') and hasattr(self, '_cover') and getattr(self._cover, name) != value:
+            setattr(self._cover, name, value)
+
+    # Replace __setattr__ in the original class
+    cls.__setattr__ = new_setattr
+
+    # Define new __init__ for the cover class
+    def new_init(self, *args, **kwargs):
+        # Create an instance of the original class
+        original_instance = cls(*args, **kwargs)
+        original_instance._cover = self  # Reference to the cover class
+
+        # Bind public methods and attributes to the cover class instance
+        for attr_name in dir(original_instance):
+            if not attr_name.startswith('_'):  # or attr_name in ('__dict__', '__module__'):
+                attr_value = getattr(original_instance, attr_name)
+                if inspect.isfunction(attr_value):
+                    setattr(self, attr_name, attr_value.__get__(self, cls))
+                else:
+                    setattr(self, attr_name, attr_value)
+
+        def custom_setattr(instance, name, value):
+            object.__setattr__(instance, name, value)
+            if not name.startswith('_') and getattr(original_instance, name) != value:
+                setattr(original_instance, name, value)
+
+        self._dynamic_setattr = custom_setattr
+
+        # Remove reference to original instance
+        # del original_instance
+
+    def setattr_overwrite(self, name, value):
+        if hasattr(self, '_dynamic_setattr'):
+            self._dynamic_setattr(self, name, value)
+        else:
             object.__setattr__(self, name, value)
-        else:
-            setattr(self._inner_instance, name, value)
-    def getattr_wrapper(self, name):
-        if name in self.__dict__:
-            return object.__getattribute__(self, name)
-        return getattr(self._inner_instance, name)
-    outer_class_attrs = {
-        '__init__': init_wrapper, 
-        '__setattr__': setattr_wrapper, 
-        '__getattr__': getattr_wrapper
-    }
-    # Add public methods and properties from the original class
-    for attr_name in dir(cls):
-        if not attr_name.startswith('_'):
-            attr = getattr(cls, attr_name)
-            if callable(attr):
-                outer_class_attrs[attr_name] = create_method(attr_name)
-            else:
-                outer_class_attrs[attr_name] = create_property(attr_name)
-    # Create the new class
-    OuterClass = type(class_name, (object,), outer_class_attrs)
-    return OuterClass
-"""
-@strict
-class Hello:
-    def __init__(self):
-        self.counter = 0
-    def _hell(self):
-        print(1)
-    def hell(self):
-        self._hell()
-        self.counter += 1
-    
-@functionize
-class Hello2:
-    def __init__(self):
-        pass
-    def _hell(self):
-        print("self")
-    def hell(self):
-        self._hell()
-        
-class Hello3:
-    def __init__(self):
-        pass
-    def _hell(self):
-        print(1)
-    def hell(self):
-        self._hell()
 
-ins = Hello()
-ins.hell()
-print(ins.counter)
-ins._hell()
-"""
+    # Create a new cover class with the new __init__ and other methods/attributes
+    cover_class_attrs = {
+        '__init__': new_init,
+        '__class__': cls,
+        '__setattr__': setattr_overwrite,
+    }
+    for attr_name in dir(cls):
+        if callable(getattr(cls, attr_name)) and not attr_name.startswith('_'):
+            cover_class_attrs[attr_name] = getattr(cls, attr_name)
+
+    CoverClass = type(class_name, (object,), cover_class_attrs)
+    return CoverClass
+
+
+def privatize(cls: Type[Any]):
+    """A class decorator that protects private attributes."""
+
+    original_getattr = cls.__getattribute__
+    original_setattr = cls.__setattr__
+
+    def _get_caller_name() -> str:
+        """Return the calling function's name."""
+        return cast(FrameType, cast(FrameType, inspect.currentframe()).f_back).f_code.co_name
+
+    def protected_getattr(self, name: str) -> Any:
+        if name.startswith('_') and _get_caller_name() not in dir(cls):
+            raise AttributeError(f"Access to private attribute {name} is forbidden")
+        return original_getattr(self, name)
+
+    def protected_setattr(self, name: str, value: Any) -> None:
+        if name.startswith('_') and _get_caller_name() not in dir(cls):
+            raise AttributeError(f"Modification of private attribute {name} is forbidden")
+        original_setattr(self, name, value)
+
+    cls.__getattribute__ = protected_getattr
+    cls.__setattr__ = protected_setattr
+
+    return cls
+
+
+def auto_repr(cls):
+    """
+    Decorator that automatically generates a __repr__ method for a class.
+    """
+    if cls.__repr__ is object.__repr__:
+        def __repr__(self):
+            attributes = ', '.join(f"{key}={getattr(self, key)}" for key in self.__dict__)
+            return f"{cls.__name__}({attributes})"
+
+        cls.__repr__ = __repr__
+    return cls
 
 
 class System:
@@ -477,12 +471,39 @@ def print_system_info():
 def local_test():
     try:
         print_system_info()
+
+        @strict
+        class MyCls:
+            _attr = ""
+        var = MyCls()._attr
+
+        # @functionize
+        # class MyClass:
+        #     def __init__(self, value):
+        #         self.my_attribute = value
+        #         self._my_attr = 1
+
+        #     def adder(self):
+        #         self.my_attribute = 3
+
+        #     def my_method(self, plus):
+        #         return "The value is " + str(self.my_attribute + plus)
+
+        # Creating an instance as a function
+        # my_instance = MyClass(10)
+
+        # print(my_instance['my_attribute'])  # Accessing attribute
+        # print(my_instance['my_method'](3))  # Calling method
+        # my_instance['adder']()
+        # print(my_instance['my_attribute'])
+    except AttributeError:
+        print("Test completed successfully.")
+        return True
     except Exception as e:
         print(f"Exception occurred {e}.")
         return False
-    else:
-        print("Test completed successfully.")
-        return True
+    print("Strict decorator not working.")
+    return False
 
 
 if __name__ == "__main__":

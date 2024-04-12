@@ -1,4 +1,4 @@
-from aplustools.package import timid, lazy_loader
+from aplustools.package import timid, argumint
 
 
 class TestTimid:
@@ -6,6 +6,6 @@ class TestTimid:
         assert timid.local_test()
 
 
-class TestLazyLoader:
+class TestArguMint:
     def test_local(self):
-        assert lazy_loader.local_test()
+        assert argumint.local_test()
