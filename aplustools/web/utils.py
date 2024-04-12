@@ -1,6 +1,6 @@
 import random
 from typing import List, Union, Optional, Generator, Dict
-import bs4
+from bs4 import BeautifulSoup, element
 import requests
 from urllib.parse import quote_plus, urlparse, urljoin
 
@@ -1773,20 +1773,20 @@ def get_user_agent() -> str:
 
 
 class WebPage:
-    def __init__(self, url, in_url: Optional[list] = None):
+    def __init__(self, url: str, in_url_keywords: Optional[List[str]] = None):
         self.url = url
+        self.user_agent = self.generate_user_agent()
+        self.headers = {"User-Agent": self.user_agent}
 
         self.crawlable = self.is_crawlable(url)
-        self.in_url = all(inn.lower() in url.lower() for inn in in_url) if in_url else True
+        self.in_url = all(keyword.lower() in url.lower() for keyword in in_url_keywords) if in_url_keywords else True
         self.accessible, self.status_code = self.check_url(url, [])
 
         self.page = None
         self.soup = None
-        self.user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:66.0) Gecko/20100101 Firefox/66.0"  # get_user_agent()
 
         if self.accessible and self.crawlable:
-            self.page = requests.get(url, headers={"User-Agent": self.user_agent})
-            self.soup = bs4.BeautifulSoup(self.page.content, 'html.parser')
+            self.fetch_page()
 
     @staticmethod
     def is_crawlable(url: str) -> bool:
@@ -1864,23 +1864,54 @@ class WebPage:
                                              opera_version=opera_version)
         return user_agent
 
-    def get_by_tag(self, tag):
-        return None
+    def fetch_page(self):
+        try:
+            self.page = requests.get(self.url, headers=self.headers)
+            self.soup = BeautifulSoup(self.page.content, 'html.parser')
+        except requests.RequestException as e:
+            print(f"Failed to fetch page content: {e}")
 
-    def get_by_class(self, cls):
-        return None
+    def get_by_tag(self, tag: str) -> List[element.Tag]:
+        """Retrieve a list of all elements with the specified tag."""
+        if self.soup:
+            return self.soup.find_all(tag)
+        return []
+
+    def get_by_class(self, class_name: str) -> List[element.Tag]:
+        """Retrieve a list of all elements with the specified class."""
+        if self.soup:
+            return self.soup.find_all(class_=class_name)
+        return []
 
     def get_soup(self, func: str, *args, **kwargs):
-        return getattr(self.soup, func)(*args, **kwargs)
+        """Dynamically call a method from the BeautifulSoup instance with provided arguments."""
+        if self.soup and hasattr(self.soup, func):
+            method = getattr(self.soup, func)
+            if callable(method):
+                try:
+                    return method(*args, **kwargs)
+                except Exception as e:
+                    print(f"Error calling soup method {func}: {e}")
+        return None
 
     def __repr__(self):
         return (f"WebPage(url={self.url}, crawlable={self.crawlable}, in_url={self.in_url}, "
-                f"accessible={self.accessible}, status_code={self.status_code}, ..., user_agent={self.user_agent})")
+                f"accessible={self.accessible}, status_code={self.status_code}, user_agent={self.user_agent})")
 
 
 def local_test():
-    webpage = WebPage("https://chat.openai.com")
-    print(webpage)
+    try:
+        web_page = WebPage("https://github.com")
+        tags = web_page.get_by_tag('a')  # Get all anchor tags
+        classes = web_page.get_by_class('menu-item')  # Get all elements with class 'menu-item'
+        dynamic_call = web_page.get_soup('find_all', 'div',
+                                         class_='sidebar')  # Dynamically find all divs with class 'sidebar'
+        print(web_page, tags, classes, dynamic_call)
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return False
+    else:
+        return True
 
 
 if __name__ == "__main__":

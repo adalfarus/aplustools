@@ -1,9 +1,10 @@
 from aplustools.web.utils import get_user_agent
 import random
 import requests
-from typing import List, Union, Optional, Generator, Dict
+from typing import List, Union, Optional, Generator, Dict, Tuple
 from bs4 import BeautifulSoup
 import time
+from urllib.parse import quote_plus
 
 
 class Search:
@@ -29,8 +30,37 @@ class Search:
 
 
 class BingSearchCore:
-    def search(self, prompt, user_agent):
-        return prompt
+    def __init__(self, advanced: bool = False):
+        self.advanced = advanced
+
+    def search(self, query: str, num_results: int = 10, user_agent: str = "") -> list:
+        headers = {"User-Agent": user_agent}
+        url = f'https://www.bing.com/search?q={quote_plus(query)}'
+        response = requests.get(url, headers=headers)
+
+        if response.status_code == 200:
+            soup = BeautifulSoup(response.text, 'html.parser')
+            search_results = []
+            results = soup.find_all('li', {'class': 'b_algo'})
+
+            for result in results[:num_results]:
+                title_element = result.find('h2')
+                if not title_element:
+                    continue
+                title = title_element.text.strip()
+                url = title_element.find('a')['href'].strip()
+
+                if self.advanced:
+                    description_element = result.find('p')
+                    description = description_element.text.strip() if description_element else 'No description available'
+                    search_results.append({"title": title, "url": url, "description": description})
+                else:
+                    search_results.append(url)
+
+            return search_results
+        else:
+            print("Failed to retrieve the search results, status code:", response.status_code)
+            return []
 
     def api_search(self, query, api_key, custom_config_id: str = "", num_results=10):
         search_url = "https://api.bing.microsoft.com/v7.0/search"
@@ -46,55 +76,74 @@ class BingSearchCore:
 
 
 class GoogleSearchCore:
-    def search(self, query: str, num_results: int = 10, user_agent: str = "", advanced: bool = False, check: bool = True,
+    def __init__(self, advanced: bool = False):
+        self.advanced = advanced
+
+    def search(self, query: str, num_results: int = 10, user_agent: str = "", check: bool = True,
                blacklisted_websites: Optional[List[str]] = None) -> Union[List[str], List[Dict[str, str]]]:
         proxies = None  # If you have proxy settings, configure them here
-        escaped_term = query.replace(" ", "+")
-        start = 0
+        escaped_query = query.replace(" ", "+")
         results = []
+        total_fetched = 0
 
-        while start < num_results:
-            resp = requests.get(
-                url="https://www.google.com/search",
-                headers={"User-Agent": user_agent},
-                params={
-                    "q": escaped_term,
-                    "num": num_results + 2,
-                    "start": start,
-                },
-                proxies=proxies,
-                timeout=5,
-            )
-            resp.raise_for_status()
-            soup = BeautifulSoup(resp.text, "html.parser")
-            result_block = soup.find_all("div", attrs={"class": "g"})
+        while total_fetched < num_results:
+            url = "https://www.google.com/search"
+            params = {"q": escaped_query, "num": num_results + 2, "start": total_fetched}
+            response = self._make_request(url, params, user_agent, proxies)
+            search_results = self._parse_results(response, blacklisted_websites, check, num_results - total_fetched)
 
-            for result in result_block:
-                link = result.find("a", href=True)
-                title = result.find("h3")
-                description_box = result.find("div", {"style": "-webkit-line-clamp:2"})
+            if not search_results:
+                break
 
-                if description_box:
-                    description = description_box.text
-
-                    if link and title and description:
-                        url = link["href"]
-                        if check and blacklisted_websites and any(
-                                blacklisted_website in url for blacklisted_website in blacklisted_websites):
-                            continue
-                        start += 1
-                        if advanced:
-                            results.append({"url": url, "title": title.text, "description": description})
-                        else:
-                            results.append(url)
-                        if len(results) == num_results:
-                            break
-
-            time.sleep(1)  # Sleep interval to prevent rapid requests
+            results.extend(search_results)
+            total_fetched += len(search_results)
+            time.sleep(1)  # Respectful pause to prevent being rate-limited
 
         return results
 
-    def api_search(query, api_key, cse_id, num_results=10, start=1):
+    def _make_request(self, url: str, params: dict, user_agent: str = "", proxies=None) -> str:
+        response = requests.get(url, headers={"User-Agent": user_agent}, params=params,
+                                proxies=proxies, timeout=5)
+        response.raise_for_status()  # This will raise an HTTPError if the HTTP request returned an unsuccessful status code
+        return response.text
+
+    def _parse_results(self, html: str, blacklisted_websites: Optional[List[str]], check: bool, needed_results: int) ->\
+     List[Union[str, Dict[str, str]]]:
+        soup = BeautifulSoup(html, "html.parser")
+        result_blocks = soup.find_all("div", attrs={"class": "g"})
+        search_results = []
+
+        for result in result_blocks:
+            if len(search_results) >= needed_results:
+                break
+            parsed_result = self._extract_result_data(result)
+            if not parsed_result:
+                continue
+            url, title, description = parsed_result
+
+            if check and blacklisted_websites and any(blacklisted in url for blacklisted in blacklisted_websites):
+                continue
+
+            if self.advanced:
+                search_results.append({"url": url, "title": title, "description": description})
+            else:
+                search_results.append(url)
+
+        return search_results
+
+    def _extract_result_data(self, result) -> Optional[Tuple[str, str, str]]:
+        link = result.find("a", href=True)
+        title = result.find("h3")
+        description_box = result.find("div", {"style": "-webkit-line-clamp:2"})
+
+        if link and title and description_box:
+            url = link["href"]
+            title_text = title.text
+            description = description_box.text
+            return url, title_text, description
+        return None
+
+    def api_search(self, query, api_key, cse_id, num_results=10, start=1):
         url = "https://www.googleapis.com/customsearch/v1"
         params = {
             "key": api_key,
@@ -109,14 +158,53 @@ class GoogleSearchCore:
 
 
 class DuckDuckGoSearchCore:
-    pass
+    def __init__(self, advanced: bool = False):
+        self.advanced = advanced
 
+    def search(self, query: str, num_results: int = 10, user_agent: str = "") -> list:
+        headers = {"User-Agent": user_agent}
+        url = f'https://duckduckgo.com/html/?q={quote_plus(query)}'
+        response = requests.get(url, headers=headers)
+
+        if response.status_code == 200:
+            soup = BeautifulSoup(response.text, 'html.parser')
+            search_results = []
+            results = soup.find_all('div', {'class': 'result'})
+
+            count = 0  # Counter for valid results added to search_results
+            for result in results:
+                if count >= num_results:
+                    break  # Stop if the required number of results is reached
+
+                title_element = result.find('a', {'class': 'result__a'})
+                if not title_element or 'duckduckgo.com' in title_element['href']:
+                    continue  # Skip internal links
+
+                title = title_element.text.strip()
+                url = title_element['href'].strip()
+
+                if self.advanced:
+                    description_element = result.find('a', {'class': 'result__snippet'})
+                    description = description_element.text.strip() if description_element else 'No description available'
+                    search_results.append({"title": title, "url": url, "description": description})
+                else:
+                    search_results.append(url)
+
+                count += 1  # Increment valid result counter
+
+            return search_results
+        else:
+            print("Failed to retrieve the search results, status code:", response.status_code)
+            return []
+
+    def api_search(self, query, api_key, num_results):
+        pass
 
 def local_test():
     searcher = Search()  # BingSearchCore())
     # searcher.search("Hello World")
     searcher.replace_core(GoogleSearchCore())
-    searcher.search("Hello World")
+    print(searcher.search("Hello World"))
 
 
 if __name__ == "__main__":
