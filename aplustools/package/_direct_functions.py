@@ -47,7 +47,7 @@ def install_dependencies_lst(dependencies: list) -> bool:
         except Exception as e:
             print("An error occurred:" + str(e))
             return False
-        return True
+    return True
 
 
 def install_dependencies():
