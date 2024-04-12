@@ -3,8 +3,8 @@
 from aplustools.package import LazyModuleLoader as _LazyModuleLoader
 
 # Lazy loading modules
-chat = _LazyModuleLoader('aplustools.package.gui.chat')
-calendar = _LazyModuleLoader('aplustools.package.gui.calendar')
+chat = _LazyModuleLoader('aplustools.io.gui.chat')
+calendar = _LazyModuleLoader('aplustools.io.gui.calendar')
 
 # Define __all__ to limit what gets imported with 'from <package> import *'
 __all__ = ['chat', 'calendar']
