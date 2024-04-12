@@ -200,6 +200,7 @@ class DuckDuckGoSearchCore:
     def api_search(self, query, api_key, num_results):
         pass
 
+
 def local_test():
     searcher = Search()  # BingSearchCore())
     # searcher.search("Hello World")

@@ -4,12 +4,11 @@ from aplustools.package import LazyModuleLoader as _LazyModuleLoader
 
 # Lazy loading modules
 genpass = _LazyModuleLoader('aplustools.utils.genpass')
-mappers = _LazyModuleLoader('aplustools.utils.mappers')
 dummy = _LazyModuleLoader('aplustools.utils.dummy')
 hasher = _LazyModuleLoader('aplustools.utils.hasher')
 
 # Define __all__ to limit what gets imported with 'from <package> import *'
-__all__ = ['genpass', 'mappers', 'dummy', 'hasher']
+__all__ = ['genpass', 'dummy', 'hasher']
 
 # Dynamically add exports from _direct_functions
 from aplustools.utils._direct_functions import *
