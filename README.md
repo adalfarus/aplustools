@@ -180,8 +180,8 @@ print(test_data.generate_random_birth_date())
 
 ### Dummy
 ```python
-from aplustools.utils.dummy import Dummy3 # Dummy3 is for Python 3
-import math, sys
+from aplustools.utils.dummy import Dummy3  # Dummy3 is for Python 3
+import math
 
 dummy = Dummy3()
 
@@ -215,12 +215,12 @@ num = 1
 num *= dummy
 
 if dummy:
-	print(True)
+    print(True)
 else:
-	print(False)
+    print(False)
 
 for x in dummy:
-	print(x)
+    print(x)
 
 type(dummy)
 print(dummy, "->", int(dummy), list(dummy), tuple(dummy), float(dummy))
@@ -513,7 +513,7 @@ There are multiple clis added through this package:
 ### pype (python pipe)
 ```bash
 C:\Users\user_>pype
-Enter Python expression: 1+2
+Enter Python expression: 1 + 2
 3
 
 C:\Users\user_>pype 1 // 3
