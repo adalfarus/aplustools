@@ -3,6 +3,8 @@ import sys as _sys
 import os as _os
 import warnings as _warnings
 from aplustools.package import install_dependencies_lst as _install_dependencies_lst
+from typing import Union as _Union
+import ctypes as _ctypes
 
 
 def execute_python_command(arguments: list = None, *args, **kwargs) -> _subprocess.CompletedProcess[str]:
