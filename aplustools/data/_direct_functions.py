@@ -50,28 +50,31 @@ def bits(bytes_like: bytes) -> list:
     return list(reversed([binary[i-8:i] for i in range(len(binary), 0, -8)[:-1]]))
 
 
-def nice_bits(bytes_like: bytes, spaced: bool = False, wrap_count: int = 0, to_chars: bool = False) -> str:#
+def nice_bits(bytes_like: bytes, spaced: bool = False, wrap_count: int = 0, to_chars: bool = False, edge_space: bool = False) -> str:#
     this = [""] + bits(bytes_like)
     i = 0
-    for i in range(0, len(this), wrap_count if wrap_count > 0 else 1):
-        if spaced:
+    wrap_count = wrap_count if wrap_count > 0 else len(this) - 1
+    for i in range(0, len(this), wrap_count):
+        if edge_space and i+1 < len(this):
             this[i+1] = " " + this[i+1]
         if i + wrap_count < len(this):
             chars = "  " + ''.join([chr(int(x, 2)) for x in this[i+1:i+wrap_count+1] if x])
-            this[i + wrap_count] += (chars if to_chars else "") + ("\n" if wrap_count > 0 else "")
-            for chunk_id in range(i+1, i+wrap_count):
-                this[chunk_id] += " "
+            this[i + wrap_count] += (chars if to_chars else "") + ("\n" if i+wrap_count != len(this)-1 else "")
+            if spaced:
+                for chunk_id in range(i+1, i+wrap_count):
+                    this[chunk_id] += " "
         else:
-            for chunk_id in range(i+1, len(this)-1):
-                this[chunk_id] += " "
+            if spaced:
+                for chunk_id in range(i+1, len(this)-1):
+                    this[chunk_id] += " "
     if to_chars:
-        this[-1] += "         "*((i + wrap_count)-len(this)+1) + "  " + ''.join([chr(int(x, 2)) for x in this[i+1:len(this)] if x])
+        this[-1] += ("         " if spaced else "        ")*((i + wrap_count)-len(this)+1) + "  " + ''.join([chr(int(x, 2)) for x in this[i+1:len(this)] if x])
     binary_str = ''.join(this)
     return binary_str  # ("00000000" + binary)[7 + (len(binary) // 8):]
 
 
 if __name__ == "__main__":
-    bit = nice_bits(encode("Hello you world!"), True, 6, True)
+    bit = nice_bits(encode("Hello you world!"), True, 6, True, True)
     bitss = bits(encode_float(0.3))
     print(bitss)
 
