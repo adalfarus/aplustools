@@ -20,15 +20,15 @@ class Argument:
         self.name = name
         if not choices:
             # If there are no choices, return the specified type or None
-            self.type = type_ or None
+            self._type = type_ or None
         else:
             choice_types = set(type(choice) for choice in choices)
             if len(choice_types) == 1:
                 # All choices have the same type
-                self.type = choice_types.pop()
+                self._type = choice_types.pop()
             else:
                 # Choices have different types, return a Union of the types
-                self.type = Union[tuple(choice_types)]
+                self._type = Union[tuple(choice_types)]
         self.choices = choices or []
         self.default = default  # Can be contained within choices
         self.help = help_
@@ -51,13 +51,21 @@ class Argument:
     def help(self):
         return self._help
 
+    def type(self, to_type: str) -> any:
+        if self._type in [list, tuple, set]:
+            tmp = to_type.split()
+            return self._type(tmp)
+        else:
+            return self._type(to_type)
+
+
     @help.setter
     def help(self, value: str):
         self._help = value or ""
 
     def __repr__(self):
         return f"Argument(name={self.name}, \
-type={self.type}, \
+type={self._type}, \
 choices={self.choices}, \
 default={self.default}, \
 help={self.help})"
@@ -286,13 +294,13 @@ class ArguMint:
                 if not any(a.name == key for a in endpoint.arguments):
                     raise ArgumentParsingError(f"Unknown argument: {key}", i)
                 arg_obj = next(a for a in endpoint.arguments if a.name == key)
-                parsed_args[key] = arg_obj.type(value) if arg_obj.type else value
+                parsed_args[key] = arg_obj.type(value) if arg_obj._type else value
                 remaining_args.remove(arg_obj)
 
             # Check for flag argument
             elif arg.startswith("-"):
                 key = arg[1:]
-                if not any(a.name == key and a.type is bool for a in endpoint.arguments):
+                if not any(a.name == key and a._type is bool for a in endpoint.arguments):
                     raise ArgumentParsingError(f"Unknown flag argument: {key}", i)
                 parsed_args[key] = True
                 remaining_arg = next(a for a in endpoint.arguments if a.name == key)
@@ -324,6 +332,7 @@ class ArguMint:
 
     @staticmethod
     def _parse_args_native(args: List[str], endpoint: EndPoint, smart_typing: bool = True):
+        raise NotImplementedError
         parsed_args = {}
         remaining_args = list(endpoint.arguments)
 
@@ -336,7 +345,7 @@ class ArguMint:
                 arg_obj = matched_args[0]
 
                 # Create a temporary Pydantic model for conversion and validation
-                temp_model = type('TempModel', (BaseModel,), {key: (arg_obj.type, None)})
+                temp_model = type('TempModel', (BaseModel,), {key: (arg_obj._type, None)})
                 try:
                     parsed_args[key] = temp_model(**{key: value}).dict()[key]
                 except ValidationError as e:
@@ -345,7 +354,7 @@ class ArguMint:
             elif arg.startswith("-"):
                 # Handle flag argument
                 key = arg[1:]
-                if not any(a.name == key and a.type is bool for a in endpoint.arguments):
+                if not any(a.name == key and a._type is bool for a in endpoint.arguments):
                     raise ArgumentParsingError(f"Unknown flag argument: {key}", i)
                 parsed_args[key] = True
 
@@ -355,7 +364,7 @@ class ArguMint:
                     if smart_typing:
                         for pos_arg in remaining_args:
                             # Create a temporary Pydantic model for conversion and validation
-                            TempModel = create_model('TempModel', **{pos_arg.name: pos_arg.type})
+                            TempModel = create_model('TempModel', **{pos_arg.name: pos_arg._type})
                             try:
                                 parsed_value = TempModel.parse_obj({pos_arg.name: arg}).dict()[pos_arg.name]
                                 parsed_args[pos_arg.name] = parsed_value
@@ -366,7 +375,7 @@ class ArguMint:
                     else:
                         # Assign to the next available argument without smart typing
                         pos_arg = remaining_args.pop(0)
-                        TempModel = create_model('TempModel', **{pos_arg.name: pos_arg.type})
+                        TempModel = create_model('TempModel', **{pos_arg.name: pos_arg._type})
                         try:
                             parsed_value = TempModel.parse_obj({pos_arg.name: arg}).dict()[pos_arg.name]
                             parsed_args[pos_arg.name] = parsed_value
@@ -386,10 +395,10 @@ class ArguMint:
 
         # Set up argparse for keyword and flag arguments
         for arg in endpoint.arguments:
-            if arg.type is bool:  # For boolean flags
+            if arg._type is bool:  # For boolean flags
                 parser.add_argument(f"-{arg.name[0]}", f"--{arg.name}", action='store_true', help=arg.help)
             else:
-                parser.add_argument(f"--{arg.name}", type=arg.type, default=arg.default, help=arg.help)
+                parser.add_argument(f"--{arg.name}", type=arg._type, default=arg.default, help=arg.help)
 
         # Parse arguments with argparse
         parsed_args = parser.parse_args(args)

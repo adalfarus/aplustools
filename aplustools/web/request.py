@@ -29,7 +29,11 @@ def fetch(url, async_mode=False):
 
 
 class UnifiedRequestHandler:
-    _session = None  # Only for async requests
+    _global_session = None  # Only for async requests
+
+    def __init__(self, use_global_session: bool = False):
+        self.use_global_session = use_global_session
+        self._session = self._global_session if use_global_session else None
 
     async def _async_fetch(self, url):
         if self._session is None:
