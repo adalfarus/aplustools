@@ -1,6 +1,6 @@
 import sys
 import time
-from typing import TextIO, Union, Optional, Type, Callable, Tuple
+from typing import TextIO, Union, Optional, Type, Callable, Tuple, List, Any
 from enum import Enum
 import warnings
 
@@ -47,10 +47,10 @@ class Logger(object):
             return timestamp + message if message != '\n' else message
         return message
     
-    def log(self, message: str):
+    def log(self, *message: Union[str, Any]):
         """Logs a message to the file and optionally to stdout."""
-        message = str(message)
-        message_with_timestamp = self._add_timestamp(message) + "\n"
+        joined_message = ''.join([str(part) for part in list(message)])
+        message_with_timestamp = self._add_timestamp(joined_message) + "\n"
         self.log_file.write(message_with_timestamp)
         self.log_file.flush()
         if self.print_log_to_stdout:
@@ -164,27 +164,23 @@ class TypeLogger(PrintLogger):  # The , *_, **__ need to be added as direct init
                     message = message_type.value + message if message != '\n' else message
         return message
 
-    def log(self, *message: Union[str, LogType], log_type: Optional[LogType] = None):
+    def log(self, *message: Union[str, LogType, Any], log_type: Optional[LogType] = None):
         """Logs a message to the file and optionally to stdout."""
-        if isinstance(message, str):
-            message = [message]
-        elif isinstance(message, list) or isinstance(message, tuple):
-            message = list(message)
-        else: raise TypeError(f"{message.__class__} isn't supported'")
+        prepared_message = list(message)
         logT, pop_lst = LogType.NONE, []
         for i, item in enumerate(message):
             if isinstance(item, LogType):
                 logT = item
                 pop_lst.append(i)
-        [message.pop(x - i) for i, x in enumerate(pop_lst)]
-        message = ' '.join([str(x) for x in message])
+        [prepared_message.pop(x - i) for i, x in enumerate(pop_lst)]
+        joined_message = ' '.join([str(x) for x in prepared_message])
         log_type = log_type or logT
-        message_with_timestamp = self._add_timestamp(message) + "\n"
+        message_with_timestamp = self._add_timestamp(joined_message) + "\n"
         self.log_switch = True
         self.log_file.write(self._add_type(message_with_timestamp, log_type))
         self.log_file.flush()
         if self.print_log_to_stdout:
-            message_with_timestamp = self._add_timestamp(message) + "\n"
+            message_with_timestamp = self._add_timestamp(joined_message) + "\n"
             self.log_switch = False
             self._write_to_stdout(self._add_type(message_with_timestamp, log_type))
             
@@ -201,13 +197,14 @@ class TypeLogger(PrintLogger):  # The , *_, **__ need to be added as direct init
             self._write_to_stdout(self._add_type(message_with_timestamp))
 
 
+"""
 class FullTypeLogger:
-    """This class is here to implement a full type system on top of the print system
+    "This class is here to implement a full type system on top of the print system
     Please do not use it however, as it's quite complex - Use it as an inspiration for your
     own logger subclass instead. This doesn't inherit from anything, to focus on making a good
     logger instead on compatibility. The aim is to be better than the default logger. This also
     acts as an inspiration for the normal TypeLogger.
-    """
+    "
     def __init__(self, log_filename: str = "Default.log", include_timestamp: bool = True,
                  print_logger: PrintLogger = PrintLogger, display_message_type: bool = True,
                  message_type_classifier: Callable = lambda: None, classify_message_type: bool = True,
@@ -228,6 +225,7 @@ class FullTypeLogger:
     def log(self, message: str, type: Type[LogType]=LogType.NONE):
         message = str(message)
         pass
+"""
 
 
 def monitor_stdout(log_file: Optional[str] = None,

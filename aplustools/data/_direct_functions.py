@@ -24,13 +24,13 @@ def decode_float(bytes_like: bytes) -> float:
     return _ctypes.c_float.from_buffer(_ctypes.c_uint32(value_bits)).value
 
 
-def encode_int(num: int) -> bytes:
-    byte_size = (num.bit_length() + 7) // 8  # Determine the required number of bytes
-    return num.to_bytes(byte_size, 'big')
+def encode_int(num: int, overwrite_signed: bool = False) -> bytes:
+    byte_size = (num.bit_length() + 8) // 8  # Determine the required number of bytes
+    return num.to_bytes(byte_size, 'big', signed=(True if num < 0 else False) or overwrite_signed)
 
 
-def decode_int(bytes_like: bytes) -> int:
-    return int.from_bytes(bytes_like)
+def decode_int(bytes_like: bytes, signed: bool = False) -> int:
+    return int.from_bytes(bytes_like, 'big', signed=signed)
 
 
 def encode(to_encode: _Union[int, str]) -> bytes:
@@ -41,7 +41,7 @@ def encode(to_encode: _Union[int, str]) -> bytes:
 
 def decode(bytes_like: bytes, return_int: bool = False) -> _Union[int, str]:
     if len(bytes_like) > 1 and not return_int:
-        return ''.join([chr(x) for x in bytes_like])
+        return ''.join([chr(x) for x in bytes_like])  # [chr(decode_int(x)) for x in bytes_like.iter_bytes()]
     return decode_int(bytes_like)
 
 
@@ -77,9 +77,10 @@ if __name__ == "__main__":
     bit = nice_bits(encode("Hello you world!"), True, 6, True, True)
     bitss = bits(encode_float(0.3))
     print(bitss)
+    print(decode_int(encode_int(-2000), True))
 
     print(bit)
     encoded = encode_float(0.1)
     decoded = decode_float(encoded)
-    print(f"0.1 -> {encoded} -> {decoded}")
+    print(f"0.1 -> {encoded!r} -> {decoded}")
     print(decode(encode("HELL")))

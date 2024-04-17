@@ -1,5 +1,6 @@
 import subprocess as _subprocess
 import sys as _sys
+from typing import Optional as _Optional
 
 
 class LazyModuleLoader:
@@ -30,7 +31,7 @@ class LazyModuleLoader:
         return dir(self.module)
 
 
-def _execute_python_command(arguments: list = None, *args, **kwargs) -> _subprocess.CompletedProcess[str]:
+def _execute_python_command(arguments: _Optional[list] = None, *args, **kwargs) -> _subprocess.CompletedProcess[str]:
     if arguments is None:
         arguments = []
     print(' '.join([_sys.executable] + arguments))
@@ -58,7 +59,7 @@ def install_dependencies():
 
 
 class AttributeObject:
-    _types = {}
+    _types: dict = {}
 
     def __init__(self, **kwargs):
         for name, value in kwargs.items():

@@ -4,6 +4,7 @@ import sys
 import os
 import socket
 import traceback
+from typing import Any
 
 
 def get_release_asset_download_url(owner, repo, tag, asset_name):
@@ -74,6 +75,12 @@ class MockConnection:
     def sendall(message):
         print(message.decode(), end="")
 
+    def __enter__(self):
+        pass
+
+    def __exit__(self, type_, value, traceback_):
+        pass
+
 
 if __name__ == "__main__":
     try:
@@ -82,7 +89,7 @@ if __name__ == "__main__":
             print("Not enough arguments provided.")
             sys.exit()
 
-        def boolean(to_bool: any):
+        def boolean(to_bool: Any):
             return to_bool.lower() == "true"
 
         in_array = sys.argv

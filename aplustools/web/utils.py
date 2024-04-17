@@ -1,5 +1,5 @@
 import random
-from typing import List, Union, Optional, Generator, Dict
+from typing import List, Union, Optional, Generator, Dict, Tuple
 from bs4 import BeautifulSoup, element
 import requests
 from urllib.parse import quote_plus, urlparse, urljoin
@@ -1811,7 +1811,7 @@ class WebPage:
         return False  # Return False if there was an error or the robots.txt file couldn't be retrieved
 
     @staticmethod
-    def check_url(url: str, blacklisted_websites: Optional[list] = None) -> (bool, Optional[int]):
+    def check_url(url: str, blacklisted_websites: Optional[list] = None) -> Tuple[bool, Optional[int]]:
         """
         Check if the URL is accessible and not blacklisted, return a tuple (accessible, status_code).
         """
