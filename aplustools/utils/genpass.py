@@ -12,7 +12,7 @@ import base64
 import time
 import struct
 import datetime
-from typing import Tuple, List, Literal, Optional, Union
+from typing import Tuple, List, Literal, Optional, Union, Dict
 import threading
 import re
 import errno
@@ -29,7 +29,7 @@ class DummyProtocol:
         return "", ""
 
     @staticmethod
-    def get_control_code(self, control_code: str, add_in: str = None) -> str:
+    def get_control_code(self, control_code: str, add_in: Optional[str] = None) -> str:
         return control_code + add_in
 
     @staticmethod
@@ -39,8 +39,8 @@ class DummyProtocol:
 
 @strict
 class ControlCodeProtocol:
-    def __init__(self, comm_code: str = None, exec_code_delimiter: str = "::", exec_code_start: str = "[",
-                 exec_code_end: str = "]", control_codes: dict = None):
+    def __init__(self, comm_code: Optional[str] = None, exec_code_delimiter: str = "::", exec_code_start: str = "[",
+                 exec_code_end: str = "]", control_codes: Optional[dict] = None):
         self._comm_code = comm_code
         if not self._comm_code:
             self._comm_code = self._generate_random_string(50)
@@ -66,7 +66,7 @@ class ControlCodeProtocol:
         # Return the required length
         return random_string_base64[:length]
 
-    def get_control_code(self, control_code: str, add_in: str = None) -> str:
+    def get_control_code(self, control_code: str, add_in: Optional[str] = None) -> str:
         add_in_str = f"{self._exec_code_delimiter}{add_in}" if add_in else ""
         return (f"{self._exec_code_start}"
                 f"{self._comm_code}{self._exec_code_delimiter}{self._control_codes.get(control_code.lower())}"
@@ -1340,8 +1340,8 @@ class SecurePasswordManager:
     def __init__(self, key: bytes = secrets.token_bytes(32), debug: bool = False):
         # The key should be securely generated and stored.
         self._key = key
-        self._passwords = {}
-        self._temp_buffer = {}
+        self._passwords: Dict[str, str] = {}
+        self._temp_buffer: Dict[int, str] = {}
 
         self.debug = debug
 
@@ -1411,19 +1411,20 @@ class SecurePasswordManager:
                 all_chars += generated_chars
         self.debug_print("All characters before adding extra characters:", all_chars)
         all_chars += extra_chars
-        all_chars = list(all_chars)
+        all_chars_lst = list(all_chars)
         if exclude_similar:
             similar_chars = 'Il1O0'  # Add more similar characters if needed
-            all_chars = [c for c in all_chars if c not in similar_chars]
-            while len(all_chars) < length and not _recur:
-                all_chars.extend(self.generate_ratio_based_password_v2(length, letters_ratio, numbers_ratio,
-                                                                       punctuations_ratio, unicode_ratio, extra_chars,
-                                                                       exclude_chars, exclude_similar, _recur=True))
-        secrets.SystemRandom().shuffle(all_chars)
-        self.debug_print("All characters after processing:", all_chars)
-        if length > len(all_chars) and not _recur:
+            all_chars_lst = [c for c in all_chars_lst if c not in similar_chars]
+            while len(all_chars_lst) < length and not _recur:
+                all_chars_lst.extend(self.generate_ratio_based_password_v2(length, letters_ratio, numbers_ratio,
+                                                                           punctuations_ratio, unicode_ratio,
+                                                                           extra_chars, exclude_chars, exclude_similar,
+                                                                           _recur=True))
+        secrets.SystemRandom().shuffle(all_chars_lst)
+        self.debug_print("All characters after processing:", all_chars_lst)
+        if length > len(all_chars_lst) and not _recur:
             raise ValueError("Password length is greater than the number of available characters.")
-        password = ''.join(all_chars[:length])
+        password = ''.join(all_chars_lst[:length])
         return password
 
     def generate_sentence_based_password_v2(self, sentence: str, shuffle_words: bool = True,

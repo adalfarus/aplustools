@@ -4,7 +4,7 @@ from PySide6.QtCore import Qt, QDateTime, QSize, QUrl, QBuffer, QByteArray
 from PySide6.QtGui import QFontMetrics, QMovie, QResizeEvent
 import os
 import tempfile
-from typing import Union
+from typing import Union, Optional, Dict, List
 import brotli
 
 
@@ -20,7 +20,7 @@ class ChatBubble(QFrame):
                  no_ui: bool = False):
         super().__init__()
         self.text = text
-        self.sender = sender
+        self.sender_ = sender
         self.is_user = is_user
 
         self.loading = loading
@@ -31,10 +31,10 @@ class ChatBubble(QFrame):
         self.maximum_width = maximum_width
 
         if not no_ui:
-            self.textLabel: QLabel = None
-            self.loadingLabel: QLabel = None
-            self.loadingLayout: QHBoxLayout = None
-            self.loadingFrame: QFrame = None
+            self.textLabel: Optional[QLabel] = None
+            self.loadingLabel: Optional[QLabel] = None
+            self.loadingLayout: Optional[QHBoxLayout] = None
+            self.loadingFrame: Optional[QFrame] = None
             self.init_ui()
             self.update_text(text)
 
@@ -93,7 +93,7 @@ class ChatBubble(QFrame):
     def init_ui(self):
         layout = QVBoxLayout()
 
-        info_label = QLabel(f"{self.sender} - {QDateTime.currentDateTime().toString('hh:mm:ss')}")
+        info_label = QLabel(f"{self.sender_} - {QDateTime.currentDateTime().toString('hh:mm:ss')}")
         info_label.setStyleSheet("font-size: 8pt; color: gray;")
 
         self.textLabel = QLabel()
@@ -228,7 +228,7 @@ class MDChatBubble(ChatBubble):
     def init_ui(self):
         layout = QVBoxLayout()
 
-        info_label = QLabel(f"{self.sender} - {QDateTime.currentDateTime().toString('hh:mm:ss')}")
+        info_label = QLabel(f"{self.sender_} - {QDateTime.currentDateTime().toString('hh:mm:ss')}")
         info_label.setStyleSheet("font-size: 8pt; color: gray;")
 
         self.textLabel = QTextBrowser()
@@ -299,7 +299,7 @@ class MDChatBubble(ChatBubble):
             if isinstance(parent, QScrollArea):
                 break
             parent = parent.parent()
-        if parent is not None:
+        if parent is not None and isinstance(parent, QScrollArea):
             offset_width = parent.viewport().width() - self.width_offset
             self.setMinimumWidth(min(offset_width, self.minimum_width))
             self.setMaximumWidth(min(offset_width, self.maximum_width))
@@ -363,15 +363,15 @@ class ChatArea(QScrollArea):
     def get_all_messages_from_sender(self, sender: str) -> list:
         return_lst = []
         for bubble in self.messages:
-            if bubble.sender == sender:
+            if bubble.sender_ == sender:
                 return_lst.append(bubble)
         return return_lst
 
-    def get_all_messages_from_senders(self, senders: list) -> dict:
-        return_dict = {sender: [] for sender in senders}
+    def get_all_messages_from_senders(self, senders: List[str]) -> Dict[str, list]:
+        return_dict: Dict[str, list] = {sender: [] for sender in senders}
         for bubble in self.messages:
-            if bubble.sender in senders:
-                return_dict[bubble.sender].append(bubble)
+            if bubble.sender_ in senders:
+                return_dict[bubble.sender_].append(bubble)
         return return_dict
 
     def resizeEvent(self, event: QResizeEvent):

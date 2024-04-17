@@ -1,5 +1,5 @@
 import random
-from typing import Optional, List, Callable
+from typing import Optional, List, Callable, Union
 
 
 class UM:
@@ -98,7 +98,7 @@ class UM:
             raise DeprecationWarning("This function is deprecated, please use umsplittedTWO or umsplittenCH")
         except Exception as e:
             print("Exec Error:", e)
-            return # This doesn't work
+            return None  # This doesn't work
         if len(num_lst) // 2 < width or len(num_lst) % 2 != 0: # Otherwise pairs don't match
             return None
             
@@ -471,7 +471,7 @@ def hashed_latest(input_str: str, length: int, debug: bool = False):
 
 
 def hashed_wrapper(input_str: str, length: int, debug: bool = False, sub_debug: bool = False,
-                   sub_sub_debug: bool = False, hash_func: Callable[[str, int, bool], str] = lambda x, y, z: None):
+                   sub_sub_debug: bool = False, hash_func: Callable[[str, int, bool], str] = lambda x, y, z: ""):
     def debug_print(*args, **kwargs):
         if debug:
             print(*args, **kwargs)
@@ -508,7 +508,7 @@ def hashed_wrapper(input_str: str, length: int, debug: bool = False, sub_debug: 
 
 def hashed_wrapper_latest(input_str: str, length: int, debug: bool = False, sub_debug: bool = False,
                           sub_sub_debug: bool = False,
-                          hash_func: Callable[[str, int, bool], str] = lambda x, y, z: None):
+                          hash_func: Callable[[str, int, bool], str] = lambda x, y, z: ""):
     def debug_print(*args, **kwargs):
         if debug:
             print(*args, **kwargs)
@@ -543,7 +543,7 @@ def hashed_wrapper_latest(input_str: str, length: int, debug: bool = False, sub_
     return final_hash
 
 
-def reducer(input_str: str, ord_range: List[range], jump_size: int, debug: bool = False):
+def reducer(input_str: str, ord_range: range, jump_size: int, debug: bool = False):
     def debug_print(*args, **kwargs):
         if debug:
             print(*args, **kwargs)
@@ -552,10 +552,10 @@ def reducer(input_str: str, ord_range: List[range], jump_size: int, debug: bool 
     for i in input_str:
         ord_i = ord(i)
         debug_print(f"Char {repr(i)} -> Ord {ord_i}")
-        if ord_i not in ord_range: # Just send it through both
+        if ord_i not in ord_range:  # Just send it through both
             while ord_i > max_range:
                 ord_i -= jump_size
-            i = chr(ord_i) # To make sure it's within chars allowed range
+            i = chr(ord_i)  # To make sure it's within chars allowed range
             ord_i = ord(i)
             debug_print(f"New char {repr(i)} -> Ord {ord_i}")
             while ord_i < min_range:
