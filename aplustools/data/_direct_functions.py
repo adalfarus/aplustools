@@ -1,6 +1,7 @@
 from aplustools.package import install_dependencies_lst as _install_dependencies_lst
 from typing import Union as _Union
 import ctypes as _ctypes
+from typing import Tuple as _Tuple
 
 
 def install_dependencies():
@@ -73,6 +74,60 @@ def nice_bits(bytes_like: bytes, spaced: bool = False, wrap_count: int = 0, to_c
     return binary_str  # ("00000000" + binary)[7 + (len(binary) // 8):]
 
 
+def minmax(min_val, max_val, to_reduce):
+    return max(max_val, min(min_val, to_reduce))
+
+
+def isEven(x: _Union[int, float, str]) -> bool:
+    return (int(x) & 1) == 0 if not isinstance(x, str) else (len(x) & 1) == 0
+
+
+def isOdd(x: _Union[int, float, str]) -> bool:
+    return (int(x) & 1) == 1 if not isinstance(x, str) else (len(x) & 1) == 1
+
+
+def isEvenInt(x: int) -> bool:
+    return (x & 1) == 0
+
+
+def isOddInt(x: int) -> bool:
+    return (x & 1) == 1
+
+
+def isEvenFloat(x: _Union[float, str]) -> _Tuple[bool, bool]:
+    if x != x:  # Check for NaN
+        return False, False
+    if x in [float('inf'), float('-inf')]:  # Check for infinities
+        return False, False
+    if x == 0.0:  # Zero is even by conventional definition
+        return True, True
+
+    expo, dec = str(x).split(".")
+
+    return isEvenInt(int(expo)), isEvenInt(int(dec))
+
+
+def isOddFloat(x: _Union[float, str]) -> _Tuple[bool, bool]:
+    if x != x:  # Check for NaN
+        return False, False
+    if x in [float('inf'), float('-inf')]:  # Check for infinities
+        return False, False
+    if x == 0.0:  # Zero is even by conventional definition
+        return False, False
+
+    expo, dec = str(x).split(".")
+
+    return isOddInt(int(expo)), isOddInt(int(dec))
+
+
+def isEvenString(x: str) -> bool:
+    return (len(x) & 1) == 0
+
+
+def isOddString(x: str) -> bool:
+    return (len(x) & 1) == 1
+
+
 if __name__ == "__main__":
     bit = nice_bits(encode("Hello you world!"), True, 6, True, True)
     bitss = bits(encode_float(0.3))
@@ -84,3 +139,8 @@ if __name__ == "__main__":
     decoded = decode_float(encoded)
     print(f"0.1 -> {encoded!r} -> {decoded}")
     print(decode(encode("HELL")))
+
+    print(isEven(4))
+    print(isOddString("jel"))
+    print(isEvenFloat(1238.2312))
+    print(isEvenFloat(1239.2312))

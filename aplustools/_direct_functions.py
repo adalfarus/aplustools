@@ -48,3 +48,4 @@ def set_dir_to_ex():
             )
     # Change the current working directory to the main script directory
     _os.chdir(main_dir)
+

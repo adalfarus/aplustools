@@ -5,6 +5,14 @@ import requests
 from urllib.parse import quote_plus, urlparse, urljoin
 
 
+def url_validator(x):
+    try:
+        result = urlparse(x)
+        return all([result.scheme, result.netloc])
+    except AttributeError:
+        return False
+
+
 def get_user_agent() -> str:
     _user_agent_list = [
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:66.0) Gecko/20100101 Firefox/66.0',
