@@ -4,7 +4,7 @@ BeautifulSoup4==4.12.3
 duckduckgo_search==3.9.3 # 4.2
 cryptography==42.0.5
 PySide6==6.6.1
-aiohttp==3.9.3
+aiohttp==3.9.4
 opencv-python==4.9.0.80
 brotli==1.1.0
 zstandard==0.22.0
