@@ -68,7 +68,7 @@ class ImageManager:
             for image_class, args, kwargs in images_info:
                 kwargs["base_location"] = kwargs.get("base_location") or self.base_location
                 kwargs["_use_async"] = False
-                self.images.append(image_class(**kwargs))
+                self.images.append(image_class(*args, **kwargs))
 
     async def _add_images_async(self, images_info):
         tasks = [ImageClass(*args, **{**kwargs, "_use_async": True,
