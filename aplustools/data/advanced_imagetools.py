@@ -71,7 +71,7 @@ class ImageManager:
                 self.images.append(image_class(*args, **kwargs))
 
     async def _add_images_async(self, images_info):
-        tasks = [ImageClass(*args, **{**kwargs, "_use_async": True,
+        tasks = [self.create_async(ImageClass, *args, **{**kwargs, "_use_async": True,
                                       "base_location": kwargs.get("base_location") or self.base_location})
                  for ImageClass, args, kwargs in images_info]
         self.images.extend(await asyncio.gather(*tasks))
