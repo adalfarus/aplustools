@@ -1,10 +1,11 @@
-from time import time, perf_counter_ns, monotonic_ns
-from datetime import timedelta, datetime
-from typing import Optional, Type, Union
+from typing import Callable, Union, List, Tuple, Optional, Type
 from timeit import default_timer
+from datetime import timedelta
+import threading
+import time
 
 
-class Format:
+class TimeFormat:
     WEEKS = 0
     DAYS = 1
     HOURS = 2
@@ -15,116 +16,221 @@ class Format:
 
 
 class TimidTimer:
-    """Uses the timeit.default_timer function to calculate passed time."""
-    def __init__(self, start_at_seconds: int = 0,
-                 start_now: bool = True):
-        self.start_time = float(start_at_seconds)
-        self.end_time: Optional[float] = None
-        self.paused_at: Optional[float] = None
-        self.paused_time: float = 0
+    """If a time value is not specified as something specific, it's in seconds."""
+    def __init__(self, start_at: Union[float, int] = 0, start_now: bool = True):
+        self._fires: List[threading.Timer] = []
+        self._times: List[Tuple[Union[float, int], Optional[Union[float, int]], Optional[Union[float, int]], Union[float, int]]] = []
+        self._tick_tocks: List[timedelta] = []
 
         if start_now:
-            self.start()
+            self.warmup()
+            self.start(start_at=start_at)
 
-    def start(self) -> float:
-        if self.paused_at is not None:
-            self.paused_time += default_timer() - self.paused_at
-            self.paused_at = None
-        self.start_time = default_timer() + self.start_time - self.paused_time
-        return self.start_time
+    @staticmethod
+    def _time() -> Union[float, int]:
+        return default_timer() * 1e9
 
-    def pause(self) -> float:
-        if self.paused_at is None:
-            self.paused_at = default_timer()
-        return self.paused_at
+    def start(self, index: int = None, start_at: Union[float, int] = 0):
+        start_time = self._time()
+        if index and index < len(self._times):
+            self.resume(index)
+            return
+        if index is None:
+            index = len(self._times)
+        self._times.insert(index, (start_time + (start_at * 1e9), None, None, 0))
 
-    def resume(self):
-        if self.paused_at is not None:
-            self.paused_time += default_timer() - self.paused_at
-            self.paused_at = None
-        return self.start_time
+    def pause(self, index: int = None, for_seconds: int = None):
+        pause_time = self._time()
+        index = index or 0  # If it's 0 it just sets it to 0 so it's okay.
+        start, end, paused_at, paused_time = self._times[index]
+        if for_seconds:
+            self._times[index] = (start, end, None, paused_time + (for_seconds * 1e9))
+        else:
+            self._times[index] = (start, end, pause_time, paused_time)
 
-    def end(self, return_end_time: bool = False) -> Union[timedelta, float]:
-        if self.paused_at is not None:
+    def resume(self, index: int = None):
+        resumed_time = self._time()
+        index = index or 0  # If it's 0 it just sets it to 0 so it's okay.
+        start, end, paused_at, paused_time = self._times[index]
+        if paused_at is not None:
+            self._times[index] = (start, end, None, paused_time + (resumed_time - paused_at))
+
+    def stop(self, index: int = None):
+        end_time = self._time()
+        index = index or 0  # If it's 0 it just sets it to 0 so it's okay.
+        if index >= len(self._times):
+            raise IndexError(f"Index {index} doesn't exist in {self._times}.")
+        start, end, paused_at, paused_time = self._times[index]
+        if paused_time is not None:
             self.resume()
-        self.end_time = default_timer()
-        td = timedelta(seconds=self.end_time - self.start_time - self.paused_time)
+        _, __, ___, paused_time = self._times[index]
+        self._times[index] = (start, end_time, None, paused_time)
 
-        if not return_end_time:
-            return td
-        else:
-            return self.end_time
+    def end(self, index: int = None, return_datetime: bool = True) -> Optional[timedelta]:
+        end_time = self._time()
+        index = index or 0  # If it's 0 it just sets it to 0 so it's okay.
+        if index >= len(self._times):
+            raise IndexError(f"Index {index} doesn't exist in {self._times}.")
+        start, _, paused_at, __ = self._times[index]
+        if paused_at is not None:
+            self.resume(index)
+        _, __, ___, paused_time = self._times[index]
+        del self._times[index]
+        if return_datetime:
+            elapsed_time = end_time - start - paused_time
+            return timedelta(microseconds=elapsed_time / 1000)
 
-    def tick(self, return_time: bool = False) -> Union[timedelta, float]:
+    def tick(self, index: int = None, return_datetime: bool = True) -> timedelta:
         """Return how much time has passed till the start."""
-        if not return_time:
-            return timedelta(seconds=default_timer() - self.start_time)
-        else:
-            return default_timer()
+        tick_time = self._time()
+        index = index or 0  # If it's 0 it just sets it to 0 so it's okay.
+        if index >= len(self._times):
+            raise IndexError(f"Index {index} doesn't exist in {self._times}.")
+        start, _, __, ___ = self._times[index]
+        td = timedelta(microseconds=tick_time - start / 1000)
+        self._tick_tocks.append(td)
+        if return_datetime:
+            return td
 
-    def tock(self, return_time: bool = False) -> Union[timedelta, float]:
+    def tock(self, index: int = None, return_datetime: bool = True):
         """Returns how much time has passed till the last tock."""
-        last_time = self.end_time or self.start_time
-        self.end_time = default_timer()
+        tock_time = self._time()
+        index = index or 0  # If it's 0 it just sets it to 0 so it's okay.
+        if index >= len(self._times):
+            raise IndexError(f"Index {index} doesn't exist in {self._times}.")
+        start, end, paused_at, paused_time = self._times[index]
 
-        if not return_time:
-            return timedelta(seconds=self.end_time - last_time)
+        last_time = end or start
+        end = tock_time
+        self._times[index] = (start, end, paused_at, paused_time)
+        td = timedelta(seconds=end - last_time)
+        self._tick_tocks.append(td)
+        if return_datetime:
+            return td
+
+    def tally(self) -> timedelta:
+        """Return the total time recorded across all ticks and tocks."""
+        return sum(self._tick_tocks, timedelta())
+
+    def average(self) -> timedelta:
+        """Calculate the average time across all recorded ticks and tocks."""
+        return self.tally() / len(self._tick_tocks)
+
+    def warmup(self, rounds: int = 3):
+        for _ in range(rounds):
+            self.start()
+            self.end()
+
+    @classmethod
+    def setup_timer_func(cls, func: Callable, to_nanosecond_multiplier: Union[float, int]) -> Type["TimidTimer"]:
+        NewClass = type('TimidTimerModified', (cls,), {
+            '_time': lambda self=None: func() * to_nanosecond_multiplier
+        })
+        return NewClass
+
+    @classmethod
+    def _trigger(cls, wait_time, function, args: tuple, kwargs: dict, _continues: Union[bool, int] = False,
+                 _interval: int = None, _interval_func: Callable = None, _index: int = None):
+        time.sleep(wait_time)
+        function(*args, **kwargs)
+
+        if _continues and _interval and _interval_func:
+            _interval_func(_interval, function, args, kwargs, _index, _continues)
+
+    @classmethod
+    def single_shot(cls, wait_time: Union[float, int], function: Callable, args: tuple = (), kwargs: dict = None):
+        if kwargs is None:
+            kwargs = {}
+        threading.Thread(target=cls._trigger, args=(wait_time, function, args, kwargs)).start()
+
+    @classmethod
+    def shoot(cls, interval: Union[float, int], function: Callable, args: tuple = (), kwargs: dict = None,
+              _index: int = None, _continued: int = -1, iterations: int = 1):
+        if kwargs is None:
+            kwargs = {}
+        if _continued or _continued == -1:
+            _continued = (_continued if _continued > 0 else iterations) - 1
         else:
-            return last_time
+            return
+        threading.Timer(interval, cls._trigger, args=(0, function, args, kwargs, _continued, interval, cls.shoot)).start()
+
+    def fire(self, interval: Union[float, int], function: Callable, args: tuple = (), kwargs: dict = None,
+             index: int = None, _continued: bool = False):
+        if kwargs is None:
+            kwargs = {}
+        if index is None:
+            index = len(self._fires)
+        timer = threading.Timer(interval, self._trigger, args=(0, function, args, kwargs, True, interval, self.fire,
+                                                               index))
+        if not _continued:
+            self._fires.insert(index, timer)
+        else:
+            self._fires[index] = timer
+        timer.start()
+
+    def stop_fire(self, index: int = None, amount: int = None):
+        if amount is None:
+            amount = 1
+        for _ in range(amount):
+            timer = self._fires.pop(index or 0)
+            timer.cancel()
+
+    @classmethod
+    def test_delay(cls, amount: int = 0) -> timedelta:
+        """Tests a ... second delay.
+        Keep in mind that any amount that isn't 0 is subject to around a 2 ns extra delay."""
+        timer = cls()
+        if amount:
+            time.sleep(amount)
+        return timer.end()
 
     @staticmethod
-    def test_delay(return_end_time: bool = False) -> Union[timedelta, float]:
-        return TimidTimer().end(return_end_time)
+    def wait(seconds: int = 0):
+        time.sleep(seconds)
 
     @staticmethod
-    def test_tock_delay(return_end_time: bool = False) -> Union[timedelta, float]:
-        timer = TimidTimer()
-        timer.tock()
-        return timer.end(return_end_time)
-
-    @staticmethod
-    def get_readable(td: timedelta, format_to: int = Format.SECONDS) -> str:
+    def get_readable(td: timedelta, format_to: int = TimeFormat.SECONDS) -> str:
         total_seconds = int(td.total_seconds())
         micros = td.microseconds
 
         # Select the correct level of detail based on the format
-        if format_to == Format.WEEKS:
+        if format_to == TimeFormat.WEEKS:
             weeks = total_seconds // 604800
             days = (total_seconds % 604800) / 86400
             return f"{weeks} weeks, {days} days"
 
-        elif format_to == Format.DAYS:
+        elif format_to == TimeFormat.DAYS:
             days = total_seconds // 86400
             hours = (total_seconds % 86400) / 3600
             return f"{days} days, {hours} hours"
 
-        elif format_to == Format.HOURS:
+        elif format_to == TimeFormat.HOURS:
             hours = total_seconds // 3600
             minutes = (total_seconds % 3600) / 60
             return f"{hours} hours, {minutes} minutes"
 
-        elif format_to == Format.MINUTES:
+        elif format_to == TimeFormat.MINUTES:
             minutes = total_seconds // 60
             seconds = total_seconds % 60
             return f"{minutes} minutes, {seconds} seconds"
 
-        elif format_to == Format.SECONDS:
+        elif format_to == TimeFormat.SECONDS:
             return f"{total_seconds} seconds, {micros / 1000} milliseconds"
 
-        elif format_to == Format.MILISEC:
+        elif format_to == TimeFormat.MILISEC:
             millisecs = (total_seconds * 1000) + (micros // 1000)
             return f"{millisecs} milliseconds, {micros % 1000} microseconds"
 
-        elif format_to == Format.MICROSEC:
+        elif format_to == TimeFormat.MICROSEC:
             microsecs = (total_seconds * 1000000) + micros
             return f"{microsecs} microseconds"
 
         return "Invalid format specified"
 
-    @staticmethod
-    def time(func):
+    @classmethod
+    def time(cls, func):
         def wrapper(*args, **kwargs):
-            timer = TimidTimer(start_now=True)
+            timer = cls()
             result = func(*args, **kwargs)
             elapsed = timer.end()
             print(f"Function {func.__name__} took {timer.get_readable(elapsed)} to complete.")
@@ -132,264 +238,52 @@ class TimidTimer:
         return wrapper
 
 
-class TimidTimer2:
-    """Uses the time.perf_counter_ns function to calculate passed time."""
-    def __init__(self, start_seconds: int = 0,
-                 start_now: bool = True):
-        self.starter = start_seconds
-        self.ender: Optional[int] = None
-        self.timedelta: Optional[timedelta] = None
-
-        if start_now:
-            self.start()
-
-    def start(self) -> int:
-        self.starter = perf_counter_ns() + int(self.starter * 1e+9)
-        return self.starter
-
-    def end(self, return_end_time: bool = False) -> Union[timedelta, int]:
-        self.ender = perf_counter_ns()
-        self.timedelta = timedelta(microseconds=(self.ender - self.starter) / 1000)
-
-        if not return_end_time:
-            return self.timedelta
-        else:
-            return self.ender
-
-    def tick(self, return_time: bool = False) -> Union[timedelta, int]:
-        """Return how much time has passed till the start."""
-        if not return_time:
-            return timedelta(microseconds=(perf_counter_ns() - self.starter) / 1000)
-        else:
-            return perf_counter_ns()
-
-    def tock(self, return_time: bool = False) -> Union[timedelta, int]:
-        """Returns how much time has passed till the last tock."""
-        last_time = self.ender or self.starter
-        self.ender = perf_counter_ns()
-
-        if not return_time:
-            return timedelta(microseconds=(self.ender - last_time) / 1000)
-        else:
-            return last_time
-
-    @staticmethod
-    def test_delay(return_end_time: bool = False) -> Union[timedelta, int]:
-        return TimidTimer2().end(return_end_time)
-
-    @staticmethod
-    def test_tock_delay(return_end_time: bool = False) -> Union[timedelta, int]:
-        timer = TimidTimer2()
-        timer.tock()
-        return timer.end(return_end_time)
-
-    @staticmethod
-    def time() -> float:
-        return perf_counter_ns() / 1e+9
-
-
-class NormalTimer:
-    """Uses the time.time function to calculate passed time."""
-    def __init__(self, start_seconds: int = 0,
-                 start_now: bool = True):
-        self.starter = float(start_seconds)
-        self.stopper: Optional[float] = None
-        self.timedelta: Optional[timedelta] = None
-
-        if start_now:
-            self.start()
-
-    def start(self) -> float:
-        self.starter = time() + self.starter
-        return self.starter
-
-    def round(self) -> timedelta:
-        last_time = self.stopper or self.starter
-        self.stopper = time()
-
-        return timedelta(seconds=self.stopper - last_time)
-
-    def stop(self) -> timedelta:
-        self.stopper = time()
-        return timedelta(seconds=self.stopper - self.starter)
-
-    @staticmethod
-    def time() -> datetime:
-        return datetime.today()
-
-
-class LazyTimer:
-    """Uses the time.monotonic_ns function to calculate passed time."""
-    def __init__(self, start_seconds: int = 0,
-                 start_now: bool = True):
-        self.starter = start_seconds
-        self.stopper: Optional[int] = None
-        self.timedelta: Optional[timedelta] = None
-
-        if start_now:
-            self.start()
-
-    def start(self) -> int:
-        self.starter = monotonic_ns() + int(self.starter * 1e+9)
-        return self.starter
-
-    def round(self) -> timedelta:
-        last_time = self.stopper or self.starter
-        self.stopper = monotonic_ns()
-
-        return timedelta(seconds=(self.stopper - last_time) / 1e+9)
-
-    def stop(self) -> timedelta:
-        self.stopper = monotonic_ns()
-        return timedelta(seconds=(self.stopper - self.starter) / 1e+9)
-
-    @staticmethod
-    def time() -> int:
-        return int(monotonic_ns() / 1e+9)
-
-
-# Timer
-"""
-class TimerOut:
-    WEEKS = 0
-    DAYS = 1
-    HOURS = 2
-    MINUTES = 3
-    SECONDS = 4
-    MILISEC = 5
-    MICROSEC = 6
-
-
-class TimeDisplay:
-    def __init__(self, td: timedelta, out: TimerOut):
-        raise NotImplementedError("This class isn't implemented yet, please visit back in version 1.5 or later.")
-        self.microsec = td.microseconds
-        self.seconds = td.seconds
-        self.days = td.days
-
-        self.repr = ""
-
-    def __repr__(self):
-        return "TimerDisplay(\
-                \
-                )"
-
-
-class Timer:
-    def __init__(self, output_target: Optional[TimerOut] = TimerOut.SECONDS,
-                 start_now: Optional[bool] = True):
-        raise NotImplementedError("This class isn't implemented yet, please visit back in version 1.5 or later.")
-        self.output_target = output_target
-
-        self.start_t = None
-        self.stop_t = None
-        self.t_d = None
-
-        if start_now:
-            self.start()
-
-    @staticmethod
-    def test_delay() -> timedelta:
-        return TimidTimer().end()
-
-    def start(self) -> float:
-        return
-        self.start_t = timer()
-        return self.start_t
-
-    @staticmethod
-    def time() -> float:
-        return
-        return timer()
-
-    def tick(self, return_time: Optional[bool] = False) -> Union[timedelta, float]:
-        return
-        "Return how much time has passed till the start."
-        if not return_time:
-            return timedelta(seconds=timer() - self.start_t)
-        else:
-            return timer()
-
-    def tock(self, return_time: Optional[bool] = False) -> Union[timedelta, float]:
-        return
-        "Returns how much time has passed till the last tock."
-        time = self.stop_t or self.start_t
-        self.stop_t = time()
-
-        if not return_time:
-            return timedelta(seconds=time - self.stop_t)
-        else:
-            return time
-
-    def end(self, return_end_time: Optional[bool] = False) -> Union[timedelta, float]:
-        return
-        self.stop_t = timer()
-        self.t_d = timedelta(seconds=self.stop_t-self.start_t)
-
-        if not return_end_time:
-            return self.t_d
-        else:
-            return self.stop_t
-"""
+Timer = TimidTimer.setup_timer_func(time.time, 1e9)
+PerfTimer = TimidTimer.setup_timer_func(time.perf_counter, 1e9)
+PerfTimerNS = TimidTimer.setup_timer_func(time.perf_counter_ns, 1)
+CPUTimer = TimidTimer.setup_timer_func(time.process_time, 1e9)
+CPUTimerNS = TimidTimer.setup_timer_func(time.process_time_ns, 1)
+MonotonicTimer = TimidTimer.setup_timer_func(time.monotonic, 1e9)
+MonotonicTimerNS = TimidTimer.setup_timer_func(time.monotonic_ns, 1)
 
 
 def local_test():
     try:
-        def test_delay(cls: Type[Union[NormalTimer, LazyTimer]]) -> timedelta:
-            timer = TimidTimer2()
-            cls().stop()
-            return timer.end() - timedelta(microseconds=1)
+        def test_timer(timer_class, description):
+            timer = timer_class()
+            timer.start()
+            for _ in range(1000000):
+                pass  # A simple loop to simulate computation
+            elapsed = timer.end()
+            print(f"{description} elapsed time: {timer.get_readable(elapsed)}")
 
-        print("TimidTimerDelay", TimidTimer.test_delay())
-        print("TimidTimer2Delay", TimidTimer2.test_delay())
-        print("All other timers are too inaccurate as to measure them with themselves, \
-so we measure them with TimidTimer2 and subtract the average delay.")
-        print("NormalTimerDelay", test_delay(NormalTimer))
-        print("LazyTimerDelay", test_delay(LazyTimer))
+        def sleep_and_measure(timer_class, description, sleep_time=1):
+            """Measures how long the system sleeps using the given timer."""
+            timer = timer_class()
+            timer.start()
+            time.sleep(sleep_time)  # Sleep for a specified time
+            elapsed = timer.end()
+            print(f"{description}, expected sleep: {sleep_time}s, measured time: {timer.get_readable(elapsed)}")
 
-        print("\nTimer Test, using 1 million passes.")
-        t_timer = TimidTimer()
-        t_timer2 = TimidTimer2()
-        n_timer = NormalTimer()
-        l_timer = LazyTimer()
-        for _ in range(1000000):
-            pass
-        print("TimidTimer", t_timer.end())
-        print("TimidTimer2", t_timer2.end())
-        print("NormalTimer", n_timer.stop())
-        print("LazyTimer", l_timer.stop())
+        print("Starting timer tests...")
+        test_timer(TimidTimer, "Timid Timer")
+        test_timer(Timer, "Normal Timer")
+        test_timer(PerfTimer, "Performance Timer")
+        test_timer(PerfTimerNS, "Performance Timer Nanosecond")
+        test_timer(CPUTimer, "CPU Timer")
+        test_timer(CPUTimerNS, "CPU Timer Nanosecond")
+        test_timer(MonotonicTimer, "Monotonic Timer")
+        test_timer(MonotonicTimerNS, "Monotonic Timer Nanosecond")
 
-        print("\nTimer Test, using 1 second sleep.")
-        import time as t
-        t_timer = TimidTimer()
-        t_timer2 = TimidTimer2()
-        n_timer = NormalTimer()
-        l_timer = LazyTimer()
-        t.sleep(1)
-        print("TimidTimer", t_timer.end())
-        print("TimidTimer2", t_timer2.end())
-        print("NormalTimer", n_timer.stop())
-        print("LazyTimer", l_timer.stop())
-
-        print("\nTimidTimer delay test 2")
-        timid_t = TimidTimer()
-        for i in range(10):
-            print(timid_t.tock())
-
-        print("\nTimidTimer2 delay test 2")
-        timid_t2 = TimidTimer2()
-        for i in range(10):
-            print(timid_t2.tock())
-
-        print("\nNormalTimer delay test 2")
-        normal_t = NormalTimer()
-        for i in range(10):
-            print(normal_t.round())
-
-        print("\nLazyTimer delay test 2")
-        lazy_t = LazyTimer()
-        for i in range(10):
-            print(lazy_t.round())
+        print("\nTesting sleep accuracy...")
+        sleep_and_measure(TimidTimer, "Timid Timer")
+        sleep_and_measure(Timer, "Normal Timer")
+        sleep_and_measure(PerfTimer, "Performance Timer")
+        sleep_and_measure(PerfTimerNS, "Performance Timer Nanosecond")
+        sleep_and_measure(CPUTimer, "CPU Timer")
+        sleep_and_measure(CPUTimerNS, "CPU Timer Nanosecond")
+        sleep_and_measure(MonotonicTimer, "Monotonic Timer")
+        sleep_and_measure(MonotonicTimerNS, "Monotonic Timer Nanosecond")
     except Exception as e:
         print(f"Exception occurred {e}.")
         return False
