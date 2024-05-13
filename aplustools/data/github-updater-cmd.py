@@ -1,6 +1,6 @@
 from aplustools.io.environment import get_temp
 from aplustools.data import updaters
-from typing import List
+from typing import List, Any
 import sys
 import os
 
@@ -28,7 +28,7 @@ def main(path, repo_version, author, repo_name, host, port):
 
 
 try:
-    in_array: List[any] = sys.argv[1:8]  # Exclude script path and bool flags
+    in_array: List[Any] = sys.argv[1:8]  # Exclude script path and bool flags
     if len(in_array) - 1 < 4:  # If enough arguments were passed
         print("Not enough arguments provided. Please input them manually.")
         in_array[0] = str(input("Path: "))  # path e.g. ./save

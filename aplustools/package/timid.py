@@ -4,69 +4,141 @@ from typing import Optional, Type, Union
 from timeit import default_timer
 
 
+class Format:
+    WEEKS = 0
+    DAYS = 1
+    HOURS = 2
+    MINUTES = 3
+    SECONDS = 4
+    MILISEC = 5
+    MICROSEC = 6
+
+
 class TimidTimer:
     """Uses the timeit.default_timer function to calculate passed time."""
-    def __init__(self, start_seconds: Optional[int] = 0,
-                 start_now: Optional[bool] = True):
-        self.starter = start_seconds
-        self.ender = None
-        self.timedelta = None
+    def __init__(self, start_at_seconds: int = 0,
+                 start_now: bool = True):
+        self.start_time = float(start_at_seconds)
+        self.end_time: Optional[float] = None
+        self.paused_at: Optional[float] = None
+        self.paused_time: float = 0
 
         if start_now:
             self.start()
 
     def start(self) -> float:
-        self.starter = default_timer() + self.starter
-        return self.starter
+        if self.paused_at is not None:
+            self.paused_time += default_timer() - self.paused_at
+            self.paused_at = None
+        self.start_time = default_timer() + self.start_time - self.paused_time
+        return self.start_time
 
-    def end(self, return_end_time: Optional[bool] = False) -> Union[timedelta, float]:
-        self.ender = default_timer()
-        self.timedelta = timedelta(seconds=self.ender - self.starter)
+    def pause(self) -> float:
+        if self.paused_at is None:
+            self.paused_at = default_timer()
+        return self.paused_at
+
+    def resume(self):
+        if self.paused_at is not None:
+            self.paused_time += default_timer() - self.paused_at
+            self.paused_at = None
+        return self.start_time
+
+    def end(self, return_end_time: bool = False) -> Union[timedelta, float]:
+        if self.paused_at is not None:
+            self.resume()
+        self.end_time = default_timer()
+        td = timedelta(seconds=self.end_time - self.start_time - self.paused_time)
 
         if not return_end_time:
-            return self.timedelta
+            return td
         else:
-            return self.ender
+            return self.end_time
 
-    def tick(self, return_time: Optional[bool] = False) -> Union[timedelta, float]:
+    def tick(self, return_time: bool = False) -> Union[timedelta, float]:
         """Return how much time has passed till the start."""
         if not return_time:
-            return timedelta(seconds=default_timer() - self.starter)
+            return timedelta(seconds=default_timer() - self.start_time)
         else:
             return default_timer()
 
-    def tock(self, return_time: Optional[bool] = False) -> Union[timedelta, float]:
+    def tock(self, return_time: bool = False) -> Union[timedelta, float]:
         """Returns how much time has passed till the last tock."""
-        last_time = self.ender or self.starter
-        self.ender = default_timer()
+        last_time = self.end_time or self.start_time
+        self.end_time = default_timer()
 
         if not return_time:
-            return timedelta(seconds=self.ender - last_time)
+            return timedelta(seconds=self.end_time - last_time)
         else:
             return last_time
 
     @staticmethod
-    def test_delay() -> timedelta:
-        return TimidTimer().end()
+    def test_delay(return_end_time: bool = False) -> Union[timedelta, float]:
+        return TimidTimer().end(return_end_time)
 
     @staticmethod
-    def test_tock_delay() -> timedelta:
+    def test_tock_delay(return_end_time: bool = False) -> Union[timedelta, float]:
         timer = TimidTimer()
         timer.tock()
-        return timer.end()
+        return timer.end(return_end_time)
 
     @staticmethod
-    def time() -> float:
-        return default_timer()
+    def get_readable(td: timedelta, format_to: int = Format.SECONDS) -> str:
+        total_seconds = int(td.total_seconds())
+        micros = td.microseconds
+
+        # Select the correct level of detail based on the format
+        if format_to == Format.WEEKS:
+            weeks = total_seconds // 604800
+            days = (total_seconds % 604800) / 86400
+            return f"{weeks} weeks, {days} days"
+
+        elif format_to == Format.DAYS:
+            days = total_seconds // 86400
+            hours = (total_seconds % 86400) / 3600
+            return f"{days} days, {hours} hours"
+
+        elif format_to == Format.HOURS:
+            hours = total_seconds // 3600
+            minutes = (total_seconds % 3600) / 60
+            return f"{hours} hours, {minutes} minutes"
+
+        elif format_to == Format.MINUTES:
+            minutes = total_seconds // 60
+            seconds = total_seconds % 60
+            return f"{minutes} minutes, {seconds} seconds"
+
+        elif format_to == Format.SECONDS:
+            return f"{total_seconds} seconds, {micros / 1000} milliseconds"
+
+        elif format_to == Format.MILISEC:
+            millisecs = (total_seconds * 1000) + (micros // 1000)
+            return f"{millisecs} milliseconds, {micros % 1000} microseconds"
+
+        elif format_to == Format.MICROSEC:
+            microsecs = (total_seconds * 1000000) + micros
+            return f"{microsecs} microseconds"
+
+        return "Invalid format specified"
+
+    @staticmethod
+    def time(func):
+        def wrapper(*args, **kwargs):
+            timer = TimidTimer(start_now=True)
+            result = func(*args, **kwargs)
+            elapsed = timer.end()
+            print(f"Function {func.__name__} took {timer.get_readable(elapsed)} to complete.")
+            return result
+        return wrapper
 
 
 class TimidTimer2:
     """Uses the time.perf_counter_ns function to calculate passed time."""
-    def __init__(self, start_seconds: Optional[int] = 0,
-                 start_now: Optional[bool] = True):
+    def __init__(self, start_seconds: int = 0,
+                 start_now: bool = True):
         self.starter = start_seconds
-        self.ender = None
-        self.timedelta = None
+        self.ender: Optional[int] = None
+        self.timedelta: Optional[timedelta] = None
 
         if start_now:
             self.start()
@@ -75,7 +147,7 @@ class TimidTimer2:
         self.starter = perf_counter_ns() + int(self.starter * 1e+9)
         return self.starter
 
-    def end(self, return_end_time: Optional[bool] = False) -> Union[timedelta, int]:
+    def end(self, return_end_time: bool = False) -> Union[timedelta, int]:
         self.ender = perf_counter_ns()
         self.timedelta = timedelta(microseconds=(self.ender - self.starter) / 1000)
 
@@ -84,14 +156,14 @@ class TimidTimer2:
         else:
             return self.ender
 
-    def tick(self, return_time: Optional[bool] = False) -> Union[timedelta, int]:
+    def tick(self, return_time: bool = False) -> Union[timedelta, int]:
         """Return how much time has passed till the start."""
         if not return_time:
             return timedelta(microseconds=(perf_counter_ns() - self.starter) / 1000)
         else:
             return perf_counter_ns()
 
-    def tock(self, return_time: Optional[bool] = False) -> Union[timedelta, int]:
+    def tock(self, return_time: bool = False) -> Union[timedelta, int]:
         """Returns how much time has passed till the last tock."""
         last_time = self.ender or self.starter
         self.ender = perf_counter_ns()
@@ -102,14 +174,14 @@ class TimidTimer2:
             return last_time
 
     @staticmethod
-    def test_delay() -> timedelta:
-        return TimidTimer2().end()
+    def test_delay(return_end_time: bool = False) -> Union[timedelta, int]:
+        return TimidTimer2().end(return_end_time)
 
     @staticmethod
-    def test_tock_delay() -> timedelta:
+    def test_tock_delay(return_end_time: bool = False) -> Union[timedelta, int]:
         timer = TimidTimer2()
         timer.tock()
-        return timer.end()
+        return timer.end(return_end_time)
 
     @staticmethod
     def time() -> float:
@@ -118,11 +190,11 @@ class TimidTimer2:
 
 class NormalTimer:
     """Uses the time.time function to calculate passed time."""
-    def __init__(self, start_seconds: Optional[int] = 0,
-                 start_now: Optional[bool] = True):
-        self.starter = start_seconds
-        self.stopper = None
-        self.timedelta = None
+    def __init__(self, start_seconds: int = 0,
+                 start_now: bool = True):
+        self.starter = float(start_seconds)
+        self.stopper: Optional[float] = None
+        self.timedelta: Optional[timedelta] = None
 
         if start_now:
             self.start()
@@ -132,8 +204,7 @@ class NormalTimer:
         return self.starter
 
     def round(self) -> timedelta:
-        last_time = self.starter or time()
-        self.starter = self.stopper
+        last_time = self.stopper or self.starter
         self.stopper = time()
 
         return timedelta(seconds=self.stopper - last_time)
@@ -149,11 +220,11 @@ class NormalTimer:
 
 class LazyTimer:
     """Uses the time.monotonic_ns function to calculate passed time."""
-    def __init__(self, start_seconds: Optional[int] = 0,
-                 start_now: Optional[bool] = True):
+    def __init__(self, start_seconds: int = 0,
+                 start_now: bool = True):
         self.starter = start_seconds
-        self.stopper = None
-        self.timedelta = None
+        self.stopper: Optional[int] = None
+        self.timedelta: Optional[timedelta] = None
 
         if start_now:
             self.start()
@@ -163,8 +234,7 @@ class LazyTimer:
         return self.starter
 
     def round(self) -> timedelta:
-        last_time = self.starter or monotonic_ns()
-        self.starter = self.stopper
+        last_time = self.stopper or self.starter
         self.stopper = monotonic_ns()
 
         return timedelta(seconds=(self.stopper - last_time) / 1e+9)
@@ -179,7 +249,7 @@ class LazyTimer:
 
 
 # Timer
-
+"""
 class TimerOut:
     WEEKS = 0
     DAYS = 1
@@ -234,7 +304,7 @@ class Timer:
 
     def tick(self, return_time: Optional[bool] = False) -> Union[timedelta, float]:
         return
-        """Return how much time has passed till the start."""
+        "Return how much time has passed till the start."
         if not return_time:
             return timedelta(seconds=timer() - self.start_t)
         else:
@@ -242,7 +312,7 @@ class Timer:
 
     def tock(self, return_time: Optional[bool] = False) -> Union[timedelta, float]:
         return
-        """Returns how much time has passed till the last tock."""
+        "Returns how much time has passed till the last tock."
         time = self.stop_t or self.start_t
         self.stop_t = time()
 
@@ -260,11 +330,12 @@ class Timer:
             return self.t_d
         else:
             return self.stop_t
+"""
 
 
 def local_test():
     try:
-        def test_delay(cls: Type[Union[NormalTimer, LazyTimer]]):
+        def test_delay(cls: Type[Union[NormalTimer, LazyTimer]]) -> timedelta:
             timer = TimidTimer2()
             cls().stop()
             return timer.end() - timedelta(microseconds=1)

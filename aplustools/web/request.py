@@ -10,45 +10,78 @@ import aiohttp
 import os
 
 
+async def _async_fetch(url):
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as response:
+            return await response.text()
+
+
+def _sync_fetch(url):
+    response = requests.get(url)
+    return response.text
+
+
+def fetch(url, async_mode=False):
+    if async_mode:
+        return asyncio.run(_async_fetch(url))
+    else:
+        return _sync_fetch(url)
+
+
 class UnifiedRequestHandler:
-    def __init__(self):
-        pass
+    _global_session = None  # Only for async requests
+
+    def __init__(self, use_global_session: bool = False):
+        self.use_global_session = use_global_session
+        self._session = self._global_session if use_global_session else None
 
     async def _async_fetch(self, url):
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url) as response:
-                return await response.text()
+        if self._session is None:
+            self._session = aiohttp.ClientSession()
+        async with self._session.get(url) as response:
+            return await response.text()
 
-    def _sync_fetch(self, url):
+    @staticmethod
+    def _sync_fetch( url):
         response = requests.get(url)
         return response.text
 
-    def fetch(self, url, async_mode=False):
+    async def fetch(self, url, async_mode=False):
         if async_mode:
-            return asyncio.run(self._async_fetch(url))
+            return await self._async_fetch(url)
         else:
             return self._sync_fetch(url)
 
+    async def close(self):
+        if self._session:
+            await self._session.close()
+            self._session = None
+
 
 class UnifiedRequestHandlerAdvanced:
-    async def _async_request(self, method, url, return_type='text', **kwargs):
-        async with aiohttp.ClientSession() as session:
-            async with session.request(method, url, **kwargs) as response:
-                response.raise_for_status()
-                if return_type == 'binary':
-                    return await response.read()
-                return await response.text()
+    def __init__(self):
+        self.session = None  # Only for async requests
 
-    def _sync_request(self, method, url, return_type='text', **kwargs):
+    async def _async_request(self, method, url, return_type='text', **kwargs):
+        if self.session is None:
+            self.session = aiohttp.ClientSession()
+        async with self.session.request(method, url, **kwargs) as response:
+            response.raise_for_status()
+            if return_type == 'binary':
+                return await response.read()
+            return await response.text()
+
+    @staticmethod
+    def _sync_request(method, url, return_type='text', **kwargs):
         response = requests.request(method, url, **kwargs)
         response.raise_for_status()
         if return_type == 'binary':
             return response.content
         return response.text
 
-    def request(self, method, url, async_mode=False, return_type='text', **kwargs):
+    async def request(self, method, url, async_mode=False, return_type='text', **kwargs):
         if async_mode:
-            return asyncio.run(self._async_request(method, url, return_type, **kwargs))
+            return await self._async_request(method, url, return_type, **kwargs)
         else:
             return self._sync_request(method, url, return_type, **kwargs)
 
