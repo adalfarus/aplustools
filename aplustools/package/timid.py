@@ -1,4 +1,4 @@
-from typing import Callable, Union, List, Tuple, Optional, Type
+from typing import Callable, Union, List, Tuple, Optional, Type, Dict
 from timeit import default_timer
 from datetime import timedelta
 import threading
@@ -20,7 +20,7 @@ class TimidTimer:
     def __init__(self, start_at: Union[float, int] = 0, start_now: bool = True):
         self._fires: List[threading.Timer] = []
         self._times: List[Tuple[Union[float, int], Optional[Union[float, int]], Optional[Union[float, int]], Union[float, int]]] = []
-        self._tick_tocks: List[timedelta] = []
+        self._tick_tocks: List[List[Tuple[Union[float, int], Union[float, int]]]] = []
 
         if start_now:
             self.warmup()
@@ -38,6 +38,7 @@ class TimidTimer:
         if index is None:
             index = len(self._times)
         self._times.insert(index, (start_time + (start_at * 1e9), None, None, 0))
+        self._tick_tocks.insert(index, [])
 
     def pause(self, index: int = None, for_seconds: int = None):
         pause_time = self._time()
@@ -76,6 +77,7 @@ class TimidTimer:
             self.resume(index)
         _, __, ___, paused_time = self._times[index]
         del self._times[index]
+        del self._tick_tocks[index]
         if return_datetime:
             elapsed_time = end_time - start - paused_time
             return timedelta(microseconds=elapsed_time / 1000)
@@ -87,10 +89,9 @@ class TimidTimer:
         if index >= len(self._times):
             raise IndexError(f"Index {index} doesn't exist in {self._times}.")
         start, _, __, ___ = self._times[index]
-        td = timedelta(microseconds=tick_time - start / 1000)
-        self._tick_tocks.append(td)
+        self._tick_tocks[index].append((start, tick_time))
         if return_datetime:
-            return td
+            return timedelta(microseconds=(tick_time - start) / 1000)
 
     def tock(self, index: int = None, return_datetime: bool = True):
         """Returns how much time has passed till the last tock."""
@@ -103,18 +104,28 @@ class TimidTimer:
         last_time = end or start
         end = tock_time
         self._times[index] = (start, end, paused_at, paused_time)
-        td = timedelta(seconds=end - last_time)
-        self._tick_tocks.append(td)
+        self._tick_tocks[index].append((last_time, end))
         if return_datetime:
-            return td
+            return timedelta(microseconds=(end - last_time) / 1000)
 
-    def tally(self) -> timedelta:
+    def tally(self, index: int = None) -> timedelta:
         """Return the total time recorded across all ticks and tocks."""
-        return sum(self._tick_tocks, timedelta())
+        index = index or 0  # If it's 0 it just sets it to 0 so it's okay.
+        start, end, _, __ = self._times[index]
+        tick_tocks = self._tick_tocks[index].copy()
+        if end is not None and len(tick_tocks) > 0:
+            tick_tocks.append((tick_tocks[-1][1], end))
+        elif end is not None:
+            tick_tocks.append((start, end))
+        total_time = sum((end - start for start, end in tick_tocks))
+        return timedelta(microseconds=total_time / 1000)
 
-    def average(self) -> timedelta:
+    def average(self, index: int = None) -> timedelta:
         """Calculate the average time across all recorded ticks and tocks."""
-        return self.tally() / len(self._tick_tocks)
+        index = index or 0  # If it's 0 it just sets it to 0 so it's okay.
+        _, end, __, ___ = self._times[index]
+        tick_tocks = self._tick_tocks[index].copy()
+        return self.tally() / max(1, len(tick_tocks) + (1 if end is not None and end != ([(0, 0)] + tick_tocks)[-1][1] else 0))
 
     def warmup(self, rounds: int = 3):
         for _ in range(rounds):
@@ -264,6 +275,12 @@ def local_test():
             time.sleep(sleep_time)  # Sleep for a specified time
             elapsed = timer.end()
             print(f"{description}, expected sleep: {sleep_time}s, measured time: {timer.get_readable(elapsed)}")
+
+        timer = TimidTimer()
+        for _ in range(10):
+            time.sleep(1)
+            timer.tock()
+        print("Average 1 second sleep extra delay: ", timer.average() - timedelta(seconds=1))
 
         print("Starting timer tests...")
         test_timer(TimidTimer, "Timid Timer")

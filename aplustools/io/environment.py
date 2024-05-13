@@ -17,7 +17,7 @@ except ImportError:
     winreg = None  # winreg is not available on non-Windows platforms
 
 
-def get_temp():
+def get_tempdir():
     return tempfile.gettempdir()
 
 
@@ -156,102 +156,7 @@ def is_empty_directory(path: str) -> bool:
         raise FileNotFoundError(f"No such file or directory '{path}'")
 
 
-class Path:
-    def __init__(self, path: str):
-        self.path = os.path.abspath(path)
-
-    def exists(self) -> bool:
-        """Check if the path exists."""
-        return os.path.exists(self.path)
-
-    def is_file(self) -> bool:
-        """Check if the path is a file."""
-        return os.path.isfile(self.path)
-
-    def is_directory(self) -> bool:
-        """Check if the path is a directory."""
-        return os.path.isdir(self.path)
-
-    def create_directory(self):
-        """Create a directory at the path."""
-        try:
-            if not self.exists():
-                os.makedirs(self.path)
-                print(f"Directory {self.path} created.")
-            else:
-                print(f"Directory {self.path} already exists.")
-        except Exception as e:
-            print(f"An error occurred: {e}")
-            raise  # Reraise the exception after logging or printing the error message
-        
-    def mkdir(self, new_inner_dir: str):
-        own_dir = self.path
-        new_dir = os.path.join(self.path, new_inner_dir)
-        self.path = new_dir
-        self.create_directory()
-        self.path = own_dir
-        return new_dir
-        
-    def join(self, rel_inner_path: str):
-        self.path = os.path.join(self.path, rel_inner_path)
-
-    def list_files(self) -> list:
-        """List all files in the directory."""
-        if self.is_directory():
-            with os.scandir(self.path) as entries:
-                return [entry.name for entry in entries if entry.is_file()]
-        else:
-            print(f"{self.path} is not a directory.")
-            return []
-
-    def list_subdirectories(self) -> list:
-        """List all subdirectories in the directory."""
-        if self.is_directory():
-            with os.scandir(self.path) as entries:
-                return [entry.name for entry in entries if entry.is_dir()]
-        else:
-            print(f"{self.path} is not a directory.")
-            return []
-
-    def get_size(self) -> Optional[int]:
-        """Get the size of a file in bytes."""
-        if self.is_file():
-            return os.path.getsize(self.path)
-        else:
-            print(f"{self.path} is not a file.")
-            return None
-
-    def rename(self, new_path: str):
-        """Rename the path to a new path."""
-        os.rename(self.path, new_path)
-        print(f"{self.path} renamed to {new_path}.")
-        self.path = new_path
-
-    def __str__(self):
-        return self.path
-    
-    def __iter__(self):
-        if self.is_directory():
-            with os.scandir(self.path) as entries:
-                for entry in entries:
-                    yield entry.path
-        else:
-            print(f"{self.path} is not a directory.")
-            yield self.path
-            
-    def __len__(self):
-        return len(self.path.split("\\"))
-
-
-def copy(org_loc: str, new_loc: str):
-    shutil.copy(org_loc, new_loc)
-
-
-def move(org_loc: str, new_loc: str):
-    shutil.move(org_loc, new_loc)
-
-
-def rename(org_nam: str, new_nam: str) -> bool:
+def safe_rename(org_nam: str, new_nam: str) -> bool:
     try:
         os.rename(org_nam, new_nam)
         print(f"{org_nam} renamed to {new_nam}.")
