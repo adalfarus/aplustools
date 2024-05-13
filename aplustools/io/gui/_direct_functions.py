@@ -1,4 +1,5 @@
 from aplustools.package import install_dependencies_lst as _install_dependencies_lst
+from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout
 
 
 def install_dependencies():
@@ -6,3 +7,17 @@ def install_dependencies():
     if not success:
         return
     print("Done, all possible dependencies for the data module installed ...")
+
+
+class QNoSpacingVBoxLayout(QVBoxLayout):
+    def __init__(self, parent=None):
+        super().__init__(parent=parent)
+        self.setContentsMargins(0, 0, 0, 0)
+        self.setSpacing(0)
+
+
+class QNoSpacingHBoxLayout(QHBoxLayout):
+    def __init__(self, parent=None):
+        super().__init__(parent=parent)
+        self.setContentsMargins(0, 0, 0, 0)
+        self.setSpacing(0)
