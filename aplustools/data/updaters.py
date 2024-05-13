@@ -1,5 +1,5 @@
 from packaging.version import Version, InvalidVersion
-from typing import Tuple, Generator, Union, Literal
+from typing import Tuple, Generator, Union, Literal, Optional, List
 from collections import namedtuple
 import subprocess
 import threading
@@ -62,7 +62,8 @@ class GithubUpdater:
         self.repo_name = repo_name
         self.version = version
 
-        self.host = self.port = None
+        self.host: Optional[str] = None
+        self.port: Optional[int] = None
 
     def get_latest_release_title_version(self) -> Union[None, str]:
         try:
@@ -119,9 +120,7 @@ class GithubUpdater:
 
     def update(self, path: str, zip_path: str, repo_version: str, implementation: Literal["gui", "cmd", "none"],
                host: str = 'localhost', port: int = 5000, non_blocking: bool = False,
-               wait_for_connection: bool = False) -> Union[Tuple[bool, None, int],
-                                                           Tuple[bool, Exception, int],
-                                                           threading.Thread]:
+               wait_for_connection: bool = False) -> Union[Tuple[bool, Optional[Exception], int], threading.Thread]:
         if implementation not in ["gui", "cmd", "none"]:
             raise ValueError("Invalid implementation option")
         self.host = host
@@ -130,7 +129,7 @@ class GithubUpdater:
 
         lib_path = os.path.dirname(os.path.abspath(__file__))
         process = ProcessResult(returncode=0)
-        arg_base = []
+        arg_base: List[str] = []
 
         def subprocess_task():
             proc = subprocess.run(

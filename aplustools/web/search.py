@@ -33,7 +33,7 @@ class BingSearchCore:
     def __init__(self, advanced: bool = False):
         self.advanced = advanced
 
-    def search(self, query: str, num_results: int = 10, user_agent: str = "") -> list:
+    def search(self, query: str, num_results: int = 10, user_agent: str = "") -> List[Union[str, Dict[str, str]]]:
         headers = {"User-Agent": user_agent}
         url = f'https://www.bing.com/search?q={quote_plus(query)}'
         response = requests.get(url, headers=headers)
@@ -80,7 +80,7 @@ class GoogleSearchCore:
         self.advanced = advanced
 
     def search(self, query: str, num_results: int = 10, user_agent: str = "", check: bool = True,
-               blacklisted_websites: Optional[List[str]] = None) -> Union[List[str], List[Dict[str, str]]]:
+               blacklisted_websites: Optional[List[str]] = None) -> List[Union[str, Dict[str, str]]]:
         proxies = None  # If you have proxy settings, configure them here
         escaped_query = query.replace(" ", "+")
         results = []
@@ -108,7 +108,7 @@ class GoogleSearchCore:
         return response.text
 
     def _parse_results(self, html: str, blacklisted_websites: Optional[List[str]], check: bool, needed_results: int) ->\
-     List[Union[str, Dict[str, str]]]:
+            List[Union[str, Dict[str, str]]]:
         soup = BeautifulSoup(html, "html.parser")
         result_blocks = soup.find_all("div", attrs={"class": "g"})
         search_results = []
@@ -161,7 +161,7 @@ class DuckDuckGoSearchCore:
     def __init__(self, advanced: bool = False):
         self.advanced = advanced
 
-    def search(self, query: str, num_results: int = 10, user_agent: str = "") -> list:
+    def search(self, query: str, num_results: int = 10, user_agent: str = "") -> List[Union[str, Dict[str, str]]]:
         headers = {"User-Agent": user_agent}
         url = f'https://duckduckgo.com/html/?q={quote_plus(query)}'
         response = requests.get(url, headers=headers)

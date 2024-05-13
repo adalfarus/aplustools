@@ -3,9 +3,10 @@ import sys as _sys
 import os as _os
 import warnings as _warnings
 from aplustools.package import install_dependencies_lst as _install_dependencies_lst
+from typing import Optional as _Optional
 
 
-def execute_python_command(arguments: list = None, *args, **kwargs) -> _subprocess.CompletedProcess[str]:
+def execute_python_command(arguments: _Optional[list] = None, *args, **kwargs) -> _subprocess.CompletedProcess[str]:
     if arguments is None:
         arguments = []
     print(' '.join([_sys.executable] + arguments))
@@ -47,3 +48,4 @@ def set_dir_to_ex():
             )
     # Change the current working directory to the main script directory
     _os.chdir(main_dir)
+

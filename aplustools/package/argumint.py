@@ -1,4 +1,4 @@
-from typing import Optional, Callable, Union, Literal, List, get_type_hints, Any
+from typing import Optional, Callable, Union, Literal, List, get_type_hints, Any, Dict
 # from pydantic import BaseModel, ValidationError, Field, create_model
 from argparse import ArgumentParser
 import sys
@@ -55,6 +55,15 @@ class Argument:
     def help(self, value: str):
         self._help = value or ""
 
+    def to_type(self, to_type: str) -> Optional[Any]:
+        if not self.type:
+            return None
+        if self.type in [list, tuple, set]:
+            tmp = to_type.split()
+            return self.type(tmp)
+        else:
+            return self.type(to_type)
+
     def __repr__(self):
         return f"Argument(name={self.name}, \
 type={self.type}, \
@@ -65,25 +74,25 @@ help={self.help})"
 
 class EndPoint:
     """used to define the endpoint of a trace from an argstruct object."""
-    def __init__(self, function: lambda: None, arguments: Optional[List[Argument]] = None):
+    def __init__(self, function: Callable, arguments: Optional[List[Argument]] = None):
         if arguments:
             self.arguments = arguments
         else:
-            arguments = function.__code__.co_varnames or ()
+            argument_names = function.__code__.co_varnames or ()
             defaults = list(function.__defaults__ or ())
-            shifted_defaults = defaults[:0] = [None] * (len(arguments) - len(defaults)) + defaults
+            shifted_defaults = defaults[:0] = [None] * (len(argument_names) - len(defaults)) + defaults
             types = function.__annotations__ or {}
             docstring = function.__doc__ or ""
 
             help_ = {}
-            for argument in arguments:
-                start = docstring.find(argument)
+            for argument_name in argument_names:
+                start = docstring.find(argument_name)
                 if start != -1:
-                    start = start + len(argument)  # Where argument ends in docstring
+                    start = start + len(argument_name)  # Where argument_name ends in docstring
                     next_line = \
                         [i for i, x in enumerate(docstring[start:]) if x == "\n" or i + 1 == len(docstring[start:])][0]
                     next_line = next_line + start
-                    help_[argument] = (
+                    help_[argument_name] = (
                         docstring[start:next_line].replace("\n", "").strip(": "))  # Can't always leave the last as it could
             type_hints = get_type_hints(function)                                           # be the last of the docstring.
             choices = {}
@@ -95,9 +104,9 @@ class EndPoint:
                                        choices=choices.get(arg_name, None),
                                        type_=types.get(arg_name, None),
                                        help_=help_.get(arg_name, ""))
-                              for arg_name, default in zip(arguments, shifted_defaults)
+                              for arg_name, default in zip(argument_names, shifted_defaults)
                               if arg_name not in ['args', 'kwargs']]
-        # input(self.arguments)
+        # input(self.argument_names)
         self._arg_index = {arg.name: i for i, arg in enumerate(self.arguments)}
         self.function = function
 
@@ -199,14 +208,15 @@ class ArguMint:
         if isinstance(arg_struct, ArgStruct):
             arg_struct = arg_struct.get_structure()
         self.arg_struct = arg_struct or {}
-        self.endpoints = {}
+        self.endpoints: Union[Dict[str, EndPoint], dict] = {}
 
         self.formats = {1: "Usage: nuisco <subcommand> [--args]", 2: "Usage: nuisco create-template [project_name] [--args]"}
 
-    def _check_path(self, path: str, overwrite_pre_args: Optional[Union[ArgStruct, dict]] = None):
+    def _check_path(self, path: str, overwrite_pre_args: Optional[Union[ArgStruct, dict]] = None) -> bool:
+        overwrite_pre_args = overwrite_pre_args or self.arg_struct
         if isinstance(overwrite_pre_args, ArgStruct):
             overwrite_pre_args = overwrite_pre_args.get_structure()
-        current_level = overwrite_pre_args or self.arg_struct
+        current_level: Union[str, Dict[str, Union[str, dict]]] = overwrite_pre_args
         for point in path.split("."):
             if point not in current_level or not isinstance(current_level[point], dict):
                 return False
@@ -215,11 +225,10 @@ class ArguMint:
 
     @staticmethod
     def _ender(potential_endpoint: Union[EndPoint, Callable]):
-        if type(potential_endpoint) is EndPoint:
-            endpoint = potential_endpoint
-        else:
+        endpoint = None
+        if not type(potential_endpoint) is EndPoint:
             endpoint = EndPoint(potential_endpoint)
-        return endpoint
+        return endpoint or potential_endpoint
 
     def replace_pre_args(self, new_pre_args: Union[ArgStruct, dict]):
         if isinstance(new_pre_args, ArgStruct):
@@ -286,7 +295,7 @@ class ArguMint:
                 if not any(a.name == key for a in endpoint.arguments):
                     raise ArgumentParsingError(f"Unknown argument: {key}", i)
                 arg_obj = next(a for a in endpoint.arguments if a.name == key)
-                parsed_args[key] = arg_obj.type(value) if arg_obj.type else value
+                parsed_args[key] = arg_obj.to_type(value) if arg_obj.type else value
                 remaining_args.remove(arg_obj)
 
             # Check for flag argument
@@ -304,7 +313,7 @@ class ArguMint:
                     # Find the first argument with a matching type
                     for pos_arg in remaining_args:
                         if isinstance(pos_arg.default, type(arg)) or pos_arg.default is None:
-                            parsed_args[pos_arg.name] = pos_arg.type(arg)
+                            parsed_args[pos_arg.name] = pos_arg.to_type(arg)
                             remaining_args.remove(pos_arg)
                             break
                     else:
@@ -313,7 +322,7 @@ class ArguMint:
                     # Assign to the next available argument
                     if remaining_args:
                         pos_arg = remaining_args.pop(0)
-                        parsed_args[pos_arg.name] = pos_arg.type(arg)
+                        parsed_args[pos_arg.name] = pos_arg.to_type(arg)
 
         # Assign default values for missing optional arguments
         for arg in remaining_args:
@@ -324,6 +333,7 @@ class ArguMint:
 
     @staticmethod
     def _parse_args_native(args: List[str], endpoint: EndPoint, smart_typing: bool = True):
+        raise NotImplementedError
         parsed_args = {}
         remaining_args = list(endpoint.arguments)
 
