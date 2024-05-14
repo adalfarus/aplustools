@@ -19,8 +19,9 @@ class TimidTimer:
     """If a time value is not specified as something specific, it's in seconds."""
     def __init__(self, start_at: Union[float, int] = 0, start_now: bool = True):
         self._fires: List[threading.Timer] = []
-        self._times: List[Tuple[Union[float, int], Optional[Union[float, int]], Optional[Union[float, int]], Union[float, int]]] = []
+        self._times: List[Optional[Tuple[Union[float, int]], Optional[Union[float, int]], Optional[Union[float, int]], Union[float, int]]] = []
         self._tick_tocks: List[List[Tuple[Union[float, int], Union[float, int]]]] = []
+        self._exit_index = 0
 
         if start_now:
             self.warmup()
@@ -37,8 +38,19 @@ class TimidTimer:
             return
         if index is None:
             index = len(self._times)
-        self._times.insert(index, (start_time + (start_at * 1e9), None, None, 0))
-        self._tick_tocks.insert(index, [])
+        # Ensure the _times list has enough elements
+        while len(self._times) < index:
+            self._times.append((None, None, None, 0))
+        # Ensure the _tick_tocks list has enough elements
+        while len(self._tick_tocks) < index:
+            self._tick_tocks.append([])
+        # Insert or replace the elements at the specified index
+        if index < len(self._times) and self._times[index] == (None, None, None, 0):
+            self._times[index] = (start_time + (start_at * 1e9), None, None, 0)
+            self._tick_tocks[index] = []
+        else:
+            self._times.insert(index, (start_time + (start_at * 1e9), None, None, 0))
+            self._tick_tocks.insert(index, [])
 
     def pause(self, index: int = None, for_seconds: int = None):
         pause_time = self._time()
@@ -248,6 +260,19 @@ class TimidTimer:
             return result
         return wrapper
 
+    def enter(self, index=None):
+        self.start(index)
+        self._exit_index = index
+        return self
+
+    def __enter__(self):
+        if self._exit_index > len(self._times):
+            self.start(self._exit_index)
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        td = self.end(self._exit_index)
+        print(f"Codeblock took {td} to execute.")
+
 
 Timer = TimidTimer.setup_timer_func(time.time, 1e9)
 TimerNS = TimidTimer.setup_timer_func(time.time_ns, 1)
@@ -289,6 +314,10 @@ def local_test():
             time.sleep(1)
             timer.tock()
         print("Average 1 second sleep extra delay: ", timer.average() - timedelta(seconds=1))
+        print("TTD", TimidTimer.test_delay(1) - timedelta(seconds=1))
+
+        with TimidTimer().enter(index=1):
+            time.sleep(1)
 
         print("Starting timer tests...")
         test_timer(TimidTimer, "Timid Timer")
