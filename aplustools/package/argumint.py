@@ -78,7 +78,7 @@ class EndPoint:
         if arguments:
             self.arguments = arguments
         else:
-            argument_names = function.__code__.co_varnames or ()
+            argument_names = function.__code__.co_varnames[:function.__code__.co_argcount] or ()
             defaults = list(function.__defaults__ or ())
             shifted_defaults = defaults[:0] = [None] * (len(argument_names) - len(defaults)) + defaults
             types = function.__annotations__ or {}
