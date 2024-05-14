@@ -1,0 +1,7 @@
+1010010110010101001010101011010
+1010101010010101010101010101001
+
+Compressor starts at byte position 61
+automatic reordering of chunks & metadata
+bytes potential encryption for single chunks
+yeah

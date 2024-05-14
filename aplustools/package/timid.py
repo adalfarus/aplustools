@@ -1,6 +1,6 @@
-from typing import Callable, Union, List, Tuple, Optional, Type, Dict
+from typing import Callable, Union, List, Tuple, Optional, Type
+from datetime import timedelta, datetime
 from timeit import default_timer
-from datetime import timedelta
 import threading
 import time
 
@@ -82,7 +82,7 @@ class TimidTimer:
             elapsed_time = end_time - start - paused_time
             return timedelta(microseconds=elapsed_time / 1000)
 
-    def tick(self, index: int = None, return_datetime: bool = True) -> timedelta:
+    def tick(self, index: int = None, return_datetime: bool = True) -> Optional[timedelta]:
         """Return how much time has passed till the start."""
         tick_time = self._time()
         index = index or 0  # If it's 0 it just sets it to 0 so it's okay.
@@ -93,7 +93,7 @@ class TimidTimer:
         if return_datetime:
             return timedelta(microseconds=(tick_time - start) / 1000)
 
-    def tock(self, index: int = None, return_datetime: bool = True):
+    def tock(self, index: int = None, return_datetime: bool = True) -> Optional[timedelta]:
         """Returns how much time has passed till the last tock."""
         tock_time = self._time()
         index = index or 0  # If it's 0 it just sets it to 0 so it's okay.
@@ -250,12 +250,20 @@ class TimidTimer:
 
 
 Timer = TimidTimer.setup_timer_func(time.time, 1e9)
+TimerNS = TimidTimer.setup_timer_func(time.time_ns, 1)
 PerfTimer = TimidTimer.setup_timer_func(time.perf_counter, 1e9)
 PerfTimerNS = TimidTimer.setup_timer_func(time.perf_counter_ns, 1)
 CPUTimer = TimidTimer.setup_timer_func(time.process_time, 1e9)
 CPUTimerNS = TimidTimer.setup_timer_func(time.process_time_ns, 1)
 MonotonicTimer = TimidTimer.setup_timer_func(time.monotonic, 1e9)
 MonotonicTimerNS = TimidTimer.setup_timer_func(time.monotonic_ns, 1)
+ThreadTimer = TimidTimer.setup_timer_func(time.thread_time, 1e9)
+ThreadTimerNS = TimidTimer.setup_timer_func(time.thread_time_ns, 1)
+
+
+class DateTimeTimer(TimidTimer):
+    def _time(self):
+        return datetime.now().timestamp() * 1e9
 
 
 def local_test():

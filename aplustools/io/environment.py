@@ -102,7 +102,7 @@ def absolute_path(relative_path: str, file_path: str) -> str:
     return os.path.join(base_dir, relative_path)
 
 
-def remv(paths: Union[str, list]):
+def save_remove(paths: Union[str, list]):
     if not isinstance(paths, list):
         paths = [paths]
     for path in paths:
