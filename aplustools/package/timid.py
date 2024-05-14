@@ -271,7 +271,7 @@ class TimidTimer:
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         td = self.end(self._exit_index)
-        print(f"Codeblock took {td} to execute.")
+        print(f"Codeblock {self._exit_index} took {td} to execute.")
 
 
 Timer = TimidTimer.setup_timer_func(time.time, 1e9)
