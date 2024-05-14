@@ -4,6 +4,11 @@ import os as _os
 import warnings as _warnings
 from aplustools.package import install_dependencies_lst as _install_dependencies_lst
 from typing import Optional as _Optional
+from aplustools.package.argumint import EndPoint as _EndPoint
+
+
+def what_func(func):
+    print(_EndPoint(func))
 
 
 def execute_python_command(arguments: _Optional[list] = None, *args, **kwargs) -> _subprocess.CompletedProcess[str]:
