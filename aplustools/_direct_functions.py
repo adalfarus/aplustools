@@ -7,8 +7,12 @@ from typing import Optional as _Optional
 from aplustools.package.argumint import EndPoint as _EndPoint
 
 
-def what_func(func):
-    print(_EndPoint(func))
+def what_func(func, type_names: bool = False):
+    endpoint = _EndPoint(func)
+    arguments_str = ''.join([f"{argument.name}: "
+                             f"{(argument.type or type(argument.default)).__name__ if type_names else argument.type or type(argument.default)}"
+                             f" = {argument.default}, " for argument in endpoint.arguments])[:-2]
+    print(f"{func.__module__}.{endpoint.name}({arguments_str}){(' -> ' + str(endpoint.return_type)) if endpoint.return_type is not None else ''}")
 
 
 def execute_python_command(arguments: _Optional[list] = None, *args, **kwargs) -> _subprocess.CompletedProcess[str]:
@@ -54,3 +58,6 @@ def set_dir_to_ex():
     # Change the current working directory to the main script directory
     _os.chdir(main_dir)
 
+
+if __name__ == "__main__":
+    what_func(lambda x=1, y=2: 1, True)
