@@ -1022,22 +1022,96 @@ class CryptUtils:
         return os.urandom(length)
 
     @staticmethod
-    def aes_encrypt(data: str, key: bytes) -> Tuple[bytes, bytes, bytes]:
+    def generate_aes_key(length: Literal[128, 192, 256]) -> bytes:
+        return os.urandom(length // 8)
+
+    @staticmethod
+    def aes_encrypt(data: bytes, key: bytes) -> Tuple[bytes, bytes, bytes]:
         iv = os.urandom(12)  # Generate IV securely
         cipher = Cipher(algorithms.AES(key), modes.GCM(iv), backend=default_backend())
         encryptor = cipher.encryptor()
-        ciphertext = encryptor.update(data.encode()) + encryptor.finalize()
+        ciphertext = encryptor.update(data) + encryptor.finalize()
         return iv, ciphertext, encryptor.tag
 
     @staticmethod
-    def aes_decrypt(iv: bytes, ciphertext: bytes, tag: bytes, key: bytes) -> Optional[bytes]:
+    def aes_decrypt(iv: bytes, encrypted_data: bytes, tag: bytes, key: bytes) -> Optional[bytes]:
         cipher = Cipher(algorithms.AES(key), modes.GCM(iv, tag), backend=default_backend())
         decryptor = cipher.decryptor()
         try:
-            return decryptor.update(ciphertext) + decryptor.finalize()
+            return decryptor.update(encrypted_data) + decryptor.finalize()
         except ValueError:
             print("AES Decryption Error: MAC check failed")
             return None
+
+    @staticmethod
+    def generate_des_key(length: Literal[64, 128, 192]) -> bytes:
+        return os.urandom(length // 8)
+
+    @staticmethod
+    def des_encrypt(data: bytes, key: bytes) -> tuple:
+        iv = os.urandom(8)
+        cipher = Cipher(algorithms.TripleDES(key), modes.CFB(iv), backend=default_backend())
+        encryptor = cipher.encryptor()
+        ciphertext = encryptor.update(data) + encryptor.finalize()
+        return iv, ciphertext, b''  # DES doesn't use a tag in this mode
+
+    @staticmethod
+    def des_decrypt(iv: bytes, ciphertext: bytes, tag: bytes, key: bytes) -> bytes:
+        cipher = Cipher(algorithms.TripleDES(key), modes.CFB(iv), backend=default_backend())
+        decryptor = cipher.decryptor()
+        return decryptor.update(ciphertext) + decryptor.finalize()
+
+    @staticmethod
+    def generate_rsa_key(length: Literal[1024, 2048, 4096]) -> Tuple[bytes, bytes]:
+        private_key = rsa.generate_private_key(
+            public_exponent=65537,
+            key_size=length,
+            backend=default_backend()
+        )
+        private_bytes = private_key.private_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PrivateFormat.TraditionalOpenSSL,
+            encryption_algorithm=serialization.NoEncryption())
+        return private_bytes, private_key.public_key().public_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PublicFormat.SubjectPublicKeyInfo)
+
+    @staticmethod
+    def load_private_key(private_bytes: bytes) -> rsa.RSAPrivateKey:
+        return serialization.load_pem_private_key(
+            private_bytes,
+            password=None,
+            backend=default_backend()
+        )
+
+    @staticmethod
+    def load_public_key(public_bytes: bytes) -> rsa.RSAPublicKey:
+        return serialization.load_pem_public_key(
+            public_bytes,
+            backend=default_backend()
+        )
+
+    @staticmethod
+    def rsa_encrypt(data: bytes, public_key: rsa.RSAPublicKey) -> bytes:
+        return public_key.encrypt(
+            data,
+            padding.OAEP(
+                mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                algorithm=hashes.SHA256(),
+                label=None
+            )
+        )
+
+    @staticmethod
+    def rsa_decrypt(encrypted_data: bytes, private_key: rsa.RSAPrivateKey) -> bytes:
+        return private_key.decrypt(
+            encrypted_data,
+            padding.OAEP(
+                mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                algorithm=hashes.SHA256(),
+                label=None
+            )
+        )
 
     @staticmethod
     def generate_hash(message: str) -> str:

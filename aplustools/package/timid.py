@@ -53,7 +53,7 @@ class TimidTimer:
             self._times.insert(index, (start_time + (start_at * 1e9), None, None, 0))
             self._tick_tocks.insert(index, [])
 
-    def pause(self, index: int = None, for_seconds: int = None):
+    def pause(self, index: Optional[int] = None, for_seconds: Optional[int] = None):
         pause_time = self._time()
         index = index or 0  # If it's 0 it just sets it to 0 so it's okay.
         start, end, paused_at, paused_time = self._times[index]
@@ -62,14 +62,14 @@ class TimidTimer:
         else:
             self._times[index] = (start, end, pause_time, paused_time)
 
-    def resume(self, index: int = None):
+    def resume(self, index: Optional[int] = None):
         resumed_time = self._time()
         index = index or 0  # If it's 0 it just sets it to 0 so it's okay.
         start, end, paused_at, paused_time = self._times[index]
         if paused_at is not None:
             self._times[index] = (start, end, None, paused_time + (resumed_time - paused_at))
 
-    def stop(self, index: int = None):
+    def stop(self, index: Optional[int] = None):
         end_time = self._time()
         index = index or 0  # If it's 0 it just sets it to 0 so it's okay.
         if index >= len(self._times):
@@ -80,7 +80,7 @@ class TimidTimer:
         _, __, ___, paused_time = self._times[index]
         self._times[index] = (start, end_time, None, paused_time)
 
-    def end(self, index: int = None, return_datetime: bool = True) -> Optional[timedelta]:
+    def end(self, index: Optional[int] = None, return_datetime: bool = True) -> Optional[timedelta]:
         end_time = self._time()
         index = index or 0  # If it's 0 it just sets it to 0 so it's okay.
         if index >= len(self._times):
@@ -95,7 +95,7 @@ class TimidTimer:
             elapsed_time = end_time - start - paused_time
             return timedelta(microseconds=elapsed_time / 1000)
 
-    def tick(self, index: int = None, return_datetime: bool = True) -> Optional[timedelta]:
+    def tick(self, index: Optional[int] = None, return_datetime: bool = True) -> Optional[timedelta]:
         """Return how much time has passed till the start."""
         tick_time = self._time()
         index = index or 0  # If it's 0 it just sets it to 0 so it's okay.
@@ -106,7 +106,7 @@ class TimidTimer:
         if return_datetime:
             return timedelta(microseconds=(tick_time - start) / 1000)
 
-    def tock(self, index: int = None, return_datetime: bool = True) -> Optional[timedelta]:
+    def tock(self, index: Optional[int] = None, return_datetime: bool = True) -> Optional[timedelta]:
         """Returns how much time has passed till the last tock."""
         tock_time = self._time()
         index = index or 0  # If it's 0 it just sets it to 0 so it's okay.
@@ -121,7 +121,7 @@ class TimidTimer:
         if return_datetime:
             return timedelta(microseconds=(end - last_time) / 1000)
 
-    def tally(self, index: int = None) -> timedelta:
+    def tally(self, index: Optional[int] = None) -> timedelta:
         """Return the total time recorded across all ticks and tocks."""
         index = index or 0  # If it's 0 it just sets it to 0 so it's okay.
         start, end, _, __ = self._times[index]
@@ -133,7 +133,7 @@ class TimidTimer:
         total_time = sum((end - start for start, end in tick_tocks))
         return timedelta(microseconds=total_time / 1000)
 
-    def average(self, index: int = None) -> timedelta:
+    def average(self, index: Optional[int] = None) -> timedelta:
         """Calculate the average time across all recorded ticks and tocks."""
         index = index or 0  # If it's 0 it just sets it to 0 so it's okay.
         _, end, __, ___ = self._times[index]
@@ -181,32 +181,34 @@ class TimidTimer:
             iterations -= 1
 
     @classmethod
-    def single_shot(cls, wait_time: Union[float, int], function: Callable, args: tuple = (), kwargs: dict = None):
+    def single_shot(cls, wait_time: Union[float, int], function: Callable, args: tuple = (),
+                    kwargs: Optional[dict] = None):
         if kwargs is None:
             kwargs = {}
         threading.Thread(target=cls._trigger, args=(wait_time, function, args, kwargs, 1)).start()
 
     @classmethod
-    def single_shot_ms(cls, wait_time_ms: Union[float, int], function: Callable, args: tuple = (), kwargs: dict = None):
+    def single_shot_ms(cls, wait_time_ms: Union[float, int], function: Callable, args: tuple = (),
+                       kwargs: Optional[dict] = None):
         if kwargs is None:
             kwargs = {}
         threading.Thread(target=cls._trigger_ms, args=(wait_time_ms, function, args, kwargs, 1)).start()
 
     @classmethod
-    def shoot(cls, interval: Union[float, int], function: Callable, args: tuple = (), kwargs: dict = None,
+    def shoot(cls, interval: Union[float, int], function: Callable, args: tuple = (), kwargs: Optional[dict] = None,
               iterations: int = 1):
         if kwargs is None:
             kwargs = {}
         threading.Thread(target=cls._trigger, args=(interval, function, args, kwargs, iterations)).start()
 
     @classmethod
-    def shoot_ms(cls, interval_ms: Union[float, int], function: Callable, args: tuple = (), kwargs: dict = None,
-                 iterations: int = 1):
+    def shoot_ms(cls, interval_ms: Union[float, int], function: Callable, args: tuple = (),
+                 kwargs: Optional[dict] = None, iterations: int = 1):
         if kwargs is None:
             kwargs = {}
         threading.Thread(target=cls._trigger_ms, args=(interval_ms, function, args, kwargs, iterations)).start()
 
-    def fire(self, interval: Union[float, int], function: Callable, args: tuple = (), kwargs: dict = None,
+    def fire(self, interval: Union[float, int], function: Callable, args: tuple = (), kwargs: Optional[dict] = None,
              index: int = None):
         if kwargs is None:
             kwargs = {}
@@ -224,8 +226,8 @@ class TimidTimer:
             self._fires.insert(index, (thread, event))
         thread.start()
 
-    def fire_ms(self, interval_ms: Union[float, int], function: Callable, args: tuple = (), kwargs: dict = None,
-                index: int = None):
+    def fire_ms(self, interval_ms: Union[float, int], function: Callable, args: tuple = (),
+                kwargs: Optional[dict] = None, index: int = None):
         if kwargs is None:
             kwargs = {}
         if index is None:
@@ -242,7 +244,7 @@ class TimidTimer:
             self._fires.insert(index, (thread, event))
         thread.start()
 
-    def stop_fire(self, index: int = None, amount: int = None):
+    def stop_fire(self, index: Optional[int] = None, amount: Optional[int] = None):
         if amount is None:
             amount = 1
         for _ in range(amount):
@@ -334,7 +336,7 @@ class TimidTimer:
             return result
         return wrapper
 
-    def enter(self, index=None):
+    def enter(self, index: Optional[int] = None):
         self.start(index)
         self._exit_index = index
         return self
@@ -362,7 +364,7 @@ ThreadTimerNS = TimidTimer.setup_timer_func(time.thread_time_ns, 1)
 
 class DateTimeTimer(TimidTimer):
     """This is obviously a joke and should not be taken seriously as it isn't performant."""
-    def _time(self):
+    def _time(self) -> float:
         return datetime.now().timestamp() * 1e9
 
 

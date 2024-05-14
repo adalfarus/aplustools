@@ -5,3 +5,5 @@ Compressor starts at byte position 61
 automatic reordering of chunks & metadata
 bytes potential encryption for single chunks
 yeah
+
+Make it possible to compress large files as one block.
