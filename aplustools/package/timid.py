@@ -1,3 +1,4 @@
+import sys
 from typing import Callable, Union, List, Tuple, Optional, Type
 from datetime import timedelta, datetime
 from timeit import default_timer
@@ -18,7 +19,7 @@ class TimeFormat:
 class TimidTimer:
     """If a time value is not specified as something specific, it's in seconds."""
     def __init__(self, start_at: Union[float, int] = 0, start_now: bool = True):
-        self._fires: List[threading.Timer] = []
+        self._fires: List[Tuple[Optional[threading.Thread], Optional[threading.Event]]] = []
         self._times: List[Optional[Tuple[Union[float, int]], Optional[Union[float, int]], Optional[Union[float, int]], Union[float, int]]] = []
         self._tick_tocks: List[List[Tuple[Union[float, int], Union[float, int]]]] = []
         self._exit_index = 0
@@ -152,64 +153,137 @@ class TimidTimer:
         return NewClass
 
     @classmethod
-    def _trigger(cls, wait_time, function, args: tuple, kwargs: dict, _continues: Union[bool, int] = False,
-                 _interval: int = None, _interval_func: Callable = None, _index: int = None):
-        time.sleep(wait_time)
-        function(*args, **kwargs)
+    def _trigger(cls, interval: Union[float, int], function, args: tuple, kwargs: dict, iterations: int,
+                 stop_event: threading.Event = threading.Event()):
+        cls.wait(interval)
+        while not stop_event.is_set():
+            if iterations == 0:
+                break
+            try:
+                function(*args, **kwargs)
+            except Exception as e:
+                print(f"Error in _trigger thread: {e}")
+            cls.wait(interval)
+            iterations -= 1
 
-        if _continues and _interval and _interval_func:
-            _interval_func(_interval, function, args, kwargs, _index, _continues)
+    @classmethod
+    def _trigger_ms(cls, interval_ms: Union[float, int], function, args: tuple, kwargs: dict, iterations: int,
+                    stop_event: threading.Event = threading.Event()):
+        cls.wait_ms(interval_ms)
+        while not stop_event.is_set():
+            if iterations == 0:
+                break
+            try:
+                function(*args, **kwargs)
+            except Exception as e:
+                print(f"Error in _trigger thread: {e}")
+            cls.wait_ms(interval_ms)
+            iterations -= 1
 
     @classmethod
     def single_shot(cls, wait_time: Union[float, int], function: Callable, args: tuple = (), kwargs: dict = None):
         if kwargs is None:
             kwargs = {}
-        threading.Thread(target=cls._trigger, args=(wait_time, function, args, kwargs)).start()
+        threading.Thread(target=cls._trigger, args=(wait_time, function, args, kwargs, 1)).start()
+
+    @classmethod
+    def single_shot_ms(cls, wait_time_ms: Union[float, int], function: Callable, args: tuple = (), kwargs: dict = None):
+        if kwargs is None:
+            kwargs = {}
+        threading.Thread(target=cls._trigger_ms, args=(wait_time_ms, function, args, kwargs, 1)).start()
 
     @classmethod
     def shoot(cls, interval: Union[float, int], function: Callable, args: tuple = (), kwargs: dict = None,
-              _index: int = None, _continued: int = -1, iterations: int = 1):
+              iterations: int = 1):
         if kwargs is None:
             kwargs = {}
-        if _continued or _continued == -1:
-            _continued = (_continued if _continued > 0 else iterations) - 1
-        else:
-            return
-        threading.Timer(interval, cls._trigger, args=(0, function, args, kwargs, _continued, interval, cls.shoot)).start()
+        threading.Thread(target=cls._trigger, args=(interval, function, args, kwargs, iterations)).start()
+
+    @classmethod
+    def shoot_ms(cls, interval_ms: Union[float, int], function: Callable, args: tuple = (), kwargs: dict = None,
+                 iterations: int = 1):
+        if kwargs is None:
+            kwargs = {}
+        threading.Thread(target=cls._trigger_ms, args=(interval_ms, function, args, kwargs, iterations)).start()
 
     def fire(self, interval: Union[float, int], function: Callable, args: tuple = (), kwargs: dict = None,
-             index: int = None, _continued: bool = False):
+             index: int = None):
         if kwargs is None:
             kwargs = {}
         if index is None:
             index = len(self._fires)
-        timer = threading.Timer(interval, self._trigger, args=(0, function, args, kwargs, True, interval, self.fire,
-                                                               index))
-        if not _continued:
-            self._fires.insert(index, timer)
+        while len(self._fires) < index:
+            self._fires.append((None, None))
+
+        event = threading.Event()
+        thread = threading.Thread(target=self._trigger, args=(interval, function, args, kwargs, -1, event))
+
+        if index < len(self._fires) and self._fires[index] == (None, None):
+            self._fires[index] = (thread, event)
         else:
-            self._fires[index] = timer
-        timer.start()
+            self._fires.insert(index, (thread, event))
+        thread.start()
+
+    def fire_ms(self, interval_ms: Union[float, int], function: Callable, args: tuple = (), kwargs: dict = None,
+                index: int = None):
+        if kwargs is None:
+            kwargs = {}
+        if index is None:
+            index = len(self._fires)
+        while len(self._fires) < index:
+            self._fires.append((None, None))
+
+        event = threading.Event()
+        thread = threading.Thread(target=self._trigger_ms, args=(interval_ms, function, args, kwargs, -1, event))
+
+        if index < len(self._fires) and self._fires[index] == (None, None):
+            self._fires[index] = (thread, event)
+        else:
+            self._fires.insert(index, (thread, event))
+        thread.start()
 
     def stop_fire(self, index: int = None, amount: int = None):
         if amount is None:
             amount = 1
         for _ in range(amount):
-            timer = self._fires.pop(index or 0)
-            timer.cancel()
+            thread, event = self._fires.pop(index or 0)
+            event.set()
+            thread.join()
+
+    def warmup_fire(self, rounds: int = 300):
+        for _ in range(rounds):
+            self.wait_ms(1)
 
     @classmethod
-    def test_delay(cls, amount: int = 0) -> timedelta:
+    def test_delay(cls, amount: Union[float, int] = 0) -> timedelta:
         """Tests a ... second delay.
         Keep in mind that any amount that isn't 0 is subject to around a 2 ns extra delay."""
         timer = cls()
         if amount:
-            time.sleep(amount)
+            cls.wait(amount)
         return timer.end()
 
-    @staticmethod
-    def wait(seconds: int = 0):
+    @classmethod
+    def test_delay_ms(cls, amount_ms: Union[float, int] = 0) -> timedelta:
+        """Tests a ... second delay.
+        Keep in mind that any amount that isn't 0 is subject to around a 2 ns extra delay."""
+        timer = cls()
+        if amount_ms:
+            cls.wait_ms(amount_ms)
+        return timer.end()
+
+    @classmethod
+    def wait(cls, seconds: int = 0):
         time.sleep(seconds)
+
+    @classmethod
+    def wait_ms(cls, milliseconds: int = 0):
+        wanted_time = cls._time() + (milliseconds * 1e+6)
+        while cls._time() < wanted_time:
+            if wanted_time - cls._time() > 1000000:
+                time.sleep(0.001)
+            else:
+                continue
 
     @staticmethod
     def get_readable(td: timedelta, format_to: int = TimeFormat.SECONDS) -> str:
@@ -287,6 +361,7 @@ ThreadTimerNS = TimidTimer.setup_timer_func(time.thread_time_ns, 1)
 
 
 class DateTimeTimer(TimidTimer):
+    """This is obviously a joke and should not be taken seriously as it isn't performant."""
     def _time(self):
         return datetime.now().timestamp() * 1e9
 
@@ -301,23 +376,26 @@ def local_test():
             elapsed = timer.end()
             print(f"{description} elapsed time: {timer.get_readable(elapsed)}")
 
-        def sleep_and_measure(timer_class, description, sleep_time=1):
+        def sleep_and_measure(timer_class, description, sleep_time_ms=1000):
             """Measures how long the system sleeps using the given timer."""
             timer = timer_class()
             timer.start()
-            time.sleep(sleep_time)  # Sleep for a specified time
+            TimidTimer.wait_ms(sleep_time_ms)  # Sleep for a specified time
             elapsed = timer.end()
-            print(f"{description}, expected sleep: {sleep_time}s, measured time: {timer.get_readable(elapsed)}")
+            print(f"{description}, expected sleep: {sleep_time_ms / 1000}s, measured time: {timer.get_readable(elapsed)}")
+
+        timer1 = TimidTimer()
+        timer1.shoot(1, lambda: print(timer1.tock(return_datetime=True)), iterations=3)
 
         timer = TimidTimer()
         for _ in range(10):
-            time.sleep(1)
+            timer.wait_ms(1000)
             timer.tock()
         print("Average 1 second sleep extra delay: ", timer.average() - timedelta(seconds=1))
-        print("TTD", TimidTimer.test_delay(1) - timedelta(seconds=1))
+        print("TTD", TimidTimer.test_delay_ms(1000) - timedelta(seconds=1))
 
         with TimidTimer().enter(index=1):
-            time.sleep(1)
+            timer.wait_ms(1)
 
         print("Starting timer tests...")
         test_timer(TimidTimer, "Timid Timer")
