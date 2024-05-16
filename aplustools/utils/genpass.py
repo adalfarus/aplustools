@@ -21,6 +21,7 @@ import unicodedata
 import secrets
 import string
 import random
+from enum import Enum
 
 
 class PortUtils:
@@ -1691,6 +1692,179 @@ class SecurePasswordManager:
         password = ''.join(word_chars) + extra_char + num_string + special_chars_string
         self.debug_print("Final password:", password)
         return password
+
+
+class CharSet(Enum):
+    NUMERIC = "Numeric"
+    ALPHA = "Alphabetic"
+    ALPHANUMERIC = "Alphanumeric"
+    ASCII = "ASCII"
+    UNICODE = "Unicode"
+
+
+class ComputerType(Enum):
+    # Operations per second
+    FASTEST_COMPUTER = 10**30 // 2  # One Quintillion (exascale), divided by 2 due to storage speed limits
+    SUPERCOMPUTER = 1_102_000_000_000_000_000 // 2  # (Frontier), divided by 2 due to storage speed limits
+    HIGH_END_PC = 1_000_000_000  # high-end desktop x86 processor
+    NORMAL_PC = 50_000_000  # Example: A standard home computer
+    OFFICE_PC = 1_000_000  # Example: An office PC
+    OLD_XP_MACHINE = 10_000  # Example: An old Windows XP machine
+    UNTHROTTLED_ONLINE = 10
+    THROTTLED_ONLINE = 0.02777777777777778
+
+
+class Efficiency(Enum):
+    LOW = 0.5  # Low efficiency
+    MEDIUM = 0.75  # Medium efficiency
+    HIGH = 1.0  # High efficiency
+
+
+class HashingAlgorithm(Enum):
+    NTLM = 1_000_000_000  # NTLM (fast)
+    MD5 = 500_000_000  # MD5 (medium speed)
+    SHA1 = 200_000_000  # SHA1 (slow)
+    BCRYPT = 1_000  # bcrypt (very slow)
+
+
+class PasswordCrackEstimator:
+    CHARSET_RANGES = {
+        CharSet.NUMERIC: "0123456789",
+        CharSet.ALPHA: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ",
+        CharSet.ALPHANUMERIC: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
+        CharSet.ASCII: ''.join(chr(i) for i in range(128)),
+        CharSet.UNICODE: ''.join(chr(i) for i in range(1114112))
+    }
+
+    CHARSET_SIZES = {
+        CharSet.NUMERIC: 10,
+        CharSet.ALPHA: 26 * 2,
+        CharSet.ALPHANUMERIC: 10 + 26 * 2,
+        CharSet.ASCII: 128,
+        CharSet.UNICODE: 1114112
+    }
+
+    def __init__(self, charset, computer_type, efficiency, hashing_algorithm):
+        self.charset = charset
+        self.computer_type = computer_type
+        self.efficiency = efficiency
+        self.hashing_algorithm = hashing_algorithm
+
+    def estimate_time_to_crack(self, password: str, length_range: Optional[Union[int, tuple]] = None,
+                               personal_info: Optional[list] = None):
+        cleaned_password = self._remove_common_patterns(password, personal_info)
+        if not self._filter_by_charset(password):
+            return cleaned_password, "Password not in charset"
+
+        if isinstance(length_range, int):
+            length_range = (length_range, length_range)
+        else:
+            length_range = length_range
+
+        if length_range and (len(cleaned_password) < length_range[0] or len(cleaned_password) > length_range[1]):
+            return cleaned_password, "Password length is outside the specified range"
+
+        charset_size = self.CHARSET_SIZES[self.charset]
+        if length_range:
+            min_length, max_length = length_range
+            total_combinations = sum(charset_size ** length for length in range(min_length, max_length + 1))
+        else:
+            total_combinations = charset_size ** len(cleaned_password)
+
+        adjusted_ops_per_second = self.computer_type.value * self.efficiency.value * self.hashing_algorithm.value
+        estimated_seconds = total_combinations / adjusted_ops_per_second
+        return cleaned_password, self._format_time(estimated_seconds)
+
+    def _remove_common_patterns(self, password, personal_info):
+        common_patterns = self._generate_common_patterns()
+        for pattern in common_patterns:
+            if pattern in password:
+                password = password.replace(pattern, "")
+
+        if personal_info:
+            personal_info.extend(self._generate_birthday_formats(personal_info))
+            for info in personal_info:
+                if info in password:
+                    password = password.replace(info, "")
+                if self._is_significant_match(info, password):
+                    password = ''.join([c for c in password if c not in info])
+
+        return password
+
+    def _filter_by_charset(self, password):
+        valid_chars = self.CHARSET_RANGES[self.charset]
+        for char in password:
+            if char in valid_chars:
+                continue
+            return False
+        return True
+
+    def _generate_common_patterns(self):
+        patterns = []
+        for i in range(10000):  # Generate number sequences from 0000 to 9999
+            patterns.append(str(i).zfill(4))
+            patterns.append(str(i).zfill(4)[::-1])  # Add reversed patterns
+        return patterns
+
+    @staticmethod
+    def _generate_birthday_formats(personal_info):
+        formats = []
+        for info in personal_info:
+            if len(info) == 8 and info.isdigit():  # YYYYMMDD
+                year, month, day = info[:4], info[4:6], info[6:8]
+                formats.extend([
+                    f"{year}{month}{day}",
+                    f"{day}{month}{year}",
+                    f"{month}{day}{year}",
+                    f"{year}-{month}-{day}",
+                    f"{day}-{month}-{year}",
+                    f"{month}-{day}-{year}",
+                    f"{month}-{day}",
+                    f"{month}{day}",
+                    f"{day}-{month}",
+                    f"{day}{month}",
+                    f"{year}-{day}",
+                    f"{year}{day}",
+                    f"{day}-{year}",
+                    f"{day}{year}"
+                    f"{year}-{month}",
+                    f"{year}{month}",
+                    f"{month}-{year}",
+                    f"{month}{year}"
+                ])
+        return formats
+
+    def _is_significant_match(self, info, password):
+        matches = sum(1 for char in info if char in password)
+        return matches / len(info) >= 0.9
+
+    def _format_time(self, seconds):
+        if seconds < 60:
+            return f"{seconds:.2f} seconds"
+        elif seconds < 3600:
+            return f"{seconds / 60:.2f} minutes"
+        elif seconds < 86400:
+            return f"{seconds / 3600:.2f} hours"
+        elif seconds < 31536000:
+            return f"{seconds / 86400:.2f} days"
+        else:
+            number = str(f"{seconds / 31536000:.0f}")
+            formatted_number = [number[-((i * 3)+1)-2:-(i * 3) or None] for i, part in enumerate(number[-1::-3])]
+            formatted_number.reverse()
+            return f"{'.'.join(formatted_number)} years"
+
+
+if __name__ == "__main__":
+    charset = CharSet.ASCII
+    computer_type = ComputerType.THROTTLED_ONLINE
+    efficiency = Efficiency.HIGH
+    hashing_algorithm = HashingAlgorithm.BCRYPT
+
+    estimator = PasswordCrackEstimator(charset, computer_type, efficiency, hashing_algorithm)
+    password = "HMBlw:_88008?@"
+    personal_info = ["John", "19841201", "Doe"]
+    actual_password, time_to_crack = estimator.estimate_time_to_crack(password, length_range=(1, 24), personal_info=personal_info)
+    print(f"Estimated time to crack the password '{password}' [{actual_password}]: {time_to_crack}")
 
 
 def local_test():

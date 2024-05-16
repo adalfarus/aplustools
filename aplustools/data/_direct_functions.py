@@ -30,8 +30,26 @@ def encode_int(num: int, overwrite_signed: bool = False) -> bytes:
     return num.to_bytes(byte_size, 'big', signed=(True if num < 0 else False) or overwrite_signed)
 
 
+def encode_positive_int(num: int) -> bytes:
+    byte_size = (num.bit_length() + 8) // 8  # Determine the required number of bytes
+    return num.to_bytes(byte_size, 'big')
+
+
+def encode_possible_negative_int(num: int) -> bytes:
+    byte_size = (num.bit_length() + 8) // 8  # Determine the required number of bytes
+    return num.to_bytes(byte_size, 'big', signed=True)
+
+
 def decode_int(bytes_like: bytes, signed: bool = False) -> int:
     return int.from_bytes(bytes_like, 'big', signed=signed)
+
+
+def decode_positive_int(bytes_like: bytes) -> int:
+    return int.from_bytes(bytes_like, 'big')
+
+
+def decode_possible_negative_int(bytes_like: bytes) -> int:
+    return int.from_bytes(bytes_like, 'big', signed=True)
 
 
 def encode(to_encode: _Union[int, str]) -> bytes:
@@ -128,6 +146,12 @@ def isOddString(x: str) -> bool:
     return (len(x) & 1) == 1
 
 
+def nice_number(number: int, seperator: str = "."):
+    formatted_number = [str(number)[-((i * 3) + 1) - 2:-(i * 3) or None] for i, part in enumerate(str(number)[-1::-3])]
+    formatted_number.reverse()
+    return f"{seperator.join(formatted_number)}"
+
+
 if __name__ == "__main__":
     bit = nice_bits(encode("Hello you world!"), True, 6, True, True)
     bitss = bits(encode_float(0.3))
@@ -144,3 +168,6 @@ if __name__ == "__main__":
     print(isOddString("jel"))
     print(isEvenFloat(1238.2312))
     print(isEvenFloat(1239.2312))
+
+    print(nice_number(1666))
+    print(decode_possible_negative_int(encode_possible_negative_int(2000)))
