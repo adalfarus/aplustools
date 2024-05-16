@@ -282,7 +282,7 @@ class TimidTimer:
     def wait_ms(cls, milliseconds: int = 0):
         wanted_time = cls._time() + (milliseconds * 1e+6)
         while cls._time() < wanted_time:
-            if wanted_time - cls._time() > 1000000:
+            if wanted_time - cls._time() > 1_000_000:  # 3_000_000
                 time.sleep(0.001)
             else:
                 continue

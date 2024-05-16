@@ -72,43 +72,7 @@ class _Table:
         return self.name
 
 
-class AbstractDBManager(ABC):
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self._commit()
-        self._close()
-
-    def __del__(self):
-        self._close()
-
-    @abstractmethod
-    def _execute_query(self, query: str, params: tuple = ()):
-        pass
-
-    @abstractmethod
-    def _fetch_all(self, query: str, params: tuple = ()):
-        pass
-
-    @abstractmethod
-    def _commit(self):
-        pass
-
-    @abstractmethod
-    def _close(self):
-        pass
-
-    def raw_query(self, query: str, params: tuple = ()):
-        results = self._fetch_all(query, params)
-        self._commit()
-        return results
-
-    def Table(self, name, columns=None, primary_key=None, foreign_keys=None):
-        return _Table(name, self, columns, primary_key, foreign_keys)
-
-
-class SQLiteDBManager(AbstractDBManager):
+class SQLiteDBManager:
     def __init__(self, db_path):
         self.conn = sqlite3.connect(db_path)
         self.cursor = self.conn.cursor()
@@ -200,6 +164,24 @@ class SQLiteDBManager(AbstractDBManager):
         self._execute_query(query)
         self._commit()
 
+    def raw_query(self, query: str, params: tuple = ()):
+        results = self._fetch_all(query, params)
+        self._commit()
+        return results
+
+    def Table(self, name, columns=None, primary_key=None, foreign_keys=None):
+        return _Table(name, self, columns, primary_key, foreign_keys)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self._commit()
+        self._close()
+
+    def __del__(self):
+        self._close()
+
 
 def local_test():
     db_path = "test.db"
@@ -235,6 +217,9 @@ def local_test():
         assert len(users) == 2, "There should be two users initially."
         assert len(users_after_delete) == 1, "There should be one user after deletion."
         assert users_after_delete[0][1] == "Alice Smith", "The remaining user should be Alice Smith."
+
+        table = db.create_table("bosses", {"id": int}, "id", users_table.column.user_id)
+        print(table)
 
         print("All tests passed.")
 
