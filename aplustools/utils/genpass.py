@@ -23,6 +23,199 @@ import string
 import random
 
 
+class PortUtils:
+    @staticmethod
+    def find_available_port():
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.bind(('', 0))  # Bind to an available port provided by the OS
+            return s.getsockname()[1]  # Return the allocated port
+
+    @staticmethod
+    def find_available_port_range(start_port, end_port):
+        for port in range(start_port, end_port + 1):
+            try:
+                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                    s.bind(('', port))
+                    return port  # Port is available
+            except OSError as e:
+                if e.errno == errno.EADDRINUSE:  # Port is already in use
+                    continue
+                raise  # Reraise unexpected errors
+        raise RuntimeError("No available ports in the specified range")
+
+    @staticmethod
+    def test_port(port, retries=5, delay=1):
+        while retries > 0:
+            try:
+                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                    s.bind(('', port))
+                    return port
+            except OSError as e:
+                if e.errno == errno.EADDRINUSE:
+                    retries -= 1
+                    time.sleep(delay)
+                else:
+                    raise
+        raise RuntimeError("Port is still in use after several retries")
+
+
+class CryptUtils:
+    @staticmethod
+    def pbkdf2(password: str, salt: bytes, length: int, cycles: int) -> bytes:
+        kdf = PBKDF2HMAC(
+            algorithm=hashes.SHA512(),
+            length=length,
+            salt=salt,
+            iterations=cycles,
+            backend=default_backend()
+        )
+        key = kdf.derive(password.encode())
+        return key
+
+    @staticmethod
+    def generate_salt(length: int) -> bytes:
+        # Generate a cryptographically secure salt
+        return os.urandom(length)
+
+    @staticmethod
+    def generate_aes_key(length: Literal[128, 192, 256]) -> bytes:
+        return os.urandom(length // 8)
+
+    @staticmethod
+    def pack_ae_data(iv: bytes, encrypted_data: bytes, tag: bytes) -> bytes:
+        iv_len_encoded = len(iv).to_bytes(1, "big")  # Maximum length of 128
+        tag_len_encoded = len(tag).to_bytes(1, "big")  # Maximum length of 128
+        return iv_len_encoded + iv + tag_len_encoded + tag + encrypted_data
+
+    @staticmethod
+    def unpack_ae_data(data: bytes):
+        iv_len = int.from_bytes(data[:1])
+
+        iv_start = 1
+        iv_end = iv_start + iv_len
+        iv = data[iv_start:iv_end]
+
+        tag_len = int.from_bytes(data[iv_end:iv_end+1])
+        tag_start = iv_end+1
+        tag_end = tag_start + tag_len
+        tag = data[tag_start:tag_end]
+
+        encrypted_data = data[tag_end:]
+        return iv, encrypted_data, tag
+
+    @staticmethod
+    def aes_encrypt(data: bytes, key: bytes) -> Tuple[bytes, bytes, bytes]:
+        iv = os.urandom(12)  # Generate IV securely
+        cipher = Cipher(algorithms.AES(key), modes.GCM(iv), backend=default_backend())
+        encryptor = cipher.encryptor()
+        ciphertext = encryptor.update(data) + encryptor.finalize()
+        return iv, ciphertext, encryptor.tag
+
+    @staticmethod
+    def aes_decrypt(iv: bytes, encrypted_data: bytes, tag: bytes, key: bytes) -> Optional[bytes]:
+        cipher = Cipher(algorithms.AES(key), modes.GCM(iv, tag), backend=default_backend())
+        decryptor = cipher.decryptor()
+        try:
+            return decryptor.update(encrypted_data) + decryptor.finalize()
+        except ValueError:
+            print("AES Decryption Error: MAC check failed")
+            return None
+
+    @staticmethod
+    def generate_des_key(length: Literal[64, 128, 192]) -> bytes:
+        return os.urandom(length // 8)
+
+    @staticmethod
+    def des_encrypt(data: bytes, key: bytes) -> tuple:
+        iv = os.urandom(8)
+        cipher = Cipher(algorithms.TripleDES(key), modes.CFB(iv), backend=default_backend())
+        encryptor = cipher.encryptor()
+        ciphertext = encryptor.update(data) + encryptor.finalize()
+        return iv, ciphertext, b''  # DES doesn't use a tag in this mode
+
+    @staticmethod
+    def des_decrypt(iv: bytes, ciphertext: bytes, tag: bytes, key: bytes) -> bytes:
+        cipher = Cipher(algorithms.TripleDES(key), modes.CFB(iv), backend=default_backend())
+        decryptor = cipher.decryptor()
+        return decryptor.update(ciphertext) + decryptor.finalize()
+
+    @staticmethod
+    def generate_rsa_key(length: Literal[1024, 2048, 4096]) -> Tuple[bytes, bytes]:
+        private_key = rsa.generate_private_key(
+            public_exponent=65537,
+            key_size=length,
+            backend=default_backend()
+        )
+        private_bytes = private_key.private_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PrivateFormat.TraditionalOpenSSL,
+            encryption_algorithm=serialization.NoEncryption())
+        return private_bytes, private_key.public_key().public_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PublicFormat.SubjectPublicKeyInfo)
+
+    @staticmethod
+    def load_private_key(private_bytes: bytes) -> rsa.RSAPrivateKey:
+        return serialization.load_pem_private_key(
+            private_bytes,
+            password=None,
+            backend=default_backend()
+        )
+
+    @staticmethod
+    def load_public_key(public_bytes: bytes) -> rsa.RSAPublicKey:
+        return serialization.load_pem_public_key(
+            public_bytes,
+            backend=default_backend()
+        )
+
+    @staticmethod
+    def rsa_encrypt(data: bytes, public_key: rsa.RSAPublicKey) -> bytes:
+        try:
+            return public_key.encrypt(
+                data,
+                padding.OAEP(
+                    mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                    algorithm=hashes.SHA256(),
+                    label=None
+                )
+            )
+        except ValueError:
+            print("ValueError, remember that RSA can only encrypt something shorter than it's key. Otherwise you should"
+                  "use hybrid encryption, so encrypt with e.g. AES and then encrypt the aes key with rsa.")
+
+    @staticmethod
+    def rsa_decrypt(encrypted_data: bytes, private_key: rsa.RSAPrivateKey) -> bytes:
+        return private_key.decrypt(
+            encrypted_data,
+            padding.OAEP(
+                mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                algorithm=hashes.SHA256(),
+                label=None
+            )
+        )
+
+    @staticmethod
+    def generate_hash(message: str) -> str:
+        digest = hashes.Hash(hashes.SHA512(), backend=default_backend())
+        digest.update(message.encode())
+        return digest.finalize().hex()
+
+    @staticmethod
+    def caesar_cipher(data: str, shift: int) -> str:
+        output = ""
+        for i in range(len(data)):
+            temp = ord(data[i]) + shift
+            if temp > 122:
+                temp_diff = temp - 122
+                temp = 96 + temp_diff
+            elif temp < 97:
+                temp_diff = 97 - temp
+                temp = 123 - temp_diff
+            output += chr(temp)
+        return output
+
+
 class DummyProtocol:
     @staticmethod
     def get_exec_code_delimiters(self) -> tuple:
@@ -123,18 +316,18 @@ class UndefinedSocket:
 
 @strict
 class SecureSocketServer:
-    def __init__(self, connection: UndefinedSocket, protocol: ControlCodeProtocol, chunk_size=1024, private_key_bytes_overwrite=None):
+    def __init__(self, connection: UndefinedSocket, protocol: ControlCodeProtocol, _chunk_size=1024, private_key_bytes_overwrite=None):
         self._last_timestamp = datetime.datetime.now()
-        self.rate_limit = 10  # Allow 1 message per second
+        self.rate_limit = 10  # Allow 10 messages per second
 
         self._connection = connection
         self._host = None
         self._port = None
 
-        self._decoder = MessageDecoder(protocol, chunk_size, private_key_bytes_overwrite)
+        self._decoder = MessageDecoder(protocol, _chunk_size, private_key_bytes_overwrite)
         self._encoder = None
         self._protocol = protocol
-        self._chunk_size = chunk_size
+        self._chunk_size = _chunk_size
 
         if type(self._connection.conn) is not socket.socket:
             self._host, self._port = self._connection.conn
@@ -148,29 +341,56 @@ class SecureSocketServer:
         threading.Thread(target=self._receive_public_key_and_start_communication).start()
 
     def _setup_connection(self):
-        if not getattr(self, "_connection"):
-            server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            server_socket.bind((self._host, self._port))
-            server_socket.listen(1)
-            print(f"Server listening on {self._host}:{self._port}...")
-            self._connection, addr = server_socket.accept()
-            print(f"Connection established with {addr}")
+        if self._connection is not None:
+            return
+
+        while not isinstance(self._connection, socket.socket):
+            try:
+                server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                server_socket.bind((self._host, self._port))
+                server_socket.listen(1)
+                print(f"Server listening on {self._host}:{self._port}...")
+                self._connection, addr = server_socket.accept()
+                print(f"Connection established with {addr}")
+            except Exception as e:
+                print(f"Error setting up connection: {e}. Retrying in 5 seconds ...")
+                time.sleep(5)
 
     def _send_public_key(self):
-        self._connection.sendall(self._decoder.public_key_bytes)
+        send = False
+        while not send:
+            try:
+                self._connection.sendall(self._decoder.get_public_key_bytes())
+                print("Sent public key to client")
+                send = True
+            except Exception as e:
+                print(f"Error sending public key: {e}")
+                send = False
 
     def _receive_public_key_and_start_communication(self):
         try:
             self._receive_public_key()
-            self.listen_for_messages()
+            self._listen_for_messages()
         except Exception as e:
             print(f"Error in _receive_public_key_and_start_communication: {e}")
 
     def _receive_public_key(self):
-        # Receive client's public key here
-        client_public_key_bytes = self._connection.recv(self._chunk_size)
-        self._encoder = MessageEncoder(self._protocol, client_public_key_bytes, self._chunk_size)
-        print(f"Received key from client: {client_public_key_bytes}")
+        client_public_key_bytes = ""
+        while not client_public_key_bytes and not self._encoder:
+            try:
+                # Receive client's public key here
+                encrypted_client_public_key_bytes = self._connection.recv(739)
+                encrypted_aes_key_length = int.from_bytes(encrypted_client_public_key_bytes[:2], "big")
+                encrypted_aes_key = encrypted_client_public_key_bytes[2:encrypted_aes_key_length+2]
+                aes_key = CryptUtils.rsa_decrypt(encrypted_aes_key, self._decoder.get_private_key())
+
+                rest_data = encrypted_client_public_key_bytes[encrypted_aes_key_length+2:]
+                client_public_key_bytes = CryptUtils.aes_decrypt(*CryptUtils.unpack_ae_data(rest_data), key=aes_key)
+
+                self._encoder = MessageEncoder(self._protocol, client_public_key_bytes, self._chunk_size)
+                print(f"Received key from client: {client_public_key_bytes}")
+            except Exception as e:
+                print(f"Error receiving public key: {e}")
 
     def _check_rate_limit(self):
         current_time = datetime.datetime.now()
@@ -179,30 +399,36 @@ class SecureSocketServer:
         self._last_timestamp = current_time
         return True
 
-    def listen_for_messages(self):
-        while True:
-            encrypted_chunk = self._connection.recv(self._chunk_size)
-            if not encrypted_chunk:
-                break
+    def _listen_for_messages(self):
+        while self._connection is not None:
+            try:
+                while True:
+                    encrypted_chunk = self._connection.recv(self._chunk_size)
+                    if not encrypted_chunk:
+                        break
 
-            # Check rate limiting
-            if not self._check_rate_limit():
-                raise Exception("Rate limit exceeded")
+                    # Check rate limiting
+                    if not self._check_rate_limit():
+                        raise Exception("Rate limit exceeded")
 
-            self._decoder.add_chunk(encrypted_chunk)
-            chunks = self._decoder.get_complete()
+                    self._decoder.add_chunk(encrypted_chunk)
+                    chunks = self._decoder.get_complete()
 
-            for chunk in chunks:
-                if type(chunk) is str:
-                    print(chunk, end="")
-                elif chunk.code == "end":
-                    print("\n", end="")
-                elif chunk.code == "shutdown":
-                    print("Shutting down server")
-                    return  # Returning is equal to a shutdown
-                elif chunk.code == "input":
-                    inp = input(chunk.add)
-                    self._connection.sendall(inp.encode("utf-8"))
+                    for chunk in chunks:
+                        if type(chunk) is str:
+                            print(chunk, end="")
+                        elif chunk.code == "end":
+                            print("\n", end="")
+                        elif chunk.code == "shutdown":
+                            print("Shutting down server")
+                            self._connection.close()
+                            self._connection = None
+                            break  # Break is equal to a shutdown
+                        elif chunk.code == "input":
+                            inp = input(chunk.add)
+                            self._connection.sendall(inp.encode("utf-8"))
+            except Exception as e:
+                print(f"Error in listen_for_messages: {e}")
 
     def shutdown_client(self):
         while not self._encoder:
@@ -224,16 +450,16 @@ class SecureSocketServer:
 
 @strict
 class SecureSocketClient:
-    def __init__(self, protocol, forced_host="127.0.0.1", forced_port=None, chunk_size=1024, private_key_bytes_overwrite=None):
+    def __init__(self, protocol, forced_host="127.0.0.1", forced_port=None, _chunk_size=1024, private_key_bytes_overwrite=None):
         self._host = forced_host
-        self._port = self.find_available_port() if not forced_port else forced_port
+        self._port = PortUtils.find_available_port() if not forced_port else forced_port
         self._connection = None
         self._connection_established = False
 
-        self._decoder = MessageDecoder(protocol, chunk_size, private_key_bytes_overwrite)
+        self._decoder = MessageDecoder(protocol, _chunk_size, private_key_bytes_overwrite)
         self._encoder = None
         self._protocol = protocol
-        self._chunk_size = chunk_size
+        self._chunk_size = _chunk_size
 
     def get_host(self):
         return self._host
@@ -245,98 +471,91 @@ class SecureSocketClient:
         return UndefinedSocket((self._host, self._port))
 
     def get_connected_socket(self):
-        return UndefinedSocket(self._connection)
-
-    @staticmethod
-    def find_available_port():
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.bind(('', 0))  # Bind to an available port provided by the OS
-            return s.getsockname()[1]  # Return the allocated port
-
-    @staticmethod
-    def find_available_port_range(start_port, end_port):
-        for port in range(start_port, end_port + 1):
-            try:
-                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                    s.bind(('', port))
-                    return port  # Port is available
-            except OSError as e:
-                if e.errno == errno.EADDRINUSE:  # Port is already in use
-                    continue
-                raise  # Reraise unexpected errors
-        raise RuntimeError("No available ports in the specified range")
-
-    @staticmethod
-    def test_port(port, retries=5, delay=1):
-        while retries > 0:
-            try:
-                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                    s.bind(('', port))
-                    return port
-            except OSError as e:
-                if e.errno == errno.EADDRINUSE:
-                    retries -= 1
-                    time.sleep(delay)
-                else:
-                    raise
-        raise RuntimeError("Port is still in use after several retries")
+        if self._connection is not None:
+            return UndefinedSocket(self._connection)
+        raise ValueError("Server unconnected")
 
     def start_and_exchange_keys(self):
         threading.Thread(target=self._connect_and_exchange_keys).start()
 
     def _connect_and_exchange_keys(self):
         try:
-            self.connect_to_server()
+            self._connect_to_server()
             self._receive_public_key()
             self._send_public_key()
-            self.listen_for_messages()
+            self._listen_for_messages()
         except Exception as e:
-            print(f"Error in _connect_and_exchange_keys: {e}")
+            print(f"Error in _connect_and_exchange_keys: {e}.")
 
     def _receive_public_key(self):
-        # Receive initial message from the server
-        public_key_bytes = self._connection.recv(self._chunk_size)
-        self._encoder = MessageEncoder(self._protocol, public_key_bytes, self._chunk_size)
-        print(f"Received key from server: {public_key_bytes}")
+        public_key_bytes = ""
+        while not public_key_bytes or not self._encoder:
+            try:
+                # Receive initial message from the server
+                public_key_bytes = self._connection.recv(self._chunk_size)
+                self._encoder = MessageEncoder(self._protocol, public_key_bytes, self._chunk_size)
+                print(f"Received key from server: {public_key_bytes}")
+            except Exception as e:
+                print(f"Error in _receive_public_key: {e}")
 
-    def connect_to_server(self):
-        try:
-            self._connection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self._connection.connect((self._host, self._port))
-            print(f"Connected to server at {self._host}:{self._port}")
-
-            self._connection_established = True
-        except ConnectionError as e:
-            print(f"Connection error: {e}")
-            return
+    def _connect_to_server(self):
+        while not self._connection_established:
+            try:
+                self._connection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                self._connection.connect((self._host, self._port))
+                print(f"Connected to server at {self._host}:{self._port}")
+                self._connection_established = True
+            except ConnectionError as e:
+                print(f"Connection error: {e}. Retrying in 5 seconds ...")
+                self._connection_established = False
+                time.sleep(5)  # Wait before retrying
 
     def _send_public_key(self):
-        self._connection.send(self._decoder.public_key_bytes)
+        send = False
+        while not send:
+            try:
+                aes_key = CryptUtils.generate_aes_key(128)
+                encrypted_public_key_bytes = CryptUtils.pack_ae_data(*CryptUtils.aes_encrypt(self._decoder.get_public_key_bytes(), aes_key))
+                encrypted_aes_key = CryptUtils.rsa_encrypt(aes_key, self._encoder.get_public_key())
+                self._connection.send(len(encrypted_aes_key).to_bytes(2, "big") + encrypted_aes_key + encrypted_public_key_bytes)
+                send = True
+            except Exception as e:
+                print(f"Error in _send_public_key: {e}")
+                send = False
 
-    def listen_for_messages(self):
-        while True:
-            encrypted_chunk = self._connection.recv(self._chunk_size)
-            if not encrypted_chunk:
-                break
+    def _listen_for_messages(self):
+        while self._connection_established:
+            try:
+                while True:
+                    encrypted_chunk = self._connection.recv(self._chunk_size)
+                    if not encrypted_chunk:
+                        break
 
-            self._decoder.add_chunk(encrypted_chunk)
-            chunks = self._decoder.get_complete()
+                    self._decoder.add_chunk(encrypted_chunk)
+                    chunks = self._decoder.get_complete()
 
-            for chunk in chunks:
-                if type(chunk) is not str and chunk.code == "shutdown":
-                    print("Shutting down client")
-                    return  # Returning is equal to a shutdown
+                    for chunk in chunks:
+                        if type(chunk) is not str and chunk.code == "shutdown":
+                            print("Shutting down client")
+                            self._connection_established = False
+                            break  # breaking is equal to a shutdown
+            except Exception as e:
+                print(f"Error in _listen_for_messages: {e}")
 
     def add_message(self, message):
+        while self._encoder is None:
+            time.sleep(0.01)
         self._encoder.add_message(message)
 
     def add_control_code(self, code):
+        while self._encoder is None:
+            time.sleep(0.01)
         self._encoder.add_control_message(code)
 
     def sendall(self):
         # Wait until the connection is established
         while not self._connection_established:
-            time.sleep(0.1)  # Wait briefly and check again
+            time.sleep(0.01)  # Wait briefly and check again
 
         if hasattr(self, '_connection'):
             encoded_blocks = self._encoder.flush()
@@ -356,7 +575,7 @@ class SecureSocketClient:
 @strict
 class MessageEncoder:
     def __init__(self, protocol, public_key_bytes, chunk_size=1024):
-        self.public_key = serialization.load_pem_public_key(public_key_bytes, backend=default_backend())
+        self._public_key = serialization.load_pem_public_key(public_key_bytes, backend=default_backend())
         self._protocol = protocol
         self._chunk_size = chunk_size
         self._buffer = b""
@@ -367,9 +586,12 @@ class MessageEncoder:
         self._length_indicator_size = 2  # Size for the length indicator
         self._metadata_size = self._key_size + self._length_indicator_size
 
+    def get_public_key(self):
+        return self._public_key
+
     def _encrypt_aes_key(self, aes_key):
         # Encrypt AES Key with server's public RSA key
-        return self.public_key.encrypt(
+        return self._public_key.encrypt(
             aes_key, padding.OAEP(mgf=padding.MGF1(algorithm=hashes.SHA256()), algorithm=hashes.SHA256(), label=None))
 
     def _encrypt_with_aes_gcm(self, message):
@@ -444,7 +666,7 @@ class MessageDecoder:
         self._public_key = self._private_key.public_key()
 
         # Serialize public key to send to clients
-        self.public_key_bytes = self._public_key.public_bytes(
+        self._public_key_bytes = self._public_key.public_bytes(
             encoding=serialization.Encoding.PEM,
             format=serialization.PublicFormat.SubjectPublicKeyInfo)
 
@@ -453,8 +675,14 @@ class MessageDecoder:
         self._chunk_size = chunk_size
         self._protocol = protocol
 
-        self.buffer = ""
-        self.complete_buffer: List[Union[str, ControlCode]] = [""]
+        self._buffer = ""
+        self._complete_buffer: List[Union[str, ControlCode]] = [""]
+
+    def get_private_key(self):
+        return self._private_key
+
+    def get_public_key_bytes(self):
+        return self._public_key_bytes
 
     @staticmethod
     def _load_private_key(pem_data):
@@ -543,12 +771,12 @@ class MessageDecoder:
         except Exception as e:
             print(f"Error in decryption/validation: {e}")
             return
-        self.buffer += decrypted_chunk
+        self._buffer += decrypted_chunk
 
         # Process complete and partial messages in buffer
         exec_start, exec_end = self._protocol.get_exec_code_delimiters()
         pattern = fr'(\{exec_start}{exec_start}^\{exec_end}{exec_end}+\{exec_end})|({exec_start}^\{exec_start}\{exec_end}{exec_end}+)'
-        matches = re.findall(pattern, self.buffer)
+        matches = re.findall(pattern, self._buffer)
 
         if not matches:
             return
@@ -565,54 +793,68 @@ class MessageDecoder:
                 continue
             if validation_result == "end":
                 # Consider message as complete
-                self.complete_buffer[-1] += ''.join(parsed_parts[last_end:i])
-                len_to_remove = len(self.complete_buffer[-1]) + len(parsed_parts[i])
-                self.buffer = self.buffer[len_to_remove:]
+                self._complete_buffer[-1] += ''.join(parsed_parts[last_end:i])
+                len_to_remove = len(self._complete_buffer[-1]) + len(parsed_parts[i])
+                self._buffer = self._buffer[len_to_remove:]
                 last_end = i
-                self.complete_buffer.extend([ControlCode(validation_result, add_in)] + validations + [""])
+                self._complete_buffer.extend([ControlCode(validation_result, add_in)] + validations + [""])
                 validations.clear()
             elif validation_result in ["Invalid control code", "Invalid key"]:
                 # Malformed or invalid expression, add to buffer
-                self.complete_buffer[-1] += expression
+                self._complete_buffer[-1] += expression
             else:
                 validations.append(ControlCode(validation_result, add_in))
                 parsed_parts[i] = ""
-                start_index = self.buffer.find(expression)
+                start_index = self._buffer.find(expression)
                 end_index = start_index + len(expression)
-                self.buffer = self.buffer[:start_index] + self.buffer[end_index:]
-        if self.complete_buffer[-1] == "":
-            self.complete_buffer = self.complete_buffer[:-1]
-        self.complete_buffer.extend(validations)
-        self.complete_buffer.append("")
+                self._buffer = self._buffer[:start_index] + self._buffer[end_index:]
+        if self._complete_buffer[-1] == "":
+            self._complete_buffer = self._complete_buffer[:-1]
+        self._complete_buffer.extend(validations)
+        self._complete_buffer.append("")
         validations.clear()
 
     def get_complete(self):
-        return_lst = self.complete_buffer[:-1] if self.complete_buffer[-1] == "" else self.complete_buffer
-        self.complete_buffer = [""]
+        return_lst = self._complete_buffer[:-1] if self._complete_buffer[-1] == "" else self._complete_buffer
+        self._complete_buffer = [""]
         return return_lst
 
     def get_all(self):
-        return_lst = self.complete_buffer[:-1] if self.complete_buffer[-1] == "" else self.complete_buffer
-        return_lst.append(self.buffer)
-        self.complete_buffer = [""]
-        self.buffer = ""
+        return_lst = self._complete_buffer[:-1] if self._complete_buffer[-1] == "" else self._complete_buffer
+        return_lst.append(self._buffer)
+        self._complete_buffer = [""]
+        self._buffer = ""
         return return_lst
+
+
+if __name__ == "__main__":
+    protocol = ControlCodeProtocol()
+    client = SecureSocketClient(protocol)
+    server = SecureSocketServer(client.get_socket(), protocol)
+
+    client.start_and_exchange_keys()
+    server.start_and_exchange_keys()
+
+    client.add_message("Hello, server!")
+    client.sendall()
+
+    server.shutdown_client()
 
 
 @strict  # Strict decorator makes any private attributes truly private
 class ServerMessageHandler:
-    def __init__(self, connection: UndefinedSocket, protocol: ControlCodeProtocol, chunk_size=1024, private_key_bytes_overwrite=None):
+    def __init__(self, connection: UndefinedSocket, protocol: ControlCodeProtocol, _chunk_size=1024, private_key_bytes_overwrite=None):
         # Generate RSA key pair
         self._private_key = self._load_private_key(private_key_bytes_overwrite) if private_key_bytes_overwrite else (
             rsa.generate_private_key(public_exponent=65537, key_size=2048))
         self._public_key = self._private_key.public_key()
 
         # Serialize public key to send to clients
-        self.public_key_bytes = self._public_key.public_bytes(
+        self._public_key_bytes = self._public_key.public_bytes(
             encoding=serialization.Encoding.PEM,
             format=serialization.PublicFormat.SubjectPublicKeyInfo)
         self._last_timestamp = datetime.datetime.now()
-        self.rate_limit = 10  # Allow 1 message per second
+        self.rate_limit = 10  # Allow 10 messages per second
 
         self._connection = connection
         self._host = None
@@ -620,7 +862,7 @@ class ServerMessageHandler:
 
         self._last_sequence_number = -1
         self.time_window = datetime.timedelta(minutes=5)  # Time window for valid timestamps
-        self._chunk_size = chunk_size
+        self._chunk_size = _chunk_size
         self._protocol = protocol
 
         if type(self._connection.conn) is not socket.socket:
@@ -629,10 +871,14 @@ class ServerMessageHandler:
         else:
             self._connection = self._connection.conn
 
-    def _load_private_key(self, pem_data):
+    def get_public_key_bytes(self):
+        return self._public_key_bytes
+
+    @staticmethod
+    def _load_private_key(pem_data):
         return serialization.load_pem_private_key(
             pem_data,
-            password=None,  # Provide a password here if the key is encrypted
+            password=None,  # Provide a password here if the key should be encrypted
             backend=default_backend()
         )
 
@@ -719,6 +965,9 @@ class ServerMessageHandler:
 
         return actual_message
 
+    def _reply_public_key(self):
+        self._connection.send(self._public_key_bytes)
+
     def _setup_connection(self):
         if not getattr(self, "_connection"):
             server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -727,34 +976,7 @@ class ServerMessageHandler:
             print(f"Server listening on {self._host}:{self._port}...")
             self._connection, addr = server_socket.accept()
             print(f"Connection established with {addr}")
-
-    def encrypt_and_pad_message(self, message):
-        # Generate an AES key and encrypt the message with AES-GCM
-        aes_key = AESGCM.generate_key(bit_length=128)
-        aesgcm = AESGCM(aes_key)
-        nonce = os.urandom(12)  # Nonce size for AES-GCM
-
-        # Pad the message with timestamp
-        timestamp = struct.pack("d", time.time())
-        message_with_timestamp = message.encode() + b"\x00" * (self._chunk_size - len(message.encode()) - len(timestamp))
-        message_with_timestamp += timestamp
-
-        encrypted_message = aesgcm.encrypt(nonce, message_with_timestamp, None)
-
-        # Encrypt the AES key with the public RSA key
-        encrypted_key = self._public_key.encrypt(
-            aes_key,
-            padding.OAEP(mgf=padding.MGF1(algorithm=hashes.SHA256()), algorithm=hashes.SHA256(), label=None)
-        )
-
-        return nonce + encrypted_message, encrypted_key
-
-    def send_message(self, message):
-        # Encrypt the message
-        encrypted_message, encrypted_key = self.encrypt_and_pad_message(message)
-
-        # Send the message
-        self._connection.send(encrypted_message + encrypted_key)
+            self._reply_public_key()
 
     def listen_for_messages(self):
         buffer = ""
@@ -820,7 +1042,7 @@ class ServerMessageHandler:
 @strict
 class ClientMessageHandler:
     def __init__(self, protocol, forced_host="127.0.0.1", forced_port=None, chunk_size=1024):
-        self.public_key = None
+        self._public_key = None
         self._protocol = protocol
         self._chunk_size = chunk_size
         self._buffer = b""
@@ -832,7 +1054,7 @@ class ClientMessageHandler:
         self._metadata_size = self._key_size + self._length_indicator_size
 
         self._host = forced_host
-        self._port = self.find_available_port() if not forced_port else forced_port
+        self._port = PortUtils.find_available_port() if not forced_port else forced_port
         self._connection = None
         self._connection_established = False
 
@@ -848,80 +1070,36 @@ class ClientMessageHandler:
     def get_connected_socket(self):
         return UndefinedSocket(self._connection)
 
-    def start(self):
+    def start_in_thread(self):
         threading.Thread(target=self.connect_to_server).start()
 
-    @staticmethod
-    def find_available_port():
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.bind(('', 0))  # Bind to an available port provided by the OS
-            return s.getsockname()[1]  # Return the allocated port
-
-    @staticmethod
-    def find_available_port_range(start_port, end_port):
-        for port in range(start_port, end_port + 1):
-            try:
-                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                    s.bind(('', port))
-                    return port  # Port is available
-            except OSError as e:
-                if e.errno == errno.EADDRINUSE:  # Port is already in use
-                    continue
-                raise  # Reraise unexpected errors
-        raise RuntimeError("No available ports in the specified range")
-
-    @staticmethod
-    def test_port(port, retries=5, delay=1):
-        while retries > 0:
-            try:
-                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                    s.bind(('', port))
-                    return port
-            except OSError as e:
-                if e.errno == errno.EADDRINUSE:
-                    retries -= 1
-                    time.sleep(delay)
-                else:
-                    raise
-        raise RuntimeError("Port is still in use after several retries")
-
     def connect_to_server(self):
-        try:
-            self._connection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self._connection.connect((self._host, self._port))
-            print(f"Connected to server at {self._host}:{self._port}")
+        retry_attempts = 5
+        for attempt in range(retry_attempts):
+            try:
+                self._connection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                self._connection.connect((self._host, self._port))
+                print(f"Connected to server at {self._host}:{self._port}")
 
-            # Receive initial message from the server
-            public_key_bytes = self._connection.recv(self._chunk_size)
-            self.public_key = serialization.load_pem_public_key(public_key_bytes, backend=default_backend())
-            print(f"Received key from server: {public_key_bytes}")
+                # Receive initial message from the server
+                public_key_bytes = self._connection.recv(self._chunk_size)
+                self._public_key = serialization.load_pem_public_key(public_key_bytes, backend=default_backend())
+                print(f"Received key from server: {public_key_bytes}")
 
-            self._connection_established = True
-            threading.Thread(target=self.listen_for_responses, args=(self._connection,), daemon=True).start()
-        except ConnectionError as e:
-            print(f"Connection error: {e}")
-            return
-
-    def listen_for_responses(self, connection):
-        try:
-            while True:
-                response = connection.recv(1024)  # Adjust buffer size as needed
-                if response:
-                    print(f"Received: {response.decode('utf-8')}")  # Example processing
-                else:
-                    break
-        except Exception as e:
-            print(f"Error receiving data: {e}")
-        finally:
-            connection.close()
-            print("Connection closed.")
+                self._connection_established = True
+                break
+            except ConnectionError as e:
+                print(f"Connection attempt {attempt + 1} failed: {e}")
+                time.sleep(5)  # Wait before retrying
+        else:
+            print("Failed to connect to the server after several attempts.")
 
     def _encrypt_aes_key(self, aes_key):
-        while self.public_key is None:
+        while self._public_key is None:
             time.sleep(0.1)
 
         # Encrypt AES Key with server's public RSA key
-        return self.public_key.encrypt(
+        return self._public_key.encrypt(
             aes_key, padding.OAEP(mgf=padding.MGF1(algorithm=hashes.SHA256()), algorithm=hashes.SHA256(), label=None))
 
     def _encrypt_with_aes_gcm(self, message):
@@ -957,6 +1135,9 @@ class ClientMessageHandler:
         return encrypted_message, aes_key, message
 
     def flush(self):
+        while not self._connection_established or self._public_key is None:
+            time.sleep(0.01)
+
         encoded_blocks = []
         while len(self._buffer) > 0:
             # Get a chunk of the buffer up to the estimated max message size
@@ -985,6 +1166,8 @@ class ClientMessageHandler:
                 self._connection.send(block)
 
     def add_message(self, message):
+        while not self._connection_established or self._public_key is None:
+            time.sleep(0.01)
         message_bytes = message.encode() if isinstance(message, str) else message
         self._buffer += message_bytes + self._protocol.get_control_code("end").encode()
 
@@ -993,145 +1176,95 @@ class ClientMessageHandler:
         self._buffer += control_code
 
 
+if __name__ == "__main__":
+    os.system("cls")
+    protocol = ControlCodeProtocol()
+    client = ClientMessageHandler(protocol)
+    server = ServerMessageHandler(client.get_socket(), protocol)
+    threading.Thread(target=server.listen_for_messages).start()
+    print("Starting client ...")
+    client.connect_to_server()
+    client.add_message("HELL")
+    client.flush()
+    client.send_control_message("shutdown")
+    client.flush()
+
+
 class ServerStream:
-    def __init__(self):
-        raise NotImplementedError("This class isn't fully implemented yet, check back in version 1.5")
+    def __init__(self, host: str, port: Optional[int] = None, key_length: Literal[1024, 2048, 4096] = 2048):
+        self._host = host
+        self._port = port or PortUtils.find_available_port()
+        self._key_length = key_length
+        private_key_bytes, public_key_bytes = CryptUtils.generate_rsa_key(key_length)
+        self.public_key_bytes = public_key_bytes
+        self._private_key = CryptUtils.load_private_key(private_key_bytes)
+        self._public_key = CryptUtils.load_public_key(public_key_bytes)
+        self._server_socket = self._connection = self._address = None
+
+    def get_port(self):
+        return self._port
+
+    def connect(self):
+        self._server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self._server_socket.bind((self._host, self._port))
+        self._server_socket.listen(5)
+        self._connection, self._address = self._server_socket.accept()
+        print(f"Connection established with {self._address}")
+
+    def receive_and_decrypt(self) -> Optional[bytes]:
+        complete_message = b""
+        try:
+            while True:
+                chunk = self._connection.recv(self._key_length // 8)  # Receive encrypted chunks
+                if not chunk:
+                    break
+                decrypted_chunk = CryptUtils.rsa_decrypt(chunk, self._private_key)
+                complete_message += decrypted_chunk
+            return complete_message
+        except Exception as e:
+            print(f"Error in receive_and_decrypt: {e}")
+            return None
+
+    def close_connection(self):
+        self._connection.close()
+        self._server_socket.close()
 
 
 class ClientStream:
-    def __init__(self):
-        raise NotImplementedError("This class isn't fully implemented yet, check back in version 1.5")
+    def __init__(self, host: str, port: int, public_key_bytes):
+        self._host = host
+        self._port = port
+        self._public_key = CryptUtils.load_public_key(public_key_bytes)
+        self._client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self._client_socket.connect((self._host, self._port))
+        print(f"Connected to server at {self._host}:{self._port}")
+
+    def encrypt_and_send(self, message: bytes):
+        max_chunk_size = (self._public_key.key_size // 8) - 2 * 256 // 8 - 2  # Maximum chunk size for RSA encryption with padding
+        for i in range(0, len(message), max_chunk_size):
+            chunk = message[i:i + max_chunk_size]
+            encrypted_chunk = CryptUtils.rsa_encrypt(chunk, self._public_key)
+            self._client_socket.send(encrypted_chunk)
+
+    def close_connection(self):
+        self._client_socket.close()
 
 
-class CryptUtils:
-    @staticmethod
-    def pbkdf2(password: str, salt: bytes, length: int, cycles: int) -> bytes:
-        kdf = PBKDF2HMAC(
-            algorithm=hashes.SHA512(),
-            length=length,
-            salt=salt,
-            iterations=cycles,
-            backend=default_backend()
-        )
-        key = kdf.derive(password.encode())
-        return key
-
-    @staticmethod
-    def generate_salt(length: int) -> bytes:
-        # Generate a cryptographically secure salt
-        return os.urandom(length)
-
-    @staticmethod
-    def generate_aes_key(length: Literal[128, 192, 256]) -> bytes:
-        return os.urandom(length // 8)
-
-    @staticmethod
-    def aes_encrypt(data: bytes, key: bytes) -> Tuple[bytes, bytes, bytes]:
-        iv = os.urandom(12)  # Generate IV securely
-        cipher = Cipher(algorithms.AES(key), modes.GCM(iv), backend=default_backend())
-        encryptor = cipher.encryptor()
-        ciphertext = encryptor.update(data) + encryptor.finalize()
-        return iv, ciphertext, encryptor.tag
-
-    @staticmethod
-    def aes_decrypt(iv: bytes, encrypted_data: bytes, tag: bytes, key: bytes) -> Optional[bytes]:
-        cipher = Cipher(algorithms.AES(key), modes.GCM(iv, tag), backend=default_backend())
-        decryptor = cipher.decryptor()
-        try:
-            return decryptor.update(encrypted_data) + decryptor.finalize()
-        except ValueError:
-            print("AES Decryption Error: MAC check failed")
-            return None
-
-    @staticmethod
-    def generate_des_key(length: Literal[64, 128, 192]) -> bytes:
-        return os.urandom(length // 8)
-
-    @staticmethod
-    def des_encrypt(data: bytes, key: bytes) -> tuple:
-        iv = os.urandom(8)
-        cipher = Cipher(algorithms.TripleDES(key), modes.CFB(iv), backend=default_backend())
-        encryptor = cipher.encryptor()
-        ciphertext = encryptor.update(data) + encryptor.finalize()
-        return iv, ciphertext, b''  # DES doesn't use a tag in this mode
-
-    @staticmethod
-    def des_decrypt(iv: bytes, ciphertext: bytes, tag: bytes, key: bytes) -> bytes:
-        cipher = Cipher(algorithms.TripleDES(key), modes.CFB(iv), backend=default_backend())
-        decryptor = cipher.decryptor()
-        return decryptor.update(ciphertext) + decryptor.finalize()
-
-    @staticmethod
-    def generate_rsa_key(length: Literal[1024, 2048, 4096]) -> Tuple[bytes, bytes]:
-        private_key = rsa.generate_private_key(
-            public_exponent=65537,
-            key_size=length,
-            backend=default_backend()
-        )
-        private_bytes = private_key.private_bytes(
-            encoding=serialization.Encoding.PEM,
-            format=serialization.PrivateFormat.TraditionalOpenSSL,
-            encryption_algorithm=serialization.NoEncryption())
-        return private_bytes, private_key.public_key().public_bytes(
-            encoding=serialization.Encoding.PEM,
-            format=serialization.PublicFormat.SubjectPublicKeyInfo)
-
-    @staticmethod
-    def load_private_key(private_bytes: bytes) -> rsa.RSAPrivateKey:
-        return serialization.load_pem_private_key(
-            private_bytes,
-            password=None,
-            backend=default_backend()
-        )
-
-    @staticmethod
-    def load_public_key(public_bytes: bytes) -> rsa.RSAPublicKey:
-        return serialization.load_pem_public_key(
-            public_bytes,
-            backend=default_backend()
-        )
-
-    @staticmethod
-    def rsa_encrypt(data: bytes, public_key: rsa.RSAPublicKey) -> bytes:
-        return public_key.encrypt(
-            data,
-            padding.OAEP(
-                mgf=padding.MGF1(algorithm=hashes.SHA256()),
-                algorithm=hashes.SHA256(),
-                label=None
-            )
-        )
-
-    @staticmethod
-    def rsa_decrypt(encrypted_data: bytes, private_key: rsa.RSAPrivateKey) -> bytes:
-        return private_key.decrypt(
-            encrypted_data,
-            padding.OAEP(
-                mgf=padding.MGF1(algorithm=hashes.SHA256()),
-                algorithm=hashes.SHA256(),
-                label=None
-            )
-        )
-
-    @staticmethod
-    def generate_hash(message: str) -> str:
-        digest = hashes.Hash(hashes.SHA512(), backend=default_backend())
-        digest.update(message.encode())
-        return digest.finalize().hex()
-
-    @staticmethod
-    def caesar_cipher(data: str, shift: int) -> str:
-        output = ""
-        for i in range(len(data)):
-            temp = ord(data[i]) + shift
-            if temp > 122:
-                temp_diff = temp - 122
-                temp = 96 + temp_diff
-            elif temp < 97:
-                temp_diff = 97 - temp
-                temp = 123 - temp_diff
-            output += chr(temp)
-        return output
+# if __name__ == "__main__":
+#     server = ServerStream('127.0.0.1')
+#     print("public bytes", server.public_key_bytes, "\nport", server.get_port())
+#     server.connect()  # Blocking till connect
+#     message = server.receive_and_decrypt()  # Blocking till message
+#     if message:
+#         print(f"Received message: {message.decode()}")
+#     server.close_connection()
+#
+#     public_key_bytes = input("Public key bytes: ").encode('utf-8').decode('unicode_escape').encode('latin1')
+#     port = int(input("Port: "))
+#     client = ClientStream('127.0.0.1', port, public_key_bytes)  # Blocking till connect
+#     message = b"Hello, this is a long message that will be split into chunks and sent encrypted."
+#     client.encrypt_and_send(message)
+#     client.close_connection()
 
 
 class Database:

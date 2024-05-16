@@ -82,47 +82,25 @@ class AESChunkEncryptor(EmptyChunkProcessor):
     def __init__(self, key: Optional[bytes] = None):
         self.key = key if key is not None else CryptUtils.generate_aes_key(128)
 
-    @staticmethod
-    def pack_aes_data(iv: bytes, encrypted_data: bytes, tag: bytes) -> bytes:
-        iv_len_encoded = len(iv).to_bytes(1, "big")  # Maximum length of 128
-        tag_len_encoded = len(tag).to_bytes(1, "big")  # Maximum length of 128
-        return iv_len_encoded + iv + tag_len_encoded + tag + encrypted_data
-
-    @staticmethod
-    def unpack_aes_data(data: bytes):
-        iv_len = decode_int(data[:1])
-
-        iv_start = 1
-        iv_end = iv_start + iv_len
-        iv = data[iv_start:iv_end]
-
-        tag_len = decode_int(data[iv_end:iv_end+1])
-        tag_start = iv_end+1
-        tag_end = tag_start + tag_len
-        tag = data[tag_start:tag_end]
-
-        encrypted_data = data[tag_end:]
-        return iv, encrypted_data, tag
-
     def process(self, data_chunk: bytes) -> bytes:
         iv, encrypted_data, tag = CryptUtils.aes_encrypt(data_chunk, key=self.key)
-        return self.pack_aes_data(iv, encrypted_data, tag)
+        return CryptUtils.pack_ae_data(iv, encrypted_data, tag)
 
     def unprocess(self, processed_chunk: bytes) -> bytes:
-        iv, encrypted_data, tag = self.unpack_aes_data(processed_chunk)
+        iv, encrypted_data, tag = CryptUtils.unpack_ae_data(processed_chunk)
         return CryptUtils.aes_decrypt(iv, encrypted_data, tag, key=self.key)
 
 
-class DESChunkEncryptor(AESChunkEncryptor):
+class DESChunkEncryptor(EmptyChunkProcessor):
     def __int__(self, key: Optional[bytes] = None):
         self.key = key if key is not None else CryptUtils.generate_des_key(64)
 
     def process(self, data_chunk: bytes) -> bytes:
         iv, encrypted_data, tag = CryptUtils.des_encrypt(data_chunk, key=self.key)
-        return self.pack_aes_data(iv, encrypted_data, tag)
+        return CryptUtils.pack_ae_data(iv, encrypted_data, tag)
 
     def unprocess(self, processed_chunk: bytes) -> bytes:
-        iv, encrypted_data, tag = self.unpack_aes_data(processed_chunk)
+        iv, encrypted_data, tag = CryptUtils.unpack_ae_data(processed_chunk)
         return CryptUtils.des_decrypt(iv, encrypted_data, tag, key=self.key)
 
 
