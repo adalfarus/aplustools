@@ -6,6 +6,7 @@ from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.hazmat.backends import default_backend
 from aplustools.io.environment import strict
+from aplustools.data import nice_number
 import json
 import os
 import base64
@@ -1848,10 +1849,7 @@ class PasswordCrackEstimator:
         elif seconds < 31536000:
             return f"{seconds / 86400:.2f} days"
         else:
-            number = str(f"{seconds / 31536000:.0f}")
-            formatted_number = [number[-((i * 3)+1)-2:-(i * 3) or None] for i, part in enumerate(number[-1::-3])]
-            formatted_number.reverse()
-            return f"{'.'.join(formatted_number)} years"
+            return f"{nice_number(int(seconds / 31536000))} years"
 
 
 if __name__ == "__main__":
