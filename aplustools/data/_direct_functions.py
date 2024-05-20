@@ -1,7 +1,8 @@
 from aplustools.package import install_dependencies_lst as _install_dependencies_lst
 from typing import Union as _Union
 import ctypes as _ctypes
-from typing import Tuple as _Tuple
+import typing as _typing
+from aplustools.package.argumint import EndPoint as _EndPoint
 
 
 def install_dependencies():
@@ -112,7 +113,7 @@ def isOddInt(x: int) -> bool:
     return (x & 1) == 1
 
 
-def isEvenFloat(x: _Union[float, str]) -> _Tuple[bool, bool]:
+def isEvenFloat(x: _Union[float, str]) -> _typing.Tuple[bool, bool]:
     if x != x:  # Check for NaN
         return False, False
     if x in [float('inf'), float('-inf')]:  # Check for infinities
@@ -125,7 +126,7 @@ def isEvenFloat(x: _Union[float, str]) -> _Tuple[bool, bool]:
     return isEvenInt(int(expo)), isEvenInt(int(dec))
 
 
-def isOddFloat(x: _Union[float, str]) -> _Tuple[bool, bool]:
+def isOddFloat(x: _Union[float, str]) -> _typing.Tuple[bool, bool]:
     if x != x:  # Check for NaN
         return False, False
     if x in [float('inf'), float('-inf')]:  # Check for infinities
@@ -152,6 +153,21 @@ def nice_number(number: int, seperator: str = "."):
     return f"{seperator.join(formatted_number)}"
 
 
+def what_func(func, type_names: bool = False):
+    endpoint = _EndPoint(func)
+
+    def get_type_name(t):
+        if hasattr(t, '__origin__') and t.__origin__ is _typing.Union or type(t) is _typing.Union and type(None) in t.__args__:
+            non_none_types = [arg for arg in t.__args__ if arg is not type(None)]
+            return f"{t.__name__}[{', '.join(get_type_name(arg) for arg in non_none_types)}]"
+        return t.__name__ if hasattr(t, '__name__') else (type(t).__name__ if t is not None else None)
+
+    arguments_str = ''.join([f"{argument.name}: "
+                             f"{(get_type_name(argument.type) or type(argument.default)).__name__ if type_names else get_type_name(argument.type) or type(argument.default)}"
+                             f" = {argument.default}, " for argument in endpoint.arguments])[:-2]
+    print(f"{func.__module__}.{endpoint.name}({arguments_str}){(' -> ' + str(endpoint.return_type)) if endpoint.return_type is not None else ''}")
+
+
 if __name__ == "__main__":
     bit = nice_bits(encode("Hello you world!"), True, 6, True, True)
     bitss = bits(encode_float(0.3))
@@ -171,3 +187,10 @@ if __name__ == "__main__":
 
     print(nice_number(1666))
     print(decode_possible_negative_int(encode_possible_negative_int(2000)))
+
+    what_func(lambda x=1, y=2: 1, True)
+
+    def func(x: _typing.Optional[1] = None, u: _typing.Union[8, 1] = 1):
+        pass
+    what_func(func)
+
