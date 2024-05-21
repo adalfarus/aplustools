@@ -168,6 +168,14 @@ def what_func(func, type_names: bool = False):
     print(f"{func.__module__}.{endpoint.name}({arguments_str}){(' -> ' + str(endpoint.return_type)) if endpoint.return_type is not None else ''}")
 
 
+def bytes_to_human_readable(size: int) -> str:
+    """Convert bytes to a human-readable string."""
+    for unit in ['B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB']:
+        if size < 1024:
+            return f"{size:.2f} {unit}"
+        size /= 1024
+
+
 if __name__ == "__main__":
     bit = nice_bits(encode("Hello you world!"), True, 6, True, True)
     bitss = bits(encode_float(0.3))
