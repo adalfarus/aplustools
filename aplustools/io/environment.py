@@ -12,7 +12,7 @@ import psutil
 import time
 import speedtest
 import tempfile
-from aplustools.data import bytes_to_human_readable_binary_iec
+from aplustools.data import bytes_to_human_readable_binary_iec, bits_to_human_readable
 
 
 try:
@@ -373,15 +373,18 @@ class _BaseSystem:
         raise NotImplementedError("set_clipboard is not implemented")
 
     def get_uptime(self):
-        """Get system uptime."""
-        return time.time() - psutil.boot_time()
+        """Get system uptime in minutes."""
+        return (time.time() - psutil.boot_time()) / 60
 
     def measure_network_speed(self):
         """Measure network speed using speedtest-cli."""
         st = speedtest.Speedtest()
-        st.download()
-        st.upload()
-        return st.results.dict()
+        download_speed = st.download()
+        upload_speed = st.upload()
+        results = st.results.dict()
+        results['download'] = bits_to_human_readable(download_speed)
+        results['upload'] = bits_to_human_readable(upload_speed)
+        return results
 
 
 class _WindowsSystem(_BaseSystem):
@@ -660,16 +663,6 @@ def print_system_info():
     print(f"System Theme: {sys_info.theme}")
 
 
-def basic_notification():
-    system = System.system()
-    system.send_notification("Zenra", "Hello, how are you?", (), (), ())
-
-
-def test_disk_space_conversion():
-    system = System.system()
-    print(system.get_memory_info())
-
-
 def safe_os_command_execution(command: str) -> str:
     return subprocess.check_output(command.split(" ")).decode().strip()
 
@@ -677,8 +670,11 @@ def safe_os_command_execution(command: str) -> str:
 def local_test():
     try:
         print_system_info()
-        basic_notification()
-        test_disk_space_conversion()
+        system = System.system()
+        system.send_notification("Zenra", "Hello, how are you?", (), (), ())
+        print("System RAM", system.get_memory_info())
+        print(f"Pc has been turned on since {str(System.system().get_uptime())[:-10]} minutes")
+        print("Network test", System.system().measure_network_speed())
 
         @strict
         class MyCls:
