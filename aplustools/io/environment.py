@@ -12,7 +12,7 @@ import psutil
 import time
 import speedtest
 import tempfile
-from aplustools.data import bytes_to_human_readable
+from aplustools.data import bytes_to_human_readable_binary
 
 
 try:
@@ -323,20 +323,20 @@ class _BaseSystem:
             path = self.get_home_directory()
         usage = shutil.disk_usage(path)
         return {
-            'total': bytes_to_human_readable(usage.total),
-            'used': bytes_to_human_readable(usage.used),
-            'free': bytes_to_human_readable(usage.free)
+            'total': bytes_to_human_readable_binary(usage.total),
+            'used': bytes_to_human_readable_binary(usage.used),
+            'free': bytes_to_human_readable_binary(usage.free)
         }
 
     def get_memory_info(self):
         """Get memory usage statistics."""
         memory = psutil.virtual_memory()
         return {
-            'total': bytes_to_human_readable(memory.total),
-            'available': bytes_to_human_readable(memory.available),
+            'total': bytes_to_human_readable_binary(memory.total),
+            'available': bytes_to_human_readable_binary(memory.available),
             'percent': f"{memory.percent}%",
-            'used': bytes_to_human_readable(memory.used),
-            'free': bytes_to_human_readable(memory.free)
+            'used': bytes_to_human_readable_binary(memory.used),
+            'free': bytes_to_human_readable_binary(memory.free)
         }
 
     def get_network_info(self):
@@ -663,6 +663,10 @@ def print_system_info():
 def basic_notification():
     system = System.system()
     system.send_notification("Zenra", "Hello, how are you?", (), (), ())
+
+
+def test_disk_space_conversion():
+    system = System.system()
     print(system.get_memory_info())
 
 
@@ -674,6 +678,7 @@ def local_test():
     try:
         print_system_info()
         basic_notification()
+        test_disk_space_conversion()
 
         @strict
         class MyCls:
