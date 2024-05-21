@@ -12,6 +12,7 @@ import psutil
 import time
 import speedtest
 import tempfile
+from aplustools.data import bytes_to_human_readable
 
 
 try:
@@ -321,13 +322,22 @@ class _BaseSystem:
         if path is None:
             path = self.get_home_directory()
         usage = shutil.disk_usage(path)
-        return {'total': usage.total, 'used': usage.used, 'free': usage.free}
+        return {
+            'total': bytes_to_human_readable(usage.total),
+            'used': bytes_to_human_readable(usage.used),
+            'free': bytes_to_human_readable(usage.free)
+        }
 
     def get_memory_info(self):
         """Get memory usage statistics."""
         memory = psutil.virtual_memory()
-        return {'total': memory.total, 'available': memory.available, 'percent': memory.percent,
-                'used': memory.used, 'free': memory.free}
+        return {
+            'total': bytes_to_human_readable(memory.total),
+            'available': bytes_to_human_readable(memory.available),
+            'percent': f"{memory.percent}%",
+            'used': bytes_to_human_readable(memory.used),
+            'free': bytes_to_human_readable(memory.free)
+        }
 
     def get_network_info(self):
         """Get network interface information."""
@@ -650,9 +660,10 @@ def print_system_info():
     print(f"System Theme: {sys_info.theme}")
 
 
-def test_notification():
+def basic_notification():
     system = System.system()
     system.send_notification("Zenra", "Hello, how are you?", (), (), ())
+    print(system.get_memory_info())
 
 
 def safe_os_command_execution(command: str) -> str:
@@ -662,7 +673,7 @@ def safe_os_command_execution(command: str) -> str:
 def local_test():
     try:
         print_system_info()
-        test_notification()
+        basic_notification()
 
         @strict
         class MyCls:
