@@ -12,7 +12,7 @@ import psutil
 import time
 import speedtest
 import tempfile
-from aplustools.data import bytes_to_human_readable_binary
+from aplustools.data import bytes_to_human_readable_binary_iec
 
 
 try:
@@ -323,20 +323,20 @@ class _BaseSystem:
             path = self.get_home_directory()
         usage = shutil.disk_usage(path)
         return {
-            'total': bytes_to_human_readable_binary(usage.total),
-            'used': bytes_to_human_readable_binary(usage.used),
-            'free': bytes_to_human_readable_binary(usage.free)
+            'total': bytes_to_human_readable_binary_iec(usage.total),
+            'used': bytes_to_human_readable_binary_iec(usage.used),
+            'free': bytes_to_human_readable_binary_iec(usage.free)
         }
 
     def get_memory_info(self):
         """Get memory usage statistics."""
         memory = psutil.virtual_memory()
         return {
-            'total': bytes_to_human_readable_binary(memory.total),
-            'available': bytes_to_human_readable_binary(memory.available),
+            'total': bytes_to_human_readable_binary_iec(memory.total),
+            'available': bytes_to_human_readable_binary_iec(memory.available),
             'percent': f"{memory.percent}%",
-            'used': bytes_to_human_readable_binary(memory.used),
-            'free': bytes_to_human_readable_binary(memory.free)
+            'used': bytes_to_human_readable_binary_iec(memory.used),
+            'free': bytes_to_human_readable_binary_iec(memory.free)
         }
 
     def get_network_info(self):
