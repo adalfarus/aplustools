@@ -1,24 +1,27 @@
 # environment.py
-from typing import Union, Optional, Callable, Any, Type, cast
+from typing import Union, Optional, Callable, Any, Type, cast, Literal, Tuple
 from types import FrameType
 import subprocess
 import warnings
 import platform
-import tempfile
 import inspect
 import shutil
 import sys
 import os
+import psutil
+import time
+import speedtest
+import tempfile
 
 
 try:
     import winreg
+    from windows_toasts import (Toast, WindowsToaster, InteractableWindowsToaster, ToastInputTextBox,
+                                ToastActivatedEventArgs, ToastButton, ToastInputSelectionBox, ToastSelection)
+    import win32clipboard
 except ImportError:
-    winreg = None  # winreg is not available on non-Windows platforms
-
-
-def get_tempdir():
-    return tempfile.gettempdir()
+    winreg = win32clipboard = Toast = WindowsToaster = InteractableWindowsToaster = ToastInputTextBox = None
+    ToastActivatedEventArgs = ToastButton = ToastInputSelectionBox = ToastSelection = None
 
 
 def set_working_dir_to_main_script_location():
@@ -70,7 +73,7 @@ def change_working_dir_to_script_location():
 
 
 def change_working_dir_to_temp_folder():
-    os.chdir(tempfile.gettempdir())
+    os.chdir(System.system().get_tempdir())
 
 
 def change_working_dir_to_userprofile_folder(folder: str):
@@ -164,30 +167,6 @@ def safe_rename(org_nam: str, new_nam: str) -> bool:
     except Exception as e:
         print(f"An error occurred while renaming: {e}")
         return False
-
-
-def functionize(cls):
-    warnings.warn("This is still experimental and may not be working as expected. A finished version should be available in release 1.5",
-                  UserWarning, 
-                  stacklevel=2)
-
-    def wrapper(*args, **kwargs):
-        # Creating an instance of the class
-        instance = cls(*args, **kwargs)
-
-        # Collecting the instance attributes (variables) and their values
-        attrs = {attr: getattr(instance, attr) for attr in instance.__dict__ if not attr.startswith("_")}  # instance.__dict__.copy()
-
-        # Collecting methods and converting them to standalone functions
-        methods = {
-            name: getattr(instance, name)
-            for name, method in inspect.getmembers(cls, predicate=inspect.isfunction) if not name.startswith("_")
-        }
-
-        # Combining attributes and methods
-        return {**attrs, **methods}
-
-    return wrapper
 
 
 def strict(cls: Type[Any]):
@@ -288,30 +267,15 @@ def auto_repr(cls):
     return cls
 
 
-class System:
+class _BaseSystem:
     def __init__(self):
-        self.os = self.get_os()
-        self.os_version = self.get_os_version()
-        self.cpu_arch = self.get_cpu_arch()
-        self.cpu_brand = self.get_cpu_brand()
-        # GPU information retrieval can be complex and platform-dependent
-        # self.gpu_info = self.get_gpu_info()
-        self.theme = self.get_system_theme()
-
-    def get_os(self):
-        """Get the name of the operating system."""
-        return platform.system()
-
-    def get_os_version(self):
-        """Get the version of the operating system."""
-        return platform.version()
-    
-    def get_major_os_version(self):
-        return platform.release()
-
-    def get_cpu_arch(self):
-        """Get the architecture of the CPU (e.g., x86_64, ARM)."""
-        return platform.machine()
+        self.os = platform.system()
+        self.os_version = platform.version()
+        self.major_os_version = platform.release()
+        self.cpu_arch = platform.machine()
+        self.cpu_brand = None
+        self.gpu_info = None
+        self.theme = None
 
     def get_cpu_brand(self):
         """Get the brand and model of the CPU."""
@@ -322,18 +286,110 @@ class System:
             return subprocess.check_output(command, shell=True).decode().split(': ')[1].strip()
         return "Unknown"
 
-    # GPU information retrieval is more complex and may require third-party libraries or specific system commands
+    def schedule_event(self, name: str, script_path: str, event_time: Literal["startup", "login"]):
+        raise NotImplementedError("schedule_event is not implemented")
+
+    def send_notification(self, title: str, message: str,
+                          input_fields: Tuple[Tuple[str, str, str], ...] = (("input_arg", "Input", "Hint"),),
+                          selections: Tuple[Tuple[str, str, tuple, ..., int], ...] = (("selection_arg", "Sel Display Name", ("selection_name", "Selection Display Name"), 0),),
+                          buttons: Tuple[Tuple[str, Callable], ...] = (("Accept", lambda: None), ("Cancel", lambda: None),),
+                          click_callback: Callable = lambda: None):
+        raise NotImplementedError("send_notification is not implemented")
+
+    def get_gpu_info(self):
+        raise NotImplementedError("get_gpu_info is not implemented")
+
+    def get_tempdir(self):
+        return tempfile.gettempdir()
+
+    def get_home_directory(self):
+        """Get the user's home directory."""
+        return os.path.expanduser("~")
+
+    def get_running_processes(self):
+        """Get a list of running processes."""
+        processes = []
+        for proc in psutil.process_iter(['pid', 'name']):
+            try:
+                processes.append(proc.as_dict(attrs=['pid', 'name']))
+            except psutil.NoSuchProcess:
+                pass
+        return processes
+
+    def get_disk_usage(self, path: Optional[str] = None):
+        """Get disk usage statistics."""
+        if path is None:
+            path = self.get_home_directory()
+        usage = shutil.disk_usage(path)
+        return {'total': usage.total, 'used': usage.used, 'free': usage.free}
+
+    def get_memory_info(self):
+        """Get memory usage statistics."""
+        memory = psutil.virtual_memory()
+        return {'total': memory.total, 'available': memory.available, 'percent': memory.percent,
+                'used': memory.used, 'free': memory.free}
+
+    def get_network_info(self):
+        """Get network interface information."""
+        addrs = psutil.net_if_addrs()
+        stats = psutil.net_if_stats()
+        network_info = {}
+        for interface, addr_info in addrs.items():
+            network_info[interface] = {
+                'addresses': [{'address': addr.address, 'family': str(addr.family), 'netmask': addr.netmask,
+                               'broadcast': addr.broadcast} for addr in addr_info],
+                'isup': stats[interface].isup
+            }
+        return network_info
+
+    def set_environment_variable(self, key: str, value: str):
+        """Set an environment variable."""
+        os.environ[key] = value
+
+    def get_environment_variable(self, key: str):
+        """Get an environment variable."""
+        return os.environ.get(key)
+
+    def get_battery_status(self):
+        """Get battery status information."""
+        raise NotImplementedError("get_battery_status is not implemented")
+
+    def get_clipboard(self):
+        """Get the content of the clipboard."""
+        raise NotImplementedError("get_clipboard is not implemented")
+
+    def set_clipboard(self, data: str):
+        """Set the content of the clipboard."""
+        raise NotImplementedError("set_clipboard is not implemented")
+
+    def get_uptime(self):
+        """Get system uptime."""
+        return time.time() - psutil.boot_time()
+
+    def measure_network_speed(self):
+        """Measure network speed using speedtest-cli."""
+        st = speedtest.Speedtest()
+        st.download()
+        st.upload()
+        return st.results.dict()
+
+
+class _WindowsSystem(_BaseSystem):
+    def __init__(self):
+        super().__init__()
+        self.cpu_brand = self.get_cpu_brand()
+        self.gpu_info = self.get_gpu_info()
+        self.theme = self.get_system_theme()
+
+    def get_cpu_brand(self):
+        return platform.processor()
+
+    def get_gpu_info(self):
+        command = "wmic path win32_VideoController get name"
+        output = subprocess.check_output(command.split(" ")).decode()
+        return [line.strip() for line in output.split('\n') if line.strip()][1:]
 
     def get_system_theme(self):
-        if self.os == 'Windows':
-            return self.get_windows_theme()
-        elif self.os == 'Darwin':
-            return self.get_macos_theme()
-        elif self.os == 'Linux':
-            return self.get_linux_theme()
-        return "Unknown"
-
-    def get_windows_theme(self):
         if not winreg:
             return None
 
@@ -347,60 +403,271 @@ class System:
         except Exception:
             return None
 
-    def get_macos_theme(self):
-        try:
-            theme = subprocess.check_output("defaults read -g AppleInterfaceStyle", shell=True).decode().strip()
-            return 'Dark' if theme == 'Dark' else 'Light'
-        except subprocess.CalledProcessError:
-            return 'Light'  # Default to Light since Dark mode is not set
+    def schedule_event(self, name: str, script_path: str, event_time: Literal["startup", "login"]):
+        """Schedule an event to run at startup or login on Windows."""
+        task_name, command = f"{name} (APT-{event_time.capitalize()} Task)", ""
+        if event_time == "startup":
+            command = f'schtasks /create /tn "{task_name}" /tr "{script_path}" /sc onstart /rl highest /f'
+        elif event_time == "login":
+            command = f'schtasks /create /tn "{task_name}" /tr "{script_path}" /sc onlogon /rl highest /f'
+        subprocess.run(command.split(" "), check=True)
 
-    def get_linux_theme(self):
-        # This method is very basic and might not work on all Linux distributions.
-        # Linux theme detection can be very varied depending on the desktop environment.
+    def send_notification(self, title: str, message: str,
+                          input_fields: Tuple[Tuple[str, str, str], ...] = (("input_arg", "Input", "Hint"),),
+                          selections: Tuple[Tuple[str, str, tuple, ..., int], ...] = (("selection_arg", "Sel Display Name", ("selection_name", "Selection Display Name"), 0),),
+                          buttons: Tuple[Tuple[str, Callable], ...] = (("Accept", lambda: None), ("Cancel", lambda: None),),
+                          click_callback: Callable = lambda: None):
+        if not input_fields:
+            toaster = WindowsToaster(title)
+            new_toast = Toast()
+            new_toast.text_fields = [message]
+            new_toast.on_activated = click_callback
+            toaster.show_toast(new_toast)
+        else:
+            interactable_toaster = InteractableWindowsToaster(title)
+            new_toast = Toast([message])
+
+            for input_field in input_fields:
+                arg_name, display_name, input_hint = input_field
+                new_toast.AddInput(ToastInputTextBox(arg_name, display_name, input_hint))
+
+            for selection in selections:
+                selection_arg_name, selection_display_name, *selection_options, default_selection_id = selection
+
+                selection_option_objects = []
+                for selection_option in selection_options:
+                    selection_option_id, selection_option_display_name = selection_option
+                    selection_option_objects.append(ToastSelection(selection_option_id, selection_option_display_name))
+
+                new_toast.AddInput(ToastInputSelectionBox(selection_arg_name, selection_display_name,
+                                                          selection_option_objects,
+                                                          selection_option_objects[default_selection_id]))
+
+            response_lst = []
+            for i, button in enumerate(buttons):
+                button_text, callback = button
+                response_lst.append(callback)
+                new_toast.AddAction(ToastButton(button_text, str(i)))
+
+            new_toast.on_activated = lambda activated_event_args: (response_lst[activated_event_args.arguments]()
+                                                                   or click_callback(**activated_event_args.inputs))
+
+            interactable_toaster.show_toast(new_toast)
+
+    def get_battery_status(self):
+        battery = psutil.sensors_battery()
+        if battery:
+            return {'percent': battery.percent, 'secsleft': battery.secsleft, 'power_plugged': battery.power_plugged}
+
+    def get_clipboard(self):
+        win32clipboard.OpenClipboard()
         try:
-            theme = subprocess.check_output("gsettings get org.gnome.desktop.interface gtk-theme", shell=True).decode().strip()
-            return 'Dark' if 'dark' in theme.lower() else 'Light'
-        except Exception:
-            return None
+            data = win32clipboard.GetClipboardData()
+        except TypeError:
+            data = None
+        win32clipboard.CloseClipboard()
+        return data
+
+    def set_clipboard(self, data: str):
+        win32clipboard.OpenClipboard()
+        win32clipboard.EmptyClipboard()
+        win32clipboard.SetClipboardText(data)
+        win32clipboard.CloseClipboard()
+
+
+class _DarwinSystem(_BaseSystem):
+    def __init__(self):
+        super().__init__()
+        self.cpu_brand = self.get_cpu_brand()
+        self.gpu_info = self.get_gpu_info()
+        self.theme = self.get_system_theme()
+
+    def get_cpu_brand(self):
+        command = "sysctl -n machdep.cpu.brand_string"
+        return subprocess.check_output(command.split(" ")).decode().strip()
+
+    def get_gpu_info(self):
+        command = "system_profiler SPDisplaysDataType | grep 'Chipset Model'"
+        output = subprocess.check_output(command.split(" ")).decode()
+        return [line.split(': ')[1].strip() for line in output.split('\n') if 'Chipset Model' in line]
+
+    def get_system_theme(self):
+        command = "defaults read -g AppleInterfaceStyle"
+        try:
+            theme = subprocess.check_output(command.split(" ")).decode().strip()
+            return 'dark' if theme.lower() == 'dark' else 'light'
+        except subprocess.CalledProcessError:
+            return 'light'  # Default to Light since Dark mode is not set
+
+    def schedule_event(self, name: str, script_path: str, event_time: Literal["startup", "login"]):
+        """Schedule an event to run at startup or login on macOS."""
+        plist_content = f"""
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0">
+        <dict>
+            <key>Label</key>
+            <string>com.example.{name.replace(' ', '_').lower()}</string>
+            <key>ProgramArguments</key>
+            <array>
+                <string>{script_path}</string>
+            </array>
+            <key>RunAtLoad</key>
+            <true/>
+        </dict>
+        </plist>
+        """
+        plist_path = f'~/Library/LaunchAgents/com.example.{name.replace(" ", "_").lower()}.plist'
+        with open(os.path.expanduser(plist_path), 'w') as f:
+            f.write(plist_content)
+        subprocess.run(f'launchctl load {os.path.expanduser(plist_path)}'.split(" "), check=True)
+
+    def send_notification(self, title: str, message: str,
+                          _: Tuple[Tuple[str, str, str], ...] = (("input_arg", "Input", "Hint"),),
+                          __: Tuple[Tuple[str, str, tuple, ..., int], ...] = (("selection_arg", "Sel Display Name", ("selection_name", "Selection Display Name"), 0),),
+                          ___: Tuple[Tuple[str, Callable], ...] = (("Accept", lambda: None), ("Cancel", lambda: None),),
+                          click_callback: Callable = lambda: None):
+        script = f'display notification "{message}" with title "{title}"'
+        subprocess.run(["osascript", "-e", script])
+
+    def get_battery_status(self):
+        command = "pmset -g batt" if self.os == 'Darwin' else "upower -i /org/freedesktop/UPower/devices/battery_BAT0"
+        try:
+            output = subprocess.check_output(command.split(" ")).decode().strip()
+            return output
+        except subprocess.CalledProcessError:
+            return "Battery status not available."
+
+    def get_clipboard(self):
+        command = "pbpaste"
+        return subprocess.check_output(command.split(" ")).decode().strip()
+
+    def set_clipboard(self, data: str):
+        command = f'echo "{data}" | pbcopy'
+        subprocess.run(command.split(" "), check=True)
+
+
+class _LinuxSystem(_BaseSystem):
+    def __init__(self):
+        super().__init__()
+        self.cpu_brand = self.get_cpu_brand()
+        self.gpu_info = self.get_gpu_info()
+        self.theme = self.get_system_theme()
+
+    def get_cpu_brand(self):
+        try:
+            with open('/proc/cpuinfo') as f:
+                for line in f:
+                    if 'model name' in line:
+                        return line.split(':')[1].strip()
+        except FileNotFoundError:
+            return "Unknown"
+
+    def get_gpu_info(self):
+        command = "lspci | grep VGA"
+        output = subprocess.check_output(command.split(" ")).decode()
+        return output.strip()
+
+    def get_system_theme(self):
+        # This might vary depending on the desktop environment (GNOME example)
+        command = "gsettings get org.gnome.desktop.interface gtk-theme"
+        try:
+            theme = subprocess.check_output(command.split(" ")).decode().strip().strip("'")
+            return "dark" if "dark" in theme.lower() else "light"
+        except subprocess.CalledProcessError:
+            return "light"
+
+    def schedule_event(self, name: str, script_path: str, event_time: Literal["startup", "login"]):
+        """Schedule an event to run at startup or login on Linux."""
+        if event_time == "startup":
+            service_content = f"""
+            [Unit]
+            Description={name}
+            After=network.target
+
+            [Service]
+            ExecStart={script_path}
+            Restart=always
+            User={os.getlogin()}
+
+            [Install]
+            WantedBy=default.target
+            """
+            service_path = f"/etc/systemd/system/{name.replace(' ', '_').lower()}_startup.service"
+            with open(service_path, 'w') as f:
+                f.write(service_content)
+            os.system(f"systemctl enable {service_path}")
+            os.system(f"systemctl start {service_path}")
+        elif event_time == "login":
+            cron_command = f'@reboot {script_path}'
+            subprocess.run(f'(crontab -l; echo "{cron_command}") | crontab -'.split(" "), check=True)
+
+    def send_notification(self, title: str, message: str,
+                          _: Tuple[Tuple[str, str, str], ...] = (("input_arg", "Input", "Hint"),),
+                          __: Tuple[Tuple[str, str, tuple, ..., int], ...] = (("selection_arg", "Sel Display Name", ("selection_name", "Selection Display Name"), 0),),
+                          ___: Tuple[Tuple[str, Callable], ...] = (("Accept", lambda: None), ("Cancel", lambda: None),),
+                          click_callback: Callable = lambda: None):
+        subprocess.run(["notify-send", title, message])
+
+    def get_battery_status(self):
+        command = "pmset -g batt" if self.os == 'Darwin' else "upower -i /org/freedesktop/UPower/devices/battery_BAT0"
+        try:
+            output = subprocess.check_output(command.split(" ")).decode().strip()
+            return output
+        except subprocess.CalledProcessError:
+            return "Battery status not available."
+
+    def get_clipboard(self):
+        command = "xclip -selection clipboard -o"
+        return subprocess.check_output(command.split(" ")).decode().strip()
+
+    def set_clipboard(self, data: str):
+        command = f'echo "{data}" | xclip -selection clipboard'
+        subprocess.run(command.split(" "))
+
+
+class System:
+    @staticmethod
+    def system() -> Union[_WindowsSystem, _DarwinSystem, _LinuxSystem, _BaseSystem]:
+        os_name = platform.system()
+        if os_name == 'Windows':
+            return _WindowsSystem()
+        elif os_name == 'Darwin':
+            return _DarwinSystem()
+        elif os_name == 'Linux':
+            return _LinuxSystem()
+        else:
+            warnings.warn("Unsupported Operating System, returning _BaseSystem instance.", RuntimeWarning, 2)
+            return _BaseSystem()
 
 
 def print_system_info():
-    sys_info = System()
+    sys_info = System.system()
     print(f"Operating System: {sys_info.os}")
-    print(f"OS Version: {sys_info.os_version}")
+    print(f"OS Version: {sys_info.major_os_version}")
     print(f"CPU Architecture: {sys_info.cpu_arch}")
     print(f"CPU Brand: {sys_info.cpu_brand}")
     print(f"System Theme: {sys_info.theme}")
 
 
+def test_notification():
+    system = System.system()
+    system.send_notification("Zenra", "Hello, how are you?", (), (), ())
+
+
+def safe_os_command_execution(command: str) -> str:
+    return subprocess.check_output(command.split(" ")).decode().strip()
+
+
 def local_test():
     try:
         print_system_info()
+        test_notification()
 
         @strict
         class MyCls:
             _attr = ""
         var = MyCls()._attr
-
-        # @functionize
-        # class MyClass:
-        #     def __init__(self, value):
-        #         self.my_attribute = value
-        #         self._my_attr = 1
-
-        #     def adder(self):
-        #         self.my_attribute = 3
-
-        #     def my_method(self, plus):
-        #         return "The value is " + str(self.my_attribute + plus)
-
-        # Creating an instance as a function
-        # my_instance = MyClass(10)
-
-        # print(my_instance['my_attribute'])  # Accessing attribute
-        # print(my_instance['my_method'](3))  # Calling method
-        # my_instance['adder']()
-        # print(my_instance['my_attribute'])
     except AttributeError:
         print("Test completed successfully.")
         return True
