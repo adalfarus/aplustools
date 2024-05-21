@@ -186,6 +186,15 @@ def bytes_to_human_readable_decimal_si(size: int) -> str:
         size /= 1000
 
 
+def bits_to_human_readable(size: float) -> str:
+    """Convert bits to a human-readable string using SI units."""
+    units = ['bps', 'Kbps', 'Mbps', 'Gbps', 'Tbps']
+    for unit in units:
+        if size < 1000 or unit == units[-1]:  # Ensure we don't exceed the last unit
+            return f"{size:.2f} {unit}"
+        size /= 1000
+
+
 if __name__ == "__main__":
     bit = nice_bits(encode("Hello you world!"), True, 6, True, True)
     bitss = bits(encode_float(0.3))
