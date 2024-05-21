@@ -168,12 +168,22 @@ def what_func(func, type_names: bool = False):
     print(f"{func.__module__}.{endpoint.name}({arguments_str}){(' -> ' + str(endpoint.return_type)) if endpoint.return_type is not None else ''}")
 
 
-def bytes_to_human_readable(size: int) -> str:
+def bytes_to_human_readable_binary_iec(size: int) -> str:
     """Convert bytes to a human-readable string."""
-    for unit in ['B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB']:
-        if size < 1024:
+    units = ['B', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB', 'EiB', 'ZiB', 'YiB']
+    for unit in units:
+        if size < 1024 or unit == units[-1]:
             return f"{size:.2f} {unit}"
         size /= 1024
+
+
+def bytes_to_human_readable_decimal_si(size: int) -> str:
+    """Convert bytes to a human-readable string."""
+    units = ['B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB', 'RB', 'QB']
+    for unit in units:
+        if size < 1000 or unit == units[-1]:
+            return f"{size:.2f} {unit}"
+        size /= 1000
 
 
 if __name__ == "__main__":
