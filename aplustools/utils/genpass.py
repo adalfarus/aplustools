@@ -13,7 +13,7 @@ import base64
 import time
 import struct
 import datetime
-from typing import Tuple, List, Literal, Optional, Union, Dict
+from typing import Tuple, List, Literal, Optional, Union, Dict, Any, Callable
 import threading
 import re
 import errno
@@ -23,6 +23,7 @@ import secrets
 import string
 import random
 from enum import Enum
+import math
 
 
 class PortUtils:
@@ -336,6 +337,7 @@ class SecureSocketServer:
             self._connection = None
         else:
             self._connection = self._connection.conn
+        self._key_exchange_done = False
 
     def start_and_exchange_keys(self):
         self._setup_connection()
@@ -377,8 +379,7 @@ class SecureSocketServer:
             print(f"Error in _receive_public_key_and_start_communication: {e}")
 
     def _receive_public_key(self):
-        client_public_key_bytes = ""
-        while not client_public_key_bytes and not self._encoder:
+        while not self._key_exchange_done and not self._encoder:
             try:
                 # Receive client's public key here
                 encrypted_client_public_key_bytes = self._connection.recv(739)
@@ -391,8 +392,10 @@ class SecureSocketServer:
 
                 self._encoder = MessageEncoder(self._protocol, client_public_key_bytes, self._chunk_size)
                 print(f"Received key from client: {client_public_key_bytes}")
+                self._key_exchange_done = True
             except Exception as e:
                 print(f"Error receiving public key: {e}")
+                self._key_exchange_done = False
 
     def _check_rate_limit(self):
         current_time = datetime.datetime.now()
@@ -433,7 +436,7 @@ class SecureSocketServer:
                 print(f"Error in listen_for_messages: {e}")
 
     def shutdown_client(self):
-        while not self._encoder:
+        while not self._encoder or not self._key_exchange_done:
             time.sleep(0.1)
         self._encoder.add_message(self._protocol.get_control_code("shutdown"))  # Bad practice, this will result in
         chunks = self._encoder.flush()              # an empty string, followed by an end cc and then the cc you want.
@@ -456,7 +459,7 @@ class SecureSocketClient:
         self._host = forced_host
         self._port = PortUtils.find_available_port() if not forced_port else forced_port
         self._connection = None
-        self._connection_established = False
+        self._connection_established = self._key_exchange_done = False
 
         self._decoder = MessageDecoder(protocol, _chunk_size, private_key_bytes_overwrite)
         self._encoder = None
@@ -513,17 +516,16 @@ class SecureSocketClient:
                 time.sleep(5)  # Wait before retrying
 
     def _send_public_key(self):
-        send = False
-        while not send:
+        while not self._key_exchange_done:
             try:
                 aes_key = CryptUtils.generate_aes_key(128)
                 encrypted_public_key_bytes = CryptUtils.pack_ae_data(*CryptUtils.aes_encrypt(self._decoder.get_public_key_bytes(), aes_key))
                 encrypted_aes_key = CryptUtils.rsa_encrypt(aes_key, self._encoder.get_public_key())
                 self._connection.send(len(encrypted_aes_key).to_bytes(2, "big") + encrypted_aes_key + encrypted_public_key_bytes)
-                send = True
+                self._key_exchange_done = True
             except Exception as e:
                 print(f"Error in _send_public_key: {e}")
-                send = False
+                self._key_exchange_done = False
 
     def _listen_for_messages(self):
         while self._connection_established:
@@ -556,7 +558,7 @@ class SecureSocketClient:
 
     def sendall(self):
         # Wait until the connection is established
-        while not self._connection_established:
+        while not self._connection_established or not self._key_exchange_done:
             time.sleep(0.01)  # Wait briefly and check again
 
         if hasattr(self, '_connection'):
@@ -1269,7 +1271,7 @@ class ClientStream:
 #     client.close_connection()
 
 
-class Database:
+class SecureDatabase:
     def __init__(self):
         raise NotImplementedError("This class isn't fully implemented yet, check back in version 1.5")
 
@@ -1693,6 +1695,391 @@ class SecurePasswordManager:
         password = ''.join(word_chars) + extra_char + num_string + special_chars_string
         self.debug_print("Final password:", password)
         return password
+
+
+class OSRandomGenerator:
+    @staticmethod
+    def random() -> float:
+        return int.from_bytes(os.urandom(7), "big") / (1 << 56)
+
+    @classmethod
+    def uniform(cls, a: float, b: float) -> float:
+        return a + (b - a) * cls.random()
+
+    @classmethod
+    def randint(cls, a: int, b: int) -> int:
+        return math.floor(cls.uniform(a, b + 1))
+
+    @classmethod
+    def randbelow(cls, b: int) -> int:
+        return cls.randint(0, b)
+
+    @classmethod
+    def choice(cls, seq: Union[tuple, list, dict]) -> Any:
+        if not isinstance(seq, dict):
+            return seq[cls.randint(0, len(seq) - 1)]
+        return seq[tuple(seq.keys())[cls.randint(0, len(seq) - 1)]]
+
+    @classmethod
+    def gauss(cls, mu: float, sigma: float) -> float:
+        # Using Box-Muller transform for generating Gaussian distribution
+        u1 = cls.random()
+        u2 = cls.random()
+        z0 = math.sqrt(-2.0 * math.log(u1)) * math.cos(2.0 * math.pi * u2)
+        return mu + z0 * sigma
+
+    @classmethod
+    def expovariate(cls, lambd: float) -> float:
+        u = cls.random()
+        return -math.log(1 - u) / lambd
+
+    @classmethod
+    def gammavariate(cls, alpha: float, beta: float) -> float:
+        # Uses Marsaglia and Tsang’s method for generating Gamma variables
+        if alpha > 1:
+            d = alpha - 1/3
+            c = 1/math.sqrt(9*d)
+            while True:
+                x = cls.gauss(0, 1)
+                v = (1 + c*x)**3
+                u = cls.random()
+                if u < 1 - 0.0331*(x**2)**2:
+                    return d*v / beta
+                if math.log(u) < 0.5*x**2 + d*(1 - v + math.log(v)):
+                    return d*v / beta
+        elif alpha == 1.0:
+            return -math.log(cls.random()) / beta
+        else:
+            while True:
+                u = cls.random()
+                b = (math.e + alpha)/math.e
+                p = b*u
+                if p <= 1:
+                    x = p**(1/alpha)
+                else:
+                    x = -math.log((b-p)/alpha)
+                u1 = cls.random()
+                if p > 1:
+                    if u1 <= x**(alpha - 1):
+                        return x / beta
+                elif u1 <= math.exp(-x):
+                    return x / beta
+
+    @classmethod
+    def betavariate(cls, alpha: float, beta: float) -> float:
+        """
+        Generate a random number based on the Beta distribution with parameters alpha and beta.
+
+        :param alpha: Alpha parameter of the Beta distribution.
+        :param beta: Beta parameter of the Beta distribution.
+        :return: Random number from the Beta distribution.
+        """
+        y1 = cls.gammavariate(alpha, 1.0)
+        y2 = cls.gammavariate(beta, 1.0)
+        return y1 / (y1 + y2)
+
+    @classmethod
+    def lognormvariate(cls, mean: float, sigma: float) -> float:
+        """
+        Generate a random number based on the log-normal distribution with specified mean and sigma.
+
+        :param mean: Mean of the underlying normal distribution.
+        :param sigma: Standard deviation of the underlying normal distribution.
+        :return: Random number from the log-normal distribution.
+        """
+        normal_value = cls.gauss(mean, sigma)
+        return math.exp(normal_value)
+
+
+class WeightedRandom:
+    def __init__(self, generator: Literal["weak", "os", "strong"] = "strong"):
+        self._generator = {"weak": random, "os": OSRandomGenerator, "strong": secrets.SystemRandom()}[generator]
+
+    @staticmethod
+    def _transform_and_scale(x: float, transform_func: Callable[[float], float], lower_bound: Union[float, int],
+                             upper_bound: Union[float, int]) -> float:
+        """
+        Apply the transformation function to the random value and scale it within the given bounds.
+
+        :param x: The initial random value (between 0 and 1).
+        :param transform_func: The function to transform the value.
+        :param lower_bound: The lower bound of the output range.
+        :param upper_bound: The upper bound of the output range.
+        :return: Transformed and scaled value.
+        """
+        transformed_value = transform_func(x)
+        scaled_value = lower_bound + (upper_bound - lower_bound) * transformed_value
+        return scaled_value
+
+    def gaussian(self, lower_bound: Union[float, int] = 0, upper_bound: Union[float, int] = 1,
+                 mu: Union[float, int] = 0, sigma: Union[float, int] = 1) -> float:
+        """
+        Generate a random number based on the normal (Gaussian) distribution and scale it within the specified bounds.
+
+        :param lower_bound: Lower bound of the scaled range.
+        :param upper_bound: Upper bound of the scaled range.
+        :param mu: Mean of the distribution.
+        :param sigma: Standard deviation of the distribution.
+        :return: Scaled random number from the normal distribution.
+        """
+        return self._transform_and_scale(self._generator.random(), lambda x: self._generator.gauss(mu, sigma),
+                                         lower_bound, upper_bound)
+
+    def quadratic(self, lower_bound: Union[float, int] = 0, upper_bound: Union[float, int] = 1) -> float:
+        """
+        Generate a random number based on a quadratic distribution and scale it within the specified bounds.
+
+        :param lower_bound: Lower bound of the scaled range.
+        :param upper_bound: Upper bound of the scaled range.
+        :return: Scaled random number from the quadratic distribution.
+        """
+        return self._transform_and_scale(self._generator.random(), lambda x: x ** 2, lower_bound, upper_bound)
+
+    def cubic(self, lower_bound: Union[float, int] = 0, upper_bound: Union[float, int] = 1) -> float:
+        """
+        Generate a random number based on a cubic distribution and scale it within the specified bounds.
+
+        :param lower_bound: Lower bound of the scaled range.
+        :param upper_bound: Upper bound of the scaled range.
+        :return: Scaled random number from the cubic distribution.
+        """
+        return self._transform_and_scale(self._generator.random(), lambda x: x ** 3, lower_bound, upper_bound)
+
+    def exponential(self, lower_bound: Union[float, int] = 0, upper_bound: Union[float, int] = 1, lambd: float = 1.0
+                    ) -> float:
+        """
+        Generate a random number based on the exponential distribution and scale it within the specified bounds.
+
+        :param lower_bound: Lower bound of the scaled range.
+        :param upper_bound: Upper bound of the scaled range.
+        :param lambd: Lambda parameter (1/mean) of the distribution.
+        :return: Scaled random number from the exponential distribution.
+        """
+        return self._transform_and_scale(self._generator.random(), lambda x: self._generator.expovariate(lambd),
+                                         lower_bound, upper_bound)
+
+    def falling(self, lower_bound: Union[float, int] = 0, upper_bound: Union[float, int] = 1) -> float:
+        """
+        Generate a random number based on a falling distribution and scale it within the specified bounds.
+        """
+        return self._transform_and_scale(self._generator.random(), lambda x: 1 - x, lower_bound, upper_bound)
+
+    def sloping(self, lower_bound: Union[float, int] = 0, upper_bound: Union[float, int] = 1) -> float:
+        """
+        Generate a random number based on a sloping distribution and scale it within the specified bounds.
+        """
+        return self._transform_and_scale(self._generator.random(), lambda x: x ** 2, lower_bound, upper_bound)
+
+    def exponential_falling(self, lower_bound: Union[float, int] = 0, upper_bound: Union[float, int] = 1,
+                            lambd: float=1.0) -> float:
+        """
+        Generate a random number based on a falling exponential distribution and scale it within the specified bounds.
+        """
+        return self._transform_and_scale(self._generator.random(), lambda x: 1 - self._generator.expovariate(lambd), lower_bound, upper_bound)
+
+    def quadratic_falling(self, lower_bound: Union[float, int] = 0, upper_bound: Union[float, int] = 1) -> float:
+        """
+        Generate a random number based on a quadratic distribution and scale it within the specified bounds.
+
+        :param lower_bound: Lower bound of the scaled range.
+        :param upper_bound: Upper bound of the scaled range.
+        :return: Scaled random number from the quadratic distribution.
+        """
+        return self._transform_and_scale(self._generator.random(), lambda x: 1 - x ** 2, lower_bound, upper_bound)
+
+    def cubic_falling(self, lower_bound: Union[float, int] = 0, upper_bound: Union[float, int] = 1) -> float:
+        """
+        Generate a random number based on a falling cubic distribution and scale it within the specified bounds.
+        """
+        return self._transform_and_scale(self._generator.random(), lambda x: 1 - x ** 3, lower_bound, upper_bound)
+
+    def functional(self, math_func: Callable, lower_bound: Union[float, int] = 0, upper_bound: Union[float, int] = 1
+                   ) -> float:
+        """
+        Generate a random number based on a user-defined mathematical function and scale it within the specified bounds.
+
+        :param math_func: Callable mathematical function that takes a random number between 0 and 1 and transforms it.
+        :param lower_bound: Lower bound of the scaled range.
+        :param upper_bound: Upper bound of the scaled range.
+        :return: Scaled transformed random number.
+        """
+        return self._transform_and_scale(self._generator.random(), math_func, lower_bound, upper_bound)
+
+    def uniform(self, lower_bound: Union[float, int] = 0.0, upper_bound: Union[float, int] = 1.0) -> float:
+        """
+        Generate a random number based on the uniform distribution.
+
+        :param lower_bound: Lower bound of the uniform distribution.
+        :param upper_bound: Upper bound of the uniform distribution.
+        :return: Random number from the uniform distribution.
+        """
+        return self._generator.uniform(lower_bound, upper_bound)
+
+    def randint(self, lower_bound: int, upper_bound: int) -> int:
+        """
+        Generate a random integer between lower_bound and upper_bound (inclusive).
+
+        :param lower_bound: Lower bound of the range.
+        :param upper_bound: Upper bound of the range.
+        :return: Random integer between lower_bound and upper_bound.
+        """
+        return self._generator.randint(lower_bound, upper_bound)
+
+    def choice(self, seq) -> Any:
+        """
+        Choose a random element from a non-empty sequence.
+
+        :param seq: Sequence to choose from.
+        :return: Randomly selected element from the sequence.
+        """
+        return self._generator.choice(seq)
+
+    def linear_transform(self, slope: float, intercept: float, lower_bound: Union[float, int] = 0,
+                         upper_bound: Union[float, int] = 1) -> float:
+        """
+        Generate a random number based on a linear transformation and scale it within the specified bounds.
+
+        :param slope: Slope of the linear transformation.
+        :param intercept: Intercept of the linear transformation.
+        :param lower_bound: Lower bound of the scaled range.
+        :param upper_bound: Upper bound of the scaled range.
+        :return: Scaled random number from the linear transformation.
+        """
+        return self._transform_and_scale(self._generator.random(), lambda x: slope * x + intercept, lower_bound, upper_bound)
+
+    def triangular(self, lower_bound: Union[float, int] = 0, upper_bound: Union[float, int] = 1, mode: float = 0.5
+                   ) -> float:
+        """
+        Generate a random number based on a triangular distribution and scale it within the specified bounds.
+
+        :param lower_bound: Lower bound of the scaled range.
+        :param upper_bound: Upper bound of the scaled range.
+        :param mode: The value where the peak of the distribution occurs.
+        :return: Scaled random number from the triangular distribution.
+        """
+        return self._transform_and_scale(self._generator.random(), lambda x: self._generator.uniform(lower_bound, mode) if x < 0.5 else self._generator.uniform(mode, upper_bound), lower_bound, upper_bound)
+
+    def beta(self, alpha: float, beta: float, lower_bound: Union[float, int] = 0, upper_bound: Union[float, int] = 1
+             ) -> float:
+        """
+        Generate a random number based on a beta distribution and scale it within the specified bounds.
+
+        :param alpha: Alpha parameter of the beta distribution.
+        :param beta: Beta parameter of the beta distribution.
+        :param lower_bound: Lower bound of the scaled range.
+        :param upper_bound: Upper bound of the scaled range.
+        :return: Scaled random number from the beta distribution.
+        """
+        return self._transform_and_scale(self._generator.random(), lambda x: self._generator.betavariate(alpha, beta), lower_bound, upper_bound)
+
+    def log_normal(self, mean: float, sigma: float, lower_bound: Union[float, int] = 0,
+                   upper_bound: Union[float, int] = 1) -> float:
+        """
+        Generate a random number based on a log-normal distribution and scale it within the specified bounds.
+
+        :param mean: Mean of the underlying normal distribution.
+        :param sigma: Standard deviation of the underlying normal distribution.
+        :param lower_bound: Lower bound of the scaled range.
+        :param upper_bound: Upper bound of the scaled range.
+        :return: Scaled random number from the log-normal distribution.
+        """
+        return self._transform_and_scale(self._generator.random(), lambda x: self._generator.lognormvariate(mean, sigma), lower_bound, upper_bound)
+
+    def sinusoidal(self, lower_bound: Union[float, int] = 0, upper_bound: Union[float, int] = 1) -> float:
+        """
+        Generate a random number based on a sinusoidal distribution and scale it within the specified bounds.
+
+        :param lower_bound: Lower bound of the scaled range.
+        :param upper_bound: Upper bound of the scaled range.
+        :return: Scaled random number from the sinusoidal distribution.
+        """
+        return self._transform_and_scale(self._generator.random(), lambda x: 0.5 * (1 + math.sin(2 * math.pi * x - math.pi / 2)), lower_bound, upper_bound)
+
+    def piecewise_linear(self, breakpoints: List[float], slopes: List[float], lower_bound: Union[float, int] = 0,
+                         upper_bound: Union[float, int] = 1) -> float:
+        """
+        Generate a random number based on a piecewise linear function and scale it within the specified bounds.
+
+        :param breakpoints: List of breakpoints for the piecewise linear function.
+        :param slopes: List of slopes for each segment of the piecewise linear function.
+        :param lower_bound: Lower bound of the scaled range.
+        :param upper_bound: Upper bound of the scaled range.
+        :return: Scaled random number from the piecewise linear function.
+        """
+        def piecewise(x):
+            for i, breakpoint in enumerate(breakpoints):
+                if x < breakpoint:
+                    return slopes[i] * (x - (breakpoints[i-1] if i > 0 else 0))
+            return slopes[-1] * (x - breakpoints[-1])
+
+        return self._transform_and_scale(self._generator.random(), piecewise, lower_bound, upper_bound)
+
+
+if __name__ == "__main__":
+    # Test with default generator (strong)
+    print("Testing with strong generator:")
+    strong_rng = WeightedRandom("strong")
+    print("Gaussian:", strong_rng.gaussian(0, 1, 0, 1))
+    print("Cubic:", strong_rng.cubic(0, 1))
+    print("Exponential:", strong_rng.exponential(0, 1, 1.0))
+    print("Falling:", strong_rng.falling(0, 1))
+    print("Sloping:", strong_rng.sloping(0, 1))
+    print("Exponential Falling:", strong_rng.exponential_falling(0, 1, 1.0))
+    print("Cubic Falling:", strong_rng.cubic_falling(0, 1))
+    print("Functional (x^2):", strong_rng.functional(lambda x: x ** 2, 0, 1))
+    print("Uniform:", strong_rng.uniform(1, 10))
+    print("Integer:", strong_rng.integer(1, 10))
+    print("Choice:", strong_rng.choice([1, 2, 3, 4, 5]))
+    print("Linear Transform:", strong_rng.linear_transform(2, 1, 0, 1))
+    print("Triangular:", strong_rng.triangular(0, 1, 0.5))
+    print("Beta:", strong_rng.beta(2, 5, 0, 1))
+    print("Log Normal:", strong_rng.log_normal(0, 1, 0, 1))
+    print("Sinusoidal:", strong_rng.sinusoidal(0, 1))
+    print("Piecewise Linear:", strong_rng.piecewise_linear([0.3, 0.7], [1, -1], 0, 1))
+
+    # Test with weak generator
+    print("\nTesting with weak generator:")
+    weak_rng = WeightedRandom("weak")
+    print("Gaussian:", weak_rng.gaussian(0, 1, 0, 1))
+    print("Cubic:", weak_rng.cubic(0, 1))
+    print("Exponential:", weak_rng.exponential(0, 1, 1.0))
+    print("Falling:", weak_rng.falling(0, 1))
+    print("Sloping:", weak_rng.sloping(0, 1))
+    print("Exponential Falling:", weak_rng.exponential_falling(0, 1, 1.0))
+    print("Cubic Falling:", weak_rng.cubic_falling(0, 1))
+    print("Functional (x^2):", weak_rng.functional(lambda x: x ** 2, 0, 1))
+    print("Uniform:", weak_rng.uniform(1, 10))
+    print("Integer:", weak_rng.integer(1, 10))
+    print("Choice:", weak_rng.choice([1, 2, 3, 4, 5]))
+    print("Linear Transform:", weak_rng.linear_transform(2, 1, 0, 1))
+    print("Triangular:", weak_rng.triangular(0, 1, 0.5))
+    print("Beta:", weak_rng.beta(2, 5, 0, 1))
+    print("Log Normal:", weak_rng.log_normal(0, 1, 0, 1))
+    print("Sinusoidal:", weak_rng.sinusoidal(0, 1))
+    print("Piecewise Linear:", weak_rng.piecewise_linear([0.3, 0.7], [1, -1], 0, 1))
+
+    # Test with OS generator
+    print("\nTesting with OS generator:")
+    os_rng = WeightedRandom("os")
+    print("Gaussian:", os_rng.gaussian(0, 1, 0, 1))
+    print("Cubic:", os_rng.cubic(0, 1))
+    print("Exponential:", os_rng.exponential(0, 1, 1.0))
+    print("Falling:", os_rng.falling(0, 1))
+    print("Sloping:", os_rng.sloping(0, 1))
+    print("Exponential Falling:", os_rng.exponential_falling(0, 1, 1.0))
+    print("Cubic Falling:", os_rng.cubic_falling(0, 1))
+    print("Functional (x^2):", os_rng.functional(lambda x: x ** 2, 0, 1))
+    print("Uniform:", os_rng.uniform(1, 10))
+    print("Integer:", os_rng.integer(1, 10))
+    print("Choice:", os_rng.choice([1, 2, 3, 4, 5]))
+    print("Linear Transform:", os_rng.linear_transform(2, 1, 0, 1))
+    print("Triangular:", os_rng.triangular(0, 1, 0.5))
+    print("Beta:", os_rng.beta(2, 5, 0, 1))
+    print("Log Normal:", os_rng.log_normal(0, 1, 0, 1))
+    print("Sinusoidal:", os_rng.sinusoidal(0, 1))
+    print("Piecewise Linear:", os_rng.piecewise_linear([0.3, 0.7], [1, -1], 0, 1))
+
+    print("MYNE", round(strong_rng.exponential(0.1, 10, 5.0), 1))
 
 
 class CharSet(Enum):

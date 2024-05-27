@@ -93,6 +93,25 @@ with open(os.path.join(folder_path, './image_async.png'), 'wb') as file:
 
 ```
 
+```python
+from aplustools.data import what_func, nice_bits, encode_positive_int
+
+what_func(nice_bits)
+>>> aplustools.data._direct_functions.nice_bits(bytes_like: bytes = None, spaced: bool = False, wrap_count: int = 0, to_chars: bool = False, edge_space: bool = False) -> <class 'str'>
+nice_bits(int(10_000).to_bytes(2, "big"), True, 4, True, True)
+>>> " 00100111 00010000                    '\x10"
+nice_bits(int(100_000).to_bytes(3, "big"), True, 4, True, True)
+>>> ' 00000001 10000110 10100000           \x01\x86\xa0'
+nice_bits(int(100_000).to_bytes(300, "big"), True, 4, True, True)
+>>> ' 00000001 10000110 10100000           \x01\x86\xa0'  # NUL bytes will be ignored
+nice_bits(encode_positive_int(1_293_781_273_712_321), True, 4, True, True)
+>>> ' 00000100 10011000 10101111 11101101  \x04\x98¯í\n 00111100 10010110 11000001           <\x96Á'
+print(nice_bits(encode_positive_int(1_293_781_273_712_321), True, 4, True, True))
+>>> 00000100 10011000 10101111 11101101  ¯í
+>>> 00111100 10010110 11000001           <Á
+
+```
+
 ### ImageManager
 ````python
 from aplustools.data.imagetools import ImageManager, OnlineImage
