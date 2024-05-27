@@ -27,18 +27,18 @@ def decode_float(bytes_like: bytes) -> float:
 
 
 def encode_int(num: int, overwrite_signed: bool = False) -> bytes:
-    byte_size = (num.bit_length() + 8) // 8  # Determine the required number of bytes
-    return num.to_bytes(byte_size, 'big', signed=(True if num < 0 else False) or overwrite_signed)
+    byte_size = (num.bit_length() + 7) // 8  # Determine the required number of bytes
+    return num.to_bytes(byte_size if num != 0 else 1, 'big', signed=(True if num < 0 else False) or overwrite_signed)
 
 
 def encode_positive_int(num: int) -> bytes:
-    byte_size = (num.bit_length() + 8) // 8  # Determine the required number of bytes
-    return num.to_bytes(byte_size, 'big')
+    byte_size = (num.bit_length() + 7) // 8  # Determine the required number of bytes
+    return num.to_bytes(byte_size if num != 0 else 1, 'big')
 
 
 def encode_possible_negative_int(num: int) -> bytes:
-    byte_size = (num.bit_length() + 8) // 8  # Determine the required number of bytes
-    return num.to_bytes(byte_size, 'big', signed=True)
+    byte_size = (num.bit_length() + 7) // 8  # Determine the required number of bytes
+    return num.to_bytes(byte_size if num != 0 else 1, 'big', signed=True)
 
 
 def decode_int(bytes_like: bytes, signed: bool = False) -> int:
@@ -65,12 +65,15 @@ def decode(bytes_like: bytes, return_int: bool = False) -> _Union[int, str]:
     return decode_int(bytes_like)
 
 
-def bits(bytes_like: bytes) -> list:
+def bits(bytes_like: _typing.Union[bytes, bytearray]) -> list:
+    bytes_like = bytes_like if isinstance(bytes_like, bytes) else bytes(bytes_like)
     binary = "00000000" + bin(int.from_bytes(bytes_like))[2:]
     return list(reversed([binary[i-8:i] for i in range(len(binary), 0, -8)[:-1]]))
 
 
-def nice_bits(bytes_like: bytes, spaced: bool = False, wrap_count: int = 0, to_chars: bool = False, edge_space: bool = False) -> str:#
+def nice_bits(bytes_like: _typing.Union[bytes, bytearray], spaced: bool = False, wrap_count: int = 0,
+              to_chars: bool = False, edge_space: bool = False) -> str:
+    bytes_like = bytes_like if isinstance(bytes_like, bytes) else bytes(bytes_like)
     this = [""] + bits(bytes_like)
     i = 0
     wrap_count = wrap_count if wrap_count > 0 else len(this) - 1
@@ -195,6 +198,43 @@ def bits_to_human_readable(size: float) -> str:
         size /= 1000
 
 
+def iterbytes(bytes_like: _typing.Union[bytes, bytearray]):
+    for byte in bytes_like:
+        yield chr(byte).encode()
+
+
+def set_bits(bytes_like: _typing.Union[bytes, bytearray], start_position: int, bits: str,
+             byte_order: _typing.Literal["big", "little"] = "big", return_bytearray: bool = False,
+             auto_expand: bool = False):
+    byte_arr = bytearray(bytes_like) if not isinstance(bytes_like, bytearray) else bytes_like
+    for i, bit in zip(range(start_position, start_position + len(bits)), [int(char) for char in bits]):
+        byte_index = i // 8
+        bit_index = i % 8 if byte_order == "little" else ((len(bytes_like) * 8) - i % 8) - 1
+        bit_index -= (((len(bytes_like) - 1) - byte_index) * 8)
+        if byte_index >= len(byte_arr) and auto_expand:
+            if byte_order == "big":
+                byte_arr.append(0)
+            else:
+                byte_arr = bytearray(1) + byte_arr
+        if bit:
+            byte_arr[byte_index] |= (1 << (bit_index - (byte_index * 8)))
+        else:
+            byte_arr[byte_index] &= ~(1 << bit_index - (byte_index * 8))
+    return bytes(byte_arr) if not return_bytearray else byte_arr
+
+
+def bytes_length(data: _typing.Union[int, float, str]) -> int:
+    total_length = 0
+    if isinstance(data, str):
+        for char in data:
+            total_length += (ord(char).bit_length() + 7) // 8
+    elif isinstance(data, float):
+        total_length = len(encode_float(data))
+    else:
+        total_length = (data.bit_length() + 7) // 8
+    return total_length
+
+
 if __name__ == "__main__":
     bit = nice_bits(encode("Hello you world!"), True, 6, True, True)
     bitss = bits(encode_float(0.3))
@@ -220,4 +260,6 @@ if __name__ == "__main__":
     def func(x: _typing.Optional[1] = None, u: _typing.Union[8, 1] = 1):
         pass
     what_func(func)
+
+    print(bits(set_bits(int(255).to_bytes(1, "big"), 0, "0000000")))
 
