@@ -667,6 +667,20 @@ def safe_os_command_execution(command: str) -> str:
     return subprocess.check_output(command.split(" ")).decode().strip()
 
 
+def safe_exec(command: str) -> str:
+    """
+    Execute a command safely by using subprocess and splitting the input string.
+
+    :param command: The command string to be executed.
+    """
+    try:
+        # Split the command by spaces and run it using subprocess
+        result = subprocess.run(command.split(), check=True, capture_output=True, text=True)
+        return result.stdout
+    except subprocess.CalledProcessError as e:
+        return f"An error occurred: {e}"
+
+
 def local_test():
     try:
         print_system_info()
