@@ -444,7 +444,11 @@ class SecureSocketServer:
                         break
                     elif chunk.code == "input":
                         inp = input(chunk.add)
-                        self._connection.sendall(inp.encode("utf-8"))
+                        self._encoder.add_message(inp)
+
+                        encoded_blocks = self._encoder.flush()
+                        for block in encoded_blocks:
+                            self._connection.send(block)
             except Exception as e:
                 if not self._cleanup:
                     print(f"Error in SSS._listen_for_messages: {e}")
@@ -575,7 +579,11 @@ class SecureSocketClient:
                 chunks = self._decoder.get_complete()
 
                 for chunk in chunks:
-                    if type(chunk) is not str and chunk.code == "shutdown":
+                    if type(chunk) is str:
+                        print(chunk, end="")
+                    elif chunk.code == "end":
+                        print("\n", end="")
+                    elif type(chunk) is not str and chunk.code == "shutdown":
                         print("Shutting down client")
                         self.close_connection()
                         break  # breaking is equal to a shutdown
@@ -612,10 +620,10 @@ class SecureSocketClient:
             time.sleep(0.01)
         self._encoder.add_message(message)
 
-    def add_control_code(self, code):
+    def add_control_code(self, code, add_in: str = None):
         while self._encoder is None:
             time.sleep(0.01)
-        self._encoder.add_control_message(code)
+        self._encoder.add_control_message(code, add_in)
 
     def sendall(self):
         # Wait until the connection is established
