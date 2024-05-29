@@ -302,7 +302,7 @@ class ControlCodeProtocol:
         return ControlCodeProtocol(data["comm_code"], data["exec_delimiter"], data["exc_code_start"], data["exc_code_end"], data["status_codes"])
 
 
-class ControlCode:
+class _ControlCode:
     def __init__(self, control_code: str, add_in: str):
         self.code = control_code
         self.add = add_in
@@ -324,66 +324,65 @@ class SecureSocketServer:
         self._last_timestamp = datetime.datetime.now()
         self.rate_limit = 10  # Allow 10 messages per second
 
-        self._connection = connection
-        self._host = None
-        self._port = None
+        self._connection = None
+        self._undef_socket = connection.conn
+
+        if isinstance(self._undef_socket, socket.socket):
+            self._connection = self._undef_socket
+            self._undef_socket = self._connection.getpeername()
 
         self._decoder = MessageDecoder(protocol, _chunk_size, private_key_bytes_overwrite)
         self._encoder = None
         self._protocol = protocol
         self._chunk_size = _chunk_size
 
-        if type(self._connection.conn) is not socket.socket:
-            self._host, self._port = self._connection.conn
-            self._connection = None
-        else:
-            self._connection = self._connection.conn
         self._key_exchange_done = False
         self._comm_thread = None
-        self._cleanup = False
 
-    def start_and_exchange_keys(self, start_in_new_thread: bool = True):
-        self._setup_connection()
-        self._send_public_key()
-        if start_in_new_thread:
-            self._comm_thread = threading.Thread(target=self._receive_public_key_and_start_communication)
-            self._comm_thread.start()
-        else:
-            self._receive_public_key_and_start_communication()
+    def is_setup(self):
+        return self._connection is not None
+
+    def is_fully_setup(self):
+        return self._key_exchange_done
+
+    def is_shutdown(self):
+        return self._connection is None
+
+    def get_host(self):
+        return self._undef_socket[0]
+
+    def get_port(self):
+        return self._undef_socket[1]
+
+    def get_socket(self):
+        return UndefinedSocket(self._undef_socket)
+
+    def get_connected_socket(self):
+        if self._connection is not None:
+            return UndefinedSocket(self._connection)
+        raise ValueError("Server unconnected")
 
     def _setup_connection(self):
-        if self._connection is not None:
-            return
-
         while not isinstance(self._connection, socket.socket):
             try:
                 server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                server_socket.bind((self._host, self._port))
+                server_socket.bind(self._undef_socket)
                 server_socket.listen(1)
-                print(f"Server listening on {self._host}:{self._port}...")
+
                 self._connection, addr = server_socket.accept()
-                print(f"Connection established with {addr}")
             except Exception as e:
                 print(f"Error setting up connection: {e}. Retrying in 5 seconds ...")
+                self._connection = None  # Making sure no faulty socket gets trough
                 time.sleep(5)
 
     def _send_public_key(self):
-        send = False
-        while not send:
+        while True:
             try:
                 self._connection.sendall(self._decoder.get_public_key_bytes())
-                print("Sent public key to client")
-                send = True
             except Exception as e:
                 print(f"Error sending public key: {e}")
-                send = False
-
-    def _receive_public_key_and_start_communication(self):
-        try:
-            self._receive_public_key()
-            self._listen_for_messages()
-        except Exception as e:
-            print(f"Error in _receive_public_key_and_start_communication: {e}")
+            else:
+                break
 
     def _receive_public_key(self):
         while not self._key_exchange_done and not self._encoder:
@@ -398,11 +397,11 @@ class SecureSocketServer:
                 client_public_key_bytes = CryptUtils.aes_decrypt(*CryptUtils.unpack_ae_data(rest_data), key=aes_key)
 
                 self._encoder = MessageEncoder(self._protocol, client_public_key_bytes, self._chunk_size)
-                print(f"Received key from client: {client_public_key_bytes}")
                 self._key_exchange_done = True
             except Exception as e:
                 print(f"Error receiving public key: {e}")
                 self._key_exchange_done = False
+                self._encoder = None
 
     def _check_rate_limit(self):
         current_time = datetime.datetime.now()
@@ -412,54 +411,69 @@ class SecureSocketServer:
         return True
 
     def _listen_for_messages(self):
-        while not self._cleanup and self._connection:
+        while self._connection is not None:
             try:
-                while self._connection:
-                    if not self._cleanup:
-                        try:
-                            encrypted_chunk = self._connection.recv(self._chunk_size)
-                        except socket.error as e:
-                            if e.errno == 10054:
-                                print("Connection was forcibly closed by the remote host")
-                                self._cleanup = True
-                                break
-                            else:
-                                raise
-
-                    if not encrypted_chunk:
+                try:
+                    encrypted_chunk = self._connection.recv(self._chunk_size)
+                except socket.error as e:
+                    if e.errno == 10054:
+                        print("Connection was forcibly closed by the remote host")
+                        self.close_connection()
                         break
+                    else:
+                        raise e
 
-                    # Check rate limiting
-                    if not self._check_rate_limit():
-                        raise Exception("Rate limit exceeded")
+                if not encrypted_chunk:
+                    break
 
-                    self._decoder.add_chunk(encrypted_chunk)
-                    chunks = self._decoder.get_complete()
+                # Check rate limiting
+                if not self._check_rate_limit():
+                    raise Exception("Rate limit exceeded")
 
-                    for chunk in chunks:
-                        if type(chunk) is str:
-                            print(chunk, end="")
-                        elif chunk.code == "end":
-                            print("\n", end="")
-                        elif chunk.code == "shutdown":
-                            print("Shutting down server")
-                            self._cleanup = True
-                            break
-                        elif chunk.code == "input":
-                            inp = input(chunk.add)
-                            self._connection.sendall(inp.encode("utf-8"))
+                self._decoder.add_chunk(encrypted_chunk)
+                chunks = self._decoder.get_complete()
 
-                    encrypted_chunk = None
+                for chunk in chunks:
+                    if type(chunk) is str:
+                        print(chunk, end="")
+                    elif chunk.code == "end":
+                        print("\n", end="")
+                    elif chunk.code == "shutdown":
+                        print("Shutting down server")
+                        self._cleanup = True
+                        break
+                    elif chunk.code == "input":
+                        inp = input(chunk.add)
+                        self._connection.sendall(inp.encode("utf-8"))
             except Exception as e:
                 if not self._cleanup:
                     print(f"Error in SSS._listen_for_messages: {e}")
-                    self._cleanup = True
+                    self.close_connection()
+
+    def _receive_public_key_and_start_communication(self):
+        try:
+            self._receive_public_key()
+            self._listen_for_messages()
+        except Exception as e:
+            print(f"Error in _receive_public_key_and_start_communication: {e}")
+
+    def startup(self, start_in_new_thread: bool = True):
+        self._setup_connection()
+        self._send_public_key()
+
+        if start_in_new_thread:
+            self._comm_thread = threading.Thread(target=self._receive_public_key_and_start_communication)
+            self._comm_thread.start()
+        else:
+            self._receive_public_key_and_start_communication()
 
     def shutdown_client(self):
         while not self._encoder or not self._key_exchange_done:
             time.sleep(0.1)
-        self._encoder.add_message(self._protocol.get_control_code("shutdown"))  # Bad practice, this will result in
-        chunks = self._encoder.flush()              # an empty string, followed by an end cc and then the cc you want.
+
+        self._encoder.add_control_message("shutdown")
+        chunks = self._encoder.flush()
+
         for chunk in chunks:
             self._connection.send(chunk)
 
@@ -470,7 +484,6 @@ class SecureSocketServer:
             print("Server connection closed.")
 
     def cleanup(self):
-        self._cleanup = True
         self.close_connection()
         if self._comm_thread is not None:
             self._comm_thread.join()
@@ -485,13 +498,22 @@ class SecureSocketClient:
         self._host = forced_host
         self._port = PortUtils.find_available_port() if not forced_port else forced_port
         self._connection = None
-        self._connection_established = self._key_exchange_done = False
+        self._key_exchange_done = False
 
         self._decoder = MessageDecoder(protocol, _chunk_size, private_key_bytes_overwrite)
         self._encoder = None
         self._protocol = protocol
         self._chunk_size = _chunk_size
         self._comm_thread = None
+
+    def is_setup(self):
+        return self._connection is not None
+
+    def is_fully_setup(self):
+        return self._key_exchange_done
+
+    def is_shutdown(self):
+        return self._connection is None
 
     def get_host(self):
         return self._host
@@ -507,41 +529,25 @@ class SecureSocketClient:
             return UndefinedSocket(self._connection)
         raise ValueError("Server unconnected")
 
-    def start_and_exchange_keys(self):
-        self._comm_thread = threading.Thread(target=self._connect_and_exchange_keys)
-        self._comm_thread.start()
-
-    def _connect_and_exchange_keys(self):
-        try:
-            self._connect_to_server()
-            self._receive_public_key()
-            self._send_public_key()
-            self._listen_for_messages()
-        except Exception as e:
-            print(f"Error in _connect_and_exchange_keys: {e}.")
+    def _connect_to_server(self):
+        while not isinstance(self._connection, socket.socket):
+            try:
+                self._connection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                self._connection.connect((self._host, self._port))
+            except ConnectionError as e:
+                print(f"Connection error: {e}. Retrying in 5 seconds ...")
+                self._connection = None  # Making sure no faulty socket gets trough
+                time.sleep(5)  # Wait before retrying
 
     def _receive_public_key(self):
-        public_key_bytes = ""
-        while not public_key_bytes or not self._encoder:
+        while not self._encoder:
             try:
                 # Receive initial message from the server
                 public_key_bytes = self._connection.recv(self._chunk_size)
                 self._encoder = MessageEncoder(self._protocol, public_key_bytes, self._chunk_size)
-                print(f"Received key from server: {public_key_bytes}")
             except Exception as e:
                 print(f"Error in _receive_public_key: {e}")
-
-    def _connect_to_server(self):
-        while not self._connection_established:
-            try:
-                self._connection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                self._connection.connect((self._host, self._port))
-                print(f"Connected to server at {self._host}:{self._port}")
-                self._connection_established = True
-            except ConnectionError as e:
-                print(f"Connection error: {e}. Retrying in 5 seconds ...")
-                self._connection_established = False
-                time.sleep(5)  # Wait before retrying
+                self._encoder = None
 
     def _send_public_key(self):
         while not self._key_exchange_done:
@@ -556,7 +562,7 @@ class SecureSocketClient:
                 self._key_exchange_done = False
 
     def _listen_for_messages(self):
-        while self._connection_established:
+        while self._connection is not None:
             try:
                 if self._connection is None:
                     break
@@ -571,7 +577,7 @@ class SecureSocketClient:
                 for chunk in chunks:
                     if type(chunk) is not str and chunk.code == "shutdown":
                         print("Shutting down client")
-                        self._connection_established = False
+                        self.close_connection()
                         break  # breaking is equal to a shutdown
             except socket.error as e:
                 if e.errno == 10054:
@@ -580,10 +586,26 @@ class SecureSocketClient:
                     print("Socket is not valid anymore")
                 else:
                     print(f"Socket error in SSC._listen_for_messages: {e}")
-                self._connection_established = False
+                self.close_connection()
             except Exception as e:
                 print(f"Error in SSC._listen_for_messages: {e}")
-                self._connection_established = False
+                self.close_connection()
+
+    def _connect_and_exchange_keys(self):
+        try:
+            self._connect_to_server()
+            self._receive_public_key()
+            self._send_public_key()
+            self._listen_for_messages()
+        except Exception as e:
+            print(f"Error in _connect_and_exchange_keys: {e}.")
+
+    def startup(self, start_in_new_thread: bool = True):
+        if start_in_new_thread:
+            self._comm_thread = threading.Thread(target=self._connect_and_exchange_keys)
+            self._comm_thread.start()
+        else:
+            self._connect_and_exchange_keys()
 
     def add_message(self, message):
         while self._encoder is None:
@@ -597,13 +619,12 @@ class SecureSocketClient:
 
     def sendall(self):
         # Wait until the connection is established
-        while not self._connection_established or not self._key_exchange_done:
+        while self._connection is None or not self._key_exchange_done:
             time.sleep(0.01)  # Wait briefly and check again
 
-        if hasattr(self, '_connection'):
-            encoded_blocks = self._encoder.flush()
-            for block in encoded_blocks:
-                self._connection.send(block)
+        encoded_blocks = self._encoder.flush()
+        for block in encoded_blocks:
+            self._connection.send(block)
 
     def close_connection(self):
         if self._connection:
@@ -724,7 +745,7 @@ class MessageDecoder:
         self._protocol = protocol
 
         self._buffer = ""
-        self._complete_buffer: List[Union[str, ControlCode]] = [""]
+        self._complete_buffer: List[Union[str, _ControlCode]] = [""]
 
     def get_private_key(self):
         return self._private_key
@@ -845,13 +866,13 @@ class MessageDecoder:
                 len_to_remove = len(self._complete_buffer[-1]) + len(parsed_parts[i])
                 self._buffer = self._buffer[len_to_remove:]
                 last_end = i
-                self._complete_buffer.extend([ControlCode(validation_result, add_in)] + validations + [""])
+                self._complete_buffer.extend([_ControlCode(validation_result, add_in)] + validations + [""])
                 validations.clear()
             elif validation_result in ["Invalid control code", "Invalid key"]:
                 # Malformed or invalid expression, add to buffer
                 self._complete_buffer[-1] += expression
             else:
-                validations.append(ControlCode(validation_result, add_in))
+                validations.append(_ControlCode(validation_result, add_in))
                 parsed_parts[i] = ""
                 start_index = self._buffer.find(expression)
                 end_index = start_index + len(expression)
@@ -880,8 +901,8 @@ if __name__ == "__main__":
     client = SecureSocketClient(protocol)
     server = SecureSocketServer(client.get_socket(), protocol)
 
-    client.start_and_exchange_keys()
-    server.start_and_exchange_keys()
+    client.startup()
+    server.startup()
 
     client.add_message("Hello, server!")
     client.sendall()
@@ -1280,6 +1301,7 @@ if __name__ == "__main__":
     server.close_connection()
     client.close_connection()
     message_thread.join()
+    print("----------------------- One-Way MessageHandler Comm test done -----------------------")
 
 
 class ServerStream:
@@ -1360,173 +1382,108 @@ class ClientStream:
 
 
 class SecureDatabase:
-    def __init__(self):
-        raise NotImplementedError("This class isn't fully implemented yet, check back in version 1.5")
+    def __init__(self, db_connection):
+        self.conn = db_connection
 
-    def database_config(self, db_file, config):
-        h_mp = config['default_mp']
-        salt = config['default_salt']
-        keys = list(config.keys())
-        values = list(config.values())
-        db = self.connect_to_database(db_file)
-        c = db.cursor()
-        c.execute('CREATE TABLE IF NOT EXISTS secrets (masterkey_hash TEXT NOT NULL, salt TEXT NOT NULL)')
-        c.execute('CREATE TABLE IF NOT EXISTS passwords (ID INTEGER PRIMARY KEY AUTOINCREMENT, ACCOUNT TEXT NOT NULL, USERNAME TEXT NOT NULL, PASSWORD TEXT NOT NULL, IV_ACCOUNT BLOB NOT NULL, IV_USERNAME BLOB NOT NULL, IV_PASSWORD BLOB NOT NULL, TAG_ACCOUNT BLOB NOT NULL, TAG_USERNAME BLOB NOT NULL, TAG_PASSWORD BLOB NOT NULL)')
-        c.execute('CREATE TABLE IF NOT EXISTS settings (setting_id TEXT PRIMARY KEY, setting_value TEXT NOT NULL)')
-        c.execute('INSERT INTO secrets (masterkey_hash, salt) values (?, ?)', (h_mp, salt))
-        for key, value in zip(keys, values):
-            c.execute('INSERT INTO settings (setting_id, setting_value) values (?, ?)', (key, value))
-        db.commit()
-        db.close()
+    def _get_all_tables(self) -> tuple:
+        cursor = self.conn.cursor()
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
+        tables = cursor.fetchall()
+        return tuple(table[0] for table in tables)
+
+    def _get_all_columns(self, table_name) -> tuple:
+        cursor = self.conn.cursor()
+        cursor.execute(f"PRAGMA table_info({table_name})")
+        columns_info = cursor.fetchall()
+        column_names = [info[1] for info in columns_info]
+        return tuple(column_names)
+
+    def _add_encrypted_column(self, table_name):
+        cursor = self.conn.cursor()
+        cursor.execute(f"PRAGMA table_info({table_name})")
+        columns_info = cursor.fetchall()
+        column_names = [info[1] for info in columns_info]
+
+        if "encrypted" not in column_names:
+            cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN encrypted TEXT;")
+            self.conn.commit()
 
     @staticmethod
-    def connect_to_database(database_file):
-        db = None
-        try:
-            db = sqlite3.connect(database_file)
-        except Exception as e:
-            print("SQLite3 Error:", e)
-        return db
+    def _step_through(dic):
+        curr_dict = dic
+        while True:
+            try:
+                key, value = next(iter(curr_dict.items()))
+                yield key
+                curr_dict = value
+            except StopIteration:
+                 break
 
-    def encrypt_all_data(self, database_file, key):
-        x = '1'
-        try:
-            with self.connect_to_database(database_file) as db:
-                db.row_factory = sqlite3.Row
-                cursor = db.cursor()
-                cursor.execute('SELECT * FROM passwords')
-                rows = cursor.fetchall()
-                for row in rows:
-                    id = row['ID']
-                    account = row['ACCOUNT']
-                    username = row['USERNAME']
-                    password = row['PASSWORD']
-                    iv_account, encrypted_account, tag_account = CryptUtils.aes_encrypt(account, key)
-                    iv_username, encrypted_username, tag_username = CryptUtils.aes_encrypt(username, key)
-                    iv_password, encrypted_password, tag_password = CryptUtils.aes_encrypt(password, key)
-                    cursor.execute('UPDATE passwords SET ACCOUNT = ?, USERNAME = ?, PASSWORD = ?, IV_ACCOUNT = ?, IV_USERNAME = ?, IV_PASSWORD = ?, TAG_ACCOUNT = ?, TAG_USERNAME = ?, TAG_PASSWORD = ? WHERE ID = ?', (encrypted_account, encrypted_username, encrypted_password, iv_account, iv_username, iv_password, tag_account, tag_username, tag_password, id))
-                db.commit()
-        except Exception as e:
-            print("SQLite3 Error:", e)
-            x = 'a'
-        return x.isnumeric()
+    def _get_all(self, levels):
+        curr_config = []
+        for level in levels:
+            curr_config.append(level[0])
 
-    def decrypt_all_data(self, database_file, key):
-        x = 'a'
-        try:
-            with self.connect_to_database(database_file) as db:
-                db.row_factory = sqlite3.Row
-                cursor = db.cursor()
-                cursor.execute('SELECT * FROM passwords')
-                rows = cursor.fetchall()
-                for row in rows:
-                    id = row['ID']
-                    encrypted_account = row['ACCOUNT']
-                    encrypted_username = row['USERNAME']
-                    encrypted_password = row['PASSWORD']
-                    iv_account = row['IV_ACCOUNT']
-                    iv_username = row['IV_USERNAME']
-                    iv_password = row['IV_PASSWORD']
-                    tag_account = row['TAG_ACCOUNT']
-                    tag_username = row['TAG_USERNAME']
-                    tag_password = row['TAG_PASSWORD']
-                    decrypted_account = CryptUtils.aes_decrypt(iv_account, encrypted_account, tag_account, key)
-                    decrypted_username = CryptUtils.aes_decrypt(iv_username, encrypted_username, tag_username, key)
-                    decrypted_password = CryptUtils.aes_decrypt(iv_password, encrypted_password, tag_password, key)
-                    cursor.execute('UPDATE passwords SET ACCOUNT = ?, USERNAME = ?, PASSWORD = ? WHERE ID = ?', (decrypted_account, decrypted_username, decrypted_password, id))
-                db.commit()
-        except Exception as e:
-            print("SQLite3 Error:", e)
-            x = '1'
-        return x.isnumeric()
+        all_getter = [self._get_all_tables, self._get_all_columns, lambda *args: "*"][len(curr_config)]
+        return all_getter(*curr_config)
 
-    def is_database_encrypted(self, database_file):
-        try:
-            db = self.connect_to_database(database_file)
-            cursor = db.cursor()
-            cursor.execute('SELECT COUNT(*) FROM sqlite_master')
-            cursor.close()
-            db.close()
-            return False
-        except sqlite3.DatabaseError:
-            return True
+    def _encrypt_data(self, data: str, password: str) -> bytes:
+        key = CryptUtils.generate_aes_key(256)
+        iv, encrypted_data, tag = CryptUtils.aes_encrypt(data.encode(), key)
+        return CryptUtils.pack_ae_data(iv, encrypted_data, tag)
 
-    def is_data_encrypted(self, database_file):
-        try:
-            db = self.connect_to_database(database_file)
-            cursor = db.cursor()
-            cursor.execute('SELECT ACCOUNT FROM passwords LIMIT 1')
-            account = cursor.fetchone()
-            cursor.close()
-            db.close()
+    def encrypt(self, encryption_config: Dict[str, Any], password: str):
+        cursor = self.conn.cursor()
 
-            if account:
-                # Check if the data appears to be encrypted (e.g., contains non-printable characters)
-                return not all(char in string.printable for char in account[0])
+        levels = []
+        for config in self._step_through(encryption_config):
+            if isinstance(config, tuple):
+                levels.append(config)
             else:
-                # The table is empty, so it's unclear if the data is encrypted or not
-                return False
-        except sqlite3.DatabaseError:
-            return False
+                levels.append((config,) if config != "ALL" else (self._get_all(levels)))
 
-    def check_database_simple(self, database_file):
-        if os.path.exists(database_file):
-            try:
-                db = self.connect_to_database(database_file)
-                db.close()
-                return True
-            except sqlite3.Error:
-                return False
-        else:
-            return False
+        print(levels)
 
-    def check_database_simple_out(self, database_file):
-        if os.path.exists(database_file):
-            try:
-                db = self.connect_to_database(database_file)
-                db.close()
-                print("Database", database_file, "exists.")
-            except sqlite3.Error:
-                print("SQLite3 Error: Unable to connect to database", database_file,".")
-        else:
-            print("Database", database_file, "does not exist.")
-        return ""
+        for level in levels:
+            if len(level) == 1:
+                table_name = level[0]
+                self._add_encrypted_column(table_name)
+                columns = self._get_all_columns(table_name)
+                cursor.execute(f"SELECT * FROM {table_name}")
+                rows = cursor.fetchall()
 
-    @staticmethod
-    def check_database_integrity(database_file):
-        try:
-            conn = sqlite3.connect(database_file)
-            cursor = conn.cursor()
-            cursor.execute("PRAGMA integrity_check")
-            result = cursor.fetchone()
-            conn.close()
+                for row in rows:
+                    primary_key_value = row[0]
+                    encrypted_row = []
+                    encryption_bits = ""
 
-            if result[0] == "ok":
-                print("Database", database_file, "is not corrupted.")
-            else:
-                print("Database", database_file, "is corrupted.")
-        except Exception as e:
-            print("SQLite3 Error:", e)
-        return ""
+                    for i, value in enumerate(row):
+                        if i == 0:
+                            encrypted_row.append(value)
+                            encryption_bits += "0"
+                        else:
+                            encrypted_value = self._encrypt_data(str(value), password)
+                            encrypted_row.append(encrypted_value)
+                            encryption_bits += "1"
 
-    @staticmethod
-    def check_database_complex_output(database_file):
-        if os.path.exists(database_file):
-            try:
-                conn = sqlite3.connect(database_file)
-                cursor = conn.cursor()
-                cursor.execute("PRAGMA integrity_check")
-                result = cursor.fetchone()
-                conn.close()
+                    encrypted_row.append(encryption_bits)
+                    placeholders = ', '.join(['?' for _ in encrypted_row])
+                    cursor.execute(f"INSERT OR REPLACE INTO {table_name} VALUES ({placeholders})", encrypted_row)
+            elif len(level) == 2:
+                table_name, column_name = level
+                self._add_encrypted_column(table_name)
+                cursor.execute(f"SELECT {column_name} FROM {table_name}")
+                rows = cursor.fetchall()
 
-                if result[0] == "ok":
-                    print("Database", database_file, "exists and is not corrupted.")
-                else:
-                    print("Database", database_file, "exists but is corrupted.")
-            except Exception as e:
-                print("SQLite3 Error:", e)
-        else:
-            print("Database", database_file, "does not exist.")
+                for row in rows:
+                    value = row[0]
+                    encrypted_value = self._encrypt_data(str(value), password)
+                    cursor.execute(f"UPDATE {table_name} SET {column_name} = ? WHERE {column_name} = ?", (encrypted_value, value))
+
+        self.conn.commit()
+
+    def decrypt(self, encryption_config: Dict[str, Any]):
+        pass
 
 
 class GeneratePasswords:
@@ -2415,7 +2372,7 @@ def local_test():
 
 
 if __name__ == "__main__":
-    local_test()
+    from aplustools.io import diagnose_shutdown_blockers
 
-from aplustools.io import diagnose_shutdown_blockers
-print(diagnose_shutdown_blockers())
+    print(diagnose_shutdown_blockers())
+    local_test()
