@@ -235,6 +235,18 @@ def bytes_length(data: _typing.Union[int, float, str]) -> int:
     return total_length
 
 
+def bit_length(data: _typing.Union[int, float, str]) -> int:
+    total_length = 0
+    if isinstance(data, str):
+        for char in data:
+            total_length += ord(char).bit_length()
+    elif isinstance(data, float):
+        total_length = len(encode_float(data))
+    else:
+        total_length = data.bit_length()
+    return total_length
+
+
 if __name__ == "__main__":
     bit = nice_bits(encode("Hello you world!"), True, 6, True, True)
     bitss = bits(encode_float(0.3))

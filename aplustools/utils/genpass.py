@@ -5,7 +5,7 @@ from cryptography.hazmat.primitives import serialization, hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.hazmat.backends import default_backend
-from aplustools.io.environment import strict
+from aplustools.io.environment import strict, auto_repr
 from aplustools.data import nice_number
 import json
 import os
@@ -311,6 +311,7 @@ class ControlCode:
         return f"ControlCode(code={self.code}, add={self.add})"
 
 
+@auto_repr
 class UndefinedSocket:
     """Is either an uninitialized socket or an already connected one."""
     def __init__(self, conn: Union[Tuple[str, int], socket.socket]):
@@ -338,11 +339,17 @@ class SecureSocketServer:
         else:
             self._connection = self._connection.conn
         self._key_exchange_done = False
+        self._comm_thread = None
+        self._cleanup = False
 
-    def start_and_exchange_keys(self):
+    def start_and_exchange_keys(self, start_in_new_thread: bool = True):
         self._setup_connection()
         self._send_public_key()
-        threading.Thread(target=self._receive_public_key_and_start_communication).start()
+        if start_in_new_thread:
+            self._comm_thread = threading.Thread(target=self._receive_public_key_and_start_communication)
+            self._comm_thread.start()
+        else:
+            self._receive_public_key_and_start_communication()
 
     def _setup_connection(self):
         if self._connection is not None:
@@ -405,10 +412,20 @@ class SecureSocketServer:
         return True
 
     def _listen_for_messages(self):
-        while self._connection is not None:
+        while not self._cleanup and self._connection:
             try:
-                while True:
-                    encrypted_chunk = self._connection.recv(self._chunk_size)
+                while self._connection:
+                    if not self._cleanup:
+                        try:
+                            encrypted_chunk = self._connection.recv(self._chunk_size)
+                        except socket.error as e:
+                            if e.errno == 10054:
+                                print("Connection was forcibly closed by the remote host")
+                                self._cleanup = True
+                                break
+                            else:
+                                raise
+
                     if not encrypted_chunk:
                         break
 
@@ -426,14 +443,17 @@ class SecureSocketServer:
                             print("\n", end="")
                         elif chunk.code == "shutdown":
                             print("Shutting down server")
-                            self._connection.close()
-                            self._connection = None
-                            break  # Break is equal to a shutdown
+                            self._cleanup = True
+                            break
                         elif chunk.code == "input":
                             inp = input(chunk.add)
                             self._connection.sendall(inp.encode("utf-8"))
+
+                    encrypted_chunk = None
             except Exception as e:
-                print(f"Error in listen_for_messages: {e}")
+                if not self._cleanup:
+                    print(f"Error in SSS._listen_for_messages: {e}")
+                    self._cleanup = True
 
     def shutdown_client(self):
         while not self._encoder or not self._key_exchange_done:
@@ -449,8 +469,14 @@ class SecureSocketServer:
             self._connection = None
             print("Server connection closed.")
 
-    def __del__(self):
+    def cleanup(self):
+        self._cleanup = True
         self.close_connection()
+        if self._comm_thread is not None:
+            self._comm_thread.join()
+
+    def __del__(self):
+        self.cleanup()
 
 
 @strict
@@ -465,6 +491,7 @@ class SecureSocketClient:
         self._encoder = None
         self._protocol = protocol
         self._chunk_size = _chunk_size
+        self._comm_thread = None
 
     def get_host(self):
         return self._host
@@ -481,7 +508,8 @@ class SecureSocketClient:
         raise ValueError("Server unconnected")
 
     def start_and_exchange_keys(self):
-        threading.Thread(target=self._connect_and_exchange_keys).start()
+        self._comm_thread = threading.Thread(target=self._connect_and_exchange_keys)
+        self._comm_thread.start()
 
     def _connect_and_exchange_keys(self):
         try:
@@ -530,21 +558,32 @@ class SecureSocketClient:
     def _listen_for_messages(self):
         while self._connection_established:
             try:
-                while True:
-                    encrypted_chunk = self._connection.recv(self._chunk_size)
-                    if not encrypted_chunk:
-                        break
+                if self._connection is None:
+                    break
 
-                    self._decoder.add_chunk(encrypted_chunk)
-                    chunks = self._decoder.get_complete()
+                encrypted_chunk = self._connection.recv(self._chunk_size)
+                if not encrypted_chunk:
+                    break
 
-                    for chunk in chunks:
-                        if type(chunk) is not str and chunk.code == "shutdown":
-                            print("Shutting down client")
-                            self._connection_established = False
-                            break  # breaking is equal to a shutdown
+                self._decoder.add_chunk(encrypted_chunk)
+                chunks = self._decoder.get_complete()
+
+                for chunk in chunks:
+                    if type(chunk) is not str and chunk.code == "shutdown":
+                        print("Shutting down client")
+                        self._connection_established = False
+                        break  # breaking is equal to a shutdown
+            except socket.error as e:
+                if e.errno == 10054:
+                    print("Connection was forcibly closed by the remote host")
+                elif e.errno == 10038:
+                    print("Socket is not valid anymore")
+                else:
+                    print(f"Socket error in SSC._listen_for_messages: {e}")
+                self._connection_established = False
             except Exception as e:
-                print(f"Error in _listen_for_messages: {e}")
+                print(f"Error in SSC._listen_for_messages: {e}")
+                self._connection_established = False
 
     def add_message(self, message):
         while self._encoder is None:
@@ -572,8 +611,13 @@ class SecureSocketClient:
             self._connection = None
             print("Client connection closed.")
 
-    def __del__(self):
+    def cleanup(self):
         self.close_connection()
+        if self._comm_thread is not None:
+            self._comm_thread.join()
+
+    def __del__(self):
+        self.cleanup()
 
 
 @strict
@@ -843,6 +887,10 @@ if __name__ == "__main__":
     client.sendall()
 
     server.shutdown_client()
+    client.cleanup()
+    server.cleanup()
+    print(client.get_socket())
+    print("----------------------- Two-Way SecureSocket Comm test done -----------------------")
 
 
 @strict  # Strict decorator makes any private attributes truly private
@@ -869,11 +917,13 @@ class ServerMessageHandler:
         self._chunk_size = _chunk_size
         self._protocol = protocol
 
+        self._connection_established = False
         if type(self._connection.conn) is not socket.socket:
             self._host, self._port = self._connection.conn
             self._connection = None
         else:
             self._connection = self._connection.conn
+            self._connection_established = True
 
     def get_public_key_bytes(self):
         return self._public_key_bytes
@@ -988,59 +1038,83 @@ class ServerMessageHandler:
 
         if not self._connection:
             self._setup_connection()
-
-        while True:
-            encrypted_chunk = self._connection.recv(self._chunk_size)
-            if not encrypted_chunk:
-                break
-
-            # Decrypt and validate the chunk
+        while self._connection is not None:
             try:
-                decrypted_chunk = self._decrypt_and_validate_chunk(encrypted_chunk).decode('utf-8')
-            except Exception as e:
-                print(f"Error in decryption/validation: {e}")
-                continue
-            buffer += decrypted_chunk
+                while True:
+                    if self._connection is None:
+                        break
 
-            # Process complete and partial messages in buffer
-            exec_start, exec_end = self._protocol.get_exec_code_delimiters()
-            pattern = fr'(\{exec_start}{exec_start}^\{exec_end}{exec_end}+\{exec_end})|({exec_start}^\{exec_start}\{exec_end}{exec_end}+)'
-            matches = re.findall(pattern, buffer)
+                    encrypted_chunk = self._connection.recv(self._chunk_size)
+                    if not encrypted_chunk:
+                        break
 
-            if not matches:
-                break
+                    # Decrypt and validate the chunk
+                    try:
+                        decrypted_chunk = self._decrypt_and_validate_chunk(encrypted_chunk).decode('utf-8')
+                    except Exception as e:
+                        print(f"Error in decryption/validation: {e}")
+                        continue
+                    buffer += decrypted_chunk
 
-            # Flatten the tuple results and filter out empty matches
-            parsed_parts = [part for match in matches for part in match if part]
-            completed_parts = []
+                    # Process complete and partial messages in buffer
+                    exec_start, exec_end = self._protocol.get_exec_code_delimiters()
+                    pattern = fr'(\{exec_start}{exec_start}^\{exec_end}{exec_end}+\{exec_end})|({exec_start}^\{exec_start}\{exec_end}{exec_end}+)'
+                    matches = re.findall(pattern, buffer)
 
-            last_end = 0
-            for i, expression in enumerate(parsed_parts):
-                try:
-                    validation_result, add_in = self._protocol.validate_control_code(expression)
-                except ValueError:
-                    continue
-                if validation_result == "end":
-                    # Consider message as complete
-                    completed_parts.append(parsed_parts[last_end:i+1])
-                    last_end = i
-                elif validation_result in ["Invalid control code", "Invalid key"]:
-                    # Malformed or invalid expression, add to buffer
-                    complete_buffer += expression
-                elif validation_result == "shutdown":
-                    return  # Returning is equal to a shutdown
+                    if not matches:
+                        break
+
+                    # Flatten the tuple results and filter out empty matches
+                    parsed_parts = [part for match in matches for part in match if part]
+                    completed_parts = []
+
+                    last_end = 0
+                    for i, expression in enumerate(parsed_parts):
+                        try:
+                            validation_result, add_in = self._protocol.validate_control_code(expression)
+                        except ValueError:
+                            continue
+                        if validation_result == "end":
+                            # Consider message as complete
+                            completed_parts.append(parsed_parts[last_end:i+1])
+                            last_end = i
+                        elif validation_result in ["Invalid control code", "Invalid key"]:
+                            # Malformed or invalid expression, add to buffer
+                            complete_buffer += expression
+                        elif validation_result == "shutdown":
+                            return  # Returning is equal to a shutdown
+                        else:
+                            # There are no other expressions at the moment
+                            pass
+
+                    len_to_remove = 0
+                    for completed_part in completed_parts:
+                        message = ''.join(completed_part[:-1])
+                        len_to_remove += len(message) + len(completed_part[-1])
+                        complete_buffer += message
+                    buffer = buffer[len_to_remove:]
+                    print(complete_buffer)  # , end="")
+                    complete_buffer = ""
+            except socket.error as e:
+                if e.errno == 10054:
+                    print("Connection was forcibly closed by the remote host")
+                elif e.errno == 10038:
+                    print("Socket is not valid anymore")
                 else:
-                    # There are no other expressions at the moment
-                    pass
+                    print(f"Socket error in _listen_for_messages: {e}")
+                self.close_connection()
+            except Exception as e:
+                print(f"Error in _listen_for_messages: {e}")
+                self.close_connection()
 
-            len_to_remove = 0
-            for completed_part in completed_parts:
-                message = ''.join(completed_part[:-1])
-                len_to_remove += len(message) + len(completed_part[-1])
-                complete_buffer += message
-            buffer = buffer[len_to_remove:]
-            print(complete_buffer)  # , end="")
-            complete_buffer = ""
+    def close_connection(self):
+        if self._connection:
+            self._connection.close()
+            self._connection = None
+            print("Server connection closed.")
+
+    def __del__(self):
+        self.close_connection()
 
 
 @strict
@@ -1179,19 +1253,33 @@ class ClientMessageHandler:
         control_code = self._protocol.get_control_code(control_type, add_in).encode()
         self._buffer += control_code
 
+    def close_connection(self):
+        self._connection_established = False
+        if self._connection:
+            self._connection.close()
+            self._connection = None
+            print("Client connection closed.")
+
+    def __del__(self):
+        self.close_connection()
+
 
 if __name__ == "__main__":
     os.system("cls")
     protocol = ControlCodeProtocol()
     client = ClientMessageHandler(protocol)
     server = ServerMessageHandler(client.get_socket(), protocol)
-    threading.Thread(target=server.listen_for_messages).start()
+    message_thread = threading.Thread(target=server.listen_for_messages)
+    message_thread.start()
     print("Starting client ...")
     client.connect_to_server()
     client.add_message("HELL")
     client.flush()
     client.send_control_message("shutdown")
     client.flush()
+    server.close_connection()
+    client.close_connection()
+    message_thread.join()
 
 
 class ServerStream:
@@ -1791,9 +1879,104 @@ class OSRandomGenerator:
         return math.exp(normal_value)
 
 
+class SecretsRandomGenerator:
+    @staticmethod
+    def random() -> float:
+        return secrets.randbits(56) / (1 << 56)
+
+    @classmethod
+    def uniform(cls, a: float, b: float) -> float:
+        return a + (b - a) * cls.random()
+
+    @classmethod
+    def randint(cls, a: int, b: int) -> int:
+        return math.floor(cls.uniform(a, b + 1))
+
+    @classmethod
+    def randbelow(cls, b: int) -> int:
+        return cls.randint(0, b)
+
+    @classmethod
+    def choice(cls, seq: Union[tuple, list, dict]) -> Any:
+        if not isinstance(seq, dict):
+            return seq[cls.randint(0, len(seq) - 1)]
+        return seq[tuple(seq.keys())[cls.randint(0, len(seq) - 1)]]
+
+    @classmethod
+    def gauss(cls, mu: float, sigma: float) -> float:
+        # Using Box-Muller transform for generating Gaussian distribution
+        u1 = cls.random()
+        u2 = cls.random()
+        z0 = math.sqrt(-2.0 * math.log(u1)) * math.cos(2.0 * math.pi * u2)
+        return mu + z0 * sigma
+
+    @classmethod
+    def expovariate(cls, lambd: float) -> float:
+        u = cls.random()
+        return -math.log(1 - u) / lambd
+
+    @classmethod
+    def gammavariate(cls, alpha: float, beta: float) -> float:
+        # Uses Marsaglia and Tsang’s method for generating Gamma variables
+        if alpha > 1:
+            d = alpha - 1/3
+            c = 1/math.sqrt(9*d)
+            while True:
+                x = cls.gauss(0, 1)
+                v = (1 + c*x)**3
+                u = cls.random()
+                if u < 1 - 0.0331*(x**2)**2:
+                    return d*v / beta
+                if math.log(u) < 0.5*x**2 + d*(1 - v + math.log(v)):
+                    return d*v / beta
+        elif alpha == 1.0:
+            return -math.log(cls.random()) / beta
+        else:
+            while True:
+                u = cls.random()
+                b = (math.e + alpha)/math.e
+                p = b*u
+                if p <= 1:
+                    x = p**(1/alpha)
+                else:
+                    x = -math.log((b-p)/alpha)
+                u1 = cls.random()
+                if p > 1:
+                    if u1 <= x**(alpha - 1):
+                        return x / beta
+                elif u1 <= math.exp(-x):
+                    return x / beta
+
+    @classmethod
+    def betavariate(cls, alpha: float, beta: float) -> float:
+        """
+        Generate a random number based on the Beta distribution with parameters alpha and beta.
+
+        :param alpha: Alpha parameter of the Beta distribution.
+        :param beta: Beta parameter of the Beta distribution.
+        :return: Random number from the Beta distribution.
+        """
+        y1 = cls.gammavariate(alpha, 1.0)
+        y2 = cls.gammavariate(beta, 1.0)
+        return y1 / (y1 + y2)
+
+    @classmethod
+    def lognormvariate(cls, mean: float, sigma: float) -> float:
+        """
+        Generate a random number based on the log-normal distribution with specified mean and sigma.
+
+        :param mean: Mean of the underlying normal distribution.
+        :param sigma: Standard deviation of the underlying normal distribution.
+        :return: Random number from the log-normal distribution.
+        """
+        normal_value = cls.gauss(mean, sigma)
+        return math.exp(normal_value)
+
+
 class WeightedRandom:
-    def __init__(self, generator: Literal["weak", "os", "strong"] = "strong"):
-        self._generator = {"weak": random, "os": OSRandomGenerator, "strong": secrets.SystemRandom()}[generator]
+    def __init__(self, generator: Literal["weak", "os", "strong", "secrets"] = "strong"):
+        self._generator = {"weak": random, "os": OSRandomGenerator, "strong": secrets.SystemRandom(),
+                           "secrets": SecretsRandomGenerator}[generator]
 
     @staticmethod
     def _transform_and_scale(x: float, transform_func: Callable[[float], float], lower_bound: Union[float, int],
@@ -1871,7 +2054,7 @@ class WeightedRandom:
         return self._transform_and_scale(self._generator.random(), lambda x: x ** 2, lower_bound, upper_bound)
 
     def exponential_falling(self, lower_bound: Union[float, int] = 0, upper_bound: Union[float, int] = 1,
-                            lambd: float=1.0) -> float:
+                            lambd: float = 1.0) -> float:
         """
         Generate a random number based on a falling exponential distribution and scale it within the specified bounds.
         """
@@ -2016,70 +2199,30 @@ class WeightedRandom:
 
 
 if __name__ == "__main__":
-    # Test with default generator (strong)
-    print("Testing with strong generator:")
-    strong_rng = WeightedRandom("strong")
-    print("Gaussian:", strong_rng.gaussian(0, 1, 0, 1))
-    print("Cubic:", strong_rng.cubic(0, 1))
-    print("Exponential:", strong_rng.exponential(0, 1, 1.0))
-    print("Falling:", strong_rng.falling(0, 1))
-    print("Sloping:", strong_rng.sloping(0, 1))
-    print("Exponential Falling:", strong_rng.exponential_falling(0, 1, 1.0))
-    print("Cubic Falling:", strong_rng.cubic_falling(0, 1))
-    print("Functional (x^2):", strong_rng.functional(lambda x: x ** 2, 0, 1))
-    print("Uniform:", strong_rng.uniform(1, 10))
-    print("Integer:", strong_rng.integer(1, 10))
-    print("Choice:", strong_rng.choice([1, 2, 3, 4, 5]))
-    print("Linear Transform:", strong_rng.linear_transform(2, 1, 0, 1))
-    print("Triangular:", strong_rng.triangular(0, 1, 0.5))
-    print("Beta:", strong_rng.beta(2, 5, 0, 1))
-    print("Log Normal:", strong_rng.log_normal(0, 1, 0, 1))
-    print("Sinusoidal:", strong_rng.sinusoidal(0, 1))
-    print("Piecewise Linear:", strong_rng.piecewise_linear([0.3, 0.7], [1, -1], 0, 1))
+    for generator in ("weak", "os", "strong", "secrets"):
+        # Test generator
+        print(f"Testing with {generator} generator:")
+        rng = WeightedRandom(generator)
+        print("Gaussian:", rng.gaussian(0, 1, 0, 1))
+        print("Cubic:", rng.cubic(0, 1))
+        print("Exponential:", rng.exponential(0, 1, 1.0))
+        print("Falling:", rng.falling(0, 1))
+        print("Sloping:", rng.sloping(0, 1))
+        print("Exponential Falling:", rng.exponential_falling(0, 1, 1.0))
+        print("Cubic Falling:", rng.cubic_falling(0, 1))
+        print("Functional (x^2):", rng.functional(lambda x: x ** 2, 0, 1))
+        print("Uniform:", rng.uniform(1, 10))
+        print("RandInt:", rng.randint(1, 10))
+        print("Choice:", rng.choice([1, 2, 3, 4, 5]))
+        print("Linear Transform:", rng.linear_transform(2, 1, 0, 1))
+        print("Triangular:", rng.triangular(0, 1, 0.5))
+        print("Beta:", rng.beta(2, 5, 0, 1))
+        print("Log Normal:", rng.log_normal(0, 1, 0, 1))
+        print("Sinusoidal:", rng.sinusoidal(0, 1))
+        print("Piecewise Linear:", rng.piecewise_linear([0.3, 0.7], [1, -1], 0, 1))
+        print("\n")
 
-    # Test with weak generator
-    print("\nTesting with weak generator:")
-    weak_rng = WeightedRandom("weak")
-    print("Gaussian:", weak_rng.gaussian(0, 1, 0, 1))
-    print("Cubic:", weak_rng.cubic(0, 1))
-    print("Exponential:", weak_rng.exponential(0, 1, 1.0))
-    print("Falling:", weak_rng.falling(0, 1))
-    print("Sloping:", weak_rng.sloping(0, 1))
-    print("Exponential Falling:", weak_rng.exponential_falling(0, 1, 1.0))
-    print("Cubic Falling:", weak_rng.cubic_falling(0, 1))
-    print("Functional (x^2):", weak_rng.functional(lambda x: x ** 2, 0, 1))
-    print("Uniform:", weak_rng.uniform(1, 10))
-    print("Integer:", weak_rng.integer(1, 10))
-    print("Choice:", weak_rng.choice([1, 2, 3, 4, 5]))
-    print("Linear Transform:", weak_rng.linear_transform(2, 1, 0, 1))
-    print("Triangular:", weak_rng.triangular(0, 1, 0.5))
-    print("Beta:", weak_rng.beta(2, 5, 0, 1))
-    print("Log Normal:", weak_rng.log_normal(0, 1, 0, 1))
-    print("Sinusoidal:", weak_rng.sinusoidal(0, 1))
-    print("Piecewise Linear:", weak_rng.piecewise_linear([0.3, 0.7], [1, -1], 0, 1))
-
-    # Test with OS generator
-    print("\nTesting with OS generator:")
-    os_rng = WeightedRandom("os")
-    print("Gaussian:", os_rng.gaussian(0, 1, 0, 1))
-    print("Cubic:", os_rng.cubic(0, 1))
-    print("Exponential:", os_rng.exponential(0, 1, 1.0))
-    print("Falling:", os_rng.falling(0, 1))
-    print("Sloping:", os_rng.sloping(0, 1))
-    print("Exponential Falling:", os_rng.exponential_falling(0, 1, 1.0))
-    print("Cubic Falling:", os_rng.cubic_falling(0, 1))
-    print("Functional (x^2):", os_rng.functional(lambda x: x ** 2, 0, 1))
-    print("Uniform:", os_rng.uniform(1, 10))
-    print("Integer:", os_rng.integer(1, 10))
-    print("Choice:", os_rng.choice([1, 2, 3, 4, 5]))
-    print("Linear Transform:", os_rng.linear_transform(2, 1, 0, 1))
-    print("Triangular:", os_rng.triangular(0, 1, 0.5))
-    print("Beta:", os_rng.beta(2, 5, 0, 1))
-    print("Log Normal:", os_rng.log_normal(0, 1, 0, 1))
-    print("Sinusoidal:", os_rng.sinusoidal(0, 1))
-    print("Piecewise Linear:", os_rng.piecewise_linear([0.3, 0.7], [1, -1], 0, 1))
-
-    print("MYNE", round(strong_rng.exponential(0.1, 10, 5.0), 1))
+    print("Custom exponent: ", round(rng.exponential(0.1, 10, 5.0), 1))
 
 
 class CharSet(Enum):
@@ -2273,3 +2416,6 @@ def local_test():
 
 if __name__ == "__main__":
     local_test()
+
+from aplustools.io import diagnose_shutdown_blockers
+print(diagnose_shutdown_blockers())
