@@ -247,6 +247,27 @@ def bit_length(data: _typing.Union[int, float, str]) -> int:
     return total_length
 
 
+class Bits:
+    def __init__(self, bytes_like):
+        self.bytes = bytes_like
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}({nice_bits(self.bytes, True)})"
+
+
+class UniversalBits(Bits):
+    def __init__(self, object: _Union[str, float, int, bytes, bytearray, bool]):
+        if type(object) in [str, int]:
+            my_bytes = encode(object)
+        elif isinstance(object, float):
+            my_bytes = encode_float(object)
+        elif isinstance(object, bool):
+            my_bytes = b"\x01" if object else b"\x00"
+        else:
+            my_bytes = object
+        super().__init__(my_bytes)
+
+
 if __name__ == "__main__":
     bit = nice_bits(encode("Hello you world!"), True, 6, True, True)
     bitss = bits(encode_float(0.3))
@@ -275,3 +296,4 @@ if __name__ == "__main__":
 
     print(bits(set_bits(int(255).to_bytes(1, "big"), 0, "0000000")))
 
+    print(Bits(b"\x00"), UniversalBits(bytearray(b"\x11")))

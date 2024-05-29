@@ -3,22 +3,19 @@
 # Concept:
 # Is stream and chunk based (so chunks but not limited by byte sizes)
 # Firstly we have a length indicator:
-# 0 -> 1 byte
-# 10 -> 2 bytes
-# 11 -> 3 bytes
+# 0 -> 8 bits
+# 10 -> 16 bits
+# 110 -> 21 bits (~2 million code points)
+# 111 -> 0 bits
 
-# If the size is above 1 byte we have 1 bit to tell us if it's in relation to the last chunk
+# We have 1 bit to tell us if it's in relation to the last chunk (bundle)
 # 0 -> Off
 # 1 -> On
-
-# If it's on the next bit is if it's the start or end of a bundle
-# 0 -> End of a bundle
-# 1 -> Start of a bundle
 
 # Then we have the rest of the data so it looks like this:
 
 # 1 Encoded:
-# 0 0000 0001
+# 0 0 0000 0001
 # ^ Size
 
 # At the very end of the last chunk, it appends one 1 and then 0 to fill the last byte
@@ -31,7 +28,7 @@
 # Size & in-relation & end of a bundle
 
 from aplustools.data import (encode_possible_negative_int, encode_positive_int, nice_bits, bits, nice_number,
-                             decode_possible_negative_int, set_bits, decode_positive_int)
+                             decode_possible_negative_int, set_bits, decode_positive_int, bit_length)
 import math
 
 
@@ -63,7 +60,7 @@ def encode_length_svf(max_bit_length, length, pack_at_start: bool = True):
     bit_list = [int(x) for x in list(curr_string)]
 
     # Pack bits into bytes
-    byte_array = bytearray(math.ceil(((length * 8) + len(bit_list)) / 8))
+    byte_array = bytearray(math.ceil(((length * 8) + (len(bit_list)) / 8)))
     byte_array = set_bits(byte_array, 0, ''.join((str(x) for x in bit_list)),
                           "big" if pack_at_start else "little", True)
 
@@ -121,16 +118,19 @@ class UnienEnAndDeCoder:
             bit_str = bit_str.rstrip("0")[:-1]
 
         while bit_index < len(bit_str):
-            length_encoding, len_bits_len = decode_length_svf(2, bit_str[bit_index:])
+            length_encoding, len_bits_len = decode_length_svf(3, bit_str[bit_index:])
+            length_encoding = {4: 0,
+                               1: 1,
+                               2: 2,
+                               3: 3}[length_encoding]
+
             bit_index += len_bits_len
 
-            bundle = 0
-            if len_bits_len > 1:
-                bundle = int(bit_str[bit_index])
-                bit_index += 2
+            bundle = int(bit_str[bit_index])
+            bit_index += 1
 
-            char_bits = bit_str[bit_index:bit_index + length_encoding * 8]
-            bit_index += length_encoding * 8
+            bit_index += length_encoding * 8 if bit_index != 3 else 21
+            char_bits = bit_str[bit_index:bit_index + bit_index]
 
             if bundle:
                 char_value = decode_possible_negative_int(encode_positive_int(int(char_bits, 2))) + last_char_value
@@ -162,36 +162,41 @@ class UnienEnAndDeCoder:
         i, bits_len = 0, 0
         for char in data:
             char_length, bundle = len(encode_positive_int(ord(char))), 0
-            length_encoding, len_bits_len = encode_length_svf(2, char_length)
+
             char_value = ord(char)
             char_bytes = encode_positive_int(char_value)
-            if len(encode_possible_negative_int(char_value - last_char_value)) < len(char_bytes):
+
+            bundle_num = encode_possible_negative_int(char_value - last_char_value)
+            if len(bundle_num) < len(char_bytes):
                 bundle = 1
+                char_length = len(bundle_num)
+
+            to_pack_len = {0: 4,
+                           1: 1,
+                           2: 2,
+                           3: 3}[char_length]
+            length_encoding, len_bits_len = encode_length_svf(3, to_pack_len)
 
             # Pack everything into the length_encoding
-            meta_bytes = length_encoding
-            if len_bits_len > 1:
-                if bundle:
-                    new_char_value = char_value - last_char_value
-                    char_bytes = encode_possible_negative_int(new_char_value)
-                    length_encoding, _ = encode_length_svf(2, len(char_bytes))
-                    print("BU")
-                meta_bytes = set_bits(length_encoding, len_bits_len, str(bundle) + "0")
-                print(bits(meta_bytes))
-                len_bits_len += 2
-                if bundle:
-                    meta_bytes = meta_bytes[:-(len(char_bytes) - len(encode_possible_negative_int(char_value - last_char_value)))]
+            meta_bytes = set_bits(length_encoding, len_bits_len, str(bundle))
+            len_bits_len += 1
+            if bundle:
+                new_char_value = char_value - last_char_value
+                char_bytes = encode_possible_negative_int(new_char_value)
+                # meta_bytes = meta_bytes[
+                #              :-(len(char_bytes) - len(encode_possible_negative_int(char_value - last_char_value)))]
+                # print("BU")
 
             to_set_bytes = set_bits(meta_bytes, len_bits_len, nice_bits(char_bytes))
             final_byte_arr = set_bits(final_byte_arr, bits_len, nice_bits(to_set_bytes), return_bytearray=True,
                                       auto_expand=True)
-            if bundle:
-                print(bits(final_byte_arr), bits(meta_bytes), len_bits_len, nice_bits(char_bytes))
+            # if bundle:
+            #     print(bits(final_byte_arr), bits(meta_bytes), len_bits_len, nice_bits(char_bytes))
             # final_byte_arr[i:i+len(to_set_bytes)] = to_set_bytes
             i += len(to_set_bytes)
 
             last_char_value = char_value
-            bits_len += len_bits_len + (len(char_bytes) * 8)
+            bits_len += len_bits_len + ((len(char_bytes) * 8) if len(char_bytes) != 3 else 21)
             i += 1
 
         if completed:
@@ -205,7 +210,7 @@ if __name__ == "__main__":
     utf8_uni_str = "👋Hell🆕o World„„🏃“".encode("utf-8")
     print(f"{encoded_uni_str}/{utf8_uni_str} ({len(encoded_uni_str)}/{len(utf8_uni_str)})")
     normal_str = un.encode("Hello")
-    print("Unien max supported code point: ", nice_number(int.from_bytes(b'\xff\xff\xff')))
+    print("Unien max supported code point: ", nice_number(int.from_bytes(b'\x1f\xff\xff')))
 
     print(bits(encoded_uni_str))
     un.add_chunk(encoded_uni_str)
