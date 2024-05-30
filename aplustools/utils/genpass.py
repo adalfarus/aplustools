@@ -311,6 +311,10 @@ class _ControlCode:
         return f"ControlCode(code={self.code}, add={self.add})"
 
 
+def is_control_code(object: Any) -> bool:
+    return isinstance(object, _ControlCode)
+
+
 @auto_repr
 class UndefinedSocket:
     """Is either an uninitialized socket or an already connected one."""
