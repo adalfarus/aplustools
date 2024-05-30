@@ -268,6 +268,19 @@ class UniversalBits(Bits):
         super().__init__(my_bytes)
 
 
+def lod_helper(curr_lod, big_lster, depth):  # Make iterative instead of recursive
+    for x in curr_lod:
+        if isinstance(x, list) and depth > 0:
+            lod_helper(x, big_lster, depth - 1)
+        else:
+            big_lster.append(x)
+    return big_lster
+
+
+def unnest_iterable(iterable, max_depth: int = 4):
+    return lod_helper(iterable, [], max_depth)
+
+
 if __name__ == "__main__":
     bit = nice_bits(encode("Hello you world!"), True, 6, True, True)
     bitss = bits(encode_float(0.3))
