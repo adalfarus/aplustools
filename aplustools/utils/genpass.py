@@ -24,6 +24,7 @@ import string
 import random
 from enum import Enum
 import math
+from collections import deque
 
 
 class PortUtils:
@@ -311,8 +312,8 @@ class _ControlCode:
         return f"ControlCode(code={self.code}, add={self.add})"
 
 
-def is_control_code(object: Any) -> bool:
-    return isinstance(object, _ControlCode)
+def is_control_code(obj: Any) -> bool:
+    return isinstance(obj, _ControlCode)
 
 
 @auto_repr
@@ -444,7 +445,6 @@ class SecureSocketServer:
                         print("\n", end="")
                     elif chunk.code == "shutdown":
                         print("Shutting down server")
-                        self._cleanup = True
                         break
                     elif chunk.code == "input":
                         inp = input(chunk.add)
@@ -454,9 +454,8 @@ class SecureSocketServer:
                         for block in encoded_blocks:
                             self._connection.send(block)
             except Exception as e:
-                if not self._cleanup:
-                    print(f"Error in SSS._listen_for_messages: {e}")
-                    self.close_connection()
+                print(f"Error in SSS._listen_for_messages: {e}")
+                self.close_connection()
 
     def _receive_public_key_and_start_communication(self):
         try:
@@ -513,6 +512,7 @@ class SecureSocketClient:
         self._protocol = protocol
         self._chunk_size = _chunk_size
         self._comm_thread = None
+        self._input_buffer = ("", "")
 
     def is_setup(self):
         return self._connection is not None
@@ -535,7 +535,7 @@ class SecureSocketClient:
     def get_connected_socket(self):
         if self._connection is not None:
             return UndefinedSocket(self._connection)
-        raise ValueError("Server unconnected")
+        raise ValueError("Client unconnected")
 
     def _connect_to_server(self):
         while not isinstance(self._connection, socket.socket):
@@ -584,9 +584,11 @@ class SecureSocketClient:
 
                 for chunk in chunks:
                     if type(chunk) is str:
-                        print(chunk, end="")
+                        curr_buffer_chunk = self._input_buffer[1]
+                        self._input_buffer = (self._input_buffer[0], curr_buffer_chunk + chunk)
                     elif chunk.code == "end":
-                        print("\n", end="")
+                        curr_buffer_chunk = self._input_buffer[1]
+                        self._input_buffer = (self._input_buffer[0] + curr_buffer_chunk + "\n", "")
                     elif type(chunk) is not str and chunk.code == "shutdown":
                         print("Shutting down client")
                         self.close_connection()
@@ -637,6 +639,11 @@ class SecureSocketClient:
         encoded_blocks = self._encoder.flush()
         for block in encoded_blocks:
             self._connection.send(block)
+
+    def get_input_buffer(self):
+        returns = self._input_buffer[0]
+        self._input_buffer = ("", self._input_buffer[1])
+        return returns
 
     def close_connection(self):
         if self._connection:

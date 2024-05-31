@@ -1,5 +1,6 @@
 from aplustools.package import install_dependencies_lst as _install_dependencies_lst
 import multiprocessing as _multiprocessing
+import subprocess as _subprocess
 import threading as _threading
 import platform as _platform
 import ctypes as _ctypes
@@ -77,6 +78,8 @@ def clear_screen():
 
 
 def enable_windows_ansi():
+    if _platform.system() != "Windows":
+        return
     # Constants from the Windows API
     STD_OUTPUT_HANDLE = -11
     ENABLE_VIRTUAL_TERMINAL_PROCESSING = 0x0004
@@ -97,6 +100,8 @@ def enable_windows_ansi():
 
 
 def query_windows_terminal_cursor_position():
+    if _platform.system() != "Windows":
+        return
     # Send the DSR request
     _sys.stdout.write("\033[6n")
     _sys.stdout.flush()
@@ -113,3 +118,12 @@ def query_windows_terminal_cursor_position():
     response = response.replace("\033[", "").rstrip('R')
     rows, cols = map(int, response.split(';'))
     return rows, cols
+
+
+def open_path(path: str):
+    if _platform.system() == "Windows":
+        _subprocess.Popen(["explorer", path])
+    elif _platform.system() == "Darwin":  # macOS
+        _subprocess.Popen(["open", path])
+    else:  # Linux, including Ubuntu
+        _subprocess.Popen(["xdg-open", path])
