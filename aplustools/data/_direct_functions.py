@@ -256,29 +256,29 @@ class Bits:
 
 
 class UniversalBits(Bits):
-    def __init__(self, object: _Union[str, float, int, bytes, bytearray, bool]):
-        if type(object) in [str, int]:
-            my_bytes = encode(object)
-        elif isinstance(object, float):
-            my_bytes = encode_float(object)
-        elif isinstance(object, bool):
-            my_bytes = b"\x01" if object else b"\x00"
+    def __init__(self, obj: _Union[str, float, int, bytes, bytearray, bool]):
+        if type(obj) in [str, int]:
+            my_bytes = encode(obj)
+        elif isinstance(obj, float):
+            my_bytes = encode_float(obj)
+        elif isinstance(obj, bool):
+            my_bytes = b"\x01" if obj else b"\x00"
         else:
-            my_bytes = object
+            my_bytes = obj
         super().__init__(my_bytes)
 
 
-def lod_helper(curr_lod, big_lster, depth):  # Make iterative instead of recursive
+def _lod_helper(curr_lod, big_lster, depth):  # Make iterative instead of recursive
     for x in curr_lod:
         if isinstance(x, list) and depth > 0:
-            lod_helper(x, big_lster, depth - 1)
+            _lod_helper(x, big_lster, depth - 1)
         else:
             big_lster.append(x)
     return big_lster
 
 
 def unnest_iterable(iterable, max_depth: int = 4):
-    return lod_helper(iterable, [], max_depth)
+    return _lod_helper(iterable, [], max_depth)
 
 
 if __name__ == "__main__":
