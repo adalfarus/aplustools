@@ -10,9 +10,11 @@ data = _LazyModuleLoader('aplustools.data')
 utils = _LazyModuleLoader('aplustools.utils')
 web = _LazyModuleLoader('aplustools.web')
 package = _LazyModuleLoader('aplustools.package')
+myne = _LazyModuleLoader('aplustools.myne')
+security = _LazyModuleLoader('aplustools.security')
 
 # Define __all__ to limit what gets imported with 'from <package> import *'
-__all__ = ['io', 'data', 'utils', 'web', 'package']
+__all__ = ['io', 'data', 'utils', 'web', 'package', 'myne', 'security']
 
 # Dynamically add exports from _direct_functions
 from aplustools._direct_functions import *
