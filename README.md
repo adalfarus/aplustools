@@ -62,7 +62,7 @@ import time
 
 
 # Setup your own timer class easily
-mySpecialTimer = TimidTimer.setup_timer_func(time.time, 1e9)
+mySpecialTimer = TimidTimer.setup_timer_func(time.time, to_nanosecond_multiplier=1e9)
 
 timer = TimidTimer()
 
@@ -78,7 +78,8 @@ with timer.enter(index=1):
 
 # Use it for timed function execution
 timer.start(index=1)  # The context manager automatically ends the timer, so we can reuse index 1 here
-timer.shoot(1, lambda: print(timer.tock(index=1, return_datetime=True)), iterations=3)
+timer.shoot(interval=1, function=lambda: print(timer.tock(index=1, return_datetime=True)), iterations=3)
+print(timer.end())  # End the timer at index 0 that starts when the timer object gets created
 ````
 
 ### System
