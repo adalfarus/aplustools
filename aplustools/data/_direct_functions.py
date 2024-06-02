@@ -6,7 +6,7 @@ from aplustools.package.argumint import EndPoint as _EndPoint
 
 
 def install_dependencies():
-    success = _install_dependencies_lst(["requests==2.32.0", "PySide6==6.6.1", "Pillow==10.3.0", "aiohttp==3.9.4",
+    success = _install_dependencies_lst(["requests==2.32.0", "PySide6==6.7.0", "Pillow==10.3.0", "aiohttp==3.9.4",
                                          "opencv-python==4.9.0.80", "pillow_heif==0.15.0", "numpy==1.26.4"])
     if not success:
         return
