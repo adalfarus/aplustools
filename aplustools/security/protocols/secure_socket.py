@@ -1,4 +1,5 @@
-from aplustools.security.protocols import MessageEncoder, MessageDecoder, ControlCodeProtocol
+from aplustools.security.protocols.secure_message import MessageEncoder, MessageDecoder
+from aplustools.security.protocols.control_code_protocol import ControlCodeProtocol
 from aplustools.io.environment import strict, auto_repr
 from aplustools.security.crypto import CryptUtils
 from aplustools.utils import PortUtils

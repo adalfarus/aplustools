@@ -412,6 +412,5 @@ if __name__ == "__main__":
         print("Log Normal:", rng.log_normal(0, 1, 0, 1))
         print("Sinusoidal:", rng.sinusoidal(0, 1))
         print("Piecewise Linear:", rng.piecewise_linear([0.3, 0.7], [1, -1], 0, 1))
-        print("\n")
 
-    print("Custom exponent: ", round(rng.exponential(0.1, 10, 5.0), 1))
+    print("\nCustom exponent: ", round(rng.exponential(0.1, 10, 5.0), 1))

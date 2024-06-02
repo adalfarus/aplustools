@@ -268,3 +268,18 @@ class MessageDecoder:
         self._complete_buffer = [""]
         self._buffer = ""
         return return_lst
+
+
+if __name__ == "__main__":
+    protocol = ControlCodeProtocol()
+
+    decoder = MessageDecoder(protocol=protocol)
+    encoder = MessageEncoder(protocol=protocol, public_key_bytes=decoder.get_public_key_bytes())
+
+    encoder.add_message("HEllo")
+    message = encoder.flush()
+
+    for chunk in message:
+        decoder.add_chunk(chunk)
+
+    print(decoder.get_complete())
