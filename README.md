@@ -246,35 +246,7 @@ print(dummy, "->", int(dummy), list(dummy), tuple(dummy), float(dummy))
 
 ```
 
-### Hasher
-```python
-from aplustools.utils.hasher import hashed_latest, hashed_wrapper_latest, reducer, big_reducer, num_hasher
-
-inp = "Hello beautiful world, how are you today, lovely star?"
-inp2 = "Hello World, kitty"
-
-desired_length = 64
-
-hashed_inp = hashed_wrapper_latest(inp, desired_length, hash_func=hashed_latest)
-hashed_inp2 = hashed_wrapper_latest(inp2, desired_length, hash_func=hashed_latest)
-
-print(f"{inp} ({len(inp)}) -> {hashed_inp} ({len(hashed_inp)})\n{inp2} ({len(inp2)}) -> {hashed_inp2} ({len(hashed_inp2)})")
-
-num_hashed_inp = num_hasher(inp, desired_length)
-num_hashed_inp2 = num_hasher(inp2, desired_length)
-
-print(f"{inp} ({len(inp)}) -> {num_hashed_inp} ({len(num_hashed_inp)})\n{inp2} ({len(inp2)}) -> {num_hashed_inp2} ({len(num_hashed_inp2)})")
-
-acceptable_chars = range(100, 200)
-
-num_hashed_inp_uni = num_hasher(inp, desired_length, acceptable_chars)
-num_hashed_inp_uni_2 = num_hasher(inp2, desired_length, acceptable_chars)
-
-print(f"{inp} ({len(inp)}) -> {num_hashed_inp_uni} ({len(num_hashed_inp_uni)})\n{inp2} ({len(inp2)}) -> {num_hashed_inp_uni_2} ({len(num_hashed_inp_uni_2)})")
-
-```
-
-### GenPass
+### Security
 ```python
 from aplustools.security.passwords import SecurePasswordManager, GenerateWeakPasswords
 
@@ -346,7 +318,7 @@ encoder.flush()  # Blocking until connection is established
 ### Github-Updater
 ```python
 from aplustools.data.updaters import GithubUpdater, VersionNumber
-from aplustools.io.environment import get_temp
+from aplustools.io.environment import System
 from aplustools import set_dir_to_ex
 import sys
 import os
@@ -363,8 +335,10 @@ latest_version = updater.get_latest_tag_version()             # you need to comp
 if __version__ >= latest_version:
     sys.exit()
 
+system = System.system()
+    
 # Updater method
-path, zip_path = os.path.join(os.getcwd(), "update"), os.path.join(get_temp(), f"apt-update_{latest_version}")
+path, zip_path = os.path.join(os.getcwd(), "update"), os.path.join(system.get_tempdir(), f"apt-update_{latest_version}")
 
 os.makedirs(path, exist_ok=True)
 os.makedirs(zip_path, exist_ok=True)
@@ -557,7 +531,7 @@ These can also be used in e.g. batch files like this
 ```batch
 @echo off
 set /p id=Enter ID: 
-upype from aplustools.utils.genpass import GeneratePasswords; print(GeneratePasswords.generate_custom_sentence_based_password_v1("""%id%""", random_case=True, extra_char="""_""", char_position=0, num_length=5, special_chars_length=2))
+upype from aplustools.utils.security.passwords import GenerateWeakPasswords; print(GenerateWeakPasswords.generate_custom_sentence_based_password_v1("""%id%""", random_case=True, extra_char="""_""", char_position=0, num_length=5, special_chars_length=2))
 pause
 
 ```
@@ -573,7 +547,7 @@ For more detailed usage and examples, check out our [documentation](https://gith
 
 For modules I use 'lowercase', classes are 'CapitalizedWords' and functions and methods are 'lower_case_with_underscores'.
 
-Dependencies (except for the standard libraries) are: 
+Dependencies (except for the standard libraries) are [Currently outdated for V1.5.0]: 
 - [`none`]
   - data.database
   - io.environment
@@ -599,7 +573,7 @@ Dependencies (except for the standard libraries) are:
 Sub-Modules that may be removed in future updates due to being hard to support or simply unneeded.
 
 - database (maybe unneeded and hard to support if more dbs are added -> new_database is being developed)
-- loggers (maybe unneeded)
+- loggers (maybe unneeded, default logging module is just really good)
 
 ## Contributing
 
@@ -613,4 +587,4 @@ We welcome contributions! Please see our [contributing guidelines](https://githu
 
 ## License
 
-aplustools is licensed under the GPL-3.0 License - see the [LICENSE](https://github.com/adalfarus/aplustools/blob/main/LICENSE) file for details.
+aplustools is licensed under the LGPL-2.1 License - see the [LICENSE](https://github.com/adalfarus/aplustools/blob/main/LICENSE) file for details.
