@@ -550,11 +550,9 @@ For modules I use 'lowercase', classes are 'CapitalizedWords' and functions and 
 Dependencies (except for the standard libraries) are [Currently outdated for V1.5.0]: 
 - [`none`]
   - data.database
-  - io.environment
   - io.loggers
   - data.faker
   - utils.dummy
-  - utils.hasher
   - package.lazy_loader
   - package.timid
 - [`requests`]
@@ -565,10 +563,11 @@ Dependencies (except for the standard libraries) are [Currently outdated for V1.
 - data.imagetools - [`Pillow`, `aiohttp`, `requests`, `wand`]
 - data.advanced_imagetools - [`opencv-python`, `aiohttp`, `wand`, `pillow_heif`]
 - web.search, web.utils - [`requests`, `BeautifulSoup4`]
-- utils.genpass - [`cryptography`]
+- security - [`cryptography`]
 - web.request - [`requests`, `aiohttp`]
-- utils.compressor - [`brotli`, `zstandard`, `py7zr`]
+- data.compressor - [`brotli`, `zstandard`, `py7zr`, `aplustools.security.crypto`]
 - io.gui - [`PySide6`]
+- io.environment - [`speedtest-cli`, `windows-toasts`]
 
 Sub-Modules that may be removed in future updates due to being hard to support or simply unneeded.
 
