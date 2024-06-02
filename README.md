@@ -91,10 +91,10 @@ print(type(local_system))  # This will output a specialized class
 
 system_theme = local_system.theme
 clipboard = local_system.get_clipboard()
-local_system.send_notification("Title", "Message")
-local_system.schedule_event("My event", "./my_script.exe", "startup")
+local_system.send_notification("Title", "Message", (), ())
+local_system.schedule_event("My event", script_path="./my_script.exe", event_time="startup")
 
-print(local_system.get_uptime())
+print(f"{round(local_system.get_uptime(), 2)} minutes")
 print(local_system.measure_network_speed())
 
 for process in local_system.get_running_processes():
