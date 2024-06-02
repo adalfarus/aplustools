@@ -281,6 +281,37 @@ def unnest_iterable(iterable, max_depth: int = 4):
     return _lod_helper(iterable, [], max_depth)
 
 
+def cutoff_iterable(iterable: _Union[list, tuple, dict, set], max_elements_start: int = 4, max_elements_end: int = 0,
+                    show_hidden_elements_num: bool = False, return_lst: bool = False):
+    if isinstance(iterable, tuple):
+        braces = "()"
+        iterable = list(iterable)
+    elif isinstance(iterable, list):
+        braces = "[]"
+    elif isinstance(iterable, set):
+        braces = "{}"
+        iterable = list(iterable)
+    elif isinstance(iterable, dict):
+        braces = "{}"
+        iterable = [f"{key}: {value}" for key, value in iterable.items()]
+    else:
+        return f"The class '{type(iterable).__name__}' is not a supported iterable."
+    max_elements_start, max_elements_end = abs(max_elements_start), abs(max_elements_end)
+
+    elements_lst = ((iterable[:max_elements_start]
+                    + (["..." if not show_hidden_elements_num else
+                        f"..[{len(iterable) - (max_elements_start + max_elements_end)}].."
+                        ] if len(iterable) > max_elements_start + max_elements_end else []))
+                    + (iterable[-max_elements_end:] if max_elements_end != 0 else []))
+
+    return braces[0] + ', '.join(str(x) for x in elements_lst) + braces[1] if not return_lst else elements_lst
+
+
+def cutoff_string(string: str, max_chars_start: int = 4, max_chars_end: int = 0,
+                  show_hidden_chars_num: bool = False):
+    return ''.join(cutoff_iterable(list(string), max_chars_start, max_chars_end, show_hidden_chars_num, True))
+
+
 if __name__ == "__main__":
     bit = nice_bits(encode("Hello you world!"), True, 6, True, True)
     bitss = bits(encode_float(0.3))
@@ -310,3 +341,8 @@ if __name__ == "__main__":
     print(bits(set_bits(int(255).to_bytes(1, "big"), 0, "0000000")))
 
     print(Bits(b"\x00"), UniversalBits(bytearray(b"\x11")))
+
+    print(cutoff_string("Hello World", max_chars_start=5, max_chars_end=5, show_hidden_chars_num=True))
+    print(cutoff_iterable({1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, 2, 0, True))
+    print(cutoff_iterable({1: 2, 4: 5, 6: 6, 8: 6, 82: 12, 2: 2, 99: 2, 0: 1}, max_elements_start=4, max_elements_end=3,
+                          show_hidden_elements_num=True))

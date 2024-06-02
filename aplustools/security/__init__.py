@@ -7,10 +7,10 @@ protocols = _LazyModuleLoader('aplustools.security.protocols')
 crypto = _LazyModuleLoader('aplustools.security.crypto')
 database = _LazyModuleLoader('aplustools.security.crypto')
 passwords = _LazyModuleLoader('aplustools.security.crypto')
-random = _LazyModuleLoader('aplustools.security.crypto')
+rand = _LazyModuleLoader('aplustools.security.crypto')
 
 # Define __all__ to limit what gets imported with 'from <package> import *'
-__all__ = ['protocols', 'crypto', 'database', 'passwords', 'random']
+__all__ = ['protocols', 'crypto', 'database', 'passwords', 'rand']
 
 # Dynamically add exports from _direct_functions
 from aplustools.package._direct_functions import *
