@@ -3,7 +3,7 @@ from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout
 
 
 def install_dependencies():
-    success = _install_dependencies_lst(["PySide6==6.6.1", "brotli==1.1.0"])
+    success = _install_dependencies_lst(["PySide6==6.7.0", "brotli==1.1.0"])
     if not success:
         return
     print("Done, all possible dependencies for the data module installed ...")
