@@ -77,7 +77,7 @@ with timer.enter(index=1):
     time.sleep(1)
 
 # Use it for timed function execution
-timer.start(index=1)  # The context manager automatically ends the timer
+timer.start(index=1)  # The context manager automatically ends the timer, so we can reuse index 1 here
 timer.shoot(1, lambda: print(timer.tock(index=1, return_datetime=True)), iterations=3)
 ````
 
