@@ -1,12 +1,8 @@
-# from imagetools import *
 import cv2
 import numpy as np
 import base64
-from io import BytesIO
-from typing import Optional, Tuple, Union
 import asyncio
-from aiohttp import ClientSession
-from typing import Type, Union, Tuple, Optional, List
+from typing import Type, Union, Tuple, Optional, List, Callable
 from concurrent.futures import ThreadPoolExecutor
 import functools
 import mimetypes
@@ -127,42 +123,39 @@ class ImageManager:
         tasks = [self._remove_image_object(image_object) for image_object in image_objects]
         await asyncio.gather(*tasks)
 
-    def execute_func(self, index: int, function, *args, **kwargs):
+    def execute_func(self, index: int, function: Callable, *args, **kwargs):
         if self.use_async:
             asyncio.run(self._execute_func_async(index, function, *args, **kwargs))
         else:
-            getattr(self.images[index], function)(*args, **kwargs)
+            function(self.images[index], *args, **kwargs)
 
-    async def _execute_func_async(self, index: int, function, *args, **kwargs):
-        func = getattr(self.images[index], function)
-        if asyncio.iscoroutinefunction(func):
-            await func(*args, **kwargs)
+    async def _execute_func_async(self, index: int, function: Callable, *args, **kwargs):
+        if asyncio.iscoroutinefunction(function):
+            await function(self.images[index], *args, **kwargs)
         else:
             # Handle non-async functions, possibly with run_in_executor for CPU-bound methods
             loop = asyncio.get_running_loop()
             with ThreadPoolExecutor() as pool:
-                await self.run_in_executor(loop, pool, func, *args, **kwargs)
+                await self.run_in_executor(loop, pool, function, self.images[index], *args, **kwargs)
 
     @staticmethod
-    async def run_in_executor(loop, executor, func, *args, **kwargs):
+    async def run_in_executor(loop, executor, func, targeted_object, *args, **kwargs):
         if kwargs:
             func = functools.partial(func, **kwargs)
         return await loop.run_in_executor(executor, func, *args)
 
-    def execute_funcs(self, function_name: str, args_list: List[Tuple[int, list, dict]]):
+    def execute_funcs(self, function: Callable, args_list: List[Tuple[int, tuple, dict]]):
         if self.use_async:
-            asyncio.run(self._execute_funcs_async(function_name, args_list))
+            asyncio.run(self._execute_funcs_async(function, args_list))
         else:
             for index, args, kwargs in args_list:
                 try:
-                    getattr(self.images[index], function_name)(*args, **kwargs)
+                    function(self.images[index], *args, **kwargs)
                 except IndexError:
                     print(f"No image at index {index}")
-                except AttributeError:
-                    print(f"The function {function_name} does not exist for the image at index {index}")
 
-    async def _execute_funcs_async(self, function_name: str, args_list: List[Tuple[int, list, dict]]):
-        tasks = [self._execute_func_async(index, function_name, *args, **kwargs) for index, args, kwargs in args_list]
+    async def _execute_funcs_async(self, function: Callable, args_list: List[Tuple[int, tuple, dict]]):
+        tasks = [self._execute_func_async(index, function, *args, **kwargs) for index, args, kwargs in args_list]
         await asyncio.gather(*tasks)
 
 

@@ -33,7 +33,7 @@ class TestDataGenerator:
 
     NUMS = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]
 
-    STREETS = ["Main", "Oak"]
+    STREETS = ["Main", "Oak", "Side", "Cae", "First", "Sing"]
 
     CENTURIES = ["19", "20"]
 

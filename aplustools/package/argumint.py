@@ -65,20 +65,24 @@ class Argument:
             return self.type(to_type)
 
     def __repr__(self):
+        help_str = self.help if self.help != '' else '\'\''
         return f"Argument(name={self.name}, \
 type={self.type}, \
 choices={self.choices}, \
 default={self.default}, \
-help={self.help})"
+help={help_str})"
 
 
 class EndPoint:
     """used to define the endpoint of a trace from an argstruct object."""
-    def __init__(self, function: Callable, arguments: Optional[List[Argument]] = None):
-        if arguments:
+    def __init__(self, function: Callable, arguments: Optional[List[Argument]] = None,
+                 return_type: Optional[type] = None, name: Optional[str] = None):
+        if arguments is not None and return_type is not None and name is not None:
             self.arguments = arguments
+            self.return_type = return_type
+            self.name = name
         else:
-            argument_names = function.__code__.co_varnames or ()
+            argument_names = function.__code__.co_varnames[:function.__code__.co_argcount] or ()
             defaults = list(function.__defaults__ or ())
             shifted_defaults = defaults[:0] = [None] * (len(argument_names) - len(defaults)) + defaults
             types = function.__annotations__ or {}
@@ -106,6 +110,8 @@ class EndPoint:
                                        help_=help_.get(arg_name, ""))
                               for arg_name, default in zip(argument_names, shifted_defaults)
                               if arg_name not in ['args', 'kwargs']]
+            self.return_type = types.get("return", None)
+            self.name = function.__name__
         # input(self.argument_names)
         self._arg_index = {arg.name: i for i, arg in enumerate(self.arguments)}
         self.function = function

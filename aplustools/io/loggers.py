@@ -1,8 +1,8 @@
+# Todo: create a lock to prevent the terminal from writing concurrently and messing up the order & general rewrite
 import sys
 import time
-from typing import TextIO, Union, Optional, Type, Callable, Tuple, List, Any
+from typing import TextIO, Union, Optional, Type, Callable, Tuple, Any
 from enum import Enum
-import warnings
 
 
 class LogType(Enum):
@@ -12,11 +12,6 @@ class LogType(Enum):
     WARN = "[WARN] "
     ERR = "[ERR] "
     ANY = None
-
-
-# Doesn't work at the moment
-# def overwrite_log_type(new_log_type: Type[LogType]):
-#     LogType = new_log_type
 
 
 def classify_type_stan(message: str) -> Tuple[LogType, str]:
@@ -137,7 +132,7 @@ class TypeLogger(PrintLogger):  # The , *_, **__ need to be added as direct init
         self.write_type = write_type
         self.current_display_type = current_display_type
         self.current_logging_type = current_logging_type
-        self.log_switch = False # If the program is currently logging
+        self.log_switch = False  # If the program is currently logging
 
     def _add_type(self, message: str, log_type: Optional[LogType] = None) -> str:
         """Adds the type to the message if an depending on the switches."""
