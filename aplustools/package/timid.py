@@ -96,7 +96,7 @@ class TimidTimer:
             return timedelta(microseconds=elapsed_time / 1000)
 
     def tick(self, index: Optional[int] = None, return_datetime: bool = True) -> Optional[timedelta]:
-        """Return how much time has passed till the start."""
+        """Return how much time has passed till the start. (Could also be called elapsed)"""
         tick_time = self._time()
         index = index or 0  # If it's 0 it just sets it to 0 so it's okay.
         if index >= len(self._times):
@@ -107,7 +107,7 @@ class TimidTimer:
             return timedelta(microseconds=(tick_time - start) / 1000)
 
     def tock(self, index: Optional[int] = None, return_datetime: bool = True) -> Optional[timedelta]:
-        """Returns how much time has passed till the last tock."""
+        """Returns how much time has passed till the last tock. (Could also be called round/lap/split)"""
         tock_time = self._time()
         index = index or 0  # If it's 0 it just sets it to 0 so it's okay.
         if index >= len(self._times):
@@ -121,24 +121,36 @@ class TimidTimer:
         if return_datetime:
             return timedelta(microseconds=(end - last_time) / 1000)
 
-    def tally(self, index: Optional[int] = None) -> timedelta:
+    def tally(self, *indices: Optional[int]) -> timedelta:
         """Return the total time recorded across all ticks and tocks."""
-        index = index or 0  # If it's 0 it just sets it to 0 so it's okay.
-        start, end, _, __ = self._times[index]
-        tick_tocks = self._tick_tocks[index].copy()
-        if end is not None and len(tick_tocks) > 0:
-            tick_tocks.append((tick_tocks[-1][1], end))
-        elif end is not None:
-            tick_tocks.append((start, end))
-        total_time = sum((end - start for start, end in tick_tocks))
+        indices = indices or [0]  # If it's 0 it just sets it to 0 so it's okay.
+        total_time = 0
+
+        for index in indices:
+            start, end, _, __ = self._times[index]
+            tick_tocks = self._tick_tocks[index].copy()
+            if end is not None and len(tick_tocks) > 0:
+                tick_tocks.append((tick_tocks[-1][1], end))
+            elif end is not None:
+                tick_tocks.append((start, end))
+            total_time += sum((end - start for start, end in tick_tocks))
+
         return timedelta(microseconds=total_time / 1000)
 
-    def average(self, index: Optional[int] = None) -> timedelta:
+    def average(self, *indices: Optional[int]) -> timedelta:
         """Calculate the average time across all recorded ticks and tocks."""
-        index = index or 0  # If it's 0 it just sets it to 0 so it's okay.
-        _, end, __, ___ = self._times[index]
-        tick_tocks = self._tick_tocks[index].copy()
-        return self.tally() / max(1, len(tick_tocks) + (1 if end is not None and end != ([(0, 0)] + tick_tocks)[-1][1] else 0))
+        indices = indices or [0]  # If it's 0 it just sets it to 0 so it's okay.
+        total_tocks = 0
+
+        for index in indices:
+            _, end, __, ___ = self._times[index]
+            tick_tocks = self._tick_tocks[index].copy()
+            total_tocks += len(tick_tocks) + (1 if end is not None and end != ([(0, 0)] + tick_tocks)[-1][1] else 0)
+
+        if total_tocks == 0:
+            return timedelta(0)
+
+        return self.tally(*indices) / total_tocks
 
     def warmup(self, rounds: int = 3):
         for _ in range(rounds):
