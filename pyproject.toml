@@ -3,15 +3,14 @@ requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-packages = ["aplustools", "aplustools.data", "aplustools.io", "aplustools.utils", "aplustools.web", "aplustools.package", "aplustools.tests", "aplustools.io.gui"]
+packages = ["aplustools", "aplustools.data", "aplustools.io", "aplustools.utils", "aplustools.web", "aplustools.package", "aplustools.tests", "aplustools.io.gui", "aplustools.security", "aplustools.security.protocols"]
 
 [project]
 name = "aplustools"
-version = "1.4.9"
+version = "1.5.0"
 dependencies = [
   "requests>=2.31.0",
-  "BeautifulSoup4>=4.12.2",
-#   "win32api; os_name == 'nt'",
+  "BeautifulSoup4>=4.12.2"
 ]
 requires-python = ">= 3.9"
 authors = [
@@ -39,7 +38,7 @@ data = [
   "pillow_heif==0.15.0",
   "numpy==1.26.4"
 ]
-web = ["duckduckgo_search>=3.9.6"]
+io = ["speedtest-cli==2.1.3", "windows-toasts==1.1.1; os_name == 'nt'"]
 utils = [
   "cryptography>=42.0.5",
   "brotli>=1.1.0",

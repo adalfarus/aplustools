@@ -93,6 +93,25 @@ with open(os.path.join(folder_path, './image_async.png'), 'wb') as file:
 
 ```
 
+```python
+from aplustools.data import what_func, nice_bits, encode_positive_int
+
+what_func(nice_bits)
+>>> aplustools.data._direct_functions.nice_bits(bytes_like: bytes = None, spaced: bool = False, wrap_count: int = 0, to_chars: bool = False, edge_space: bool = False) -> <class 'str'>
+nice_bits(int(10_000).to_bytes(2, "big"), True, 4, True, True)
+>>> " 00100111 00010000                    '\x10"
+nice_bits(int(100_000).to_bytes(3, "big"), True, 4, True, True)
+>>> ' 00000001 10000110 10100000           \x01\x86\xa0'
+nice_bits(int(100_000).to_bytes(300, "big"), True, 4, True, True)
+>>> ' 00000001 10000110 10100000           \x01\x86\xa0'  # NUL bytes will be ignored
+nice_bits(encode_positive_int(1_293_781_273_712_321), True, 4, True, True)
+>>> ' 00000100 10011000 10101111 11101101  \x04\x98¯í\n 00111100 10010110 11000001           <\x96Á'
+print(nice_bits(encode_positive_int(1_293_781_273_712_321), True, 4, True, True))
+>>> 00000100 10011000 10101111 11101101  ¯í
+>>> 00111100 10010110 11000001           <Á
+
+```
+
 ### ImageManager
 ````python
 from aplustools.data.imagetools import ImageManager, OnlineImage
@@ -257,7 +276,7 @@ print(f"{inp} ({len(inp)}) -> {num_hashed_inp_uni} ({len(num_hashed_inp_uni)})\n
 
 ### GenPass
 ```python
-from aplustools.utils.genpass import SecurePasswordManager, GeneratePasswords
+from aplustools.security.passwords import SecurePasswordManager, GenerateWeakPasswords
 
 manager = SecurePasswordManager()
 password = manager.generate_ratio_based_password_v2(length=26, letters_ratio=0.5, numbers_ratio=0.3,
@@ -266,14 +285,14 @@ manager.add_password("example.com", "json-the-greatest", password)
 manager.store_in_buffer("example.com", 0)  # Stores unencrypted password in a buffer
 print(manager.get_password("example.com"), "|", manager.use_from_buffer(0))  # for faster access.
 
-print(GeneratePasswords.generate_custom_sentence_based_password_v1(
+print(GenerateWeakPasswords.generate_custom_sentence_based_password_v1(
     "Exploring the unknown -- discovering new horizons...", random_case=True, extra_char="_",
     char_position="keep" or 0, num_length=5, special_chars_length=2))
 # "keep" just sets it to 0
 
 # These classes are mostly meant for secure interprocess bidirectional
 # communication using networks.
-from aplustools.utils.genpass import ControlCodeProtocol, SecureSocketServer, SecureSocketClient
+from aplustools.security.protocols import ControlCodeProtocol, SecureSocketServer, SecureSocketClient
 
 # Initialize the protocol
 prot = ControlCodeProtocol()
@@ -284,8 +303,8 @@ sock = client.get_socket()
 server = SecureSocketServer(sock, prot)
 
 # Start key exchange and communication between server and client
-client.start_and_exchange_keys()  # Client has to start first
-server.start_and_exchange_keys()
+client.startup()  # Client has to start first
+server.startup()
 
 # Client sends a message and a control code to the server
 client.add_control_code("shutdown")
@@ -300,7 +319,7 @@ print("DONE1")
 
 # There are also classes for one directional communication that are
 # more integrated.
-from aplustools.utils.genpass import ControlCodeProtocol, ServerMessageHandler, ClientMessageHandler
+from aplustools.security.protocols import ControlCodeProtocol, ServerMessageHandler, ClientMessageHandler
 import threading
 
 prot = ControlCodeProtocol()

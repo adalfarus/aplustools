@@ -1,9 +1,12 @@
-from PySide6.QtWidgets import QGraphicsView, QGraphicsScene, QGraphicsPixmapItem, QScrollArea, QPushButton, QApplication
+from PySide6.QtWidgets import (QGraphicsView, QGraphicsScene, QGraphicsPixmapItem, QScrollArea, QPushButton,
+                               QApplication, QWidget, QSizePolicy, QScrollBar)
 from PySide6.QtGui import QPixmap, QPainter, QWheelEvent, QKeyEvent, QPen, QFont, QTextOption
-from PySide6.QtCore import Qt, QTimer, QPropertyAnimation, QEasingCurve, Slot, QRectF, QByteArray
+from PySide6.QtCore import Qt, QTimer, QPropertyAnimation, QEasingCurve, Slot, QRectF, QByteArray, QObject, Signal
 from typing import Literal, List, Optional
 from aplustools.web.utils import url_validator
+from aplustools.io.gui import QNoSpacingHBoxLayout, QNoSpacingVBoxLayout
 import httpx
+from concurrent.futures import ThreadPoolExecutor
 import time
 import os
 
@@ -178,10 +181,146 @@ class QAdvancedSmoothScrollingArea(QScrollArea):
         event.accept()  # Prevent further processing of the event
 
 
-class QScalingGraphicPixmapItem(QGraphicsPixmapItem):
+class QSmoothScrollingGraphicsView(QGraphicsView):
+    def __init__(self, parent=None, sensitivity: int = 1):
+        super().__init__(parent)
+
+        # Scroll animation setup
+        self.scroll_animation = QPropertyAnimation(self.verticalScrollBar(), b"value")
+        self.scroll_animation.setEasingCurve(QEasingCurve.OutCubic)  # Smoother deceleration
+        self.scroll_animation.setDuration(500)  # Duration of the animation in milliseconds
+
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+
+        self.sensitivity = sensitivity
+        self.toScroll = 0  # Total amount left to scroll
+
+    def change_scrollbar_state(self, scrollbar: Literal["vertical", "horizontal"], state: bool = False):
+        state = Qt.ScrollBarPolicy.ScrollBarAsNeeded if state else Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+
+        if scrollbar == "vertical":
+            self.setVerticalScrollBarPolicy(state)
+        else:
+            self.setHorizontalScrollBarPolicy(state)
+
+    def wheelEvent(self, event: QWheelEvent):
+        angle_delta = event.angleDelta().y()
+        steps = angle_delta / 120
+        pixel_step = int(self.verticalScrollBar().singleStep() * self.sensitivity)
+
+        if self.scroll_animation.state() == QPropertyAnimation.Running:
+            self.scroll_animation.stop()
+            self.toScroll += self.scroll_animation.endValue() - self.verticalScrollBar().value()
+
+        current_value = self.verticalScrollBar().value()
+        max_value = self.verticalScrollBar().maximum()
+        min_value = self.verticalScrollBar().minimum()
+
+        # Inverted scroll direction calculation
+        self.toScroll -= pixel_step * steps
+        proposed_value = current_value + self.toScroll  # Reflecting changes
+
+        if proposed_value > max_value and steps > 0:
+            self.toScroll = 0
+        elif proposed_value < min_value and steps < 0:
+            self.toScroll = 0
+
+        new_value = current_value + self.toScroll
+        self.scroll_animation.setStartValue(current_value)
+        self.scroll_animation.setEndValue(new_value)
+        self.scroll_animation.start()
+        self.toScroll = 0
+        event.accept()
+
+
+class QAdvancedSmoothScrollingGraphicsView(QGraphicsView):
+    def __init__(self, parent=None, sensitivity: int = 1):
+        super().__init__(parent)
+
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+
+        # Scroll animations for both scrollbars
+        self.v_scroll_animation = QPropertyAnimation(self.verticalScrollBar(), b"value")
+        self.h_scroll_animation = QPropertyAnimation(self.horizontalScrollBar(), b"value")
+        for anim in (self.v_scroll_animation, self.h_scroll_animation):
+            anim.setEasingCurve(QEasingCurve.OutCubic)
+            anim.setDuration(500)
+
+        self.sensitivity = sensitivity
+
+        # Scroll accumulators
+        self.v_toScroll = 0
+        self.h_toScroll = 0
+
+        self.primary_scrollbar = "vertical"
+
+    def setPrimaryScrollbar(self, new_primary_scrollbar: Literal["vertical", "horizontal"]):
+        self.primary_scrollbar = new_primary_scrollbar
+
+    def setScrollbarState(self, scrollbar: Literal["vertical", "horizontal"], state: bool = False):
+        state = Qt.ScrollBarPolicy.ScrollBarAsNeeded if state else Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+
+        if scrollbar == "vertical":
+            self.setVerticalScrollBarPolicy(state)
+        else:
+            self.setHorizontalScrollBarPolicy(state)
+
+    def wheelEvent(self, event: QWheelEvent):
+        horizontal_event_dict = {
+            "scroll_bar": self.horizontalScrollBar(),
+            "animation": self.h_scroll_animation,
+            "toScroll": self.h_toScroll
+        }
+        vertical_event_dict = {
+            "scroll_bar": self.verticalScrollBar(),
+            "animation": self.v_scroll_animation,
+            "toScroll": self.v_toScroll
+        }
+
+        # Choose scroll bar based on right mouse button state
+        if event.buttons() & Qt.MouseButton.RightButton:
+            event_dict = horizontal_event_dict if self.primary_scrollbar == "vertical" else vertical_event_dict
+        else:
+            event_dict = vertical_event_dict if self.primary_scrollbar == "vertical" else horizontal_event_dict
+
+        angle_delta = event.angleDelta().y()
+        steps = angle_delta / 120
+        pixel_step = int(event_dict.get("scroll_bar").singleStep() * self.sensitivity)
+
+        if event_dict.get("animation").state() == QPropertyAnimation.Running:
+            event_dict.get("animation").stop()
+            event_dict["toScroll"] += event_dict.get("animation").endValue() - event_dict.get("scroll_bar").value()
+
+        current_value = event_dict.get("scroll_bar").value()
+        max_value = event_dict.get("scroll_bar").maximum()
+        min_value = event_dict.get("scroll_bar").minimum()
+
+        # Inverted scroll direction calculation
+        event_dict["toScroll"] -= pixel_step * steps
+        proposed_value = current_value + event_dict["toScroll"]  # Reflecting changes
+
+        if proposed_value > max_value and steps > 0:
+            event_dict["toScroll"] = 0
+        elif proposed_value < min_value and steps < 0:
+            event_dict["toScroll"] = 0
+
+        new_value = current_value + event_dict["toScroll"]
+        event_dict.get("animation").setStartValue(current_value)
+        event_dict.get("animation").setEndValue(new_value)
+        event_dict.get("animation").start()
+
+        event.accept()  # Prevent further processing of the event
+
+
+class QScalingGraphicPixmapItem(QGraphicsPixmapItem, QObject):
+    pixmapLoaded = Signal(QPixmap)
+
     def __init__(self, abs_pixmap_path_or_url: str, width_scaling_threshold: float = 0.1,
                  height_scaling_threshold: float = 0.1, lq_resize_count_threshold: int = 1000):
-        super().__init__()
+        QGraphicsPixmapItem.__init__(self)
+        QObject.__init__(self)
         self.abs_pixmap_path_or_url = os.path.abspath(abs_pixmap_path_or_url) if not (
             url_validator(abs_pixmap_path_or_url)) else abs_pixmap_path_or_url
         self.original_pixmap: QPixmap = None
@@ -191,12 +330,16 @@ class QScalingGraphicPixmapItem(QGraphicsPixmapItem):
         self.lower_height_limit = self.upper_height_limit = 0
         self.width: int = None
         self.height: int = None
+        self.true_width: float = None
+        self.true_height: float = None
         self.int_attr = "width"
         self.lq_resize_count_threshold = lq_resize_count_threshold
         self.lq_resize_count = 0
         self.is_loaded = False
         self.load(True)
         self.reload()
+
+        self.pixmapLoaded.connect(self.setPixmap)
 
     def load(self, first_load: bool = False):
         if not url_validator(self.abs_pixmap_path_or_url):
@@ -215,14 +358,12 @@ class QScalingGraphicPixmapItem(QGraphicsPixmapItem):
         if self.original_pixmap.isNull():
             raise ValueError("Image could not be loaded.")
         if not first_load:
-            pixmap = self.original_pixmap.scaled(self.width, self.height)
-            self.setPixmap(pixmap)
+            self.pixmapLoaded.emit(self.original_pixmap.scaled(self.width, self.height))
 
     def unload(self):
         self.original_pixmap = QPixmap(self.original_pixmap.width(), self.original_pixmap.height())
         self.original_pixmap.fill(Qt.transparent)
-        pixmap = self.original_pixmap.scaled(self.width, self.height)
-        self.setPixmap(pixmap)
+        self.pixmapLoaded.emit(self.original_pixmap.scaled(self.width, self.height))
         self.is_loaded = False
 
     def ensure_loaded(self):
@@ -250,18 +391,20 @@ class QScalingGraphicPixmapItem(QGraphicsPixmapItem):
             else:
                 return width, height
 
-    def true_width(self):
+    def get_true_width(self):
         return self.pixmap().width() * self.transform().m11()  # m11() is the horizontal scaling factor
 
-    def true_height(self):
+    def get_true_height(self):
         return self.pixmap().height() * self.transform().m22()  # m22() is the vertical scaling factor
 
-    def true_size(self):
+    def _true_size(self):
         return self.pixmap().width() * self.transform().m11(), self.pixmap().height() * self.transform().m22()
 
     def reload(self):
-        self.width = self.pixmap().width() * self.transform().m11()
-        self.height = self.pixmap().height() * self.transform().m22()
+        self.true_width = self.pixmap().width() * self.transform().m11()
+        self.true_height = self.pixmap().height() * self.transform().m22()
+        self.width = int(self.true_width)
+        self.height = int(self.true_height)
 
     def scaledToWidth(self, width):
         # self.prepareGeometryChange()
@@ -273,18 +416,18 @@ class QScalingGraphicPixmapItem(QGraphicsPixmapItem):
             self.lower_width_limit = width * (1.0 - self.width_scaling_threshold)
             self.upper_width_limit = width * (1.0 + self.width_scaling_threshold)
             self.lq_resize_count = 0
-        elif self.true_width() != width:
+        elif self.get_true_width() != width:
             # Use transformations for minor scaling adjustments
-            current_width = self.true_width()
+            current_width = self.get_true_width()
             scale_factor = width / current_width
             new_transform = self.transform().scale(scale_factor, scale_factor)
             self.setTransform(new_transform)
             self.lq_resize_count += 1
 
         # Update width and height based on the transformation
-        self.width = width
-        transformed_height = self.true_height()
-        self.height = int(transformed_height)
+        self.width = self.true_width = width
+        self.true_height = self.get_true_height()
+        self.height = int(self.true_height)
         # self.update()
 
     def scaledToHeight(self, height):
@@ -297,18 +440,18 @@ class QScalingGraphicPixmapItem(QGraphicsPixmapItem):
             self.lower_height_limit = height * (1.0 - self.height_scaling_threshold)
             self.upper_height_limit = height * (1.0 + self.height_scaling_threshold)
             self.lq_resize_count = 0
-        elif self.true_height() != height:
+        elif self.get_true_height() != height:
             # Use transformations for minor scaling adjustments
-            current_height = self.true_height()
+            current_height = self.get_true_height()
             scale_factor = height / current_height
             new_transform = self.transform().scale(scale_factor, scale_factor)
             self.setTransform(new_transform)
             self.lq_resize_count += 1
 
         # Update width and height based on the transformation
-        self.height = height
-        transformed_width = self.true_width()
-        self.width = int(transformed_width)
+        self.height = self.true_height = height
+        self.true_width = self.get_true_width()
+        self.width = int(self.true_width)
         # self.update()
 
     def scaled(self, width, height, keep_aspect_ratio: bool = False):
@@ -330,10 +473,10 @@ class QScalingGraphicPixmapItem(QGraphicsPixmapItem):
             self.lower_height_limit = height * (1.0 - self.height_scaling_threshold)
             self.upper_height_limit = height * (1.0 + self.height_scaling_threshold)
             self.lq_resize_count = 0
-        elif self.true_width() != width or self.true_height() != height:
+        elif self.get_true_width() != width or self.get_true_height() != height:
             # Calculate scale factors for both dimensions
-            scale_factor_width = width / self.true_width()
-            scale_factor_height = height / self.true_height()
+            scale_factor_width = width / self.get_true_width()
+            scale_factor_height = height / self.get_true_height()
             if keep_aspect_ratio:
                 # Apply the smallest scaling factor to maintain aspect ratio
                 scale_factor_width = scale_factor_height = min(scale_factor_width, scale_factor_height)
@@ -341,10 +484,10 @@ class QScalingGraphicPixmapItem(QGraphicsPixmapItem):
             self.setTransform(new_transform)
             self.lq_resize_count += 1
 
-        transformed_width = self.true_width()
-        self.width = int(transformed_width)
-        transformed_height = self.true_height()
-        self.height = int(transformed_height)
+        self.true_width = self.get_true_width()
+        self.width = int(self.true_width)
+        self.true_height = self.get_true_height()
+        self.height = int(self.true_height)
         # self.update()
 
     def setInt(self, output: Literal["width", "height"]):
@@ -404,30 +547,216 @@ class QScalingGraphicPixmapItem(QGraphicsPixmapItem):
         return getattr(self, self.int_attr) >= getattr(other, self.int_attr)
 
 
-class BaseContainer(QGraphicsView):
-    def __init__(self, parent=None, sensitivity: int = 1, downscale_images: bool = True, upscale_images: bool = False):
+class QGraphicsScrollView(QWidget):
+    def __init__(self, parent=None, sensitivity: int = 1):
         super().__init__(parent)
-        self.scene = QGraphicsScene()
-        self.setScene(self.scene)
+        # Create a layout for the widget
+        layout = QNoSpacingVBoxLayout()
+        self.setLayout(layout)
 
-        self.setRenderHints(QPainter.RenderHint.Antialiasing | QPainter.RenderHint.SmoothPixmapTransform)
+        # Create a QGraphicsView
+        self.graphics_view = QAdvancedSmoothScrollingGraphicsView(sensitivity=sensitivity)
+        self.graphics_view.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.graphics_view.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.graphics_view.setRenderHint(QPainter.Antialiasing)  # Optional, enables anti-aliasing for smoother rendering
+        self.graphics_view.setScene(QGraphicsScene())
+        self.graphics_view.setStyleSheet("QGraphicsView { border: 0px; }")
+
+        # Set size policy to Ignored to allow resizing freely
+        self.graphics_view.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Ignored)
+
+        self._v_scrollbar = QScrollBar()
+        self._v_scrollbar.setOrientation(Qt.Orientation.Vertical)
+        self._v_scrollbar.setVisible(False)
+
+        # Create a layout for the QGraphicsView with additional spacing
+        graphics_layout = QNoSpacingHBoxLayout()
+
+        graphics_layout.addWidget(self.graphics_view)
+        graphics_layout.addWidget(self._v_scrollbar)
+        layout.addLayout(graphics_layout)
+
+        self._h_scrollbar = QScrollBar()
+        self._h_scrollbar.setOrientation(Qt.Orientation.Horizontal)
+        self._h_scrollbar.setVisible(False)
+
+        self.corner_widget = QWidget()
+        self.corner_widget.setAutoFillBackground(True)
+        self.corner_widget.setFixedSize(self._v_scrollbar.width(), self._h_scrollbar.height())
+
+        hor_scroll_layout = QNoSpacingHBoxLayout()
+        hor_scroll_layout.addWidget(self._h_scrollbar)
+        hor_scroll_layout.addWidget(self.corner_widget)
+
+        # Add scrollbar to the layout
+        layout.addLayout(hor_scroll_layout)
+
+        # Connect scrollbar value changed signal to update content position
+        self._v_scrollbar.valueChanged.connect(self.graphics_view.verticalScrollBar().setValue)
+        self._h_scrollbar.valueChanged.connect(self.graphics_view.horizontalScrollBar().setValue)
+        self.graphics_view.verticalScrollBar().valueChanged.connect(self._v_scrollbar.setValue)
+        self.graphics_view.horizontalScrollBar().valueChanged.connect(self._h_scrollbar.setValue)
+
+        self._scrollbars_background_redraw = False
+        self._vert_scroll_pol = "as"
+        self._hor_scroll_pol = "as"
+        self.updateScrollBars()
+
+    def verticalScrollBar(self):
+        return self._v_scrollbar
+
+    def horizontalScrollBar(self):
+        return self._h_scrollbar
+
+    def setVerticalScrollBarPolicy(self, policy):
+        if policy == Qt.ScrollBarPolicy.ScrollBarAsNeeded:
+            self._vert_scroll_pol = "as"
+        elif policy == Qt.ScrollBarPolicy.ScrollBarAlwaysOff:
+            self._vert_scroll_pol = "off"
+        else:
+            self._vert_scroll_pol = "on"
+        self.updateScrollBars()
+
+    def setHorizontalScrollBarPolicy(self, policy):
+        if policy == Qt.ScrollBarPolicy.ScrollBarAsNeeded:
+            self._hor_scroll_pol = "as"
+        elif policy == Qt.ScrollBarPolicy.ScrollBarAlwaysOff:
+            self._hor_scroll_pol = "off"
+        else:
+            self._hor_scroll_pol = "on"
+        self.updateScrollBars()
+
+    def verticalScrollBarPolicy(self):
+        if self._vert_scroll_pol == "as":
+            return Qt.ScrollBarPolicy.ScrollBarAsNeeded
+        elif self._vert_scroll_pol == "off":
+            return Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+        else:
+            return Qt.ScrollBarPolicy.ScrollBarAlwaysOn
+
+    def horizontalScrollBarPolicy(self):
+        if self._hor_scroll_pol == "as":
+            return Qt.ScrollBarPolicy.ScrollBarAsNeeded
+        elif self._hor_scroll_pol == "off":
+            return Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+        else:
+            return Qt.ScrollBarPolicy.ScrollBarAlwaysOn
+
+    def updateScrollbarss(self):
+        gv_size_hint = self.graphics_view.sizeHint()
+
+        # Check if scrollbars are needed
+        if (gv_size_hint.height() > self.height() and self._vert_scroll_pol == "as") or self._vert_scroll_pol == "on":
+            self._v_scrollbar.setVisible(True)
+            self._v_scrollbar.setPageStep(self.height())
+        else:
+            self._v_scrollbar.setVisible(False)
+        max_v_scroll = max(0, gv_size_hint.height() - self.height())
+        self._v_scrollbar.setRange(0, max_v_scroll)
+
+        if (gv_size_hint.width() > self.width() and self._hor_scroll_pol == "as") or self._hor_scroll_pol == "on":
+            self._h_scrollbar.setVisible(True)
+            self._h_scrollbar.setPageStep(self.width())
+        else:
+            self._h_scrollbar.setVisible(False)
+        max_h_scroll = max(0, gv_size_hint.width() - self.width())
+        self._h_scrollbar.setRange(0, max_h_scroll)
+
+        if self._h_scrollbar.isVisible() and self._v_scrollbar.isVisible():
+            self.corner_widget.show()
+        else:
+            self.corner_widget.hide()
+        self.corner_widget.setFixedSize(self._v_scrollbar.width(), self._h_scrollbar.height())
+        self.updateHorizontalContentPosition(self._v_scrollbar.value())
+        self.updateVerticalContentPosition(self._h_scrollbar.value())
+
+        self._v_scrollbar.setRange(0, self.graphics_view.verticalScrollBar().maximum())
+        self._h_scrollbar.setRange(0, self.graphics_view.horizontalScrollBar().maximum())
+
+    def updateScrollbar(self):
+        vertical_content_size = self.graphics_view.verticalScrollBar().maximum() + self.height()
+        horizontal_content_size = self.graphics_view.horizontalScrollBar().maximum() + self.width()
+
+        print(self.graphics_view.verticalScrollBar().maximum(), self.height())
+
+        # Check if scrollbars are needed
+        if (vertical_content_size > self.height() and self._vert_scroll_pol == "as") or self._vert_scroll_pol == "on":
+            self._v_scrollbar.setVisible(True)
+            self._v_scrollbar.setPageStep(self.height())
+        else:
+            self._v_scrollbar.setVisible(False)
+        max_v_scroll = max(0, vertical_content_size - self.height())
+        self._v_scrollbar.setRange(0, max_v_scroll)
+
+        if (horizontal_content_size > self.width() and self._hor_scroll_pol == "as") or self._hor_scroll_pol == "on":
+            self._h_scrollbar.setVisible(True)
+            self._h_scrollbar.setPageStep(self.width())
+        else:
+            self._h_scrollbar.setVisible(False)
+        max_h_scroll = max(0, horizontal_content_size - self.width())
+        self._h_scrollbar.setRange(0, max_h_scroll)
+
+        if self._h_scrollbar.isVisible() and self._v_scrollbar.isVisible():
+            self.corner_widget.show()
+        else:
+            self.corner_widget.hide()
+        self.corner_widget.setFixedSize(self._v_scrollbar.width(), self._h_scrollbar.height())
+        self._v_scrollbar.setValue(self.graphics_view.verticalScrollBar().value())
+        self._h_scrollbar.setValue(self.graphics_view.horizontalScrollBar().value())
+
+    def updateScrollBars(self):
+        # Sync with internal scrollbars
+        self.verticalScrollBar().setRange(self.graphics_view.verticalScrollBar().minimum(),
+                                          self.graphics_view.verticalScrollBar().maximum())
+        self.horizontalScrollBar().setRange(self.graphics_view.horizontalScrollBar().minimum(),
+                                            self.graphics_view.horizontalScrollBar().maximum())
+
+        if self._vert_scroll_pol == "on":
+            self.verticalScrollBar().setVisible(True)
+        elif self._vert_scroll_pol == "off":
+            self.verticalScrollBar().setVisible(False)
+        elif self._vert_scroll_pol == "as":
+            # Show or hide based on the content size
+            self.verticalScrollBar().setVisible(self.verticalScrollBar().maximum() > 0)
+
+        if self._hor_scroll_pol == "on":
+            self.horizontalScrollBar().setVisible(True)
+        elif self._hor_scroll_pol == "off":
+            self.horizontalScrollBar().setVisible(False)
+        elif self._hor_scroll_pol == "as":
+            # Show or hide based on the content size
+            self.horizontalScrollBar().setVisible(self.horizontalScrollBar().maximum() > 0)
+
+        if self._h_scrollbar.isVisible() and self._v_scrollbar.isVisible():
+            self.corner_widget.show()
+        else:
+            self.corner_widget.hide()
+        self.corner_widget.setFixedSize(self._v_scrollbar.width(), self._h_scrollbar.height())
+
+    def scrollBarsBackgroundRedraw(self, value: bool):
+        self._scrollbars_background_redraw = value
+        self.corner_widget.setAutoFillBackground(not value)
+
+    def resizeEvent(self, event):
+        event_size = event.size()
+        if not self._scrollbars_background_redraw:
+            event_size.setWidth(event_size.width() - self._v_scrollbar.width())
+            event_size.setHeight(event_size.height() - self._h_scrollbar.height())
+
+        # Update scrollbar range and page step
+        self.graphics_view.resize(event_size)
+        self.updateScrollBars()
+
+
+class TargetContainer(QGraphicsScrollView):
+    def __init__(self, parent=None, sensitivity: int = 1, downscale_images: bool = True, upscale_images: bool = False,
+                 base_size: int = 640, use_original_image_size: bool = False, lazy_loading: bool = True):
+        super().__init__(parent, sensitivity)
+        self.scene = self.graphics_view.scene()
+        self.graphics_view.setRenderHints(QPainter.RenderHint.Antialiasing | QPainter.RenderHint.SmoothPixmapTransform)
+
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
-
-        # Scroll animations for both scrollbars
-        self.v_scroll_animation = QPropertyAnimation(self.verticalScrollBar(), b"value")
-        self.h_scroll_animation = QPropertyAnimation(self.horizontalScrollBar(), b"value")
-        for anim in (self.v_scroll_animation, self.h_scroll_animation):
-            anim.setEasingCurve(QEasingCurve.OutCubic)
-            anim.setDuration(500)
-
-        self.sensitivity = sensitivity
-
-        # Scroll accumulators
-        self.v_toScroll = 0
-        self.h_toScroll = 0
-
-        self.primary_scrollbar = "vertical"
         self.resizing = False
 
         self.timer = QTimer(self)
@@ -439,6 +768,18 @@ class BaseContainer(QGraphicsView):
 
         self._downscale_images = downscale_images
         self._upscale_images = upscale_images
+        self._base_size = base_size
+        self._use_original_image_size = use_original_image_size
+        self.lazy_loading = lazy_loading
+        self.management = None
+
+        self.images = []
+
+        self.thread_pool = ThreadPoolExecutor(max_workers=4)
+
+    def setManagement(self, management):
+        self.management = management
+        self.management.initialize(self)
 
     @property
     def downscale_images(self):
@@ -458,276 +799,219 @@ class BaseContainer(QGraphicsView):
         self._upscale_images = upscale_images
         self.force_rescaling = True
 
-    def setPrimaryScrollbar(self, new_primary_scrollbar: Literal["vertical", "horizontal"]):
-        self.primary_scrollbar = new_primary_scrollbar
+    @property
+    def base_size(self):
+        return self._base_size
 
-    def setScrollbarState(self, scrollbar: Literal["vertical", "horizontal"], state: bool = False):
-        state = Qt.ScrollBarPolicy.ScrollBarAsNeeded if state else Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+    @base_size.setter
+    def base_size(self, base_size: int):
+        self._base_size = base_size
+        self.force_rescaling = True
 
-        if scrollbar == "vertical":
-            self.setVerticalScrollBarPolicy(state)
-        else:
-            self.setHorizontalScrollBarPolicy(state)
+    @property
+    def use_original_image_size(self):
+        return self._use_original_image_size
+
+    @use_original_image_size.setter
+    def use_original_image_size(self, use_original_image_size: bool):
+        self._use_original_image_size = use_original_image_size
+        self.force_rescaling = True
 
     def addImagePath(self, image_path: str):
         image = QScalingGraphicPixmapItem(image_path)
         self.addImageToScene(image)
 
+    # Management methods
     def addImageToScene(self, image: QScalingGraphicPixmapItem):
         self.scene.addItem(image)
-        self.rescaleImages()
+        self.images.append(image)
+        if self.lazy_loading:
+            image.ensure_unloaded()
+        self.management.addImageToScene(image, self)
 
-    def rescaleImages(self):
-        width = self.viewport().width()
-        height = self.viewport().height()
-        for item in self.scene.items():
-            if isinstance(item, QGraphicsPixmapItem):
-                item.scaled(width, height)
+    def rescaleImages(self, event_size=None):
+        event_size = event_size or self.graphics_view.viewport().size()
+        width = event_size.width()  # self.graphics_view.viewport().width() + self.verticalScrollBar().width()
+        height = event_size.height()  # self.graphics_view.viewport().height() + self.horizontalScrollBar().height()
+        images = self.images.copy()
+        self.management.rescaleImages(width, height, images, self)
 
     def adjustSceneBounds(self):
-        return
+        items: List[QScalingGraphicPixmapItem] = self.scene.items()
+        self.management.adjustSceneBounds(items, self)
 
     def onScroll(self):
-        pass
+        images = self.images.copy()
+        self.management.onScroll(images, self)
 
     def resizeEvent(self, event):
         self.resizing = self.force_rescaling = True
-        super().resizeEvent(event)
-        self.rescaleImages()
+        self.rescaleImages(event.size())
         self.adjustSceneBounds()
         self.resizing = False
+        self.onScroll()
+        self.management.resizeEvent(self)
+        super().resizeEvent(event)
 
-    def wheelEvent(self, event: QWheelEvent):
-        horizontal_event_dict = {
-            "scroll_bar": self.horizontalScrollBar(),
-            "animation": self.h_scroll_animation,
-            "toScroll": self.h_toScroll
-        }
-        vertical_event_dict = {
-            "scroll_bar": self.verticalScrollBar(),
-            "animation": self.v_scroll_animation,
-            "toScroll": self.v_toScroll
-        }
-
-        # Choose scroll bar based on right mouse button state
-        if event.buttons() & Qt.MouseButton.RightButton:
-            event_dict = horizontal_event_dict if self.primary_scrollbar == "vertical" else vertical_event_dict
-        else:
-            event_dict = vertical_event_dict if self.primary_scrollbar == "vertical" else horizontal_event_dict
-
-        angle_delta = event.angleDelta().y()
-        steps = angle_delta / 120
-        pixel_step = int(event_dict.get("scroll_bar").singleStep() * self.sensitivity)
-
-        if event_dict.get("animation").state() == QPropertyAnimation.Running:
-            event_dict.get("animation").stop()
-            event_dict["toScroll"] += event_dict.get("animation").endValue() - event_dict.get("scroll_bar").value()
-
-        current_value = event_dict.get("scroll_bar").value()
-        max_value = event_dict.get("scroll_bar").maximum()
-        min_value = event_dict.get("scroll_bar").minimum()
-
-        # Inverted scroll direction calculation
-        event_dict["toScroll"] -= pixel_step * steps
-        proposed_value = current_value + event_dict["toScroll"]  # Reflecting changes
-
-        if proposed_value > max_value and steps > 0:
-            event_dict["toScroll"] = 0
-        elif proposed_value < min_value and steps < 0:
-            event_dict["toScroll"] = 0
-
-        new_value = current_value + event_dict["toScroll"]
-        event_dict.get("animation").setStartValue(current_value)
-        event_dict.get("animation").setEndValue(new_value)
-        event_dict.get("animation").start()
-
-        event.accept()  # Prevent further processing of the event
-
+    # Rest
     def timer_tick(self):
         self.rescaleImages()
         # self.adjustSceneBounds()
         self.onScroll()
 
 
-class HorizontalScrollingContainer(BaseContainer):
-    def __init__(self, sensitivity: int = 1, downscale_images: bool = True, upscale_images: bool = False,
-                 base_height: int = 640, use_original_image_height: bool = False, lazy_loading: bool = True):
-        super().__init__(sensitivity=sensitivity, downscale_images=downscale_images, upscale_images=upscale_images)
-        self.setPrimaryScrollbar("horizontal")
+class BaseManagement:
+    @staticmethod
+    def initialize(target):
+        pass
 
-        self._base_height = base_height
-        self._use_original_image_height = use_original_image_height
-        self.lazy_loading = lazy_loading
+    @staticmethod
+    def addImageToScene(image, target):
+        pass
 
-        self.horizontalScrollBar().valueChanged.connect(self.onScroll)
+    @classmethod
+    def rescaleImages(cls, width, height, scene_items, target):
+        pass
 
-    @property
-    def base_height(self):
-        return self._base_height
+    @staticmethod
+    def adjustSceneBounds(items, target):
+        pass
 
-    @base_height.setter
-    def base_height(self, base_height: int):
-        self._base_height = base_height
-        self.force_rescaling = True
+    @classmethod
+    def onScroll(cls, images, target):
+        pass
 
-    @property
-    def use_original_image_height(self):
-        return self._use_original_image_height
+    @staticmethod
+    def resizeEvent(target):
+        pass
 
-    @use_original_image_height.setter
-    def use_original_image_height(self, use_original_image_height: bool):
-        self._use_original_image_height = use_original_image_height
-        self.force_rescaling = True
 
-    def addImageToScene(self, image: QScalingGraphicPixmapItem):
+class HorizontalManagement(BaseManagement):
+    @staticmethod
+    def initialize(target):
+        target.graphics_view.setPrimaryScrollbar("horizontal")
+
+    @staticmethod
+    def addImageToScene(image, target):
         image.setInt("height")
-        self.scene.addItem(image)
-        image.scaledToHeight(self.viewport().height())
+        image.scaledToHeight(target.graphics_view.viewport().height())
 
-        if self.lazy_loading:
-            image.ensure_unloaded()
+    @staticmethod
+    def _get_wanted_size(target, item: QScalingGraphicPixmapItem, viewport_height: int, last_item: bool = False):
+        base_image_height = item.original_pixmap.width() if target.use_original_image_size else target.base_size
 
-    def onScroll(self):
-        images = self.scene.items()
-
-        if self.lazy_loading:
-            scrollbar = self.horizontalScrollBar()
-            curr_scroll = scrollbar.value()
-            max_scroll = scrollbar.maximum()
-
-            if max_scroll == 0:
-                return
-
-            # Estimate the index of the potentially visible image
-            percentage = curr_scroll / max_scroll
-            estimated_index = int((len(images) - 1) * percentage)
-
-            # Refine estimated index based on visibility checks
-            estimated_index = self.refine_estimated_index(estimated_index, images)
-
-            # Load images around the refined index
-            self.loadImagesAroundIndex(estimated_index, images)
-
-            self.scene.update()
-            self.update()
-        else:
-            for image in images:
-                image.ensure_loaded()
-
-    def refine_estimated_index(self, estimated_index, images):
-        # Adjust index to ensure it points to a visible image
-        for i in range(max(0, estimated_index - 5), min(len(images), estimated_index + 5)):
-            if self.isVisibleInViewport(images[i]):
-                return i
-        return estimated_index
-
-    def isVisibleInViewport(self, item: QScalingGraphicPixmapItem):
-        # Map item rect to scene coordinates
-        item_rect = item.mapToScene(item.boundingRect()).boundingRect()
-        # Get the viewport rectangle in scene coordinates
-        viewport_rect = self.mapToScene(self.viewport().rect()).boundingRect()
-
-        # Check intersection
-        return viewport_rect.intersects(item_rect)
-
-    def loadImagesAroundIndex(self, index, images: List[QScalingGraphicPixmapItem]):
-        images[index].ensure_loaded()
-        # Load images in the estimated range
-        for item in images[index+1:]:
-            if self.isVisibleInViewport(item):
-                item.ensure_loaded()
-            else:
-                item.ensure_unloaded()
-        for item in images[:index:-1]:
-            if self.isVisibleInViewport(item):
-                item.ensure_loaded()
-            else:
-                item.ensure_unloaded()
-
-    def get_wanted_size(self, item: QScalingGraphicPixmapItem, viewport_height: int, last_item: bool = False):
-        base_image_height = item.original_pixmap.width() if self.use_original_image_height else self.base_height
-
-        if self.force_rescaling:
+        if target.force_rescaling:
             proposed_image_height = base_image_height
 
-            if self.downscale_images and base_image_height > viewport_height:
+            if target.downscale_images and base_image_height > viewport_height:
                 proposed_image_height = viewport_height
-            elif self.upscale_images and base_image_height < viewport_height:
+            elif target.upscale_images and base_image_height < viewport_height:
                 proposed_image_height = viewport_height
             if last_item:
-                self.force_rescaling = False
+                target.force_rescaling = False
             return proposed_image_height
         return item.height
 
-    def rescaleImages(self):
+    @classmethod
+    def rescaleImages(cls, width, height, images, target):
         total_width = 0
-        viewport_height = self.viewport().height()
-        scene_items = self.scene.items().copy()
-        scene_items.reverse()
-        self.force_rescaling = True
+        # images.reverse()
+        target.force_rescaling = True
+        # height += target.horizontalScrollBar().height()
 
-        for i, item in enumerate(scene_items):
+        for i, item in enumerate(images):
             if isinstance(item, QScalingGraphicPixmapItem):
-                wanted_height = self.get_wanted_size(item, viewport_height, True if i == len(scene_items) - 1 else False)
-                item.scaledToHeight(wanted_height)
-                item.setPos(total_width, 0)
+                wanted_height = cls._get_wanted_size(target, item, height, True if i == len(images) - 1 else False)
 
-                total_width += item.true_width()
-            self.scene.update()
-            self.update()
+                if abs(item.get_true_height() - wanted_height) >= 0.5:
+                    # print(item.true_height, "->", wanted_height)
+                    item.scaledToHeight(wanted_height)
+                    item.setPos(total_width, 0)
 
-    def adjustSceneBounds(self):
-        items: List[QScalingGraphicPixmapItem] = self.scene.items()
+                total_width += item.true_width
+            # target.scene.update()
+            # target.graphics_view.update()
 
-        if items:
-            width = sum(item.width for item in items if isinstance(item, QGraphicsPixmapItem))
-            height = max(items).height
-            self.scene.setSceneRect(0, 0, width, height)
+    @staticmethod
+    def adjustSceneBounds(items, target):
+        if not items:
+            return
+        width = sum(item.width for item in items if isinstance(item, QGraphicsPixmapItem))
+        height = max(items).height
+        target.scene.setSceneRect(0, 0, width, height)
 
+    @staticmethod
+    def _isVisibleInViewport(target, item: QScalingGraphicPixmapItem):
+        # Map item rect to scene coordinates
+        item_rect = item.mapToScene(item.boundingRect()).boundingRect()
+        # Get the viewport rectangle in scene coordinates
+        viewport_rect = target.graphics_view.mapToScene(target.graphics_view.viewport().rect()).boundingRect()
 
-class VerticalScrollingContainer(BaseContainer):
-    def __init__(self, sensitivity: int = 1, downscale_images: bool = True, upscale_images: bool = False,
-                 base_width: int = 640, use_original_image_width: bool = False, lazy_loading: bool = True):
-        super().__init__(sensitivity=sensitivity, downscale_images=downscale_images, upscale_images=upscale_images)
-        self.setPrimaryScrollbar("vertical")
+        # Check intersection
+        return viewport_rect.intersects(item_rect)
 
-        self._base_width = base_width
-        self._use_original_image_width = use_original_image_width
-        self.lazy_loading = lazy_loading
+    @classmethod
+    def _refine_estimated_index(cls, target, estimated_index, images):
+        # Adjust index to ensure it points to a visible image
+        for i in range(max(0, estimated_index - 5), min(len(images), estimated_index + 5)):
+            if cls._isVisibleInViewport(target, images[i]):
+                return i
+        return estimated_index
 
-        self.verticalScrollBar().valueChanged.connect(self.onScroll)
+    @classmethod
+    def _loadImagesAroundIndex(cls, target, index, images: List[QScalingGraphicPixmapItem]):
+        # images.reverse()
+        last_loaded = 0
+        first_loaded_index = None
+        for i, image in enumerate(images):
+            if cls._isVisibleInViewport(target, image):
+                target.thread_pool.submit(image.ensure_loaded)
+                last_loaded = 2
+                if first_loaded_index is None:
+                    first_loaded_index = i
+            elif last_loaded:
+                target.thread_pool.submit(image.ensure_loaded)
+                last_loaded -= 1
+            else:
+                target.thread_pool.submit(image.ensure_unloaded)
 
-    @property
-    def base_width(self):
-        return self._base_width
+        # print(first_loaded_index, "->", tuple(i for i in range(max(0, first_loaded_index - 2), first_loaded_index)))
 
-    @base_width.setter
-    def base_width(self, base_width: int):
-        self._base_width = base_width
-        self.force_rescaling = True
+        for i in range(max(0, first_loaded_index - 2), first_loaded_index):
+            target.thread_pool.submit(images[i].ensure_loaded)
 
-    @property
-    def use_original_image_width(self):
-        return self._use_original_image_width
+        return
 
-    @use_original_image_width.setter
-    def use_original_image_width(self, use_original_image_width: bool):
-        self._use_original_image_width = use_original_image_width
-        self.force_rescaling = True
+        images[index].ensure_loaded()
+        # Load images in the estimated range
+        i = j = 0
+        for index, item in enumerate(images[index+1:]):
+            if cls._isVisibleInViewport(target, item):
+                item.ensure_loaded()
+                i = index
+            else:
+                item.ensure_unloaded()
+        for index, item in enumerate(images[:index:-1]):
+            if cls._isVisibleInViewport(target, item):
+                item.ensure_loaded()
+                j = index
+            else:
+                item.ensure_unloaded()
 
-    def addImageToScene(self, image: QScalingGraphicPixmapItem):
-        image.setInt("width")
-        self.scene.addItem(image)
-        image.scaledToWidth(self.viewport().width())
+        buffer_images = 10
 
-        if self.lazy_loading:
-            image.ensure_unloaded()
+        for index in range(index + i + 1, index + i + buffer_images):
+            if len(images) > index:
+                images[index].ensure_loaded()
 
-    def onScroll(self):
-        images = self.scene.items()
+        for index in range(index - j - 1, index - j - buffer_images, -1):
+            if len(images) > index > 0:
+                images[index].ensure_loaded()
 
-        if self.lazy_loading:
-            scrollbar = self.verticalScrollBar()
+    @classmethod
+    def onScroll(cls, images, target):
+        if target.lazy_loading:
+            scrollbar = target.horizontalScrollBar()
             curr_scroll = scrollbar.value()
             max_scroll = scrollbar.maximum()
 
@@ -739,371 +1023,302 @@ class VerticalScrollingContainer(BaseContainer):
             estimated_index = int((len(images) - 1) * percentage)
 
             # Refine estimated index based on visibility checks
-            estimated_index = self.refine_estimated_index(estimated_index, images)
+            estimated_index = cls._refine_estimated_index(target, estimated_index, images)
 
             # Load images around the refined index
-            self.loadImagesAroundIndex(estimated_index, images)
+            cls._loadImagesAroundIndex(target, estimated_index, images)
 
-            self.scene.update()
-            self.update()
+            target.scene.update()
+            target.graphics_view.update()
         else:
             for image in images:
                 image.ensure_loaded()
 
-    def refine_estimated_index(self, estimated_index, images):
-        # Adjust index to ensure it points to a visible image
-        for i in range(max(0, estimated_index - 5), min(len(images), estimated_index + 5)):
-            if self.isVisibleInViewport(images[i]):
-                return i
-        return estimated_index
+    @staticmethod
+    def resizeEvent(target):
+        pass
 
-    def verticalDistanceToViewport(self, item):
-        # Map the viewport rectangle to scene coordinates
-        viewport_polygon = self.mapToScene(self.viewport().rect())
-        viewport_rect = viewport_polygon.boundingRect()
 
-        # Map the item rectangle to scene coordinates
-        item_polygon = item.mapToScene(item.boundingRect())
-        item_rect = item_polygon.boundingRect()
+class VerticalManagement(BaseManagement):
+    @staticmethod
+    def initialize(target):
+        target.graphics_view.setPrimaryScrollbar("vertical")
 
-        # Calculate the vertical distance with direction
-        if item_rect.top() > viewport_rect.bottom():
-            # Item is below the viewport
-            distance = item_rect.top() - viewport_rect.bottom()
-        elif item_rect.bottom() < viewport_rect.top():
-            # Item is above the viewport
-            distance = item_rect.bottom() - viewport_rect.top()
-        else:
-            # Overlapping or touching
-            distance = 0
+    @staticmethod
+    def addImageToScene(image, target):
+        image.setInt("width")
+        image.scaledToWidth(target.graphics_view.viewport().width())
 
-        return distance
+    @staticmethod
+    def _get_wanted_size(target, item: QScalingGraphicPixmapItem, viewport_width: int, last_item: bool = False):
+        base_image_width = item.original_pixmap.width() if target.use_original_image_size else target.base_size
 
-    def isVisibleInViewport(self, item: QScalingGraphicPixmapItem):
+        if target.force_rescaling:
+            proposed_image_width = base_image_width
+
+            if target.downscale_images and base_image_width > viewport_width:
+                proposed_image_width = viewport_width
+            elif target.upscale_images and base_image_width < viewport_width:
+                proposed_image_width = viewport_width
+            if last_item:
+                target.force_rescaling = False
+            return proposed_image_width
+        return item.width
+
+    @classmethod
+    def rescaleImages(cls, width, height, images, target):
+        total_height = 0
+        # images.reverse()
+        target.force_rescaling = True
+        # height += target.horizontalScrollBar().height()
+
+        for i, item in enumerate(images):
+            if isinstance(item, QScalingGraphicPixmapItem):
+                wanted_width = cls._get_wanted_size(target, item, width, True if i == len(images) - 1 else False)
+
+                if abs(item.get_true_width() - wanted_width) >= 0.5:
+                    # print(item.true_width, "->", wanted_width)
+                    item.scaledToWidth(wanted_width)
+                    item.setPos(0, total_height)
+
+                total_height += item.true_height
+            # target.scene.update()
+            # target.graphics_view.update()
+
+    @staticmethod
+    def adjustSceneBounds(items, target):
+        if not items:
+            return
+        width = max(items).width
+        height = sum(item.height for item in items if isinstance(item, QGraphicsPixmapItem))
+        target.scene.setSceneRect(0, 0, width, height)
+
+    @staticmethod
+    def _isVisibleInViewport(target, item: QScalingGraphicPixmapItem):
         # Map item rect to scene coordinates
         item_rect = item.mapToScene(item.boundingRect()).boundingRect()
         # Get the viewport rectangle in scene coordinates
-        viewport_rect = self.mapToScene(self.viewport().rect()).boundingRect()
+        viewport_rect = target.graphics_view.mapToScene(target.graphics_view.viewport().rect()).boundingRect()
 
         # Check intersection
         return viewport_rect.intersects(item_rect)
 
-    def loadImagesAroundIndex(self, index, images: List[QScalingGraphicPixmapItem]):
-        images[index].ensure_loaded()
-        # Load images in the estimated range
-        for item in images[index+1:]:
-            if self.isVisibleInViewport(item):
-                item.ensure_loaded()
+    @classmethod
+    def _refine_estimated_index(cls, target, estimated_index, images):
+        # Adjust index to ensure it points to a visible image
+        for i in range(max(0, estimated_index - 5), min(len(images), estimated_index + 5)):
+            if cls._isVisibleInViewport(target, images[i]):
+                return i
+        return estimated_index
+
+    @classmethod
+    def _loadImagesAroundIndex(cls, target, center_index, images: List[QScalingGraphicPixmapItem]):
+        # images.reverse()
+        last_loaded = 0
+        first_loaded_index = None
+        for i, image in enumerate(images):
+            if cls._isVisibleInViewport(target, image):
+                target.thread_pool.submit(image.ensure_loaded)
+                last_loaded = 2
+                if first_loaded_index is None:
+                    first_loaded_index = i
+            elif last_loaded:
+                target.thread_pool.submit(image.ensure_loaded)
+                last_loaded -= 1
             else:
-                item.ensure_unloaded()
-        for item in images[:index:-1]:
-            if self.isVisibleInViewport(item):
-                item.ensure_loaded()
+                target.thread_pool.submit(image.ensure_unloaded)
+
+        # print(first_loaded_index, "->", tuple(i for i in range(max(0, first_loaded_index - 2), first_loaded_index)))
+
+        for i in range(max(0, first_loaded_index - 2), first_loaded_index):
+            target.thread_pool.submit(images[i].ensure_loaded)
+
+        return
+
+        # Ensure the current image is loaded
+        images[center_index].ensure_loaded()
+
+        # Constants
+        num_buffer_images = 2
+
+        # Load visible images forward from center_index and unload the rest
+        last_visible_index = center_index
+        for i in range(center_index + 1, len(images)):
+            if cls._isVisibleInViewport(target, images[i]):
+                target.thread_pool.submit(images[i].ensure_loaded)
+                last_visible_index = i
             else:
-                item.ensure_unloaded()
+                images[i].ensure_unloaded()
+                break
 
-    def get_wanted_size(self, item: QScalingGraphicPixmapItem, viewport_width: int, last_item: bool = False):
-        base_image_width = item.original_pixmap.width() if self.use_original_image_width else self.base_width
-
-        if self.force_rescaling:
-            proposed_image_width = base_image_width
-
-            if self.downscale_images and base_image_width > viewport_width:
-                proposed_image_width = viewport_width
-            elif self.upscale_images and base_image_width < viewport_width:
-                proposed_image_width = viewport_width
-            if last_item:
-                self.force_rescaling = False
-            return proposed_image_width
-        return item.width
-
-    def rescaleImages(self):
-        total_height = 0
-        viewport_width = self.viewport().width()
-        scene_items = self.scene.items().copy()
-        scene_items.reverse()
-        self.force_rescaling = True
-
-        for i, item in enumerate(scene_items):
-            if isinstance(item, QScalingGraphicPixmapItem):
-                wanted_width = self.get_wanted_size(item, viewport_width, True if i == len(scene_items) - 1 else False)
-                item.scaledToWidth(wanted_width)
-                item.setPos(0, total_height)
-
-                total_height += item.true_height()
-        self.scene.update()
-        self.update()
-
-    def adjustSceneBounds(self):
-        items: List[QScalingGraphicPixmapItem] = self.scene.items()
-
-        if items:
-            width = max(items).width
-            height = sum(item.height for item in items if isinstance(item, QGraphicsPixmapItem))
-            self.scene.setSceneRect(0, 0, width, height)
-
-
-class SingleHorizontalContainer(BaseContainer):
-    def __init__(self, sensitivity: int = 1, downscale_images: bool = True, upscale_images: bool = False,
-                 base_height: int = 640, use_original_image_height: bool = False, lazy_loading: bool = True):
-        super().__init__(parent=None, sensitivity=sensitivity)
-        self.setPrimaryScrollbar("horizontal")
-
-        self.downscale_images = downscale_images
-        self.upscale_images = upscale_images
-        self.base_height = base_height
-        self.use_original_image_height = use_original_image_height
-        self.lazy_loading = lazy_loading
-
-        self.images = []  # List of QScalingGraphicPixmapItems
-        self.currentIndex = 0
-
-        # Setup UI for navigation
-        self.prevButton = None
-        self.nextButton = None
-        self.setupNavigationControls()
-
-    def setupNavigationControls(self):
-        self.prevButton = QPushButton(parent=self)
-        self.nextButton = QPushButton(parent=self)
-
-        self.prevButton.clicked.connect(self.prev_image)
-        self.nextButton.clicked.connect(self.next_image)
-
-        # Customize button styles
-        self.prevButton.setStyleSheet("QPushButton:disabled { background-color: transparent; }")
-        self.nextButton.setStyleSheet("QPushButton:disabled { background-color: transparent; }")
-
-        # Set initial visibility
-        self.prevButton.setVisible(True)
-        self.nextButton.setVisible(True)
-
-    def keyPressEvent(self, event: QKeyEvent):
-        if event.key() in (Qt.Key_Right, Qt.Key_Down):
-            self.simulateButtonClick(self.nextButton)
-        elif event.key() in (Qt.Key_Left, Qt.Key_Up):
-            self.simulateButtonClick(self.prevButton)
-
-    def simulateButtonClick(self, button):
-        if button.isEnabled():
-            button.setDown(True)  # Simulate the button being pressed down
-            QApplication.processEvents()  # Process UI events to update the button appearance
-            time.sleep(0.1)
-            button.clicked.emit()  # Emit the clicked signal
-
-            button.setDown(False)
-
-    def addImageToScene(self, image_item: QScalingGraphicPixmapItem):
-        super().addImageToScene(image_item)
-        self.images.append(image_item)
-        image_item.scaledToHeight(self.viewport().height())
-        if self.lazy_loading:
-            image_item.ensure_unloaded()
-        self.update_view()
-
-    def next_image(self):
-        if self.currentIndex < len(self.images) - 1:
-            self.currentIndex += 1
-            self.update_view()
-            self.horizontalScrollBar().setValue(0)
-
-    def prev_image(self):
-        if self.currentIndex > 0:
-            self.currentIndex -= 1
-            self.update_view()
-            self.horizontalScrollBar().setValue(self.images[self.currentIndex].width)
-
-    def update_view(self):
-        for i, item in enumerate(self.images):
-            item.setVisible(i == self.currentIndex)
-            if not self.lazy_loading or i == self.currentIndex:
-                item.ensure_loaded()
+        # Load visible images backward from center_index and unload the rest
+        first_visible_index = center_index
+        for i in range(center_index - 1, -1, -1):
+            if cls._isVisibleInViewport(target, images[i]):
+                target.thread_pool.submit(images[i].ensure_loaded)
+                first_visible_index = i
             else:
-                item.ensure_unloaded()
-        self.rescaleImages()
-        self.adjustSceneBounds()
-        self.update_button_states()
+                images[i].ensure_unloaded()
+                break
 
-    def update_button_states(self):
-        # Disable 'Previous' button if at the start
-        self.prevButton.setEnabled(self.currentIndex > 0)
-        self.prevButton.setText("<" if self.prevButton.isEnabled() else "")
+        # Load buffer images after the last visible image
+        for i in range(last_visible_index + 1, min(last_visible_index + 1 + num_buffer_images, len(images))):
+            target.thread_pool.submit(images[i].ensure_loaded)
 
-        # Disable 'Next' button if at the end
-        self.nextButton.setEnabled(self.currentIndex < len(self.images) - 1)
-        self.nextButton.setText(">" if self.nextButton.isEnabled() else "")
+        # Load buffer images before the first visible image
+        for i in range(first_visible_index - 1, max(first_visible_index - 1 - num_buffer_images, -1), -1):
+            target.thread_pool.submit(images[i].ensure_loaded)
 
-    def rescaleImages(self):
-        viewport_height = self.viewport().height()
+    @classmethod
+    def onScroll(cls, images, target):
+        if target.lazy_loading:
+            scrollbar = target.verticalScrollBar()
+            curr_scroll = scrollbar.value()
+            max_scroll = scrollbar.maximum()
 
-        if self.images:
-            current_image = self.images[self.currentIndex]
-            if self.use_original_image_height:
-                base_height = current_image.original_pixmap.height()
+            if max_scroll == 0:
+                return
+
+            # Estimate the index of the potentially visible image
+            percentage = curr_scroll / max_scroll
+            estimated_index = int((len(images) - 1) * percentage)
+
+            # Refine estimated index based on visibility checks
+            estimated_index = cls._refine_estimated_index(target, estimated_index, images)
+
+            # Load images around the refined index
+            cls._loadImagesAroundIndex(target, estimated_index, images)
+
+            target.scene.update()
+            target.graphics_view.update()
+        else:
+            for image in images:
+                image.ensure_loaded()
+
+    @staticmethod
+    def resizeEvent(target):
+        pass
+
+
+class SingleHorizontalManagement(BaseManagement):
+    @staticmethod
+    def initialize(target):
+        target.graphics_view.setPrimaryScrollbar("horizontal")
+        target.currentIndex = 0
+
+    @staticmethod
+    def _update_view(target):
+        for i, image in enumerate(target.images):
+            image.setVisible(i == target.currentIndex)
+            if not target.lazy_loading or i == target.currentIndex:
+                image.ensure_loaded()
             else:
-                base_height = self.base_height
+                image.ensure_unloaded()
+        target.rescaleImages()
+        target.adjustSceneBounds()
 
-            needs_upscaling = self.upscale_images and current_image.height <= viewport_height
-            needs_downscaling = self.downscale_images and current_image.height >= viewport_height
+    @classmethod
+    def addImageToScene(cls, image, target):
+        image.scaledToHeight(target.graphics_view.viewport().height())
+        cls._update_view(target)
 
-            if needs_upscaling or needs_downscaling:
-                current_image.scaledToHeight(viewport_height)
+    @classmethod
+    def rescaleImages(cls, width, height, scene_items, target):
+        if not target.images:
+            return
+
+        current_image = target.images[target.currentIndex]
+
+        if target.use_original_image_size:
+            base_height = current_image.original_pixmap.height()
+        else:
+            base_height = target.base_size
+
+        needs_upscaling = target.upscale_images and current_image.height <= height
+        needs_downscaling = target.downscale_images and current_image.height >= height
+
+        if needs_upscaling or needs_downscaling:
+            current_image.scaledToHeight(height)
+        else:
+            current_image.scaledToHeight(base_height)
+
+    @staticmethod
+    def adjustSceneBounds(items, target):
+        if not items:
+            return
+
+        current_image = target.images[target.currentIndex]
+
+        width = current_image.width
+        height = current_image.height
+        target.scene.setSceneRect(0, 0, width, height)
+
+    @classmethod
+    def resizeEvent(cls, target):
+        cls._update_view(target)
+
+
+class SingleVerticalManagement(BaseManagement):
+    @staticmethod
+    def initialize(target):
+        target.graphics_view.setPrimaryScrollbar("vertical")
+        target.currentIndex = 0
+
+    @staticmethod
+    def _update_view(target):
+        for i, image in enumerate(target.images):
+            image.setVisible(i == target.currentIndex)
+            if not target.lazy_loading or i == target.currentIndex:
+                image.ensure_loaded()
             else:
-                current_image.scaledToHeight(base_height)
+                image.ensure_unloaded()
+        target.rescaleImages()
+        target.adjustSceneBounds()
 
-    def adjustSceneBounds(self):
-        if self.images:
-            current_image = self.images[self.currentIndex]
+    @classmethod
+    def addImageToScene(cls, image, target):
+        image.scaledToWidth(target.viewport().width())
+        cls._update_view(target)
 
-            width = current_image.width
-            height = current_image.height
-            self.scene.setSceneRect(0, 0, width, height)
+    @classmethod
+    def rescaleImages(cls, width, height, scene_items, target):
+        if not target.images:
+            return
 
-    def resizeEvent(self, event):
-        super().resizeEvent(event)
-        button_width = min(35, max(25, self.width() // 8))
-        button_height = self.height() - 1
+        width = target.graphics_view.viewport().width()
 
-        self.prevButton.setFixedWidth(button_width)
-        self.nextButton.setFixedWidth(button_width)
-        self.prevButton.setFixedHeight(button_height)
-        self.nextButton.setFixedHeight(button_height)
+        current_image = target.images[target.currentIndex]
+        if target.use_original_image_size:
+            base_width = current_image.original_pixmap.width()
+        else:
+            base_width = target.base_size
 
-        self.prevButton.move(0, 0)
-        self.nextButton.move(self.width() - button_width, 0)
+        needs_upscaling = target.upscale_images and current_image.width <= width
+        needs_downscaling = target.downscale_images and current_image.width >= width
 
+        if needs_upscaling or needs_downscaling:
+            current_image.scaledToWidth(width)
+            current_image.setPos(0, 0)
+        else:
+            current_image.scaledToWidth(base_width)
 
-class SingleVerticalContainer(BaseContainer):
-    def __init__(self, sensitivity: int = 1, downscale_images: bool = True, upscale_images: bool = False,
-                 base_width: int = 640, use_original_image_width: bool = False, lazy_loading: bool = True):
-        super().__init__(parent=None, sensitivity=sensitivity)
-        self.setPrimaryScrollbar("vertical")
+    @staticmethod
+    def adjustSceneBounds(items, target):
+        if not items:
+            return
 
-        self.downscale_images = downscale_images
-        self.upscale_images = upscale_images
-        self.base_width = base_width
-        self.use_original_image_width = use_original_image_width
-        self.lazy_loading = lazy_loading
+        current_image = target.images[target.currentIndex]
 
-        self.images = []  # List of QScalingGraphicPixmapItems
-        self.currentIndex = 0
+        width = current_image.get_true_width()
+        height = current_image.get_true_height()
+        target.scene.setSceneRect(0, 0, width, height)
 
-        # Setup UI for navigation
-        self.prevButton = None
-        self.nextButton = None
-        self.setupNavigationControls()
-
-    def setupNavigationControls(self):
-        self.prevButton = QPushButton(parent=self)
-        self.nextButton = QPushButton(parent=self)
-
-        self.prevButton.clicked.connect(self.prev_image)
-        self.nextButton.clicked.connect(self.next_image)
-
-        # Customize button styles
-        self.prevButton.setStyleSheet("QPushButton:disabled { background-color: transparent; }")
-        self.nextButton.setStyleSheet("QPushButton:disabled { background-color: transparent; }")
-
-        # Set initial visibility
-        self.prevButton.setVisible(True)
-        self.nextButton.setVisible(True)
-
-    def keyPressEvent(self, event: QKeyEvent):
-        if event.key() in (Qt.Key_Right, Qt.Key_Down):
-            self.simulateButtonClick(self.nextButton)
-        elif event.key() in (Qt.Key_Left, Qt.Key_Up):
-            self.simulateButtonClick(self.prevButton)
-
-    def simulateButtonClick(self, button):
-        if button.isEnabled():
-            button.setDown(True)  # Simulate the button being pressed down
-            QApplication.processEvents()  # Process UI events to update the button appearance
-            time.sleep(0.1)
-            button.clicked.emit()  # Emit the clicked signal
-
-            button.setDown(False)
-
-    def addImageToScene(self, image_item: QScalingGraphicPixmapItem):
-        super().addImageToScene(image_item)
-        self.images.append(image_item)
-        image_item.scaledToWidth(self.viewport().width())
-        if self.lazy_loading:
-            image_item.ensure_unloaded()
-        self.update_view()
-
-    def next_image(self):
-        if self.currentIndex < len(self.images) - 1:
-            self.currentIndex += 1
-            self.update_view()
-            self.verticalScrollBar().setValue(0)
-
-    def prev_image(self):
-        if self.currentIndex > 0:
-            self.currentIndex -= 1
-            self.update_view()
-            self.verticalScrollBar().setValue(self.images[self.currentIndex].height)
-
-    def update_view(self):
-        for i, item in enumerate(self.images):
-            item.setVisible(i == self.currentIndex)
-            if not self.lazy_loading or i == self.currentIndex:
-                item.ensure_loaded()
-            else:
-                item.ensure_unloaded()
-        self.rescaleImages()
-        self.adjustSceneBounds()
-        self.update_button_states()
-
-    def update_button_states(self):
-        # Disable 'Previous' button if at the start
-        self.prevButton.setEnabled(self.currentIndex > 0)
-        self.prevButton.setText("▲" if self.prevButton.isEnabled() else "")
-
-        # Disable 'Next' button if at the end
-        self.nextButton.setEnabled(self.currentIndex < len(self.images) - 1)
-        self.nextButton.setText("▼" if self.nextButton.isEnabled() else "")
-
-    def rescaleImages(self):
-        viewport_width = self.viewport().width()
-
-        if self.images:
-            current_image = self.images[self.currentIndex]
-            if self.use_original_image_width:
-                base_width = current_image.original_pixmap.width()
-            else:
-                base_width = self.base_width
-
-            needs_upscaling = self.upscale_images and current_image.width <= viewport_width
-            needs_downscaling = self.downscale_images and current_image.width >= viewport_width
-
-            if needs_upscaling or needs_downscaling:
-                current_image.scaledToWidth(viewport_width)
-            else:
-                current_image.scaledToWidth(base_width)
-
-    def adjustSceneBounds(self):
-        if self.images:
-            current_image = self.images[self.currentIndex]
-
-            width = current_image.width
-            height = current_image.height
-            self.scene.setSceneRect(0, 0, width, height)
-
-    def resizeEvent(self, event):
-        super().resizeEvent(event)
-        button_width = self.width() - 1
-        button_height = min(35, max(25, self.width() // 8))
-
-        self.prevButton.setFixedWidth(button_width)
-        self.nextButton.setFixedWidth(button_width)
-        self.prevButton.setFixedHeight(button_height)
-        self.nextButton.setFixedHeight(button_height)
-
-        self.prevButton.move(0, 0)
-        self.nextButton.move(0, self.height() - button_height)
+    @classmethod
+    def resizeEvent(cls, target):
+        cls._update_view(target)
 
 
-if __name__ == "__main__":
+if __name__ == "__main___":
     from PySide6.QtWidgets import QVBoxLayout, QWidget
     app = QApplication([])
 
@@ -1128,8 +1343,8 @@ if __name__ == "__main__":
         vertical_container = HorizontalScrollingContainer()
 
         # vertical_container.addImageToScene(QScalingGraphicPixmapItem("https://enhance.io/015f/MainAfter.jpg", cache))
-        for image in os.listdir("./images"):
-            vertical_container.addImageToScene(QScalingGraphicPixmapItem(f"images/{image}"))
+        #for image in os.listdir("./images"):
+        #    vertical_container.addImageToScene(QScalingGraphicPixmapItem(f"images/{image}"))
         # vertical_container.addImageToScene(QScalingGraphicPixmapItem("https://letsenhance.io/static/8f5e523ee6b2479e26ecc91b9c25261e/1015f/MainAfter.jpg"))
 
         vertical_container.show()
@@ -1143,3 +1358,53 @@ if __name__ == "__main__":
         horizontal_container.show()
 
     app.exec_()
+
+
+if __name__ == '__main__':
+    import sys
+    from PySide6.QtWidgets import QGraphicsSimpleTextItem
+    app = QApplication(sys.argv)
+    window = TargetContainer(sensitivity=4)
+    window.setGeometry(0, 0, 100, 100)
+    window.setManagement(HorizontalManagement)
+    window.scrollBarsBackgroundRedraw(True)
+
+    for item in os.listdir("./test_images"):
+        test_image = QScalingGraphicPixmapItem(os.path.join("./test_images", item))
+        window.addImageToScene(test_image)
+
+    window.setManagement(VerticalManagement)
+    window.setManagement(SingleHorizontalManagement)
+    window.currentIndex = 6
+    window.setManagement(SingleVerticalManagement)
+    window.currentIndex = 3
+    window.show()
+    sys.exit(app.exec())
+
+if __name__ == '__main___':
+    import sys
+    from PySide6.QtWidgets import QGraphicsSimpleTextItem
+    app = QApplication(sys.argv)
+    window = QGraphicsView()
+    window.setScene(QGraphicsScene())
+    window.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+    window.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+    #window = TargetContainer(sensitivity=4)
+    #window.setManagement(HorizontalManagement)
+    # window.scrollBarsBackgroundRedraw(True)
+
+    total_height = 0
+    for item in os.listdir("./test_images"):
+        test_image = QScalingGraphicPixmapItem(os.path.join("./test_images", item))
+        #window.addImageToScene(test_image)
+        window.scene().addItem(test_image)
+        test_image.scaledToWidth(1000)
+        test_image.setPos(total_height, 0)
+        total_height += test_image.true_width
+        window.scene().update()
+        window.update()
+
+    #window.setManagement(VerticalManagement)
+    window.show()
+    sys.exit(app.exec())
+

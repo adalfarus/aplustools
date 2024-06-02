@@ -1,7 +1,8 @@
 from aplustools.package import install_dependencies_lst as _install_dependencies_lst
 from typing import Union as _Union
 import ctypes as _ctypes
-from typing import Tuple as _Tuple
+import typing as _typing
+from aplustools.package.argumint import EndPoint as _EndPoint
 
 
 def install_dependencies():
@@ -26,12 +27,30 @@ def decode_float(bytes_like: bytes) -> float:
 
 
 def encode_int(num: int, overwrite_signed: bool = False) -> bytes:
-    byte_size = (num.bit_length() + 8) // 8  # Determine the required number of bytes
-    return num.to_bytes(byte_size, 'big', signed=(True if num < 0 else False) or overwrite_signed)
+    byte_size = (num.bit_length() + 7) // 8  # Determine the required number of bytes
+    return num.to_bytes(byte_size if num != 0 else 1, 'big', signed=(True if num < 0 else False) or overwrite_signed)
+
+
+def encode_positive_int(num: int) -> bytes:
+    byte_size = (num.bit_length() + 7) // 8  # Determine the required number of bytes
+    return num.to_bytes(byte_size if num != 0 else 1, 'big')
+
+
+def encode_possible_negative_int(num: int) -> bytes:
+    byte_size = (num.bit_length() + 7) // 8  # Determine the required number of bytes
+    return num.to_bytes(byte_size if num != 0 else 1, 'big', signed=True)
 
 
 def decode_int(bytes_like: bytes, signed: bool = False) -> int:
     return int.from_bytes(bytes_like, 'big', signed=signed)
+
+
+def decode_positive_int(bytes_like: bytes) -> int:
+    return int.from_bytes(bytes_like, 'big')
+
+
+def decode_possible_negative_int(bytes_like: bytes) -> int:
+    return int.from_bytes(bytes_like, 'big', signed=True)
 
 
 def encode(to_encode: _Union[int, str]) -> bytes:
@@ -46,12 +65,15 @@ def decode(bytes_like: bytes, return_int: bool = False) -> _Union[int, str]:
     return decode_int(bytes_like)
 
 
-def bits(bytes_like: bytes) -> list:
+def bits(bytes_like: _typing.Union[bytes, bytearray]) -> list:
+    bytes_like = bytes_like if isinstance(bytes_like, bytes) else bytes(bytes_like)
     binary = "00000000" + bin(int.from_bytes(bytes_like))[2:]
     return list(reversed([binary[i-8:i] for i in range(len(binary), 0, -8)[:-1]]))
 
 
-def nice_bits(bytes_like: bytes, spaced: bool = False, wrap_count: int = 0, to_chars: bool = False, edge_space: bool = False) -> str:#
+def nice_bits(bytes_like: _typing.Union[bytes, bytearray], spaced: bool = False, wrap_count: int = 0,
+              to_chars: bool = False, edge_space: bool = False) -> str:
+    bytes_like = bytes_like if isinstance(bytes_like, bytes) else bytes(bytes_like)
     this = [""] + bits(bytes_like)
     i = 0
     wrap_count = wrap_count if wrap_count > 0 else len(this) - 1
@@ -94,7 +116,7 @@ def isOddInt(x: int) -> bool:
     return (x & 1) == 1
 
 
-def isEvenFloat(x: _Union[float, str]) -> _Tuple[bool, bool]:
+def isEvenFloat(x: _Union[float, str]) -> _typing.Tuple[bool, bool]:
     if x != x:  # Check for NaN
         return False, False
     if x in [float('inf'), float('-inf')]:  # Check for infinities
@@ -107,7 +129,7 @@ def isEvenFloat(x: _Union[float, str]) -> _Tuple[bool, bool]:
     return isEvenInt(int(expo)), isEvenInt(int(dec))
 
 
-def isOddFloat(x: _Union[float, str]) -> _Tuple[bool, bool]:
+def isOddFloat(x: _Union[float, str]) -> _typing.Tuple[bool, bool]:
     if x != x:  # Check for NaN
         return False, False
     if x in [float('inf'), float('-inf')]:  # Check for infinities
@@ -128,6 +150,168 @@ def isOddString(x: str) -> bool:
     return (len(x) & 1) == 1
 
 
+def nice_number(number: int, seperator: str = "."):
+    formatted_number = [str(number)[-((i * 3) + 1) - 2:-(i * 3) or None] for i, part in enumerate(str(number)[-1::-3])]
+    formatted_number.reverse()
+    return f"{seperator.join(formatted_number)}"
+
+
+def what_func(func, type_names: bool = False):
+    endpoint = _EndPoint(func)
+
+    def get_type_name(t):
+        if hasattr(t, '__origin__') and t.__origin__ is _typing.Union or type(t) is _typing.Union and type(None) in t.__args__:
+            non_none_types = [arg for arg in t.__args__ if arg is not type(None)]
+            return f"{t.__name__}[{', '.join(get_type_name(arg) for arg in non_none_types)}]"
+        return t.__name__ if hasattr(t, '__name__') else (type(t).__name__ if t is not None else None)
+
+    arguments_str = ''.join([f"{argument.name}: "
+                             f"{(get_type_name(argument.type) or type(argument.default)).__name__ if type_names else get_type_name(argument.type) or type(argument.default)}"
+                             f" = {argument.default}, " for argument in endpoint.arguments])[:-2]
+    print(f"{func.__module__}.{endpoint.name}({arguments_str}){(' -> ' + str(endpoint.return_type)) if endpoint.return_type is not None else ''}")
+
+
+def bytes_to_human_readable_binary_iec(size: int) -> str:
+    """Convert bytes to a human-readable string."""
+    units = ['B', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB', 'EiB', 'ZiB', 'YiB']
+    for unit in units:
+        if size < 1024 or unit == units[-1]:
+            return f"{size:.2f} {unit}"
+        size /= 1024
+
+
+def bytes_to_human_readable_decimal_si(size: int) -> str:
+    """Convert bytes to a human-readable string."""
+    units = ['B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB', 'RB', 'QB']
+    for unit in units:
+        if size < 1000 or unit == units[-1]:
+            return f"{size:.2f} {unit}"
+        size /= 1000
+
+
+def bits_to_human_readable(size: float) -> str:
+    """Convert bits to a human-readable string using SI units."""
+    units = ['bps', 'Kbps', 'Mbps', 'Gbps', 'Tbps']
+    for unit in units:
+        if size < 1000 or unit == units[-1]:  # Ensure we don't exceed the last unit
+            return f"{size:.2f} {unit}"
+        size /= 1000
+
+
+def iterbytes(bytes_like: _typing.Union[bytes, bytearray]):
+    for byte in bytes_like:
+        yield chr(byte).encode()
+
+
+def set_bits(bytes_like: _typing.Union[bytes, bytearray], start_position: int, bits: str,
+             byte_order: _typing.Literal["big", "little"] = "big", return_bytearray: bool = False,
+             auto_expand: bool = False):
+    byte_arr = bytearray(bytes_like) if not isinstance(bytes_like, bytearray) else bytes_like
+    for i, bit in zip(range(start_position, start_position + len(bits)), [int(char) for char in bits]):
+        byte_index = i // 8
+        bit_index = i % 8 if byte_order == "little" else ((len(bytes_like) * 8) - i % 8) - 1
+        bit_index -= (((len(bytes_like) - 1) - byte_index) * 8)
+        if byte_index >= len(byte_arr) and auto_expand:
+            if byte_order == "big":
+                byte_arr.append(0)
+            else:
+                byte_arr = bytearray(1) + byte_arr
+        if bit:
+            byte_arr[byte_index] |= (1 << (bit_index - (byte_index * 8)))
+        else:
+            byte_arr[byte_index] &= ~(1 << bit_index - (byte_index * 8))
+    return bytes(byte_arr) if not return_bytearray else byte_arr
+
+
+def bytes_length(data: _typing.Union[int, float, str]) -> int:
+    total_length = 0
+    if isinstance(data, str):
+        for char in data:
+            total_length += (ord(char).bit_length() + 7) // 8
+    elif isinstance(data, float):
+        total_length = len(encode_float(data))
+    else:
+        total_length = (data.bit_length() + 7) // 8
+    return total_length
+
+
+def bit_length(data: _typing.Union[int, float, str]) -> int:
+    total_length = 0
+    if isinstance(data, str):
+        for char in data:
+            total_length += ord(char).bit_length()
+    elif isinstance(data, float):
+        total_length = len(encode_float(data))
+    else:
+        total_length = data.bit_length()
+    return total_length
+
+
+class Bits:
+    def __init__(self, bytes_like):
+        self.bytes = bytes_like
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}({nice_bits(self.bytes, True)})"
+
+
+class UniversalBits(Bits):
+    def __init__(self, obj: _Union[str, float, int, bytes, bytearray, bool]):
+        if type(obj) in [str, int]:
+            my_bytes = encode(obj)
+        elif isinstance(obj, float):
+            my_bytes = encode_float(obj)
+        elif isinstance(obj, bool):
+            my_bytes = b"\x01" if obj else b"\x00"
+        else:
+            my_bytes = obj
+        super().__init__(my_bytes)
+
+
+def _lod_helper(curr_lod, big_lster, depth):  # Make iterative instead of recursive
+    for x in curr_lod:
+        if isinstance(x, list) and depth > 0:
+            _lod_helper(x, big_lster, depth - 1)
+        else:
+            big_lster.append(x)
+    return big_lster
+
+
+def unnest_iterable(iterable, max_depth: int = 4):
+    return _lod_helper(iterable, [], max_depth)
+
+
+def cutoff_iterable(iterable: _Union[list, tuple, dict, set], max_elements_start: int = 4, max_elements_end: int = 0,
+                    show_hidden_elements_num: bool = False, return_lst: bool = False):
+    if isinstance(iterable, tuple):
+        braces = "()"
+        iterable = list(iterable)
+    elif isinstance(iterable, list):
+        braces = "[]"
+    elif isinstance(iterable, set):
+        braces = "{}"
+        iterable = list(iterable)
+    elif isinstance(iterable, dict):
+        braces = "{}"
+        iterable = [f"{key}: {value}" for key, value in iterable.items()]
+    else:
+        return f"The class '{type(iterable).__name__}' is not a supported iterable."
+    max_elements_start, max_elements_end = abs(max_elements_start), abs(max_elements_end)
+
+    elements_lst = ((iterable[:max_elements_start]
+                    + (["..." if not show_hidden_elements_num else
+                        f"..[{len(iterable) - (max_elements_start + max_elements_end)}].."
+                        ] if len(iterable) > max_elements_start + max_elements_end else []))
+                    + (iterable[-max_elements_end:] if max_elements_end != 0 else []))
+
+    return braces[0] + ', '.join(str(x) for x in elements_lst) + braces[1] if not return_lst else elements_lst
+
+
+def cutoff_string(string: str, max_chars_start: int = 4, max_chars_end: int = 0,
+                  show_hidden_chars_num: bool = False):
+    return ''.join(cutoff_iterable(list(string), max_chars_start, max_chars_end, show_hidden_chars_num, True))
+
+
 if __name__ == "__main__":
     bit = nice_bits(encode("Hello you world!"), True, 6, True, True)
     bitss = bits(encode_float(0.3))
@@ -144,3 +328,21 @@ if __name__ == "__main__":
     print(isOddString("jel"))
     print(isEvenFloat(1238.2312))
     print(isEvenFloat(1239.2312))
+
+    print(nice_number(1666))
+    print(decode_possible_negative_int(encode_possible_negative_int(2000)))
+
+    what_func(lambda x=1, y=2: 1, True)
+
+    def func(x: _typing.Optional[1] = None, u: _typing.Union[8, 1] = 1):
+        pass
+    what_func(func)
+
+    print(bits(set_bits(int(255).to_bytes(1, "big"), 0, "0000000")))
+
+    print(Bits(b"\x00"), UniversalBits(bytearray(b"\x11")))
+
+    print(cutoff_string("Hello World", max_chars_start=5, max_chars_end=5, show_hidden_chars_num=True))
+    print(cutoff_iterable({1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, 2, 0, True))
+    print(cutoff_iterable({1: 2, 4: 5, 6: 6, 8: 6, 82: 12, 2: 2, 99: 2, 0: 1}, max_elements_start=4, max_elements_end=3,
+                          show_hidden_elements_num=True))
