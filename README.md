@@ -161,7 +161,7 @@ For more detailed usage and examples, check out our [documentation](https://gith
 
 For modules I use 'lowercase', classes are 'CapitalizedWords' and functions and methods are 'lower_case_with_underscores'.
 
-Dependencies (except for the standard libraries) are [Currently outdated for V1.5.0]: 
+Dependencies (except for the standard libraries) are: 
 - [`none`]
   - data.database
   - io.loggers
