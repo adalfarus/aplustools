@@ -34,7 +34,7 @@ class TimidTimer:
 
     def start(self, index: int = None, start_at: Union[float, int] = 0):
         start_time = self._time()
-        if index and index < len(self._times):
+        if index and self._times[index][2] is not None:
             self.resume(index)
             return
         if index is None:
@@ -53,9 +53,15 @@ class TimidTimer:
             self._times.insert(index, (start_time + (start_at * 1e9), None, None, 0))
             self._tick_tocks.insert(index, [])
 
+    def _get_first_index(self):
+        curr_index, max_length = 0, len(self._times)
+        while curr_index < max_length and self._times[curr_index] == (None, None, None, 0):
+            curr_index += 1
+        return curr_index
+
     def pause(self, index: Optional[int] = None, for_seconds: Optional[int] = None):
         pause_time = self._time()
-        index = index or 0  # If it's 0 it just sets it to 0 so it's okay.
+        index = index or self._get_first_index()  # If it's 0 it just sets it to 0 so it's okay.
         start, end, paused_at, paused_time = self._times[index]
         if for_seconds:
             self._times[index] = (start, end, None, paused_time + (for_seconds * 1e9))
@@ -64,14 +70,14 @@ class TimidTimer:
 
     def resume(self, index: Optional[int] = None):
         resumed_time = self._time()
-        index = index or 0  # If it's 0 it just sets it to 0 so it's okay.
+        index = index or self._get_first_index()  # If it's 0 it just sets it to 0 so it's okay.
         start, end, paused_at, paused_time = self._times[index]
         if paused_at is not None:
             self._times[index] = (start, end, None, paused_time + (resumed_time - paused_at))
 
     def stop(self, index: Optional[int] = None):
         end_time = self._time()
-        index = index or 0  # If it's 0 it just sets it to 0 so it's okay.
+        index = index or self._get_first_index()  # If it's 0 it just sets it to 0 so it's okay.
         if index >= len(self._times):
             raise IndexError(f"Index {index} doesn't exist in {self._times}.")
         start, end, paused_at, paused_time = self._times[index]
@@ -82,15 +88,17 @@ class TimidTimer:
 
     def end(self, index: Optional[int] = None, return_datetime: bool = True) -> Optional[timedelta]:
         end_time = self._time()
-        index = index or 0  # If it's 0 it just sets it to 0 so it's okay.
+        index = index or self._get_first_index()  # If it's 0 it just sets it to 0 so it's okay.
+        if self._times[index] == (None, None, None, 0):
+            return timedelta(seconds=0)
         if index >= len(self._times):
             raise IndexError(f"Index {index} doesn't exist in {self._times}.")
         start, _, paused_at, __ = self._times[index]
         if paused_at is not None:
             self.resume(index)
         _, __, ___, paused_time = self._times[index]
-        del self._times[index]
-        del self._tick_tocks[index]
+        self._times[index] = (None, None, None, 0)
+        self._tick_tocks[index] = []
         if return_datetime:
             elapsed_time = end_time - start - paused_time
             return timedelta(microseconds=elapsed_time / 1000)
@@ -98,7 +106,7 @@ class TimidTimer:
     def tick(self, index: Optional[int] = None, return_datetime: bool = True) -> Optional[timedelta]:
         """Return how much time has passed till the start. (Could also be called elapsed)"""
         tick_time = self._time()
-        index = index or 0  # If it's 0 it just sets it to 0 so it's okay.
+        index = index or self._get_first_index()  # If it's 0 it just sets it to 0 so it's okay.
         if index >= len(self._times):
             raise IndexError(f"Index {index} doesn't exist in {self._times}.")
         start, _, __, ___ = self._times[index]
@@ -109,7 +117,9 @@ class TimidTimer:
     def tock(self, index: Optional[int] = None, return_datetime: bool = True) -> Optional[timedelta]:
         """Returns how much time has passed till the last tock. (Could also be called round/lap/split)"""
         tock_time = self._time()
-        index = index or 0  # If it's 0 it just sets it to 0 so it's okay.
+        index = index or self._get_first_index()  # If it's 0 it just sets it to 0 so it's okay.
+        if self._times[index] == (None, None, None, 0):
+            return timedelta(seconds=0)
         if index >= len(self._times):
             raise IndexError(f"Index {index} doesn't exist in {self._times}.")
         start, end, paused_at, paused_time = self._times[index]
@@ -123,7 +133,7 @@ class TimidTimer:
 
     def tally(self, *indices: Optional[int]) -> timedelta:
         """Return the total time recorded across all ticks and tocks."""
-        indices = indices or [0]  # If it's 0 it just sets it to 0 so it's okay.
+        indices = indices or [self._get_first_index()]  # If it's 0 it just sets it to 0 so it's okay.
         total_time = 0
 
         for index in indices:
@@ -139,7 +149,7 @@ class TimidTimer:
 
     def average(self, *indices: Optional[int]) -> timedelta:
         """Calculate the average time across all recorded ticks and tocks."""
-        indices = indices or [0]  # If it's 0 it just sets it to 0 so it's okay.
+        indices = indices or [self._get_first_index()]  # If it's 0 it just sets it to 0 so it's okay.
         total_tocks = 0
 
         for index in indices:
