@@ -66,7 +66,7 @@ mySpecialTimer = TimidTimer.setup_timer_func(time.time, to_nanosecond_multiplier
 timer = TimidTimer()
 
 # Measure the average elapsed time over different iterations
-for _ in range(1):
+for _ in range(4):
     timer.wait_ms(1000)
     timer.tock()
 print("Average 1 second sleep extra delay: ", timer.average() - timedelta(seconds=1))
