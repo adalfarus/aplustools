@@ -118,9 +118,8 @@ varying_input_generator = (
     (tuple([n]), {'multiplier': (n % 3 + 1)}) for n in range(1, 101)
 )
 
-print(f"Estimated Time Complexity for complex_func: {timer.complexity(complex_func, complex_input_generator)}")
-print(f"Estimated Time Complexity for varying_func: {timer.complexity(varying_func, varying_input_generator)}")
-
+print(f"Estimated Time Complexity for complex_func: {timer.complexity(complex_func, complex_input_generator, matplotlib_pyplt=pyplot)}")
+print(f"Estimated Time Complexity for varying_func: {timer.complexity(varying_func, varying_input_generator, matplotlib_pyplt=pyplot)}")
 ````
 
 ### System
