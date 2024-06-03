@@ -326,9 +326,9 @@ class PasswordGenerator:
         return password
 
     @staticmethod
-    def generate_ratio_password_v1(length: int = 16, debug: bool = False, letters_ratio: float = 0.5, numbers_ratio: float = 0.3,
-                                   punctuations_ratio: float = 0.2, unicode_ratio: float = 0, extra_chars: str = '',
-                                   exclude_chars: str = ''):
+    def generate_ratio_based_password_v1(length: int = 16, debug: bool = False, letters_ratio: float = 0.5,
+                                         numbers_ratio: float = 0.3, punctuations_ratio: float = 0.2,
+                                         unicode_ratio: float = 0, extra_chars: str = '', exclude_chars: str = ''):
         def debug_print(*args):
             if debug:
                 print(*args)
@@ -366,9 +366,10 @@ class PasswordGenerator:
         password = ''.join(all_chars[:length])
         return password
 
-    def generate_ratio_password_v2(self, length: int = 16, letters_ratio: float = 0.5, numbers_ratio: float = 0.3,
-                                   punctuations_ratio: float = 0.2, unicode_ratio: float = 0, extra_chars: str = '',
-                                   exclude_chars: str = '', exclude_similar: bool = False, _recur=False):
+    def generate_ratio_based_password_v2(self, length: int = 16, letters_ratio: float = 0.5, numbers_ratio: float = 0.3,
+                                         punctuations_ratio: float = 0.2, unicode_ratio: float = 0,
+                                         extra_chars: str = '', exclude_chars: str = '', exclude_similar: bool = False,
+                                         _recur=False):
         """Generate a ratio based password, version 2"""
         ratios = [letters_ratio, numbers_ratio, punctuations_ratio, unicode_ratio]
         if sum(ratios) != 1:
@@ -412,8 +413,9 @@ class PasswordGenerator:
             raise ValueError("Password length is greater than the number of available characters.")
         return ''.join(all_chars_lst[:length])
 
-    def generate_ratio_password_v3(self, length: int = 24, letters_ratio: float = 0.5, numbers_ratio: float = 0.3,
-                                   punctuations_ratio: float = 0.2, unicode_ratio: float = 0.0, filter_: PasswordFilter = None):
+    def generate_ratio_based_password_v3(self, length: int = 24, letters_ratio: float = 0.5, numbers_ratio: float = 0.3,
+                                         punctuations_ratio: float = 0.2, unicode_ratio: float = 0.0,
+                                         filter_: PasswordFilter = None):
         """Generate a ratio based password, version 3"""
         character_sets = {
             "letters": 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ',
@@ -462,8 +464,8 @@ class PasswordGenerator:
         return ''.join(password_characters)
 
     @staticmethod
-    def generate_words_password_v1(sentence: str, debug: bool = False, shuffle_words: bool = True,
-                                   shuffle_characters: bool = True):
+    def generate_words_based_password_v1(sentence: str, debug: bool = False, shuffle_words: bool = True,
+                                         shuffle_characters: bool = True):
         def debug_print(*args):
             if debug:
                 print(*args)
@@ -487,7 +489,8 @@ class PasswordGenerator:
             debug_print("Words", words)
         return password
 
-    def generate_words_password_v2(self, sentence: str, shuffle_words: bool = True, shuffle_characters: bool = True):
+    def generate_words_based_password_v2(self, sentence: str, shuffle_words: bool = True,
+                                         shuffle_characters: bool = True):
         words = sentence.split(' ')
         if len(words) < 2:
             print("Error: Input must have more than one word.")
@@ -508,8 +511,9 @@ class PasswordGenerator:
             self._debug_print("Words", words)
         return password
 
-    def generate_words_password_v3(self, sentence: str, shuffle_words: bool = True, shuffle_characters: bool = True,
-                                   repeat_words: bool = False, filter_: PasswordFilter = None):
+    def generate_words_based_password_v3(self, sentence: str, shuffle_words: bool = True,
+                                         shuffle_characters: bool = True, repeat_words: bool = False,
+                                         filter_: PasswordFilter = None):
         words = sentence.split(' ')
 
         self._debug_print("Words", words)
@@ -535,9 +539,10 @@ class PasswordGenerator:
         return password
 
     @staticmethod
-    def generate_sentence_password_v1(sentence: str, debug: bool = False,
-                                      char_position: Union[Literal["random", "keep"], int] = 'random', random_case: bool = False,
-                                      extra_char: str = '', num_length: int = 0, special_chars_length: int = 0):
+    def generate_sentence_based_password_v1(sentence: str, debug: bool = False,
+                                            char_position: Union[Literal["random", "keep"], int] = 'random',
+                                            random_case: bool = False, extra_char: str = '', num_length: int = 0,
+                                            special_chars_length: int = 0):
         def debug_print(*args):
             if debug:
                 print(*args)
@@ -565,9 +570,10 @@ class PasswordGenerator:
         debug_print("Final password:", password)
         return password
 
-    def generator_sentence_password_v2(self, sentence: str, char_position: Union[Literal["random", "keep"], int] = 'random',
-                                       random_case: bool = False, extra_char: str = '', num_length: int = 0,
-                                       special_chars_length: int = 0):
+    def generate_sentence_based_password_v2(self, sentence: str,
+                                            char_position: Union[Literal["random", "keep"], int] = 'random',
+                                            random_case: bool = False, extra_char: str = '', num_length: int = 0,
+                                            special_chars_length: int = 0):
         words = sentence.split(' ')
         word_chars = []
         for word in words:
@@ -592,10 +598,12 @@ class PasswordGenerator:
         self._debug_print("Final password:", password)
         return password
 
-    def generator_sentence_password_v3(self, sentence: str, char_position: Union[Literal["random", "keep"], int] = 'random',
-                                       random_case: bool = False, extra_char: str = '', num_length: int = 0,
-                                       special_chars_length: int = 0, password_format: str = "{words}{extra}{numbers}{special}",
-                                       filter_: PasswordFilter = None):
+    def generate_sentence_based_password_v3(self, sentence: str,
+                                            char_position: Union[Literal["random", "keep"], int] = 'random',
+                                            random_case: bool = False, extra_char: str = '', num_length: int = 0,
+                                            special_chars_length: int = 0,
+                                            password_format: str = "{words}{extra}{numbers}{special}",
+                                            filter_: PasswordFilter = None):
         words = sentence.split(' ')
         word_chars = []
         for word in words:

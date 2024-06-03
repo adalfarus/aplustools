@@ -144,12 +144,11 @@ for process in local_system.get_running_processes():
 
 ### Security
 ````python
-from aplustools.security.passwords import GenerateWeakPasswords
+from aplustools.security.passwords import QuickGeneratePasswords
 
 
 input_sentence = input("Please input a sentence of your choosing: ")
-password = GenerateWeakPasswords.generate_custom_sentence_based_password_v1(input_sentence, char_position="keep", 
-                                                                            num_length=5, special_chars_length=2)
+password = QuickGeneratePasswords.generate_sentence_based_password(input_sentence)
 print(f"Your password is {password}")
 ````
 
@@ -186,10 +185,18 @@ These can also be used in e.g. batch files like this
 ```batch
 @echo off
 set /p id=Enter ID: 
-upype from aplustools.utils.security.passwords import GenerateWeakPasswords; print(GenerateWeakPasswords.generate_custom_sentence_based_password_v1("""%id%""", random_case=True, extra_char="""_""", char_position=0, num_length=5, special_chars_length=2))
+upype from aplustools.security.passwords import QuickGeneratePasswords; print(QuickGeneratePasswords.generate_sentence_based_password("""%id%"""))
 pause
 
 ```
+or like this
+````batch
+@echo off
+set /p id=Enter ID: 
+upype from aplustools.security.passwords import PasswordGenerator; print(PasswordGenerator().generate_sentence_based_password_v3("""%id%""", random_case=True, extra_char="""_""", char_position=0, num_length=5, special_chars_length=2))
+pause
+
+````
 
 ### apt
 Can currently run tests with ```apt tests run``` and show a basic help using ```apt help```.
