@@ -44,6 +44,13 @@ class CustomRandomGenerator:
         return seq[tuple(seq.keys())[cls.randint(0, len(seq) - 1)]]
 
     @classmethod
+    def choices(cls, seq: _SupportsLenAndGetItem, k: int) -> Any:
+        if not isinstance(seq, dict):
+            return [seq[cls.randint(0, len(seq) - 1)] for _ in range(k)]
+        keys = list(seq.keys())
+        return [seq[keys[cls.randint(0, len(keys) - 1)]] for _ in range(k)]
+
+    @classmethod
     def gauss(cls, mu: float, sigma: float) -> float:
         # Using Box-Muller transform for generating Gaussian distribution
         u1 = cls.random()
@@ -114,7 +121,8 @@ class CustomRandomGenerator:
         return math.exp(normal_value)
 
     @classmethod
-    def fisher_yates_shuffle(cls, s: Union[str, list]) -> Union[str, list]:
+    def shuffle(cls, s: Union[str, list]) -> Union[str, list]:
+        """fisher_yates_shuffle"""
         # Convert the string to a list of characters
         inp_type, char_list = list, s
         if not isinstance(s, list):
@@ -169,6 +177,57 @@ class WeightedRandom:
     def __init__(self, generator: Literal["random", "os", "sys_random", "secrets"] = "sys_random"):
         self._generator = {"random": random, "os": OSRandomGenerator, "sys_random": secrets.SystemRandom(),
                            "secrets": SecretsRandomGenerator}[generator]
+
+    def random(self) -> float:
+        return self._generator.random()
+
+    def uniform(self, lower_bound: Union[float, int] = 0.0, upper_bound: Union[float, int] = 1.0) -> float:
+        """
+        Generate a random number based on the uniform distribution.
+
+        :param lower_bound: Lower bound of the uniform distribution.
+        :param upper_bound: Upper bound of the uniform distribution.
+        :return: Random number from the uniform distribution.
+        """
+        return self._generator.uniform(lower_bound, upper_bound)
+
+    def randint(self, lower_bound: int, upper_bound: int) -> int:
+        """
+        Generate a random integer between lower_bound and upper_bound (inclusive).
+
+        :param lower_bound: Lower bound of the range.
+        :param upper_bound: Upper bound of the range.
+        :return: Random integer between lower_bound and upper_bound.
+        """
+        return self._generator.randint(lower_bound, upper_bound)
+
+    def choice(self, seq) -> Any:
+        """
+        Choose a random element from a non-empty sequence.
+
+        :param seq: Sequence to choose from.
+        :return: Randomly selected element from the sequence.
+        """
+        return self._generator.choice(seq)
+
+    def choices(self, seq, k: int) -> Any:
+        """
+        Choose a random element from a non-empty sequence.
+
+        :param seq: Sequence to choose from.
+        :param k: Number of choices.
+        :return: Randomly selected element from the sequence.
+        """
+        return self._generator.choices(seq, k)
+
+    def shuffle(self, seq):
+        """
+        Randomly change the order of elements in a sequence.
+
+        :param seq: Sequence to change.
+        :return: Randomly selected element from the sequence.
+        """
+        return self._generator.shuffle(seq)
 
     @staticmethod
     def _transform_and_scale(x: float, transform_func: Callable[[float], float], lower_bound: Union[float, int],
@@ -279,35 +338,6 @@ class WeightedRandom:
         :return: Scaled transformed random number.
         """
         return self._transform_and_scale(self._generator.random(), math_func, lower_bound, upper_bound)
-
-    def uniform(self, lower_bound: Union[float, int] = 0.0, upper_bound: Union[float, int] = 1.0) -> float:
-        """
-        Generate a random number based on the uniform distribution.
-
-        :param lower_bound: Lower bound of the uniform distribution.
-        :param upper_bound: Upper bound of the uniform distribution.
-        :return: Random number from the uniform distribution.
-        """
-        return self._generator.uniform(lower_bound, upper_bound)
-
-    def randint(self, lower_bound: int, upper_bound: int) -> int:
-        """
-        Generate a random integer between lower_bound and upper_bound (inclusive).
-
-        :param lower_bound: Lower bound of the range.
-        :param upper_bound: Upper bound of the range.
-        :return: Random integer between lower_bound and upper_bound.
-        """
-        return self._generator.randint(lower_bound, upper_bound)
-
-    def choice(self, seq) -> Any:
-        """
-        Choose a random element from a non-empty sequence.
-
-        :param seq: Sequence to choose from.
-        :return: Randomly selected element from the sequence.
-        """
-        return self._generator.choice(seq)
 
     def linear_transform(self, slope: float, intercept: float, lower_bound: Union[float, int] = 0,
                          upper_bound: Union[float, int] = 1) -> float:
