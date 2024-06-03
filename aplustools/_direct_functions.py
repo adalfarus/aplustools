@@ -24,7 +24,8 @@ def install_all_dependencies():
                                          "cryptography==42.0.5", "PySide6==6.7.0", "aiohttp==3.9.4",
                                          "opencv-python==4.9.0.80", "brotli==1.1.0",
                                          "zstandard==0.22.0", "py7zr==0.21.0", "pillow_heif==0.15.0", "numpy==1.26.4",
-                                         "speedtest-cli==2.1.3", "windows-toasts==1.1.1; os_name == 'nt'"])
+                                         "speedtest-cli==2.1.3", "windows-toasts==1.1.1; os_name == 'nt'",
+                                         "quantcrypt==0.4.2"])
     if not success:
         return
     print("Done, all possible dependencies installed ...")

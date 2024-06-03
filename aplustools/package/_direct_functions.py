@@ -52,7 +52,7 @@ def install_dependencies_lst(dependencies: list) -> bool:
 
 
 def install_dependencies():
-    success = install_dependencies_lst([])
+    success = install_dependencies_lst(["numpy==1.26.4"])
     if not success:
         return
     print("Done, all possible dependencies for the package module installed ...")
