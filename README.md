@@ -55,25 +55,36 @@ if web_page.crawlable:
 ```
 
 ### Timer usage
+
 ````python
 from aplustools.package.timid import TimidTimer
 from datetime import timedelta
 import time
 
+
 # Setup your own timer class easily
 mySpecialTimer = TimidTimer.setup_timer_func(time.time, to_nanosecond_multiplier=1e9)
 
+my_timer = mySpecialTimer(start_at=2.3)  # Seconds
+
+# Do something
+time.sleep(3.2)
+
+print("This took:", my_timer.end())  # This will result in an output of 1 second as we started at 2.3 seconds
+
+
+# Advanced timer usage
 timer = TimidTimer()
 
 # Measure the average elapsed time over different iterations
 for _ in range(4):
-    timer.wait_ms(1000)
-    timer.tock()
+  timer.wait_ms_static(1000)
+  timer.tock()
 print("Average 1 second sleep extra delay: ", timer.average() - timedelta(seconds=1))
 
 # Use multiple timers in one timer object using the index
 with timer.enter(index=1):
-    time.sleep(1)
+  time.sleep(1)
 
 # Use it for timed function execution
 timer.start(index=1)  # The context manager automatically ends the timer, so we can reuse index 1 here
@@ -82,13 +93,13 @@ print(timer.end())  # End the timer at index 0 that starts when the timer object
 
 
 def linear_time(n):
-    # O(N) - Simple loop with linear complexity
-    for _ in range(n):
-        pass
+  # O(N) - Simple loop with linear complexity
+  for _ in range(n):
+    pass
 
 
 def create_simple_input_generator():
-    return ((tuple([n]), {}) for n in range(1, 100_001, 100))
+  return ((tuple([n]), {}) for n in range(1, 100_001, 100))
 
 
 # Measure the average time complexity of a function e.g. O(N)
@@ -101,25 +112,27 @@ print(timer.complexity(linear_time, create_simple_input_generator(), matplotlib_
 
 
 def complex_func(n, m, power=2):
-    sum(i ** power for i in range(n)) + sum(j ** power for j in range(m))
+  sum(i ** power for i in range(n)) + sum(j ** power for j in range(m))
 
 
 def varying_func(n, multiplier=1):
-    return sum(i * multiplier for i in range(n))
+  return sum(i * multiplier for i in range(n))
 
 
 # Complex input generator with multiple arguments and keyword arguments
 complex_input_generator = (
-    (tuple([n, n // 2]), {'power': 2}) for n in range(1, 101)
+  (tuple([n, n // 2]), {'power': 2}) for n in range(1, 101)
 )
 
 # Complex input generator with varying keyword arguments
 varying_input_generator = (
-    (tuple([n]), {'multiplier': (n % 3 + 1)}) for n in range(1, 101)
+  (tuple([n]), {'multiplier': (n % 3 + 1)}) for n in range(1, 101)
 )
 
-print(f"Estimated Time Complexity for complex_func: {timer.complexity(complex_func, complex_input_generator, matplotlib_pyplt=pyplot)}")
-print(f"Estimated Time Complexity for varying_func: {timer.complexity(varying_func, varying_input_generator, matplotlib_pyplt=pyplot)}")
+print(
+  f"Estimated Time Complexity for complex_func: {timer.complexity(complex_func, complex_input_generator, matplotlib_pyplt=pyplot)}")
+print(
+  f"Estimated Time Complexity for varying_func: {timer.complexity(varying_func, varying_input_generator, matplotlib_pyplt=pyplot)}")
 ````
 
 ### System
