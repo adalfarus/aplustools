@@ -1,6 +1,8 @@
 # environment.py
+from aplustools.data import bytes_to_human_readable_binary_iec, bits_to_human_readable
 from typing import Union, Optional, Callable, Any, Type, cast, Literal, Tuple
 from types import FrameType
+from pathlib import Path
 import subprocess
 import warnings
 import platform
@@ -12,7 +14,7 @@ import psutil
 import time
 import speedtest
 import tempfile
-from aplustools.data import bytes_to_human_readable_binary_iec, bits_to_human_readable
+from enum import Enum
 
 
 try:
@@ -106,9 +108,9 @@ def absolute_path(relative_path: str, file_path: str) -> str:
     return os.path.join(base_dir, relative_path)
 
 
-def save_remove(paths: Union[str, list]):
+def save_remove(paths: Union[str, Path, tuple]):
     if not isinstance(paths, list):
-        paths = [paths]
+        paths = (str(paths),)
     for path in paths:
         if os.path.exists(path):
             if is_accessible(path):
@@ -268,6 +270,12 @@ def auto_repr(cls):
     return cls
 
 
+class Theme(Enum):
+    LIGHT = "Light"
+    DARK = "Dark"
+    UNKNOWN = "Unknown"
+
+
 class _BaseSystem:
     def __init__(self):
         self.os = platform.system()
@@ -295,7 +303,19 @@ class _BaseSystem:
                           selections: Tuple[Tuple[str, str, tuple, ..., int], ...] = (("selection_arg", "Sel Display Name", ("selection_name", "Selection Display Name"), 0),),
                           buttons: Tuple[Tuple[str, Callable], ...] = (("Accept", lambda: None), ("Cancel", lambda: None),),
                           click_callback: Callable = lambda: None):
-        raise NotImplementedError("send_notification is not implemented")
+        from aplustools.io.gui.balloon_tip import NotificationManager  # To prevent a circular import
+        NotificationManager.show_notification(
+            "Sample Notification",
+            "This is a sample notification message.",
+            inputs=input_fields,
+            selections=selections,
+            buttons=buttons,
+            click_callback=lambda inputs, selections: print(f"Clicked with inputs: {inputs}, selections: {selections}"),
+            auto_close_duration=7000  # Auto close after 7 seconds
+        )
+
+    def send_native_notification(self, title: str, message: str):
+        raise NotImplementedError("send_native_notification is not implemented")
 
     def get_gpu_info(self):
         raise NotImplementedError("get_gpu_info is not implemented")
@@ -402,9 +422,9 @@ class _WindowsSystem(_BaseSystem):
         output = subprocess.check_output(command.split(" ")).decode()
         return [line.strip() for line in output.split('\n') if line.strip()][1:]
 
-    def get_system_theme(self):
+    def get_system_theme(self) -> Theme:
         if not winreg:
-            return None
+            return Theme.UNKNOWN
 
         key = r'SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize'
         value = 'AppsUseLightTheme'
@@ -412,9 +432,10 @@ class _WindowsSystem(_BaseSystem):
             reg_key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, key)
             theme_value, _ = winreg.QueryValueEx(reg_key, value)
             winreg.CloseKey(reg_key)
-            return 'Dark' if theme_value == 0 else 'Light'
-        except Exception:
-            return None
+            return Theme.DARK if theme_value == 0 else Theme.LIGHT
+        except Exception as e:
+            print(f"Exception occurred: {e}")
+            return Theme.UNKNOWN
 
     def schedule_event(self, name: str, script_path: str, event_time: Literal["startup", "login"]):
         """Schedule an event to run at startup or login on Windows."""
@@ -429,7 +450,7 @@ class _WindowsSystem(_BaseSystem):
                           input_fields: Tuple[Tuple[str, str, str], ...] = (("input_arg", "Input", "Hint"),),
                           selections: Tuple[Tuple[str, str, tuple, ..., int], ...] = (("selection_arg", "Sel Display Name", ("selection_name", "Selection Display Name"), 0),),
                           buttons: Tuple[Tuple[str, Callable], ...] = (("Accept", lambda: None), ("Cancel", lambda: None),),
-                          click_callback: Callable = lambda: None):
+                          click_callback: Callable = lambda selection_arg, input_arg: print(selection_arg, input_arg)):
         if not input_fields:
             toaster = WindowsToaster(title)
             new_toast = Toast()
@@ -462,10 +483,16 @@ class _WindowsSystem(_BaseSystem):
                 response_lst.append(callback)
                 new_toast.AddAction(ToastButton(button_text, str(i)))
 
-            new_toast.on_activated = lambda activated_event_args: (response_lst[activated_event_args.arguments]()
+            new_toast.on_activated = lambda activated_event_args: (response_lst[int(activated_event_args.arguments)]()
                                                                    or click_callback(**activated_event_args.inputs))
 
             interactable_toaster.show_toast(new_toast)
+
+    def send_native_notification(self, title: str, message: str):
+        toaster = WindowsToaster(title)
+        new_toast = Toast()
+        new_toast.text_fields = [message]
+        toaster.show_toast(new_toast)
 
     def get_battery_status(self):
         battery = psutil.sensors_battery()
@@ -504,13 +531,13 @@ class _DarwinSystem(_BaseSystem):
         output = subprocess.check_output(command.split(" ")).decode()
         return [line.split(': ')[1].strip() for line in output.split('\n') if 'Chipset Model' in line]
 
-    def get_system_theme(self):
+    def get_system_theme(self) -> Theme:
         command = "defaults read -g AppleInterfaceStyle"
         try:
             theme = subprocess.check_output(command.split(" ")).decode().strip()
-            return 'dark' if theme.lower() == 'dark' else 'light'
+            return Theme.DARK if theme.lower() == 'dark' else Theme.LIGHT
         except subprocess.CalledProcessError:
-            return 'light'  # Default to Light since Dark mode is not set
+            return Theme.LIGHT  # Default to Light since Dark mode is not set
 
     def schedule_event(self, name: str, script_path: str, event_time: Literal["startup", "login"]):
         """Schedule an event to run at startup or login on macOS."""
@@ -535,11 +562,7 @@ class _DarwinSystem(_BaseSystem):
             f.write(plist_content)
         subprocess.run(f'launchctl load {os.path.expanduser(plist_path)}'.split(" "), check=True)
 
-    def send_notification(self, title: str, message: str,
-                          _: Tuple[Tuple[str, str, str], ...] = (("input_arg", "Input", "Hint"),),
-                          __: Tuple[Tuple[str, str, tuple, ..., int], ...] = (("selection_arg", "Sel Display Name", ("selection_name", "Selection Display Name"), 0),),
-                          ___: Tuple[Tuple[str, Callable], ...] = (("Accept", lambda: None), ("Cancel", lambda: None),),
-                          click_callback: Callable = lambda: None):
+    def send_native_notification(self, title: str, message: str):
         script = f'display notification "{message}" with title "{title}"'
         subprocess.run(["osascript", "-e", script])
 
@@ -579,16 +602,16 @@ class _LinuxSystem(_BaseSystem):
     def get_gpu_info(self):
         command = "lspci | grep VGA"
         output = subprocess.check_output(command.split(" ")).decode()
-        return output.strip()
+        return [line.strip() for line in output.split('\n') if line.strip()]
 
-    def get_system_theme(self):
+    def get_system_theme(self) -> Theme:
         # This might vary depending on the desktop environment (GNOME example)
         command = "gsettings get org.gnome.desktop.interface gtk-theme"
         try:
             theme = subprocess.check_output(command.split(" ")).decode().strip().strip("'")
-            return "dark" if "dark" in theme.lower() else "light"
+            return Theme.DARK if "dark" in theme.lower() else Theme.LIGHT
         except subprocess.CalledProcessError:
-            return "light"
+            return Theme.UNKNOWN
 
     def schedule_event(self, name: str, script_path: str, event_time: Literal["startup", "login"]):
         """Schedule an event to run at startup or login on Linux."""
@@ -615,11 +638,7 @@ class _LinuxSystem(_BaseSystem):
             cron_command = f'@reboot {script_path}'
             subprocess.run(f'(crontab -l; echo "{cron_command}") | crontab -'.split(" "), check=True)
 
-    def send_notification(self, title: str, message: str,
-                          _: Tuple[Tuple[str, str, str], ...] = (("input_arg", "Input", "Hint"),),
-                          __: Tuple[Tuple[str, str, tuple, ..., int], ...] = (("selection_arg", "Sel Display Name", ("selection_name", "Selection Display Name"), 0),),
-                          ___: Tuple[Tuple[str, Callable], ...] = (("Accept", lambda: None), ("Cancel", lambda: None),),
-                          click_callback: Callable = lambda: None):
+    def send_native_notification(self, title: str, message: str):
         subprocess.run(["notify-send", title, message])
 
     def get_battery_status(self):
@@ -685,10 +704,11 @@ def local_test():
     try:
         print_system_info()
         system = System.system()
-        system.send_notification("Zenra", "Hello, how are you?", (), (), ())
+        # system.send_notification("Zenra", "Hello, how are you?", (), (), ())
+        system.send_native_notification("Zenra,", "NOWAYY")
         print("System RAM", system.get_memory_info())
-        print(f"Pc has been turned on since {str(System.system().get_uptime())[:-10]} minutes")
-        print("Network test", System.system().measure_network_speed())
+        print(f"Pc has been turned on since {int(System.system().get_uptime(),)} minutes")
+        # print("Network test", System.system().measure_network_speed())
 
         @strict
         class MyCls:
@@ -706,3 +726,4 @@ def local_test():
 
 if __name__ == "__main__":
     local_test()
+    time.sleep(100)
