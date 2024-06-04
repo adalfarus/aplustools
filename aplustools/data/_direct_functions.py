@@ -249,14 +249,23 @@ def bit_length(data: _typing.Union[int, float, str]) -> int:
 
 class Bits:
     def __init__(self, bytes_like):
-        self.bytes = bytes_like
+        self._bytes = bytes_like
+
+    def get_bytes(self):
+        return self._bytes
 
     def __repr__(self):
-        return f"{self.__class__.__name__}({nice_bits(self.bytes, True)})"
+        return f"{self.__class__.__name__}({nice_bits(self._bytes, True)})"
 
 
 class UniversalBits(Bits):
     def __init__(self, obj: _Union[str, float, int, bytes, bytearray, bool]):
+        my_bytes = self._get_bytes_from_original(obj)
+        self._original = obj
+        super().__init__(my_bytes)
+
+    @staticmethod
+    def _get_bytes_from_original( obj):
         if type(obj) in [str, int]:
             my_bytes = encode(obj)
         elif isinstance(obj, float):
@@ -265,7 +274,14 @@ class UniversalBits(Bits):
             my_bytes = b"\x01" if obj else b"\x00"
         else:
             my_bytes = obj
-        super().__init__(my_bytes)
+        return my_bytes
+
+    def __get__(self, instance, owner):
+        return self._original
+
+    def __set__(self, instance, value):
+        self._bytes = self._get_bytes_from_original(value)
+        self._original = value
 
 
 def _lod_helper(curr_lod, big_lster, depth):  # Make iterative instead of recursive

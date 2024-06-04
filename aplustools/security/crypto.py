@@ -3,13 +3,16 @@ from cryptography.hazmat.primitives.asymmetric import rsa, padding
 from cryptography.hazmat.primitives import serialization, hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.backends import default_backend
-from typing import Literal, Tuple, Optional
+from typing import Literal, Tuple, Optional, IO, Union
+from pathlib import Path
+import warnings
 import secrets
 import os
 
 
-from aplustools.security.passwords import GenerateSecurePasswords
-from aplustools.io.environment import System
+from aplustools.security.passwords import PasswordGenerator, PasswordFilter
+from aplustools.io.environment import save_remove
+from tempfile import mkdtemp
 from quantcrypt.kem import Kyber
 from quantcrypt.cipher import KryptonKEM
 from quantcrypt.kdf import Argon2
@@ -168,25 +171,56 @@ class ModernCryptUtils:
         return Kyber().keygen()
 
     @staticmethod
-    def kyber_encrypt(public_key: bytes, plaintext_file: str, ciphertext_file: str) -> None:
+    def kyber_encrypt(public_key: bytes, plaintext: bytes, get: Literal["content", "path", "file"] = "content"
+                      ) -> Union[bytes, Path, IO]:
         """
         Encrypts a file using the Kyber public key.
         """
         krypton = KryptonKEM(Kyber)
+        temp_dir = mkdtemp()
+        plaintext_file = Path(os.path.join(temp_dir, "kyper_inp"))
+        with open(plaintext_file, "wb") as f:
+            f.write(plaintext)
+        ciphertext_file = Path(os.path.join(temp_dir, "kyper_out"))
         krypton.encrypt(public_key, plaintext_file, ciphertext_file)
 
+        save_remove(plaintext_file)
+        if get == "path":
+            return ciphertext_file
+        elif get == "file":
+            return open(ciphertext_file, "rb")
+        with open(ciphertext_file, "rb") as f:
+            content = f.read()
+        save_remove(temp_dir)
+        return content
+
     @staticmethod
-    def kyber_decrypt(secret_key: bytes, ciphertext_file: str) -> bytes:
+    def kyber_decrypt(secret_key: bytes, ciphertext: bytes, get: Literal["content", "path", "file"] = "content"
+                      ) -> Union[bytes, Path, IO]:
         """
         Decrypts a file to memory using the Kyber secret key.
         """
-        temp_dir = System.system().get_tempdir()
         krypton = KryptonKEM(Kyber)
-        return krypton.decrypt_to_memory(secret_key, ciphertext_file)
+        temp_dir = mkdtemp()
+        ciphertext_file = Path(os.path.join(temp_dir, "kyper_inp"))
+        with open(ciphertext_file, "wb") as f:
+            f.write(ciphertext)
+        plaintext_file = Path(os.path.join(temp_dir, "kyper_out"))
+        krypton.decrypt_to_file(secret_key, ciphertext_file, plaintext_file)
+
+        save_remove(ciphertext_file)
+        if get == "path":
+            return plaintext_file
+        elif get == "file":
+            return open(plaintext_file, "rb")
+        with open(plaintext_file, "rb") as f:
+            content = f.read()
+        save_remove(temp_dir)
+        return content
 
     @staticmethod
     def generate_secure_password(length: int = 24):
-        return GenerateSecurePasswords().generate_ratio_based_password_v2(length, exclude_similar=True)
+        return PasswordGenerator().generate_ratio_based_password_v3(length, filter_=PasswordFilter(exclude_similar=True))
 
     @staticmethod
     def hash(password: str, hash_type: Literal["argon2"] = "argon2") -> str:
@@ -207,6 +241,12 @@ class ModernCryptUtils:
             return False
 
 
+class QuantumCryptography:
+    def __init__(self):
+        warnings.warn("This module is experimental as the exact specifications for Quantum Cryptography haven't been "
+                      "decided on yet and will likely change in the future.", category=RuntimeWarning, stacklevel=2)
+
+
 # Example usage
 if __name__ == "__main__":
     # Using ModernCryptUtils for Argon2
@@ -218,23 +258,11 @@ if __name__ == "__main__":
 
     # Using ModernCryptUtils for Kyber
     public_key, secret_key = ModernCryptUtils.generate_kyber_keypair()
-    plaintext_file = Path("plaintext.txt")
-    ciphertext_file = Path("ciphertext.txt")
-    plaintext_file_copy = Path("plaintext_copy.txt")
-
-    # Write some data to the plaintext file
-    plaintext_file.write_text("Quantum resistant encryption")
 
     # Encrypt the plaintext file
-    ModernCryptUtils.kyber_encrypt(public_key, plaintext_file, ciphertext_file)
+    encrypted = ModernCryptUtils.kyber_encrypt(public_key, "Hello World".encode())
 
     # Decrypt the ciphertext file to a new file
-    ModernCryptUtils.kyber_decrypt_to_file(secret_key, ciphertext_file, plaintext_file_copy)
+    decrypted = ModernCryptUtils.kyber_decrypt(secret_key, encrypted)
 
-    # Verify the decrypted content
-    decrypted_content = plaintext_file_copy.read_text()
-    print("Decrypted Content:", decrypted_content)
-
-    # Decrypt the ciphertext file to memory
-    decrypted_data = ModernCryptUtils.kyber_decrypt_to_memory(secret_key, ciphertext_file)
-    print("Decrypted Data:", decrypted_data.decode())
+    print(encrypted, decrypted)
