@@ -88,6 +88,14 @@ class TimidTimer:
         _, __, ___, paused_time = self._times[index]
         self._times[index] = (start, end_time, None, paused_time)
 
+    def get(self, index: Optional[int] = None):
+        index = index or self._get_first_index()  # If it's 0 it just sets it to 0 so it's okay.
+        if index >= len(self._times):
+            raise IndexError(f"Index {index} doesn't exist in {self._times}.")
+        start, end, paused_at, paused_time = self._times[index]
+        elapsed_time = end - start - paused_time
+        return timedelta(microseconds=elapsed_time / 1000)
+
     def end(self, index: Optional[int] = None, return_datetime: bool = True) -> Optional[timedelta]:
         end_time = self._time()
         index = index or self._get_first_index()  # If it's 0 it just sets it to 0 so it's okay.
