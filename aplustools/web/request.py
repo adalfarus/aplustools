@@ -74,45 +74,51 @@ class UnifiedRequestHandlerAdvanced:
 
 
 def local_test():
-    from aplustools.package.timid import TimidTimer
-    timer = TimidTimer()
+    try:
+        from aplustools.package.timid import TimidTimer
+        timer = TimidTimer()
 
-    # Synchronous request
-    UnifiedRequestHandler.fetch('http://example.com', async_mode=False)
+        # Synchronous request
+        UnifiedRequestHandler.fetch('http://example.com', async_mode=False)
 
-    for _ in range(20):
-        # Asynchronous request
-        UnifiedRequestHandler.fetch('http://example.com', async_mode=True)
+        for _ in range(20):
+            # Asynchronous request
+            UnifiedRequestHandler.fetch('http://example.com', async_mode=True)
 
-    print("Average time for 20 rounds async (fetch):", timer.end() / 20)
+        print("Average time for 20 rounds async (fetch):", timer.end() / 20)
 
-    timer.start()
+        timer.start()
 
-    # Synchronous GET request
-    UnifiedRequestHandlerAdvanced.request('GET', 'http://example.com', async_mode=False)
+        # Synchronous GET request
+        UnifiedRequestHandlerAdvanced.request('GET', 'http://example.com', async_mode=False)
 
-    for _ in range(20):
-        # Asynchronous GET request
-        UnifiedRequestHandlerAdvanced.request('GET', 'http://example.com', async_mode=True)
+        for _ in range(20):
+            # Asynchronous GET request
+            UnifiedRequestHandlerAdvanced.request('GET', 'http://example.com', async_mode=True)
 
-    print("Average time for 20 rounds async (request):", timer.end() / 20)
+        print("Average time for 20 rounds async (request):", timer.end() / 20)
 
-    print("Normal requests done, getting images now ...")
+        print("Normal requests done, getting images now ...")
 
-    folder_path = "./test_data/images"
-    os.makedirs(folder_path, exist_ok=True)
+        folder_path = "./test_data/images"
+        os.makedirs(folder_path, exist_ok=True)
 
-    # Synchronous binary request (e.g., image)
-    image_content = UnifiedRequestHandlerAdvanced.request('GET', 'https://huggingface.co/p1atdev/MangaLineExtraction-hf/resolve/main/images/sample.jpg', async_mode=False, return_type='binary')
-    print("Got image")
-    with open(os.path.join(folder_path, './image.jpg'), 'wb') as file:
-        file.write(image_content)
+        # Synchronous binary request (e.g., image)
+        image_content = UnifiedRequestHandlerAdvanced.request('GET', 'https://huggingface.co/p1atdev/MangaLineExtraction-hf/resolve/main/images/sample.jpg', async_mode=False, return_type='binary')
+        print("Got image")
+        with open(os.path.join(folder_path, './image.jpg'), 'wb') as file:
+            file.write(image_content)
 
-    # Asynchronous binary request (e.g., image)
-    image_content_async = UnifiedRequestHandlerAdvanced.request('GET', 'https://huggingface.co/p1atdev/MangaLineExtraction-hf/resolve/main/images/sample.jpg', async_mode=True, return_type='binary')
-    print("Got image async")
-    with open(os.path.join(folder_path, './image_async.jpg'), 'wb') as file:
-        file.write(image_content_async)
+        # Asynchronous binary request (e.g., image)
+        image_content_async = UnifiedRequestHandlerAdvanced.request('GET', 'https://huggingface.co/p1atdev/MangaLineExtraction-hf/resolve/main/images/sample.jpg', async_mode=True, return_type='binary')
+        print("Got image async")
+        with open(os.path.join(folder_path, './image_async.jpg'), 'wb') as file:
+            file.write(image_content_async)
+    except Exception as e:
+        print(f"Exception occurred: {e}")
+        return False
+    print("Test completed successfully.")
+    return True
 
 
 if __name__ == "__main__":

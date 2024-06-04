@@ -2,7 +2,7 @@
 from aplustools.data import bytes_to_human_readable_binary_iec, bits_to_human_readable
 from typing import Union, Optional, Callable, Any, Type, cast, Literal, Tuple
 from types import FrameType
-from pathlib import Path
+from pathlib import Path as _Path
 import subprocess
 import warnings
 import platform
@@ -108,7 +108,7 @@ def absolute_path(relative_path: str, file_path: str) -> str:
     return os.path.join(base_dir, relative_path)
 
 
-def save_remove(paths: Union[str, Path, tuple]):
+def save_remove(paths: Union[str, _Path, tuple]):
     if not isinstance(paths, list):
         paths = (str(paths),)
     for path in paths:

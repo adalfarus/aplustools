@@ -5,159 +5,79 @@ import os
 import zstandard as zstd
 import py7zr
 import io
-from typing import Union, Tuple, List, Optional
-from aplustools.security.crypto import CryptUtils
-from aplustools.data import encode_int, decode_int
+from typing import Type, Union, Tuple
 
 
-class EmptyChunkProcessor:
-    def process(self, data_chunk: bytes) -> bytes:
-        return data_chunk
-
-    def unprocess(self, processed_chunk: bytes) -> bytes:
-        return processed_chunk
-
-
-class BrotliChunkCompressor(EmptyChunkProcessor):
-    def __init__(self, quality: int = 11):  # Maximum compression quality
-        self.quality = quality
-
-    def process(self, data_chunk: bytes) -> bytes:
-        # Compress the data chunk with Brotli
-        return brotli.compress(data_chunk, quality=self.quality)
-
-    def unprocess(self, processed_chunk: bytes) -> bytes:
-        # Decompress the data chunk with Brotli
-        return brotli.decompress(processed_chunk)
-
-    @staticmethod
-    def add_markers(data, start_marker, end_marker):
-        # Add start and end markers to the data
-        return start_marker + data + end_marker
-
-
-class LZMAChunkCompressor(EmptyChunkProcessor):
-    def __init__(self, preset=lzma.PRESET_EXTREME):
-        self.preset = preset
-
-    def process(self, data_chunk: bytes) -> bytes:
-        # Compress the data chunk with LZMA
-        return lzma.compress(data_chunk, preset=self.preset)
-
-    def unprocess(self, processed_chunk: bytes) -> bytes:
-        # Decompress the data chunk with LZMA
-        return lzma.decompress(processed_chunk)
-
-
-class ZstdChunkCompressor(EmptyChunkProcessor):
-    def __init__(self, level: int=3):
-        self.compressor = zstd.ZstdCompressor(level=level)
-        self.decompressor = zstd.ZstdDecompressor()
-
-    def process(self, data_chunk: bytes) -> bytes:
-        return self.compressor.compress(data_chunk)
-
-    def unprocess(self, processed_chunk: bytes) -> bytes:
-        return self.decompressor.decompress(processed_chunk)
-
-
-class LZMA2ChunkCompressor(EmptyChunkProcessor):
-    def process(self, data_chunk: bytes) -> bytes:
-        with io.BytesIO() as buffer, py7zr.SevenZipFile(buffer, 'w', filters=[{'id': py7zr.FILTER_LZMA2}]) as archive:
-            # Create a file-like object from data_chunk
-            file_like_data = io.BytesIO(data_chunk)
-            archive.write({"data": file_like_data})
-            buffer.seek(0)  # Reset buffer position to the beginning
-            return buffer.getvalue()
-
-    def unprocess(self, processed_chunk: bytes) -> bytes:
-        with io.BytesIO(processed_chunk) as input_buffer, py7zr.SevenZipFile(input_buffer, 'r') as archive:
-            output_buffer = io.BytesIO()
-            archive.extractall(path=output_buffer)
-            output_buffer.seek(0)  # Reset buffer position to the beginning
-            return output_buffer.read()
-
-
-class AESChunkEncryptor(EmptyChunkProcessor):
-    def __init__(self, key: Optional[bytes] = None):
-        self.key = key if key is not None else CryptUtils.generate_aes_key(128)
-
-    def process(self, data_chunk: bytes) -> bytes:
-        iv, encrypted_data, tag = CryptUtils.aes_encrypt(data_chunk, key=self.key)
-        return CryptUtils.pack_ae_data(iv, encrypted_data, tag)
-
-    def unprocess(self, processed_chunk: bytes) -> bytes:
-        iv, encrypted_data, tag = CryptUtils.unpack_ae_data(processed_chunk)
-        return CryptUtils.aes_decrypt(iv, encrypted_data, tag, key=self.key)
-
-
-class DESChunkEncryptor(EmptyChunkProcessor):
-    def __int__(self, key: Optional[bytes] = None):
-        self.key = key if key is not None else CryptUtils.generate_des_key(64)
-
-    def process(self, data_chunk: bytes) -> bytes:
-        iv, encrypted_data, tag = CryptUtils.des_encrypt(data_chunk, key=self.key)
-        return CryptUtils.pack_ae_data(iv, encrypted_data, tag)
-
-    def unprocess(self, processed_chunk: bytes) -> bytes:
-        iv, encrypted_data, tag = CryptUtils.unpack_ae_data(processed_chunk)
-        return CryptUtils.des_decrypt(iv, encrypted_data, tag, key=self.key)
-
-
-class RSAChunkEncryptor(EmptyChunkProcessor):
-    def __init__(self, private_key_bytes: bytes = None):
-        self.key = CryptUtils.load_private_key(private_key_bytes if private_key_bytes is not None else CryptUtils.generate_rsa_key(1024)[0])
-        self._public_key = self.key.public_key()
-
-    def process(self, data_chunk: bytes) -> bytes:
-        return CryptUtils.rsa_encrypt(data_chunk, public_key=self._public_key)
-
-    def unprocess(self, processed_chunk: bytes) -> bytes:
-        return CryptUtils.rsa_decrypt(processed_chunk, private_key=self.key)
-
-
-class FileContainerV4:
-    def __init__(self, compressor: EmptyChunkProcessor, encryptor: EmptyChunkProcessor, file_path: str, container_start: int, container_end: int,
-                 block_size: int = 1024 * 1024, load_now: bool = True):
+class FileContainer:
+    def __init__(self, compressor: "ChunkCompressorBase", block_size: int = 1024 * 1024):  # Block size of 1 MB
         self.compressor = compressor
         self.block_size = block_size
         self.current_block = bytearray()
-
-        self.file_path = file_path
-        self.container_start = container_start
-        self.container_end = container_end
-        self.file_info = {}
-        self.index_to_name = []
+        self.compressed_data = bytearray()
+        self.files = {}
         self.block_offsets = []
-
-        if load_now:
-            if os.path.exists(file_path):
-                self.load_compressed_container_metadata()
-            else:
-                with open(file_path, "wb") as f:
-                    f.seek(container_start)
-                    f.write(b'\0' * (self.container_end - self.container_start))
-
-    def load_compressed_container_metadata(self):
-        """Loads only the metadata for the compressed container part within the specified range."""
-        with open(self.file_path, 'rb') as file:
-            file.seek(self.container_start)
-            index_length_bytes = file.read(4)
-            index_length = int.from_bytes(index_length_bytes, 'big')
-
-            if index_length > self.container_end - self.container_start - 4:
-                raise ValueError("Index size is larger than the designated container range.")
-
-            compressed_index_data = file.read(index_length)
-            index_data = self.compressor.unprocess(compressed_index_data)
-            index = json.loads(index_data)
-            self.file_info = index['file_info']
-            self.index_to_name = index['index_to_name']
-            self.block_offsets = index['block_offsets']
 
     def _compress_current_block(self):
         if self.current_block:
-            compressed_block = self.compressor.process(self.current_block)
+            compressed_block = self.compressor.compress(self.current_block)
+            self.block_offsets.append({'start': len(self.compressed_data), 'length': len(compressed_block)})
+            self.compressed_data.extend(compressed_block)
+            self.current_block = bytearray()
+
+    def add_file(self, filename: str, data: bytes):
+        if len(self.current_block) + len(data) > self.block_size:
+            self._compress_current_block()
+
+        file_info = {
+            'block_index': len(self.block_offsets),
+            'start': len(self.current_block),
+            'length': len(data)
+        }
+        self.current_block.extend(data)
+        self.files[filename] = file_info
+
+        if len(self.current_block) >= self.block_size:
+            self._compress_current_block()
+
+    def get_compressed_container(self) -> bytes:
+        self._compress_current_block()  # Compress any remaining data in the current block
+        index_data = json.dumps({'files': self.files, 'blocks': self.block_offsets}).encode()
+        index_length = len(index_data).to_bytes(4, 'big')
+        return index_length + index_data + self.compressed_data
+
+    def extract_file(self, compressed_container: bytes, filename: str) -> bytes:
+        index_length = int.from_bytes(compressed_container[:4], 'big')
+        index_data = compressed_container[4:4 + index_length]
+        index = json.loads(index_data)
+
+        file_info = index['files'][filename]
+        block_info = index['blocks'][file_info['block_index']]
+
+        start_block = block_info['start']
+        length_block = block_info['length']
+        compressed_block = compressed_container[
+                           4 + index_length + start_block:4 + index_length + start_block + length_block]
+
+        decompressed_block = self.compressor.decompress(compressed_block)
+
+        start_file = file_info['start']
+        length_file = file_info['length']
+        return decompressed_block[start_file:start_file + length_file]
+
+
+class FileContainerV2:
+    def __init__(self, compressor: "ChunkCompressorBase", block_size: int = 1024 * 1024):  # Block size of 1 MB
+        self.compressor = compressor
+        self.block_size = block_size
+        self.current_block = bytearray()
+        self.compressed_data = bytearray()
+        self.file_info = {}  # Stores info about files by filename
+        self.index_to_name = []  # Maps numeric indexes to filenames
+        self.block_offsets = []
+
+    def _compress_current_block(self):
+        if self.current_block:
+            compressed_block = self.compressor.compress(self.current_block)
             self.block_offsets.append({'start': len(self.compressed_data), 'length': len(compressed_block)})
             self.compressed_data.extend(compressed_block)
             self.current_block = bytearray()
@@ -181,111 +101,171 @@ class FileContainerV4:
 
         return file_index
 
-    def get_entire_compressed_container(self) -> bytes:
+    def get_compressed_container(self) -> bytes:
         self._compress_current_block()  # Compress any remaining data in the current block
         index_data = json.dumps({'file_info': self.file_info, 'block_offsets': self.block_offsets, 'index_to_name': self.index_to_name}).encode()
-        compressed_index_data = self.compressor.process(index_data)
+        index_length = len(index_data).to_bytes(4, 'big')
+        return index_length + index_data + self.compressed_data
+
+    def extract_file(self, compressed_container: bytes, file_identifier: Union[str, int]) -> bytes:
+        index_length = int.from_bytes(compressed_container[:4], 'big')
+        index_data = compressed_container[4:4 + index_length]
+        index = json.loads(index_data)
+
+        filename = file_identifier if isinstance(file_identifier, str) else index['index_to_name'][file_identifier]
+        file_info = index['file_info'][filename]
+        block_info = index['block_offsets'][file_info['block_index']]
+
+        start_block = block_info['start']
+        length_block = block_info['length']
+        compressed_block = compressed_container[4 + index_length + start_block:4 + index_length + start_block + length_block]
+
+        decompressed_block = self.compressor.decompress(compressed_block)
+
+        start_file = file_info['start']
+        length_file = file_info['length']
+        return decompressed_block[start_file:start_file + length_file]
+
+
+class FileContainerV3:
+    def __init__(self, compressor: "ChunkCompressorBase", block_size: int = 1024 * 1024):  # Block size of 1 MB
+        self.compressor = compressor
+        self.block_size = block_size
+        self.current_block = bytearray()
+        self.compressed_data = bytearray()
+        self.file_info = {}  # Stores info about files by filename
+        self.index_to_name = []  # Maps numeric indexes to filenames
+        self.block_offsets = []
+
+    def _compress_current_block(self):
+        if self.current_block:
+            compressed_block = self.compressor.compress(self.current_block)
+            self.block_offsets.append({'start': len(self.compressed_data), 'length': len(compressed_block)})
+            self.compressed_data.extend(compressed_block)
+            self.current_block = bytearray()
+
+    def add_file(self, filename: str, data: bytes) -> int:
+        if len(self.current_block) + len(data) > self.block_size:
+            self._compress_current_block()
+
+        file_index = len(self.index_to_name)
+        self.index_to_name.append(filename)
+        self.file_info[filename] = {
+            'index': file_index,
+            'block_index': len(self.block_offsets),
+            'start': len(self.current_block),
+            'length': len(data)
+        }
+        self.current_block.extend(data)
+
+        if len(self.current_block) >= self.block_size:
+            self._compress_current_block()
+
+        return file_index
+
+    def get_compressed_container(self) -> bytes:
+        self._compress_current_block()  # Compress any remaining data in the current block
+        index_data = json.dumps({'file_info': self.file_info, 'block_offsets': self.block_offsets, 'index_to_name': self.index_to_name}).encode()
+        compressed_index_data = self.compressor.compress(index_data)
         index_length = len(compressed_index_data).to_bytes(4, 'big')
         return index_length + compressed_index_data + self.compressed_data
 
-    def extract_file_partial(self, file_identifier: Union[str, int], offset: int, length: int) -> bytes:
-        """Extracts a part of a file by direct access, only within the compressed container range."""
-        filename = file_identifier if isinstance(file_identifier, str) else self.index_to_name[file_identifier]
-        file_info = self.file_info[filename]
-        block_info = self.block_offsets[file_info['block_index']]
+    def extract_file(self, compressed_container: bytes, file_identifier: Union[str, int]) -> bytes:
+        compressed_index_length = int.from_bytes(compressed_container[:4], 'big')
+        compressed_index_data = compressed_container[4:4 + compressed_index_length]
+        index_data = self.compressor.decompress(compressed_index_data)
+        index = json.loads(index_data)
 
-        with open(self.file_path, 'rb') as file:
-            # Calculate the position and ensure it's within the designated container range
-            start_position = self.container_start + block_info['start']
-            if start_position < self.container_start or start_position > self.container_end:
-                raise ValueError("Block start position is outside of the designated container range.")
+        filename = file_identifier if isinstance(file_identifier, str) else index['index_to_name'][file_identifier]
+        file_info = index['file_info'][filename]
+        block_info = index['block_offsets'][file_info['block_index']]
 
-            file.seek(start_position)
-            compressed_block = file.read(block_info['length'])
-            decompressed_block = self.compressor.unprocess(compressed_block)
+        start_block = block_info['start']
+        length_block = block_info['length']
+        compressed_block = compressed_container[4 + compressed_index_length + start_block:4 + compressed_index_length + start_block + length_block]
 
-        # Calculate the actual positions in the decompressed block
-        actual_start = file_info['start'] + offset
-        actual_end = actual_start + length
+        decompressed_block = self.compressor.decompress(compressed_block)
 
-        return decompressed_block[actual_start:actual_end]
+        start_file = file_info['start']
+        length_file = file_info['length']
+        return decompressed_block[start_file:start_file + length_file]
 
-    def remove_file(self, file_identifier: Union[str, int]):
-        """Removes a file's metadata and index but does not modify the actual compressed data."""
-        filename = file_identifier if isinstance(file_identifier, str) else self.index_to_name[file_identifier]
+    def get_compressed_container_info(self, compressed_container: bytes) -> Tuple[int, dict, list]:
+        """Returns a tuple(Number of Files, Index to name dictionary and an in-order name list)"""
+        compressed_index_length = int.from_bytes(compressed_container[:4], 'big')
+        compressed_index_data = compressed_container[4:4 + compressed_index_length]
+        index_data = self.compressor.decompress(compressed_index_data)
+        index = json.loads(index_data)
+        return (len(index['file_info']),
+                {i: name for i, name in enumerate(index['index_to_name'])}, index['index_to_name'])
 
-        # Remove file info and update mappings
-        del self.file_info[filename]
-        self.index_to_name = [name for name in self.index_to_name if name != filename]
-        self.block_offsets = [offset for offset in self.block_offsets if self.file_info.get(filename, {}).get('block_index') != offset]
 
-    def get_compressed_container_info(self) -> Tuple[int, List[str]]:
-        """Loads and returns basic info about the compressed container."""
-        if not self.file_info:
-            self.load_compressed_container_metadata()
-        return len(self.file_info), self.index_to_name
+class ChunkCompressorBase:
+    def compress(self, data_chunk: bytes) -> bytes:
+        return data_chunk
 
-    def update_compressed_container(self):
-        """Updates the metadata index in the compressed file to reflect changes."""
-        index_data = json.dumps({'file_info': self.file_info, 'block_offsets': self.block_offsets, 'index_to_name': self.index_to_name}).encode()
-        compressed_index_data = self.compressor.process(index_data)
-        index_length = len(compressed_index_data).to_bytes(4, 'big')
+    def decompress(self, compressed_chunk: bytes) -> bytes:
+        return compressed_chunk
 
-        with open(self.file_path, 'r+b') as file:
-            file.seek(self.container_start)
-            file.write(index_length + compressed_index_data)  # Overwrite old index
 
-    def defragment(self):
-        "metadatawrtie" "mdw"
-        "metadataread" "mdr"
-        "metdadataclear" "mdc"
+class BrotliChunkCompressor(ChunkCompressorBase):
+    def __init__(self, quality: int = 11):  # Maximum compression quality
+        self.quality = quality
 
-        op_code = "mdw"
-        start_pos = 241 + self.container_start
-        end_pos = 256 + self.container_start
-        print(f"{op_code} | {start_pos}-{end_pos}")
-        """Optimizes the current blocks into one continuous block."""
-        with open(self.file_path, 'r+b') as file:
-            # Seek to the start of the container
-            file.seek(self.container_start)
-            next_write_position = 0
-            updated_block_offsets = []
+    def compress(self, data_chunk: bytes) -> bytes:
+        # Compress the data chunk with Brotli
+        return brotli.compress(data_chunk, quality=self.quality)
 
-            # Read each block, decompress, recompress (if needed), and write back contiguously
-            for block_info in self.block_offsets:
-                file.seek(self.container_start + block_info['start'])
-                compressed_block = file.read(block_info['length'])
-                updated_block_offsets.append({
-                    'start': next_write_position,
-                    'length': block_info['length']
-                })
-                # Write block back at the new position
-                file.seek(self.container_start + next_write_position)
-                file.write(compressed_block)
-                next_write_position += block_info['length']
+    def decompress(self, compressed_chunk: bytes) -> bytes:
+        # Decompress the data chunk with Brotli
+        return brotli.decompress(compressed_chunk)
 
-            # Fill the rest of the container with zeros to clear leftover data
-            remaining_space = self.container_end - (self.container_start + next_write_position)
-            if remaining_space < 0:
-                raise ValueError("Defragmentation would overflow the container bounds.")
+    @staticmethod
+    def add_markers(data, start_marker, end_marker):
+        # Add start and end markers to the data
+        return start_marker + data + end_marker
 
-            file.write(b'\0' * remaining_space)
 
-            # Update block offsets with their new positions
-            self.block_offsets = updated_block_offsets
+class LZMAChunkCompressor(ChunkCompressorBase):
+    def __init__(self, preset=lzma.PRESET_EXTREME):
+        self.preset = preset
 
-            # Optionally update the container's metadata here as well
+    def compress(self, data_chunk: bytes) -> bytes:
+        # Compress the data chunk with LZMA
+        return lzma.compress(data_chunk, preset=self.preset)
 
-    def clear_unneeded(self):
-        pass
+    def decompress(self, compressed_chunk: bytes) -> bytes:
+        # Decompress the data chunk with LZMA
+        return lzma.decompress(compressed_chunk)
 
-    def optimize(self):
-        """Shifts all"""
-        self.defragment()
-        self.delete_unneeded()
 
-    def delete_unneeded(self):
-        pass
+class ZstdCompressor(ChunkCompressorBase):
+    def __init__(self, level: int=3):
+        self.compressor = zstd.ZstdCompressor(level=level)
+        self.decompressor = zstd.ZstdDecompressor()
+
+    def compress(self, data_chunk: bytes) -> bytes:
+        return self.compressor.compress(data_chunk)
+
+    def decompress(self, compressed_chunk: bytes) -> bytes:
+        return self.decompressor.decompress(compressed_chunk)
+
+
+class LZMA2Compressor(ChunkCompressorBase):
+    def compress(self, data_chunk: bytes) -> bytes:
+        with io.BytesIO() as buffer, py7zr.SevenZipFile(buffer, 'w', filters=[{'id': py7zr.FILTER_LZMA2}]) as archive:
+            # Create a file-like object from data_chunk
+            file_like_data = io.BytesIO(data_chunk)
+            archive.write({"data": file_like_data})
+            buffer.seek(0)  # Reset buffer position to the beginning
+            return buffer.getvalue()
+
+    def decompress(self, compressed_chunk: bytes) -> bytes:
+        with io.BytesIO(compressed_chunk) as input_buffer, py7zr.SevenZipFile(input_buffer, 'r') as archive:
+            output_buffer = io.BytesIO()
+            archive.extractall(path=output_buffer)
+            output_buffer.seek(0)  # Reset buffer position to the beginning
+            return output_buffer.read()
 
 
 def local_test():
@@ -300,23 +280,18 @@ def local_test():
                     image_file_data = b''.join(f.readlines())
                     data[file] = image_file_data
 
-        # for file_name, image in data.items():
-        #     container.add_file(file_name, image)
-        #
-        # # Get the compressed data
-        # compressed_data = container.get_compressed_container()
-        #
-        # print("Compression done")
-        #
-        # with open("./test_data/files.bin", "wb") as f:
-        #     f.write(compressed_data)
-        #
-        # print("Wrote bin")
+        for file_name, image in data.items():
+            container.add_file(file_name, image)
 
-        with open("./test_data/files.bin", "rb") as f:
-            compressed_data = f.read()
+        # Get the compressed data
+        compressed_data = container.get_compressed_container()
 
-        print("Read bin")
+        print("Compression done")
+
+        with open("./test_data/files.bin", "wb") as f:
+            f.write(compressed_data)
+
+        print("Wrote bin")
 
         # To extract a specific file from the compressed data
         try:

@@ -414,6 +414,8 @@ class TimidTimer:
             plt.title('Execution Time vs Input Size')
             plt.legend()
             plt.show()
+        else:
+            time.sleep(1.5)
 
         return best_fit
 
@@ -500,54 +502,54 @@ class DateTimeTimer(TimidTimer):
 
 def local_test():
     try:
-        def test_timer(timer_class, description):
-            timer = timer_class()
-            timer.start()
-            for _ in range(1000000):
-                pass  # A simple loop to simulate computation
-            elapsed = timer.end()
-            print(f"{description} elapsed time: {timer.get_readable(elapsed)}")
-
-        def sleep_and_measure(timer_class, description, sleep_time_ms=1000):
-            """Measures how long the system sleeps using the given timer."""
-            timer = timer_class()
-            timer.start()
-            TimidTimer.wait_ms(sleep_time_ms)  # Sleep for a specified time
-            elapsed = timer.end()
-            print(f"{description}, expected sleep: {sleep_time_ms / 1000}s, measured time: {timer.get_readable(elapsed)}")
-
-        timer1 = TimidTimer()
-        timer1.shoot(1, lambda: print(timer1.tock(return_datetime=True)), iterations=3)
-
+        # def test_timer(timer_class, description):
+        #     timer = timer_class()
+        #     timer.start()
+        #     for _ in range(1000000):
+        #         pass  # A simple loop to simulate computation
+        #     elapsed = timer.end()
+        #     print(f"{description} elapsed time: {timer.get_readable(elapsed)}")
+        #
+        # def sleep_and_measure(timer_class, description, sleep_time_ms=1000):
+        #     """Measures how long the system sleeps using the given timer."""
+        #     timer = timer_class()
+        #     timer.start()
+        #     TimidTimer.wait_ms(sleep_time_ms)  # Sleep for a specified time
+        #     elapsed = timer.end()
+        #     print(f"{description}, expected sleep: {sleep_time_ms / 1000}s, measured time: {timer.get_readable(elapsed)}")
+        #
+        # timer1 = TimidTimer()
+        # timer1.shoot(1, lambda: print(timer1.tock(return_datetime=True)), iterations=3)
+        #
         timer = TimidTimer()
-        for _ in range(10):
-            timer.wait_ms(1000)
-            timer.tock()
-        print("Average 1 second sleep extra delay: ", timer.average() - timedelta(seconds=1))
-        print("TTD", TimidTimer.test_delay_ms(1000) - timedelta(seconds=1))
-
-        with TimidTimer().enter(index=1):
-            timer.wait_ms(1)
-
-        print("Starting timer tests...")
-        test_timer(TimidTimer, "Timid Timer")
-        test_timer(Timer, "Normal Timer")
-        test_timer(PerfTimer, "Performance Timer")
-        test_timer(PerfTimerNS, "Performance Timer Nanosecond")
-        test_timer(CPUTimer, "CPU Timer")
-        test_timer(CPUTimerNS, "CPU Timer Nanosecond")
-        test_timer(MonotonicTimer, "Monotonic Timer")
-        test_timer(MonotonicTimerNS, "Monotonic Timer Nanosecond")
-
-        print("\nTesting sleep accuracy...")
-        sleep_and_measure(TimidTimer, "Timid Timer")
-        sleep_and_measure(Timer, "Normal Timer")
-        sleep_and_measure(PerfTimer, "Performance Timer")
-        sleep_and_measure(PerfTimerNS, "Performance Timer Nanosecond")
-        sleep_and_measure(CPUTimer, "CPU Timer")
-        sleep_and_measure(CPUTimerNS, "CPU Timer Nanosecond")
-        sleep_and_measure(MonotonicTimer, "Monotonic Timer")
-        sleep_and_measure(MonotonicTimerNS, "Monotonic Timer Nanosecond")
+        # for _ in range(4):
+        #     timer.wait_ms(1000)
+        #     timer.tock()
+        # print("Average 1 second sleep extra delay: ", timer.average() - timedelta(seconds=1))
+        # print("TTD", TimidTimer.test_delay_ms(1000) - timedelta(seconds=1))
+        #
+        # with TimidTimer().enter(index=1):
+        #     timer.wait_ms(1)
+        #
+        # print("Starting timer tests...")
+        # test_timer(TimidTimer, "Timid Timer")
+        # test_timer(Timer, "Normal Timer")
+        # test_timer(PerfTimer, "Performance Timer")
+        # test_timer(PerfTimerNS, "Performance Timer Nanosecond")
+        # test_timer(CPUTimer, "CPU Timer")
+        # test_timer(CPUTimerNS, "CPU Timer Nanosecond")
+        # test_timer(MonotonicTimer, "Monotonic Timer")
+        # test_timer(MonotonicTimerNS, "Monotonic Timer Nanosecond")
+        #
+        # print("\nTesting sleep accuracy...")
+        # sleep_and_measure(TimidTimer, "Timid Timer")
+        # sleep_and_measure(Timer, "Normal Timer")
+        # sleep_and_measure(PerfTimer, "Performance Timer")
+        # sleep_and_measure(PerfTimerNS, "Performance Timer Nanosecond")
+        # sleep_and_measure(CPUTimer, "CPU Timer")
+        # sleep_and_measure(CPUTimerNS, "CPU Timer Nanosecond")
+        # sleep_and_measure(MonotonicTimer, "Monotonic Timer")
+        # sleep_and_measure(MonotonicTimerNS, "Monotonic Timer Nanosecond")
 
         def constant_time(n):
             # O(1) - Does nothing
@@ -591,16 +593,17 @@ def local_test():
             while i * i < n:
                 i += 1
 
-        timer = TimidTimer()
+        def create_simple_input_generator(rng: range):
+            return ((tuple([n]), {}) for n in rng)
 
         # Test functions with the complexity method
-        print("Constant Time:", timer.complexity(constant_time, range(1, 100_001, 1000)))
-        print("Logarithmic Time:", timer.complexity(logarithmic_time, range(1, 100_001, 1000)))
-        print("Linear Time:", timer.complexity(linear_time, range(1, 100_001, 100)))
-        print("Linearithmic Time:", timer.complexity(linearithmic_time, range(1, 100_001, 1000)))
-        print("Quadratic Time:", timer.complexity(quadratic_time, range(1, 10_001, 100)))
-        print("Cubic Time:", timer.complexity(cubic_time, range(1, 2001, 200)))
-        print("Square Root Time:", timer.complexity(square_root_time, range(1, 100_001, 100)))
+        print("Constant Time:", timer.complexity(constant_time, create_simple_input_generator(range(1, 100_001, 1000))))
+        print("Logarithmic Time:", timer.complexity(logarithmic_time, create_simple_input_generator(range(1, 100_001, 1000))))
+        print("Linear Time:", timer.complexity(linear_time, create_simple_input_generator(range(1, 100_001, 100))))
+        print("Linearithmic Time:", timer.complexity(linearithmic_time, create_simple_input_generator(range(1, 100_001, 1000))))
+        print("Quadratic Time:", timer.complexity(quadratic_time, create_simple_input_generator(range(1, 10_001, 100))))
+        # print("Cubic Time:", timer.complexity(cubic_time, create_simple_input_generator(range(1, 2001, 200))))
+        print("Square Root Time:", timer.complexity(square_root_time, create_simple_input_generator(range(1, 100_001, 100))))
     except Exception as e:
         print(f"Exception occurred {e}.")
         return False

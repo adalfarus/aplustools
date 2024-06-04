@@ -160,18 +160,16 @@ class GithubUpdater:
 
 def local_test():
     try:
-        from aplustools.io.environment import Path
-    
         # Initialize the updater
         updater = GithubUpdater("Adalfarus", "unicode-writer", "py")
 
         # Setup arguments for the update
-        path, zip_path = Path("./test_data/update"), Path("./test_data/zip")
-        path.mkdir(".")
-        zip_path.mkdir(".")
+        path, zip_path = "./test_data/update", "./test_data/zip"
+        os.mkdir(path)
+        os.mkdir(zip_path)
         repo_version = "0.0.1"
     
-        update_thread = updater.update(str(path), str(zip_path), repo_version, "none", "localhost", 1264, True, True)
+        update_thread = updater.update(path, zip_path, repo_version, "none", "localhost", 1264, True, True)
         update_thread.start()
 
         # Receive the update status generator and print them
