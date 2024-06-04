@@ -20,6 +20,10 @@ jobs:
         python -m pip install --upgrade pip
         pip install pytest
 
+    - name: Install dependencies using upype
+      run: |
+        python -c "import aplustools; aplustools.install_all_dependencies()"
+
     - name: Prepare test_data directory
       run: |
         DIR=test_data
