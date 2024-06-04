@@ -205,7 +205,7 @@ def local_test():
     try:
         searcher = Search()  # BingSearchCore())
         # searcher.search("Hello World")
-        searcher.replace_core(GoogleSearchCore())
+        searcher.replace_core(DuckDuckGoSearchCore())
         print(searcher.search("Hello World"))
     except Exception as e:
         print(f"Exception occurred: {e}")
