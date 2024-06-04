@@ -65,9 +65,11 @@ def decode(bytes_like: bytes, return_int: bool = False) -> _Union[int, str]:
     return decode_int(bytes_like)
 
 
-def bits(bytes_like: _typing.Union[bytes, bytearray]) -> list:
+def bits(bytes_like: _typing.Union[bytes, bytearray], return_str: bool = False) -> _Union[list, str]:
     bytes_like = bytes_like if isinstance(bytes_like, bytes) else bytes(bytes_like)
     binary = "00000000" + bin(int.from_bytes(bytes_like))[2:]
+    if return_str:
+        return ''.join(list(reversed([binary[i-8:i] for i in range(len(binary), 0, -8)[:-1]])))
     return list(reversed([binary[i-8:i] for i in range(len(binary), 0, -8)[:-1]]))
 
 
@@ -328,7 +330,19 @@ def cutoff_iterable(iterable: _Union[list, tuple, dict, set], max_elements_start
 def cutoff_string(string: str, max_chars_start: int = 4, max_chars_end: int = 0,
                   show_hidden_chars_num: bool = False):
     return ''.join(cutoff_iterable(list(string), max_chars_start, max_chars_end, show_hidden_chars_num, True))
+from aplustools.package.timid import TimidTimer
+timer = TimidTimer()
 
+for _ in range(1_000_000):
+    nice_bits(encode_positive_int(_))
+    timer.tock()
+print(timer.average())
+
+timer.start(1)
+for _ in range(1_000_000):
+    bits(encode_positive_int(_))
+    timer.tock(1)
+print(timer.average(1))
 
 if __name__ == "__main__":
     bit = nice_bits(encode("Hello you world!"), True, 6, True, True)
