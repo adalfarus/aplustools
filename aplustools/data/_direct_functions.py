@@ -151,6 +151,8 @@ def isOddString(x: str) -> bool:
 
 
 def nice_number(number: int, seperator: str = "."):
+    if type(number) is not int:  # Bool is technically an int
+        return number
     formatted_number = [str(number)[-((i * 3) + 1) - 2:-(i * 3) or None] for i, part in enumerate(str(number)[-1::-3])]
     formatted_number.reverse()
     return f"{seperator.join(formatted_number)}"
