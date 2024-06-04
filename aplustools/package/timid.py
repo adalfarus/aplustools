@@ -111,8 +111,11 @@ class BasicTimer:
             raise RuntimeError("Timer has not been started.")
         return self
 
+    def tally(self):
+        return sum(tock - tick for tick, tock in self.tick_tocks)
+
     def average(self):
-        total_time = sum(tock - tick for tick, tock in self.tick_tocks)
+        total_time = self.tally()
         total_count = len(self.tick_tocks)
         if total_count == 0:
             return None  # Avoid division by zero
@@ -219,6 +222,9 @@ class TimidTimer:
         pause_time = self._time()
         index = index or self._get_first_index()  # If it's 0 it just sets it to 0 so it's okay.
 
+        if index >= len(self._times) or self._times[index] is self.EMPTY:
+            raise IndexError(f"Index {index} doesn't exist or is not running.")
+
         with self._times[index][-1]:
             start, end, paused_at, paused_time, lock = self._times[index]
             if for_seconds:
@@ -229,6 +235,9 @@ class TimidTimer:
 
     def resume(self, index: Optional[int] = None) -> "TimidTimer":
         resumed_time = self._time()
+
+        if index >= len(self._times) or self._times[index] is self.EMPTY:
+            raise IndexError(f"Index {index} doesn't exist or is not paused.")
 
         with self._times[index][-1]:
             self._resume(resumed_time, index)
@@ -243,8 +252,8 @@ class TimidTimer:
     def stop(self, index: Optional[int] = None) -> "TimidTimer":
         end_time = self._time()
         index = index or self._get_first_index()  # If it's 0 it just sets it to 0 so it's okay.
-        if index >= len(self._times):
-            raise IndexError(f"Index {index} doesn't exist in {self._times}.")
+        if index >= len(self._times) or self._times[index] is self.EMPTY:
+            raise IndexError(f"Index {index} doesn't exist or is not running.")
 
         with self._times[index][-1]:
             start, end, paused_at, paused_time, lock = self._times[index]
@@ -256,20 +265,18 @@ class TimidTimer:
 
     def get(self, index: Optional[int] = None):
         index = index or self._get_first_index()  # If it's 0 it just sets it to 0 so it's okay.
-        if index >= len(self._times):
-            raise IndexError(f"Index {index} doesn't exist in {self._times}.")
+        if index >= len(self._times) or self._times[index] is self.EMPTY:
+            raise IndexError(f"Index {index} doesn't exist or is not running.")
         with self._times[index][-1]:
             start, end, _, paused_time, __ = self._times[index]
-        elapsed_time = end - start - paused_time
+        elapsed_time = (end or self._time()) - start - paused_time
         return timedelta(microseconds=elapsed_time / 1000)
 
     def end(self, index: Optional[int] = None, return_datetime: bool = True) -> Union[timedelta, "TimidTimer"]:
         end_time = self._time()
         index = index or self._get_first_index()  # If it's 0 it just sets it to 0 so it's okay.
-        if self._times[index] is self.EMPTY:
-            return timedelta(seconds=0)
-        if index >= len(self._times):
-            raise IndexError(f"Index {index} doesn't exist in {self._times}.")
+        if index >= len(self._times) or self._times[index] is self.EMPTY:
+            raise IndexError(f"Index {index} doesn't exist or is not running.")
         with self._times[index][-1]:
             start, _, paused_at, __, ___ = self._times[index]
             if paused_at is not None:
@@ -286,8 +293,8 @@ class TimidTimer:
         """Return how much time has passed till the start. (Could also be called elapsed)"""
         tick_time = self._time()
         index = index or self._get_first_index()  # If it's 0 it just sets it to 0 so it's okay.
-        if index >= len(self._times):
-            raise IndexError(f"Index {index} doesn't exist in {self._times}.")
+        if index >= len(self._times) or self._times[index] is self.EMPTY:
+            raise IndexError(f"Index {index} doesn't exist or is not running.")
         with self._times[index][-1]:
             start, _, __, ___, ____ = self._times[index]
             self._tick_tocks[index].append((start, tick_time))
@@ -299,10 +306,8 @@ class TimidTimer:
         """Returns how much time has passed till the last tock. (Could also be called round/lap/split)"""
         tock_time = self._time()
         index = index or self._get_first_index()  # If it's 0 it just sets it to 0 so it's okay.
-        if self._times[index] is self.EMPTY:
-            return timedelta(seconds=0)
-        if index >= len(self._times):
-            raise IndexError(f"Index {index} doesn't exist in {self._times}.")
+        if index >= len(self._times) or self._times[index] is self.EMPTY:
+            raise IndexError(f"Index {index} doesn't exist or is not running.")
         with self._times[index][-1]:
             start, end, paused_at, paused_time, lock = self._times[index]
 
@@ -320,6 +325,8 @@ class TimidTimer:
         total_time = 0
 
         for index in indices:
+            if index >= len(self._times) or self._times[index] is self.EMPTY:
+                continue
             with self._times[index][-1]:
                 start, end, _, __, ___ = self._times[index]
                 tick_tocks = self._tick_tocks[index].copy()
@@ -337,6 +344,8 @@ class TimidTimer:
         total_tocks = 0
 
         for index in indices:
+            if index >= len(self._times) or self._times[index] is self.EMPTY:
+                continue
             with self._times[index][-1]:
                 _, end, __, ___, ____ = self._times[index]
                 tick_tocks = self._tick_tocks[index].copy()
@@ -367,7 +376,7 @@ class TimidTimer:
     @classmethod
     def _trigger(cls, interval: Union[float, int], function, args: tuple, kwargs: dict, iterations: int,
                  stop_event: threading.Event = threading.Event()):
-        cls.wait(interval)
+        cls.wait_static(interval)
         while not stop_event.is_set():
             if iterations == 0:
                 break
@@ -375,13 +384,13 @@ class TimidTimer:
                 function(*args, **kwargs)
             except Exception as e:
                 print(f"Error in _trigger thread: {e}")
-            cls.wait(interval)
+            cls.wait_static(interval)
             iterations -= 1
 
     @classmethod
     def _trigger_ms(cls, interval_ms: Union[float, int], function, args: tuple, kwargs: dict, iterations: int,
                     stop_event: threading.Event = threading.Event()):
-        cls.wait_ms(interval_ms)
+        cls.wait_ms_static(interval_ms)
         while not stop_event.is_set():
             if iterations == 0:
                 break
@@ -389,7 +398,7 @@ class TimidTimer:
                 function(*args, **kwargs)
             except Exception as e:
                 print(f"Error in _trigger thread: {e}")
-            cls.wait_ms(interval_ms)
+            cls.wait_ms_static(interval_ms)
             iterations -= 1
 
     @classmethod
@@ -473,7 +482,20 @@ class TimidTimer:
 
     def warmup_fire(self, rounds: int = 300) -> "TimidTimer":
         for _ in range(rounds):
-            self.wait_ms(1)
+            self.wait_ms_static(1)
+        return self
+
+    def wait(self, seconds: int = 0) -> "TimidTimer":
+        time.sleep(seconds)
+        return self
+
+    def wait_ms(self, milliseconds: int = 0) -> "TimidTimer":
+        wanted_time = self._time() + (milliseconds * 1e+6)
+        while self._time() < wanted_time:
+            if wanted_time - self._time() > 1_000_000:  # 3_000_000
+                time.sleep(0.001)
+            else:
+                continue
         return self
 
     @classmethod
@@ -482,7 +504,7 @@ class TimidTimer:
         Keep in mind that any amount that isn't 0 is subject to around a 2 ns extra delay."""
         timer = cls()
         if amount:
-            cls.wait(amount)
+            timer.wait(amount)
         return timer.end()
 
     @classmethod
@@ -491,16 +513,16 @@ class TimidTimer:
         Keep in mind that any amount that isn't 0 is subject to around a 2 ns extra delay."""
         timer = cls()
         if amount_ms:
-            cls.wait_ms(amount_ms)
+            timer.wait_ms(amount_ms)
         return timer.end()
 
     @classmethod
-    def wait(cls, seconds: int = 0) -> Type["TimidTimer"]:
+    def wait_static(cls, seconds: int = 0) -> Type["TimidTimer"]:
         time.sleep(seconds)
         return cls
 
     @classmethod
-    def wait_ms(cls, milliseconds: int = 0) -> Type["TimidTimer"]:
+    def wait_ms_static(cls, milliseconds: int = 0) -> Type["TimidTimer"]:
         wanted_time = cls._time() + (milliseconds * 1e+6)
         while cls._time() < wanted_time:
             if wanted_time - cls._time() > 1_000_000:  # 3_000_000
@@ -658,7 +680,7 @@ class DateTimeTimer(TimidTimer):
 
 
 def local_test():
-    try:
+    # try:
         def test_timer(timer_class, description):
             timer = timer_class()
             timer.start()
@@ -671,23 +693,25 @@ def local_test():
             """Measures how long the system sleeps using the given timer."""
             timer = timer_class()
             timer.start()
-            TimidTimer.wait_ms(sleep_time_ms)  # Sleep for a specified time
+            TimidTimer.wait_ms_static(sleep_time_ms)  # Sleep for a specified time
             elapsed = timer.end()
             print(f"{description}, expected sleep: {sleep_time_ms / 1000}s, measured time: "
                   f"{TimeFormat.get_static_readable(elapsed)}")
 
         timer1 = TimidTimer()
         timer1.shoot(1, lambda: print(timer1.tock(return_datetime=True)), iterations=3)
+        print("400 ms,", timer1.wait_ms(400).get())
+        TimidTimer.wait_static()
 
         timer = TimidTimer()
         for _ in range(4):
-            timer.wait_ms(1000)
+            timer.wait_ms_static(1000)
             timer.tock()
         print("Average 1 second sleep extra delay: ", timer.average() - timedelta(seconds=1))
         print("TTD", TimidTimer.test_delay_ms(1000) - timedelta(seconds=1))
 
         with TimidTimer().enter(index=1):
-            timer.wait_ms(1)
+            timer.wait_ms_static(1)
 
         print("Starting timer tests...")
         test_timer(TimidTimer, "Timid Timer")
@@ -768,7 +792,7 @@ def local_test():
         timer.start()
 
         for _ in range(4):
-            TimidTimer.wait_ms(1000)
+            TimidTimer.wait_ms_static(1000)
             timer.tick()
         timer.stop()
         print(f"Average {timer.average()}, ({timer.get()})")
@@ -779,11 +803,11 @@ def local_test():
         print(timer.get())
 
         print(BasicTimer().start().pause().tock().tick().resume().stop().end().average())
-    except Exception as e:
-        print(f"Exception occurred {e}.")
-        return False
-    print("Test completed successfully.")
-    return True
+    # except Exception as e:
+    #     print(f"Exception occurred {e}.")
+    #     return False
+    # print("Test completed successfully.")
+    # return True
 
 
 if __name__ == "__main__":
