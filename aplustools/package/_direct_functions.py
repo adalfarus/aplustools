@@ -52,7 +52,7 @@ def install_dependencies_lst(dependencies: list) -> bool:
 
 
 def install_dependencies():
-    success = install_dependencies_lst(["numpy==1.26.4"])
+    success = install_dependencies_lst(["numpy==1.26.4", "scipy==1.13.0", "scikit-learn==1.4.1.post1"])
     if not success:
         return
     print("Done, all possible dependencies for the package module installed ...")
