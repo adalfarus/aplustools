@@ -22,7 +22,8 @@ file_info = {"MyFile.txt": {
                 'index': file_index,
                 'block_index': len(self.block_offsets),  # Start block index (all in line)
                 'start': len(self.current_block),
-                'length': len(data)
+                'length': len(data),
+                'start_block': index
             },
             ...
             }  # Dict are ordered in python 3.7, just use them (lib supports 3.9->3.12)?

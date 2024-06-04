@@ -1,1 +1,0 @@
-Add a lock bool to every timer tuple to check in different threads (or use an actual lock object for the handy context manager)
