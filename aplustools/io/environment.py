@@ -601,8 +601,12 @@ class _LinuxSystem(_BaseSystem):
 
     def get_gpu_info(self):
         command = "lspci | grep VGA"
-        output = subprocess.check_output(command.split(" ")).decode()
-        return [line.strip() for line in output.split('\n') if line.strip()]
+        try:
+            output = subprocess.check_output(command.split(" ")).decode()
+            return [line.strip() for line in output.split('\n') if line.strip()]
+        except subprocess.CalledProcessError as e:
+            print(f"Exception occurred {e}.")
+            return []
 
     def get_system_theme(self) -> Theme:
         # This might vary depending on the desktop environment (GNOME example)
@@ -651,7 +655,10 @@ class _LinuxSystem(_BaseSystem):
 
     def get_clipboard(self):
         command = "xclip -selection clipboard -o"
-        return subprocess.check_output(command.split(" ")).decode().strip()
+        try:
+            return subprocess.check_output(command.split(" ")).decode().strip()
+        except subprocess.CalledProcessError:
+            return ""
 
     def set_clipboard(self, data: str):
         command = f'echo "{data}" | xclip -selection clipboard'
