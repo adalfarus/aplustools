@@ -582,10 +582,10 @@ def local_test():
         offline_image.save_image_to_disk(os.path.join(folder_path, "transformed_image.png"))
 
         # Example svg image usage
-        image_processor = SVGCompatibleImage("https://upload.wikimedia.org/wikipedia/commons/b/b0/NewTux.svg", 300,
-                                             (667, 800), magick_path=r"C:\Program Files\ImageMagick-7.1.1-Q16-HDRI",
-                                             base_location='./')
-        image_processor.save_image_to_disk()
+        # image_processor = SVGCompatibleImage("https://upload.wikimedia.org/wikipedia/commons/b/b0/NewTux.svg", 300,
+        #                                      (667, 800), magick_path=r"C:\Program Files\ImageMagick-7.1.1-Q16-HDRI",
+        #                                      base_location='./')
+        # image_processor.save_image_to_disk()
 
     except Exception as e:
         print(f"Exception occurred: {e}")

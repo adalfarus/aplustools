@@ -577,10 +577,10 @@ def local_test():
         print("OfflineImage processing and saving completed successfully.")
 
         # Example svg image usage
-        image_processor = SVGCompatibleImage("https://upload.wikimedia.org/wikipedia/commons/b/b0/NewTux.svg", 300,
-                                             (667, 800), magick_path=r"C:\Program Files\ImageMagick-7.1.1-Q16-HDRI",
-                                             base_location='./test_data/images')
-        image_processor.save_image_to_disk()
+        # image_processor = SVGCompatibleImage("https://upload.wikimedia.org/wikipedia/commons/b/b0/NewTux.svg", 300,
+        #                                      (667, 800), magick_path=r"C:\Program Files\ImageMagick-7.1.1-Q16-HDRI",
+        #                                      base_location='./test_data/images')
+        # image_processor.save_image_to_disk()
 
         # Example usage of process_and_save_as_heic
         # for img_path in os.listdir("./images"):
