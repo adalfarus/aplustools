@@ -604,6 +604,9 @@ class _LinuxSystem(_BaseSystem):
         try:
             output = subprocess.check_output(command.split(" ")).decode()
             return [line.strip() for line in output.split('\n') if line.strip()]
+        except FileNotFoundError:
+            print("lspci command not found.")
+            return []
         except subprocess.CalledProcessError as e:
             print(f"Exception occurred {e}.")
             return []
@@ -643,7 +646,12 @@ class _LinuxSystem(_BaseSystem):
             subprocess.run(f'(crontab -l; echo "{cron_command}") | crontab -'.split(" "), check=True)
 
     def send_native_notification(self, title: str, message: str):
-        subprocess.run(["notify-send", title, message])
+        try:
+            subprocess.run(["notify-send", title, message])
+        except FileNotFoundError:
+            print("notify-send command not found.")
+        except subprocess.CalledProcessError as e:
+            print(f"Exception occurred: {e}")
 
     def get_battery_status(self):
         command = "pmset -g batt" if self.os == 'Darwin' else "upower -i /org/freedesktop/UPower/devices/battery_BAT0"
