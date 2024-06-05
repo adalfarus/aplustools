@@ -733,15 +733,29 @@ class _LinuxSystem(_BaseSystem):
             return "Unknown"
 
     def get_gpu_info(self):
-        command = "lspci | grep VGA"
         try:
-            output = _subprocess.check_output(command.split(" ")).decode()
+            # Run `lspci` and pipe its output to the next process
+            p1 = _subprocess.Popen(["lspci"], stdout=_subprocess.PIPE, stderr=_subprocess.PIPE)
+            # Run `grep VGA` to filter the output of `lspci`
+            p2 = _subprocess.Popen(["grep", "VGA"], stdin=p1.stdout, stdout=_subprocess.PIPE, stderr=_subprocess.PIPE)
+            p1.stdout.close()  # Allow p1 to receive a SIGPIPE if p2 exits
+            output, error = p2.communicate()
+
+            if p2.returncode != 0:
+                print(f"grep VGA returned non-zero exit status {p2.returncode}. Error: {error.decode().strip()}")
+                return []
+
+            output = output.decode()
             return [line.strip() for line in output.split('\n') if line.strip()]
-        except FileNotFoundError:
-            print("lspci command not found.")
+        except FileNotFoundError as e:
+            print("lspci or grep command not found. Please ensure both are installed.")
             return []
-        except _subprocess.CalledProcessError as e:
-            print(f"Exception occurred {e}.")
+        except Exception as e:
+            print(f"Unexpected exception occurred: {e}")
+            if 'libEGL.so.1' in str(e):
+                print("libEGL.so.1 is missing. Please install it with:")
+                print("sudo apt-get install libegl1-mesa")  # For Debian-based systems
+                print("sudo yum install mesa-libEGL")  # For Red Hat-based systems
             return []
 
     def get_system_theme(self) -> Theme:
@@ -852,7 +866,7 @@ def local_test():
     try:
         print_system_info()
         system = System.system()
-        _BaseSystem.send_notification(None, "Zenra", "Hello, how are you?", (), (), ())
+        # _BaseSystem.send_notification(None, "Zenra", "Hello, how are you?", (), (), ())
         system.send_native_notification("Zenra,", "NOWAYY")
         print("System RAM", system.get_memory_info())
         print(f"Pc has been turned on since {int(System.system().get_uptime(),)} minutes")
