@@ -11,6 +11,108 @@ import time
 import sys
 
 
+class BtItem:
+    pass
+
+
+from enum import Enum, auto
+from typing import Union, List
+class Align(Enum):
+    RIGHT = auto()
+    LEFT = auto()
+    TOP = auto()
+    BOTTOM = auto()
+    CENTER = auto()
+
+    def __or__(self, other):
+        if isinstance(other, Align):
+            if isinstance(self, CombinedAlign):
+                return CombinedAlign(self.alignments + [other])
+            elif isinstance(other, CombinedAlign):
+                return CombinedAlign([self] + other.alignments)
+            else:
+                return CombinedAlign([self, other])
+        return NotImplemented
+
+class CombinedAlign:
+    def __init__(self, alignments):
+        self.alignments = alignments
+
+    def __or__(self, other):
+        if isinstance(other, Align):
+            return CombinedAlign(self.alignments + [other])
+        return NotImplemented
+
+    def __str__(self):
+        return " | ".join(alignment.name for alignment in self.alignments)
+
+
+class BtRow:
+    def __init__(self, spacing, margins: tuple, quick_add: List[BtItem] = None):
+        pass
+
+    def add(self, item: BtItem, front_stretch=0, back_stretch=0, align: Union[Align, CombinedAlign] = Align.CENTER | Align.RIGHT):
+        pass
+
+
+class BtText(BtItem):
+    pass
+
+
+class BtFancyText(BtText):
+    pass  # This text is update able using a signal
+
+
+class BTInput(BtItem):
+    pass
+
+
+class BTTextInput(BTInput):
+    pass
+
+
+class BTDigitInput(BTInput):
+    def __init__(self, min_, max_):
+        pass
+
+
+class BTDecimalInput(BTInput):
+    def __init__(self, min_, max_):
+        pass
+
+
+class BTDirectoryPathInput(BTInput):
+    pass
+
+
+class BTFilePathInput(BTInput):
+    def __init__(self, file_re: str):
+        pass
+
+
+class BTSelection(BtItem):
+    pass
+
+
+class BTButton(BtItem):
+    pass
+
+
+from PySide6.QtCore import Signal
+from typing import Optional
+class BtProgressBar(BtItem):
+    def __init__(self, rng: range, start_at: int = 0, update_signal: Optional[Signal] = None):
+        pass
+
+
+class BtImage(BtItem):
+    pass
+
+
+class BtIcon(BtItem):  # Has multiple BtImages
+    pass
+
+
 class BalloonTip(QWidget):
     FIXED_WIDTH = 300
     MAX_HEIGHT = 300

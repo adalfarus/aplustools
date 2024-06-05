@@ -581,7 +581,7 @@ class _WindowsSystem(_BaseSystem):
 
     def send_notification(self, title: str, message: str,
                           input_fields: _typing.Tuple[_typing.Tuple[str, str, str], ...] = (("input_arg", "Input", "Hint"),),
-                          selections: _typing.Tuple[_typing.Tuple[str, str, _typing.List[tuple], int], ...] = (("selection_arg", "Sel Display Name", ["selection_name", "Selection Display Name"], 0)),
+                          selections: _typing.Tuple[_typing.Tuple[str, str, _typing.List[tuple], int], ...] = (("selection_arg", "Sel Display Name", [("selection_name", "Selection Display Name")], 0)),
                           buttons: _typing.Tuple[_typing.Tuple[str, _typing.Callable], ...] = (("Accept", lambda: None), ("Cancel", lambda: None),),
                           click_callback: _typing.Callable = lambda: None):
         if not (input_fields or selections or buttons):
