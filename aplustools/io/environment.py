@@ -584,48 +584,57 @@ class _WindowsSystem(_BaseSystem):
                           selections: _typing.Tuple[_typing.Tuple[str, str, _typing.List[tuple], int], ...] = (("selection_arg", "Sel Display Name", ["selection_name", "Selection Display Name"], 0)),
                           buttons: _typing.Tuple[_typing.Tuple[str, _typing.Callable], ...] = (("Accept", lambda: None), ("Cancel", lambda: None),),
                           click_callback: _typing.Callable = lambda: None):
-        if not input_fields:
+        if not (input_fields or selections or buttons):
+            if WindowsToaster is not None and Toast is not None:
+                toaster = WindowsToaster(title)
+                new_toast = Toast()
+                new_toast.text_fields = [message]
+                new_toast.on_activated = click_callback
+                toaster.show_toast(new_toast)
+        else:
+            if (InteractableWindowsToaster is not None
+                    and Toast is not None
+                    and ToastInputTextBox is not None
+                    and ToastSelection is not None
+                    and ToastButton is not None):
+                interactable_toaster = InteractableWindowsToaster(title)
+                new_toast = Toast([message])
+
+                for input_field in input_fields:
+                    arg_name, display_name, input_hint = input_field
+                    new_toast.AddInput(ToastInputTextBox(arg_name, display_name, input_hint))
+
+                for selection in selections:
+                    selection_arg_name, selection_display_name, selection_options, default_selection_id = selection
+
+                    selection_option_objects = []
+                    for selection_option in selection_options:
+                        selection_option_id, selection_option_display_name = selection_option
+                        selection_option_objects.append(ToastSelection(selection_option_id, selection_option_display_name))
+
+                    new_toast.AddInput(ToastInputSelectionBox(selection_arg_name, selection_display_name,
+                                                              selection_option_objects,
+                                                              selection_option_objects[default_selection_id]))
+
+                response_lst = []
+                for i, button in enumerate(buttons):
+                    button_text, callback = button
+                    response_lst.append(callback)
+                    new_toast.AddAction(ToastButton(button_text, str(i)))
+
+                new_toast.on_activated = lambda activated_event_args: (response_lst[int(activated_event_args.arguments)]()
+                                                                       or click_callback(**activated_event_args.inputs))
+
+                interactable_toaster.show_toast(new_toast)
+
+    def send_native_notification(self, title: str, message: str):
+        if WindowsToaster is not None and Toast is not None:
             toaster = WindowsToaster(title)
             new_toast = Toast()
             new_toast.text_fields = [message]
-            new_toast.on_activated = click_callback
             toaster.show_toast(new_toast)
         else:
-            interactable_toaster = InteractableWindowsToaster(title)
-            new_toast = Toast([message])
-
-            for input_field in input_fields:
-                arg_name, display_name, input_hint = input_field
-                new_toast.AddInput(ToastInputTextBox(arg_name, display_name, input_hint))
-
-            for selection in selections:
-                selection_arg_name, selection_display_name, selection_options, default_selection_id = selection
-
-                selection_option_objects = []
-                for selection_option in selection_options:
-                    selection_option_id, selection_option_display_name = selection_option
-                    selection_option_objects.append(ToastSelection(selection_option_id, selection_option_display_name))
-
-                new_toast.AddInput(ToastInputSelectionBox(selection_arg_name, selection_display_name,
-                                                          selection_option_objects,
-                                                          selection_option_objects[default_selection_id]))
-
-            response_lst = []
-            for i, button in enumerate(buttons):
-                button_text, callback = button
-                response_lst.append(callback)
-                new_toast.AddAction(ToastButton(button_text, str(i)))
-
-            new_toast.on_activated = lambda activated_event_args: (response_lst[int(activated_event_args.arguments)]()
-                                                                   or click_callback(**activated_event_args.inputs))
-
-            interactable_toaster.show_toast(new_toast)
-
-    def send_native_notification(self, title: str, message: str):
-        toaster = WindowsToaster(title)
-        new_toast = Toast()
-        new_toast.text_fields = [message]
-        toaster.show_toast(new_toast)
+            print("You are not on a default windows machine")
 
     def get_battery_status(self):
         battery = _psutil.sensors_battery()
