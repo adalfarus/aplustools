@@ -330,19 +330,7 @@ def cutoff_iterable(iterable: _Union[list, tuple, dict, set], max_elements_start
 def cutoff_string(string: str, max_chars_start: int = 4, max_chars_end: int = 0,
                   show_hidden_chars_num: bool = False):
     return ''.join(cutoff_iterable(list(string), max_chars_start, max_chars_end, show_hidden_chars_num, True))
-from aplustools.package.timid import TimidTimer
-timer = TimidTimer()
 
-for _ in range(1_000_000):
-    nice_bits(encode_positive_int(_))
-    timer.tock()
-print(timer.average())
-
-timer.start(1)
-for _ in range(1_000_000):
-    bits(encode_positive_int(_))
-    timer.tock(1)
-print(timer.average(1))
 
 if __name__ == "__main__":
     bit = nice_bits(encode("Hello you world!"), True, 6, True, True)
@@ -378,3 +366,17 @@ if __name__ == "__main__":
     print(cutoff_iterable({1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, 2, 0, True))
     print(cutoff_iterable({1: 2, 4: 5, 6: 6, 8: 6, 82: 12, 2: 2, 99: 2, 0: 1}, max_elements_start=4, max_elements_end=3,
                           show_hidden_elements_num=True))
+
+    from aplustools.package.timid import TimidTimer
+    timer = TimidTimer()
+
+    for _ in range(1_000_000):
+        nice_bits(encode_positive_int(_))
+        timer.tock()
+    print(timer.average())
+
+    timer.start(1)
+    for _ in range(1_000_000):
+        bits(encode_positive_int(_))
+        timer.tock(1)
+    print(timer.average(1))

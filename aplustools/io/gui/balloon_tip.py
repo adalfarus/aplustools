@@ -1,19 +1,23 @@
-import time
+import os.path
 
 from PySide6.QtWidgets import (QApplication, QSystemTrayIcon, QMenu, QWidget, QVBoxLayout, QLabel, QPushButton,
-                               QLineEdit, QComboBox)
+                               QLineEdit, QComboBox, QSizePolicy, QScrollArea)
 from PySide6.QtCore import QTimer, QEasingCurve, QPropertyAnimation, Qt, QRect, QCoreApplication
 from aplustools.io.gui import QNoSpacingHBoxLayout, UserActivityTracker
 from aplustools.io.environment import System, Theme
 from PySide6.QtGui import QIcon, QGuiApplication
 import threading
+import time
 import sys
 
 
 class BalloonTip(QWidget):
-    def __init__(self, title, message, inputs=None, selections=None, buttons=None, click_callback=None,
-                 auto_close_duration=5000):
-        super().__init__()
+    FIXED_WIDTH = 300
+    MAX_HEIGHT = 300
+
+    def __init__(self, icon: QIcon, big_icon: QIcon, title, message, inputs=None, selections=None, buttons=None,
+                 click_callback=None, auto_close_duration=5000):
+        super().__init__()  # Add progress indicators (we will keep it open until the progress bars are done or a BOOL was send through the Qt signal it comes with)
         self.setWindowFlags(Qt.WindowType.ToolTip | Qt.WindowType.FramelessWindowHint)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
@@ -27,7 +31,6 @@ class BalloonTip(QWidget):
         # Background widget
         self.background = QWidget(self)
         self.background.setObjectName("background")
-        self.background.setGeometry(0, 0, 300, 300)
         self.background.setStyleSheet(f"""
             QWidget#background {{
                 background-color: {"white" if self.theme == Theme.LIGHT else "#222222"};
@@ -46,10 +49,19 @@ class BalloonTip(QWidget):
 
         # Display the title
         title_layout = QNoSpacingHBoxLayout()
+        title_layout.setSpacing(10)
+        title_layout.setContentsMargins(5, 0, 5, 0)
+        if not icon.isNull():
+            icon_label = QLabel()
+            icon_label.setPixmap(icon.pixmap(16, 16))
+            icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            title_layout.addWidget(icon_label)
+            title_layout.addStretch()
         self.title_label = QLabel(title)
-        self.title_label.setStyleSheet(f"font-weight: bold; font-size: 16px; color: {"black" if self.theme == Theme.LIGHT else "white"};")
+        self.title_label.setStyleSheet(
+            f"font-weight: bold; font-size: 16px; color: {"black" if self.theme == Theme.LIGHT else "white"};")
         title_layout.addWidget(self.title_label)
-        title_layout.addStretch()
+        title_layout.addStretch(2)
 
         # Close button
         self.close_button = QPushButton("X", self.background)
@@ -70,9 +82,20 @@ class BalloonTip(QWidget):
         self.layout.addLayout(title_layout)
 
         # Display the message
+        message_layout = QNoSpacingHBoxLayout()
+        message_layout.setSpacing(10)
+        if not big_icon.isNull():
+            big_icon_label = QLabel()
+            big_icon_label.setPixmap(big_icon.pixmap(64, 64))
+            big_icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            message_layout.addWidget(big_icon_label)
+            message_layout.addStretch()
         self.message_label = QLabel(message)
-        self.message_label.setStyleSheet(f"font-size: 14px; color: {"black" if self.theme == Theme.LIGHT else "white"};")
-        self.layout.addWidget(self.message_label)
+        self.message_label.setStyleSheet(
+            f"font-size: 14px; color: {"black" if self.theme == Theme.LIGHT else "white"};")
+        message_layout.addWidget(self.message_label)
+        message_layout.addStretch(2)
+        self.layout.addLayout(message_layout)
 
         self.inputs = {}
         self.selections = {}
@@ -84,61 +107,89 @@ class BalloonTip(QWidget):
         # Connect activity signal to a slot
         self.activity_tracker.userActivityDetected.connect(self.reset_auto_close_timer)
 
-        # Add input fields
-        if inputs:
-            for input_name, input_display, input_hint in inputs:
-                input_field = QLineEdit(self.background)
-                input_field.setPlaceholderText(input_hint)
-                input_field.setStyleSheet(f"font-size: 14px; color: {"black" if self.theme == Theme.LIGHT else "white"}; height: 30px;")
-                self.layout.addWidget(QLabel(input_display, self.background))
-                self.layout.addWidget(input_field)
-                self.inputs[input_name] = input_field
-                self.activity_tracker.attach(input_field)
+        if inputs or selections or buttons:
+            # Scroll area for inputs, selections, and buttons
+            self.scroll_area = QScrollArea(self.background)
+            self.scroll_area.setStyleSheet("""
+                QWidget#content, QScrollArea {background: transparent;}""")
+            self.scroll_area.setWidgetResizable(True)
+            self.scroll_area.setFixedWidth(self.FIXED_WIDTH)
+            self.scroll_area.setMaximumHeight(self.MAX_HEIGHT)
+            self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+            self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+            self.scroll_area.setFrameShape(QScrollArea.NoFrame)
+            self.scroll_area.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
-        # Add selection boxes
-        if selections:
-            for selection_name, selection_display, selection_options, default_selection_id in selections:
-                selection_box = QComboBox(self.background)
-                selection_box.setStyleSheet(f"""
-                    QComboBox {{
-                        font-size: 14px;
-                        color: {"black" if self.theme == Theme.LIGHT else "white"};
-                        height: 30px;
-                    }}
-                    QComboBox QAbstractItemView {{
-                        border: 1px solid #808080;
-                        background-color: white;
-                        border-radius: 5px;
-                        margin-top: -5px;
-                    }}""")
-                for option_name, option_display in selection_options:
-                    selection_box.addItem(option_display, option_name)
-                selection_box.setCurrentIndex(default_selection_id)
-                self.layout.addWidget(QLabel(selection_display, self.background))
-                self.layout.addWidget(selection_box)
-                self.selections[selection_name] = selection_box
-                self.activity_tracker.attach(selection_box)
+            self.scroll_content = QWidget()
+            self.scroll_content.setObjectName("content")
+            self.scroll_layout = QVBoxLayout(self.scroll_content)
+            self.scroll_layout.setContentsMargins(0, 0, 0, 0)
+            self.scroll_layout.setSpacing(10)
+            self.scroll_area.setWidget(self.scroll_content)
+            self.layout.addWidget(self.scroll_area)
 
-        # Add buttons
-        self.button_callbacks = []
-        if buttons:
-            for button_text, callback in buttons:
-                button = QPushButton(button_text, self.background)
-                button.setStyleSheet(f"""
-                    QPushButton {{
-                        font-size: 14px;
-                        color: {"black" if self.theme == Theme.LIGHT else "white"};
-                        height: 40px;
-                        background-color: {'#3c3c3c' if self.theme == Theme.DARK else '#f0f0f0'};
-                        border-radius: 5px;
-                    }}
-                    QPushButton:hover {{
-                        background-color: {'#333333' if self.theme == Theme.DARK else '#e0e0e0'};
-                    }}""")
-                self.layout.addWidget(button)
-                button.clicked.connect(self.create_button_callback(callback))
-                self.button_callbacks.append(callback)
-                self.activity_tracker.attach(button)
+            # Add input fields
+            if inputs:
+                for input_name, input_display, input_hint in inputs:
+                    input_field = QLineEdit(self.background)
+                    input_field.setPlaceholderText(input_hint)
+                    input_field.setStyleSheet(
+                        f"font-size: 14px; color: {"black" if self.theme == Theme.LIGHT else "white"}; height: 30px;")
+                    self.scroll_layout.addWidget(QLabel(input_display, self.scroll_content))
+                    self.scroll_layout.addWidget(input_field)
+                    self.inputs[input_name] = input_field
+                    self.activity_tracker.attach(input_field)
+
+            # Add selection boxes
+            if selections:
+                for selection_name, selection_display, selection_options, default_selection_id in selections:
+                    selection_box = QComboBox(self.background)
+                    selection_box.setStyleSheet(f"""
+                        QComboBox {{
+                            font-size: 14px;
+                            color: {"black" if self.theme == Theme.LIGHT else "white"};
+                            height: 30px;
+                        }}
+                        QComboBox QAbstractItemView {{
+                            border: 1px solid #808080;
+                            background-color: white;
+                            border-radius: 5px;
+                            margin-top: -5px;
+                        }}""")
+                    for option_name, option_display in selection_options:
+                        selection_box.addItem(option_display, option_name)
+                    selection_box.setCurrentIndex(default_selection_id)
+                    self.scroll_layout.addWidget(QLabel(selection_display, self.scroll_content))
+                    self.scroll_layout.addWidget(selection_box)
+                    self.selections[selection_name] = selection_box
+                    self.activity_tracker.attach(selection_box)
+
+            # Add buttons
+            self.button_callbacks = []
+            if buttons:
+                for button_text, callback in buttons:
+                    button = QPushButton(button_text, self.background)
+                    button.setStyleSheet(f"""
+                        QPushButton {{
+                            font-size: 14px;
+                            color: {"black" if self.theme == Theme.LIGHT else "white"};
+                            height: 40px;
+                            background-color: {'#3c3c3c' if self.theme == Theme.DARK else '#f0f0f0'};
+                            border-radius: 5px;
+                        }}
+                        QPushButton:hover {{
+                            background-color: {'#333333' if self.theme == Theme.DARK else '#e0e0e0'};
+                        }}""")
+                    self.scroll_layout.addWidget(button)
+                    button.clicked.connect(self.create_button_callback(callback))
+                    self.button_callbacks.append(callback)
+                    self.activity_tracker.attach(button)
+            self.background.resize(self.FIXED_WIDTH, self.MAX_HEIGHT)
+            self.background.adjustSize()
+        else:
+            self.background.resize(self.FIXED_WIDTH, self.MAX_HEIGHT)
+            self.background.adjustSize()
+            self.background.resize(self.FIXED_WIDTH + 20, self.background.height() + 10)
 
         # Animation setup
         self.show_animation = QPropertyAnimation(self, b"geometry")
@@ -159,10 +210,13 @@ class BalloonTip(QWidget):
 
         # Position the notification
         screen_geometry = QGuiApplication.primaryScreen().availableGeometry()
-        notification_height = self.background.geometry().height()
-        notification_width = self.background.geometry().width()
-        self.start_rect = QRect(screen_geometry.width() - notification_width - 10, screen_geometry.height() + 60, notification_width, notification_height)
-        self.end_rect = QRect(screen_geometry.width() - notification_width - 10, screen_geometry.height() - notification_height - 10, notification_width, notification_height)
+        self.notification_height = self.background.height()
+        self.notification_width = self.background.width()
+        self.start_rect = QRect(screen_geometry.width() - self.notification_width - 10, screen_geometry.height() + 60,
+                                self.notification_width, self.notification_height)
+        self.end_rect = QRect(screen_geometry.width() - self.notification_width - 10,
+                              screen_geometry.height() - self.notification_height - 10, self.notification_width,
+                              self.notification_height)
         self.setGeometry(self.start_rect)
         self.send = False
 
@@ -206,6 +260,8 @@ class BalloonTip(QWidget):
             }}
         """)
 
+        self.reset_auto_close_timer()
+
     def handle_mouse_release(self, event):
         if self.mouse_press_pos:
             delta = (event.globalPosition().toPoint() - self.mouse_press_pos).manhattanLength()
@@ -221,12 +277,14 @@ class BalloonTip(QWidget):
                 self.reset_visual_indicators()
             self.mouse_press_pos = None
 
+        self.reset_auto_close_timer()
+
     def handle_mouse_move(self, event):
         pass  # Placeholder for potential drag handling
 
     def reset_visual_indicators(self):
         self.shrink_animation.setStartValue(self.background.geometry())
-        self.shrink_animation.setEndValue(QRect(0, 0, 300, 300))
+        self.shrink_animation.setEndValue(QRect(0, 0, self.notification_width, self.notification_height))
         self.shrink_animation.start()
 
         self.background.setStyleSheet(f"""
@@ -259,24 +317,25 @@ class NotificationSystem(QSystemTrayIcon):
         self.setContextMenu(self.menu)
         self.notification_widget = None
 
-    def show_notification(self, title, message, inputs=None, selections=None, buttons=None, click_callback=None,
-                          auto_close_duration=5000):
-        self.notification_widget = BalloonTip(title, message, inputs, selections, buttons, click_callback,
-                                              auto_close_duration)
+    def show_notification(self, abs_icon_path, abs_big_icon_path, title, message, inputs=None, selections=None, buttons=None,
+                          click_callback=None, auto_close_duration=5000):
+        self.notification_widget = BalloonTip(QIcon(abs_icon_path), QIcon(abs_big_icon_path), title, message, inputs,
+                                              selections, buttons, click_callback, auto_close_duration)
 
 
 class NotificationManager:
     notification_system = None
 
     @staticmethod
-    def show_notification(title, message, inputs=None, selections=None, buttons=None, click_callback=None, auto_close_duration=5000):
+    def show_notification(icon_path, title, message, inputs=None, selections=None, buttons=None,
+                          click_callback=None, auto_close_duration=5000):
         def run_app():
             app = QApplication(sys.argv)
-            trayIcon = QIcon("None")  # Leave this as None to make it not show up
-            notification_system = NotificationSystem(trayIcon)
+            notification_system = NotificationSystem(QIcon("None"))  # Leave this as None to make it not show up
             notification_system.show()
 
             notification_system.show_notification(
+                os.path.abspath(icon_path), "",
                 title,
                 message,
                 inputs=inputs,
@@ -312,6 +371,7 @@ if __name__ == "__main__":
     buttons = [("OK", lambda: print("OK clicked")), ("Cancel", lambda: print("Cancel clicked"))]
 
     NotificationManager.show_notification(
+        "",
         "Sample Notification",
         "This is a sample notification message.",
         inputs=inputs,

@@ -1,20 +1,23 @@
 # environment.py
-from aplustools.data import bytes_to_human_readable_binary_iec, bits_to_human_readable
-from typing import Union, Optional, Callable, Any, Type, cast, Literal, Tuple
-from types import FrameType
+from aplustools.data import bytes_to_human_readable_binary_iec as _bytes_to_human_readable_binary_iec
+from aplustools.data import bits_to_human_readable as _bits_to_human_readable
+from types import FrameType as _FrameType
 from pathlib import Path as _Path
-import subprocess
-import warnings
-import platform
-import inspect
-import shutil
-import sys
-import os
-import psutil
-import time
-import speedtest
-import tempfile
-from enum import Enum
+import subprocess as _subprocess
+import warnings as _warnings
+import platform as _platform
+import inspect as _inspect
+import shutil as _shutil
+import typing as _typing
+import sys as _sys
+import os as _os
+import psutil as _psutil
+import time as _time
+import speedtest as _speedtest
+import tempfile as _tempfile
+from enum import Enum as _Enum
+import ctypes as _ctypes
+from PIL import Image as _Image
 
 
 try:
@@ -36,23 +39,23 @@ def set_working_dir_to_main_script_location():
     import __main__
     try:
         # Get the directory where the main script (or frozen exe) is located
-        if getattr(sys, 'frozen', False):
+        if getattr(_sys, 'frozen', False):
             # If the script is running as a bundled executable created by PyInstaller
-            main_dir = os.path.dirname(sys.executable)
+            main_dir = _os.path.dirname(_sys.executable)
         else:
             # If the script is running as a normal Python script
             if hasattr(__main__, '__file__'):
-                main_dir = os.path.dirname(os.path.abspath(__main__.__file__))
+                main_dir = _os.path.dirname(_os.path.abspath(__main__.__file__))
             else:
-                main_dir = os.path.dirname(os.getcwd())
-                warnings.warn(
+                main_dir = _os.path.dirname(_os.getcwd())
+                _warnings.warn(
                     "Could not set the current working directory to the location of the main script or executable.",
                     RuntimeWarning,
                     stacklevel=2
                     )
 
         # Change the current working directory to the main script directory
-        os.chdir(main_dir)
+        _os.chdir(main_dir)
         print(f"Working directory set to {main_dir}")
 
     except Exception as e:
@@ -61,39 +64,65 @@ def set_working_dir_to_main_script_location():
 
 
 def change_working_dir_to_script_location():
-    if getattr(sys, 'frozen', False):
-        # If the script is running as a bundled executable created by PyInstaller
-        script_dir = os.path.dirname(sys.executable)
-    else:
-        # Get the path of the caller of this function
-        frame = inspect.currentframe()
-        caller_frame = frame.f_back
-        caller_file = caller_frame.f_globals["__file__"]
-        script_dir = os.path.dirname(os.path.abspath(caller_file))
+    try:
+        if getattr(_sys, 'frozen', False):
+            # If the script is running as a bundled executable created by PyInstaller
+            script_dir = _os.path.dirname(_sys.executable)
+        else:
+            # Get the path of the caller of this function
+            frame = _inspect.currentframe()
+            caller_frame = frame.f_back
+            caller_file = caller_frame.f_globals["__file__"]
+            script_dir = _os.path.dirname(_os.path.abspath(caller_file))
 
-    # Change the current working directory to the script directory
-    os.chdir(script_dir)
+        # Change the current working directory to the script directory
+        _os.chdir(script_dir)
+        print(f"Working directory changed to {script_dir}")
+    except Exception as e:
+        print(f"An error occurred while changing the working directory: {e}")
+        raise
 
 
 def change_working_dir_to_temp_folder():
-    os.chdir(System.system().get_tempdir())
+    try:
+        temp_dir = _tempfile.gettempdir()
+        _os.chdir(temp_dir)
+        print(f"Working directory changed to {temp_dir}")
+
+    except Exception as e:
+        print(f"An error occurred while changing the working directory: {e}")
+        raise
+
+
+def change_working_dir_to_new_temp_folder():
+    try:
+        folder = _tempfile.mkdtemp()
+        _os.chdir(folder)
+        return folder
+    except Exception as e:
+        print(f"An error occurred while changing the working directory: {e}")
+        raise
 
 
 def change_working_dir_to_userprofile_folder(folder: str):
-    system = os.name
-    if system == 'posix':
-        home_dir = os.path.join(os.path.join(os.path.expanduser('~')), folder)  # os.path.expanduser("~/Desktop")
-    elif system == 'nt':
-        home_dir = os.path.join(os.path.join(os.environ['USERPROFILE']), folder)
-    else:
-        raise OSError(f"System {system} isn't supported by this function.")
-    os.chdir(home_dir)
+    try:
+        if _os.name == 'posix':
+            home_dir = _os.path.join(_os.path.join(_os.path.expanduser('~')), folder)  # os.path.expanduser("~/Desktop")
+        elif _os.name == 'nt':
+            home_dir = _os.path.join(_os.path.join(_os.environ['USERPROFILE']), folder)
+        else:
+            raise OSError(f"System {_os.name} isn't supported by this function.")
+        _os.chdir(home_dir)
+        print(f"Working directory changed to {home_dir}")
+    except Exception as e:
+        print(f"An error occurred while changing the working directory: {e}")
+        raise
 
 
-def inject_file_path(func: Callable):
+def inject_current_file_path(func: _typing.Callable):
     def wrapper(relative_path: str):
-        frame = inspect.currentframe().f_back
-        module = inspect.getmodule(frame)
+        frame = _inspect.currentframe().f_back
+        module = _inspect.getmodule(frame)
         if module is not None:
             file_path = module.__file__
         else:
@@ -102,27 +131,28 @@ def inject_file_path(func: Callable):
     return wrapper
 
 
-@inject_file_path
+@inject_current_file_path
 def absolute_path(relative_path: str, file_path: str) -> str:
-    base_dir = os.path.dirname(os.path.abspath(file_path))
-    return os.path.join(base_dir, relative_path)
+    base_dir = _os.path.dirname(_os.path.abspath(file_path))
+    return _os.path.join(base_dir, relative_path)
 
 
-def save_remove(paths: Union[str, _Path, tuple]):
+def save_remove(paths: _typing.Union[str, _Path, _typing.Tuple[_typing.Union[str, _Path]],
+                                     _typing.List[_typing.Union[str, _Path]]]):
     if not isinstance(paths, list):
-        paths = (str(paths),)
+        paths = (str(paths),) if isinstance(paths, (str, _Path)) else tuple(str(p) for p in paths)
     for path in paths:
-        if os.path.exists(path):
+        if _os.path.exists(path):
             if is_accessible(path):
-                if os.path.isfile(path):
-                    os.remove(path)
-                elif os.path.isdir(path):
-                    if len(os.listdir(path)) == 0:
-                        os.rmdir(path)
+                if _os.path.isfile(path):
+                    _os.remove(path)
+                elif _os.path.isdir(path):
+                    if len(_os.listdir(path)) == 0:
+                        _os.rmdir(path)
                     elif is_empty_directory(path):
-                        shutil.rmtree(path)
+                        _shutil.rmtree(path)
                     else:
-                        shutil.rmtree(path)
+                        _shutil.rmtree(path)
                 else:
                     print("Bug, please report")
             else:
@@ -132,28 +162,32 @@ def save_remove(paths: Union[str, _Path, tuple]):
 
 
 def contains_only_directories(path: str) -> bool:
-    for item in os.listdir(path):
-        if not os.path.isdir(os.path.join(path, item)):
-            return False
-    return True
+    try:
+        for item in _os.listdir(path):
+            if not _os.path.isdir(_os.path.join(path, item)):
+                return False
+        return True
+    except Exception as e:
+        print(f"An error occurred in contains_only_directories: {e}")
+        raise
 
 
 def is_accessible(path: str):
-    return os.access(path, os.R_OK)
+    return _os.access(path, _os.R_OK)
 
 
 def is_empty_directory(path: str) -> bool:
-    if os.path.isfile(path):
+    if not _os.path.isdir(path):
         return False
-    elif os.path.isdir(path):
+    elif _os.path.isdir(path):
         try:
-            with os.scandir(path) as entries:
-                for entry in entries:
-                    if entry.is_file():
+            for entry in _os.listdir(path):
+                entry = _os.path.join(path, entry)
+                if _os.path.isdir(entry):
+                    if not is_empty_directory(entry):
                         return False
-                    elif entry.is_dir():
-                        if not is_empty_directory(entry.path):
-                            return False
+                else:
+                    return False
         except PermissionError:
             print(f"Permission denied: {path}")
             return False
@@ -164,7 +198,7 @@ def is_empty_directory(path: str) -> bool:
 
 def safe_rename(org_nam: str, new_nam: str) -> bool:
     try:
-        os.rename(org_nam, new_nam)
+        _os.rename(org_nam, new_nam)
         print(f"{org_nam} renamed to {new_nam}.")
         return True
     except Exception as e:
@@ -172,7 +206,7 @@ def safe_rename(org_nam: str, new_nam: str) -> bool:
         return False
 
 
-def strict(cls: Type[Any]):
+def strict(cls: _typing.Type[_typing.Any]):
     class_name = cls.__name__ + "Cover"
     original_setattr = cls.__setattr__
 
@@ -196,7 +230,7 @@ def strict(cls: Type[Any]):
         for attr_name in dir(original_instance):
             if not attr_name.startswith('_'):  # or attr_name in ('__dict__', '__module__'):
                 attr_value = getattr(original_instance, attr_name)
-                if inspect.isfunction(attr_value):
+                if _inspect.isfunction(attr_value):
                     setattr(self, attr_name, attr_value.__get__(self, cls))
                 else:
                     setattr(self, attr_name, attr_value)
@@ -231,7 +265,7 @@ def strict(cls: Type[Any]):
     return CoverClass
 
 
-def privatize(cls: Type[Any]):
+def privatize(cls: _typing.Type[_typing.Any]):
     """A class decorator that protects private attributes."""
 
     original_getattr = cls.__getattribute__
@@ -239,14 +273,14 @@ def privatize(cls: Type[Any]):
 
     def _get_caller_name() -> str:
         """Return the calling function's name."""
-        return cast(FrameType, cast(FrameType, inspect.currentframe()).f_back).f_code.co_name
+        return _typing.cast(_FrameType, _typing.cast(_FrameType, _inspect.currentframe()).f_back).f_code.co_name
 
-    def protected_getattr(self, name: str) -> Any:
+    def protected_getattr(self, name: str) -> _typing.Any:
         if name.startswith('_') and _get_caller_name() not in dir(cls):
             raise AttributeError(f"Access to private attribute {name} is forbidden")
         return original_getattr(self, name)
 
-    def protected_setattr(self, name: str, value: Any) -> None:
+    def protected_setattr(self, name: str, value: _typing.Any) -> None:
         if name.startswith('_') and _get_caller_name() not in dir(cls):
             raise AttributeError(f"Modification of private attribute {name} is forbidden")
         original_setattr(self, name, value)
@@ -270,7 +304,106 @@ def auto_repr(cls):
     return cls
 
 
-class Theme(Enum):
+class Window:
+    @staticmethod
+    def extract_icon_from_executable(exe_path: str, save_path: str) -> str:
+        icon_size = _ctypes.windll.user32.GetSystemMetrics(11)  # SM_CXICON (icon width and height)
+
+        # Load the icon from the executable
+        large, small = _ctypes.c_void_p(), _ctypes.c_void_p()
+        _ctypes.windll.shell32.ExtractIconExW(exe_path, 0, _ctypes.byref(large), _ctypes.byref(small), 1)
+
+        hicon = large if large else small
+        if not hicon:
+            raise Exception("Could not load icon from executable")
+
+        # Create a device context and bitmap
+        hdc = _ctypes.windll.user32.GetDC(0)
+        hbm = _ctypes.windll.gdi32.CreateCompatibleBitmap(hdc, icon_size, icon_size)
+        hmemdc = _ctypes.windll.gdi32.CreateCompatibleDC(hdc)
+        _ctypes.windll.gdi32.SelectObject(hmemdc, hbm)
+        _ctypes.windll.user32.DrawIconEx(hmemdc, 0, 0, hicon, icon_size, icon_size, 0, 0, 3)
+
+        # Prepare a bitmap info header
+        class BITMAPINFOHEADER(_ctypes.Structure):
+            _fields_ = [
+                ('biSize', _ctypes.c_uint32),
+                ('biWidth', _ctypes.c_int32),
+                ('biHeight', _ctypes.c_int32),
+                ('biPlanes', _ctypes.c_uint16),
+                ('biBitCount', _ctypes.c_uint16),
+                ('biCompression', _ctypes.c_uint32),
+                ('biSizeImage', _ctypes.c_uint32),
+                ('biXPelsPerMeter', _ctypes.c_int32),
+                ('biYPelsPerMeter', _ctypes.c_int32),
+                ('biClrUsed', _ctypes.c_uint32),
+                ('biClrImportant', _ctypes.c_uint32)
+            ]
+
+        bmi = BITMAPINFOHEADER()
+        bmi.biSize = _ctypes.sizeof(BITMAPINFOHEADER)
+        bmi.biWidth = icon_size
+        bmi.biHeight = icon_size
+        bmi.biPlanes = 1
+        bmi.biBitCount = 32  # 32 bits (RGBA)
+        bmi.biCompression = 0  # BI_RGB
+        bmi.biSizeImage = 0
+        bmi.biXPelsPerMeter = 0
+        bmi.biYPelsPerMeter = 0
+        bmi.biClrUsed = 0
+        bmi.biClrImportant = 0
+
+        # Extract bitmap bits
+        bitmap_bits = _ctypes.create_string_buffer(bmi.biWidth * bmi.biHeight * 4)
+        result = _ctypes.windll.gdi32.GetDIBits(hmemdc, hbm, 0, icon_size, bitmap_bits, _ctypes.byref(bmi), 0)
+        if result == 0:
+            raise Exception("GetDIBits failed")
+
+        # Create an image from the bitmap bits
+        img = _Image.frombuffer('RGBA', (icon_size, icon_size), bitmap_bits, 'raw', 'BGRA', 0, 1)
+        img = img.transpose(_Image.Transpose.FLIP_TOP_BOTTOM)  # Flip the image vertically
+        img.save(save_path, 'PNG')
+
+        # Cleanup
+        _ctypes.windll.user32.ReleaseDC(0, hdc)
+        _ctypes.windll.gdi32.DeleteObject(hbm)
+        _ctypes.windll.gdi32.DeleteDC(hmemdc)
+        _ctypes.windll.user32.DestroyIcon(hicon)
+
+        return save_path
+
+    @classmethod
+    def get_windows_app_icon_path(cls):
+        buffer = _ctypes.create_unicode_buffer(260)
+        _ctypes.windll.kernel32.GetModuleFileNameW(None, buffer, 260)
+        exe_path = buffer.value
+        icon_path = _os.path.join(_os.path.dirname(exe_path), 'extracted_icon.png')
+        return cls.extract_icon_from_executable(exe_path, icon_path)
+
+    @classmethod
+    def get_app_icon_path(cls):
+        if _os.name == 'nt':  # Windows
+            return cls.get_windows_app_icon_path()
+        elif _sys.platform == 'darwin':  # macOS
+            app_path = _os.path.abspath(_sys.argv[0])
+            while not app_path.endswith('.app'):
+                app_path = _os.path.dirname(app_path)
+            icon_path = _os.path.join(app_path, 'Contents', 'Resources', 'AppIcon.icns')
+            if _os.path.exists(icon_path):
+                return icon_path
+            else:
+                raise FileNotFoundError(f"Icon file not found at {icon_path}")
+        elif _sys.platform.startswith('linux'):  # Linux
+            icon_path = '/path/to/your/icon.png'
+            if _os.path.exists(icon_path):
+                return icon_path
+            else:
+                raise FileNotFoundError(f"Icon file not found at {icon_path}")
+        else:
+            raise OSError(f"Unsupported operating system: {_os.name}")
+
+
+class Theme(_Enum):
     LIGHT = "Light"
     DARK = "Dark"
     UNKNOWN = "Unknown"
@@ -278,10 +411,10 @@ class Theme(Enum):
 
 class _BaseSystem:
     def __init__(self):
-        self.os = platform.system()
-        self.os_version = platform.version()
-        self.major_os_version = platform.release()
-        self.cpu_arch = platform.machine()
+        self.os = _platform.system()
+        self.os_version = _platform.version()
+        self.major_os_version = _platform.release()
+        self.cpu_arch = _platform.machine()
         self.cpu_brand = None
         self.gpu_info = None
         self.theme = None
@@ -289,22 +422,25 @@ class _BaseSystem:
     def get_cpu_brand(self):
         """Get the brand and model of the CPU."""
         if self.os == 'Windows':
-            return platform.processor()
+            return _platform.processor()
         elif self.os == 'Linux' or self.os == 'Darwin':
             command = "cat /proc/cpuinfo | grep 'model name' | uniq"
-            return subprocess.check_output(command, shell=True).decode().split(': ')[1].strip()
+            return _subprocess.check_output(command, shell=True).decode().split(': ')[1].strip()
         return "Unknown"
 
-    def schedule_event(self, name: str, script_path: str, event_time: Literal["startup", "login"]):
+    def schedule_event(self, name: str, script_path: str, event_time: _typing.Literal["startup", "login"]):
         raise NotImplementedError("schedule_event is not implemented")
 
     def send_notification(self, title: str, message: str,
-                          input_fields: Tuple[Tuple[str, str, str], ...] = (("input_arg", "Input", "Hint"),),
-                          selections: Tuple[Tuple[str, str, tuple, ..., int], ...] = (("selection_arg", "Sel Display Name", ("selection_name", "Selection Display Name"), 0),),
-                          buttons: Tuple[Tuple[str, Callable], ...] = (("Accept", lambda: None), ("Cancel", lambda: None),),
-                          click_callback: Callable = lambda: None):
+                          input_fields: _typing.Tuple[_typing.Tuple[str, str, str], ...] = (("input_arg", "Input", "Hint"),),
+                          selections: _typing.Tuple[_typing.Tuple[str, str, _typing.List[tuple], int], ...] = (("selection_arg", "Sel Display Name", ["selection_name", "Selection Display Name"], 0)),
+                          buttons: _typing.Tuple[_typing.Tuple[str, _typing.Callable], ...] = (("Accept", lambda: None), ("Cancel", lambda: None),),
+                          click_callback: _typing.Callable = lambda: None):
         from aplustools.io.gui.balloon_tip import NotificationManager  # To prevent a circular import
+
+        icon_path = Window.get_app_icon_path()
         NotificationManager.show_notification(
+            icon_path,
             "Sample Notification",
             "This is a sample notification message.",
             inputs=input_fields,
@@ -320,49 +456,46 @@ class _BaseSystem:
     def get_gpu_info(self):
         raise NotImplementedError("get_gpu_info is not implemented")
 
-    def get_tempdir(self):
-        return tempfile.gettempdir()
-
     def get_home_directory(self):
         """Get the user's home directory."""
-        return os.path.expanduser("~")
+        return _os.path.expanduser("~")
 
     def get_running_processes(self):
         """Get a list of running processes."""
         processes = []
-        for proc in psutil.process_iter(['pid', 'name']):
+        for proc in _psutil.process_iter(['pid', 'name']):
             try:
                 processes.append(proc.as_dict(attrs=['pid', 'name']))
-            except psutil.NoSuchProcess:
+            except _psutil.NoSuchProcess:
                 pass
         return processes
 
-    def get_disk_usage(self, path: Optional[str] = None):
+    def get_disk_usage(self, path: _typing.Optional[str] = None):
         """Get disk usage statistics."""
         if path is None:
             path = self.get_home_directory()
-        usage = shutil.disk_usage(path)
+        usage = _shutil.disk_usage(path)
         return {
-            'total': bytes_to_human_readable_binary_iec(usage.total),
-            'used': bytes_to_human_readable_binary_iec(usage.used),
-            'free': bytes_to_human_readable_binary_iec(usage.free)
+            'total': _bytes_to_human_readable_binary_iec(usage.total),
+            'used': _bytes_to_human_readable_binary_iec(usage.used),
+            'free': _bytes_to_human_readable_binary_iec(usage.free)
         }
 
     def get_memory_info(self):
         """Get memory usage statistics."""
-        memory = psutil.virtual_memory()
+        memory = _psutil.virtual_memory()
         return {
-            'total': bytes_to_human_readable_binary_iec(memory.total),
-            'available': bytes_to_human_readable_binary_iec(memory.available),
+            'total': _bytes_to_human_readable_binary_iec(memory.total),
+            'available': _bytes_to_human_readable_binary_iec(memory.available),
             'percent': f"{memory.percent}%",
-            'used': bytes_to_human_readable_binary_iec(memory.used),
-            'free': bytes_to_human_readable_binary_iec(memory.free)
+            'used': _bytes_to_human_readable_binary_iec(memory.used),
+            'free': _bytes_to_human_readable_binary_iec(memory.free)
         }
 
     def get_network_info(self):
         """Get network interface information."""
-        addrs = psutil.net_if_addrs()
-        stats = psutil.net_if_stats()
+        addrs = _psutil.net_if_addrs()
+        stats = _psutil.net_if_stats()
         network_info = {}
         for interface, addr_info in addrs.items():
             network_info[interface] = {
@@ -374,11 +507,11 @@ class _BaseSystem:
 
     def set_environment_variable(self, key: str, value: str):
         """Set an environment variable."""
-        os.environ[key] = value
+        _os.environ[key] = value
 
     def get_environment_variable(self, key: str):
         """Get an environment variable."""
-        return os.environ.get(key)
+        return _os.environ.get(key)
 
     def get_battery_status(self):
         """Get battery status information."""
@@ -394,16 +527,16 @@ class _BaseSystem:
 
     def get_uptime(self):
         """Get system uptime in minutes."""
-        return (time.time() - psutil.boot_time()) / 60
+        return (_time.time() - _psutil.boot_time()) / 60
 
     def measure_network_speed(self):
         """Measure network speed using speedtest-cli."""
-        st = speedtest.Speedtest()
+        st = _speedtest.Speedtest()
         download_speed = st.download()
         upload_speed = st.upload()
         results = st.results.dict()
-        results['download'] = bits_to_human_readable(download_speed)
-        results['upload'] = bits_to_human_readable(upload_speed)
+        results['download'] = _bits_to_human_readable(download_speed)
+        results['upload'] = _bits_to_human_readable(upload_speed)
         return results
 
 
@@ -415,11 +548,11 @@ class _WindowsSystem(_BaseSystem):
         self.theme = self.get_system_theme()
 
     def get_cpu_brand(self):
-        return platform.processor()
+        return _platform.processor()
 
     def get_gpu_info(self):
         command = "wmic path win32_VideoController get name"
-        output = subprocess.check_output(command.split(" ")).decode()
+        output = _subprocess.check_output(command.split(" ")).decode()
         return [line.strip() for line in output.split('\n') if line.strip()][1:]
 
     def get_system_theme(self) -> Theme:
@@ -437,20 +570,20 @@ class _WindowsSystem(_BaseSystem):
             print(f"Exception occurred: {e}")
             return Theme.UNKNOWN
 
-    def schedule_event(self, name: str, script_path: str, event_time: Literal["startup", "login"]):
+    def schedule_event(self, name: str, script_path: str, event_time: _typing.Literal["startup", "login"]):
         """Schedule an event to run at startup or login on Windows."""
         task_name, command = f"{name} (APT-{event_time.capitalize()} Task)", ""
         if event_time == "startup":
             command = f'schtasks /create /tn "{task_name}" /tr "{script_path}" /sc onstart /rl highest /f'
         elif event_time == "login":
             command = f'schtasks /create /tn "{task_name}" /tr "{script_path}" /sc onlogon /rl highest /f'
-        subprocess.run(command.split(" "), check=True)
+        _subprocess.run(command.split(" "), check=True)
 
     def send_notification(self, title: str, message: str,
-                          input_fields: Tuple[Tuple[str, str, str], ...] = (("input_arg", "Input", "Hint"),),
-                          selections: Tuple[Tuple[str, str, tuple, ..., int], ...] = (("selection_arg", "Sel Display Name", ("selection_name", "Selection Display Name"), 0),),
-                          buttons: Tuple[Tuple[str, Callable], ...] = (("Accept", lambda: None), ("Cancel", lambda: None),),
-                          click_callback: Callable = lambda selection_arg, input_arg: print(selection_arg, input_arg)):
+                          input_fields: _typing.Tuple[_typing.Tuple[str, str, str], ...] = (("input_arg", "Input", "Hint"),),
+                          selections: _typing.Tuple[_typing.Tuple[str, str, _typing.List[tuple], int], ...] = (("selection_arg", "Sel Display Name", ["selection_name", "Selection Display Name"], 0)),
+                          buttons: _typing.Tuple[_typing.Tuple[str, _typing.Callable], ...] = (("Accept", lambda: None), ("Cancel", lambda: None),),
+                          click_callback: _typing.Callable = lambda: None):
         if not input_fields:
             toaster = WindowsToaster(title)
             new_toast = Toast()
@@ -466,7 +599,7 @@ class _WindowsSystem(_BaseSystem):
                 new_toast.AddInput(ToastInputTextBox(arg_name, display_name, input_hint))
 
             for selection in selections:
-                selection_arg_name, selection_display_name, *selection_options, default_selection_id = selection
+                selection_arg_name, selection_display_name, selection_options, default_selection_id = selection
 
                 selection_option_objects = []
                 for selection_option in selection_options:
@@ -495,7 +628,7 @@ class _WindowsSystem(_BaseSystem):
         toaster.show_toast(new_toast)
 
     def get_battery_status(self):
-        battery = psutil.sensors_battery()
+        battery = _psutil.sensors_battery()
         if battery:
             return {'percent': battery.percent, 'secsleft': battery.secsleft, 'power_plugged': battery.power_plugged}
 
@@ -524,22 +657,22 @@ class _DarwinSystem(_BaseSystem):
 
     def get_cpu_brand(self):
         command = "sysctl -n machdep.cpu.brand_string"
-        return subprocess.check_output(command.split(" ")).decode().strip()
+        return _subprocess.check_output(command.split(" ")).decode().strip()
 
     def get_gpu_info(self):
         command = "system_profiler SPDisplaysDataType | grep 'Chipset Model'"
-        output = subprocess.check_output(command.split(" ")).decode()
+        output = _subprocess.check_output(command.split(" ")).decode()
         return [line.split(': ')[1].strip() for line in output.split('\n') if 'Chipset Model' in line]
 
     def get_system_theme(self) -> Theme:
         command = "defaults read -g AppleInterfaceStyle"
         try:
-            theme = subprocess.check_output(command.split(" ")).decode().strip()
+            theme = _subprocess.check_output(command.split(" ")).decode().strip()
             return Theme.DARK if theme.lower() == 'dark' else Theme.LIGHT
-        except subprocess.CalledProcessError:
+        except _subprocess.CalledProcessError:
             return Theme.LIGHT  # Default to Light since Dark mode is not set
 
-    def schedule_event(self, name: str, script_path: str, event_time: Literal["startup", "login"]):
+    def schedule_event(self, name: str, script_path: str, event_time: _typing.Literal["startup", "login"]):
         """Schedule an event to run at startup or login on macOS."""
         plist_content = f"""
         <?xml version="1.0" encoding="UTF-8"?>
@@ -558,29 +691,29 @@ class _DarwinSystem(_BaseSystem):
         </plist>
         """
         plist_path = f'~/Library/LaunchAgents/com.example.{name.replace(" ", "_").lower()}.plist'
-        with open(os.path.expanduser(plist_path), 'w') as f:
+        with open(_os.path.expanduser(plist_path), 'w') as f:
             f.write(plist_content)
-        subprocess.run(f'launchctl load {os.path.expanduser(plist_path)}'.split(" "), check=True)
+        _subprocess.run(f'launchctl load {_os.path.expanduser(plist_path)}'.split(" "), check=True)
 
     def send_native_notification(self, title: str, message: str):
         script = f'display notification "{message}" with title "{title}"'
-        subprocess.run(["osascript", "-e", script])
+        _subprocess.run(["osascript", "-e", script])
 
     def get_battery_status(self):
         command = "pmset -g batt" if self.os == 'Darwin' else "upower -i /org/freedesktop/UPower/devices/battery_BAT0"
         try:
-            output = subprocess.check_output(command.split(" ")).decode().strip()
+            output = _subprocess.check_output(command.split(" ")).decode().strip()
             return output
-        except subprocess.CalledProcessError:
+        except _subprocess.CalledProcessError:
             return "Battery status not available."
 
     def get_clipboard(self):
         command = "pbpaste"
-        return subprocess.check_output(command.split(" ")).decode().strip()
+        return _subprocess.check_output(command.split(" ")).decode().strip()
 
     def set_clipboard(self, data: str):
         command = f'echo "{data}" | pbcopy'
-        subprocess.run(command.split(" "), check=True)
+        _subprocess.run(command.split(" "), check=True)
 
 
 class _LinuxSystem(_BaseSystem):
@@ -602,12 +735,12 @@ class _LinuxSystem(_BaseSystem):
     def get_gpu_info(self):
         command = "lspci | grep VGA"
         try:
-            output = subprocess.check_output(command.split(" ")).decode()
+            output = _subprocess.check_output(command.split(" ")).decode()
             return [line.strip() for line in output.split('\n') if line.strip()]
         except FileNotFoundError:
             print("lspci command not found.")
             return []
-        except subprocess.CalledProcessError as e:
+        except _subprocess.CalledProcessError as e:
             print(f"Exception occurred {e}.")
             return []
 
@@ -615,12 +748,12 @@ class _LinuxSystem(_BaseSystem):
         # This might vary depending on the desktop environment (GNOME example)
         command = "gsettings get org.gnome.desktop.interface gtk-theme"
         try:
-            theme = subprocess.check_output(command.split(" ")).decode().strip().strip("'")
+            theme = _subprocess.check_output(command.split(" ")).decode().strip().strip("'")
             return Theme.DARK if "dark" in theme.lower() else Theme.LIGHT
-        except subprocess.CalledProcessError:
+        except _subprocess.CalledProcessError:
             return Theme.UNKNOWN
 
-    def schedule_event(self, name: str, script_path: str, event_time: Literal["startup", "login"]):
+    def schedule_event(self, name: str, script_path: str, event_time: _typing.Literal["startup", "login"]):
         """Schedule an event to run at startup or login on Linux."""
         if event_time == "startup":
             service_content = f"""
@@ -631,7 +764,7 @@ class _LinuxSystem(_BaseSystem):
             [Service]
             ExecStart={script_path}
             Restart=always
-            User={os.getlogin()}
+            User={_os.getlogin()}
 
             [Install]
             WantedBy=default.target
@@ -639,44 +772,44 @@ class _LinuxSystem(_BaseSystem):
             service_path = f"/etc/systemd/system/{name.replace(' ', '_').lower()}_startup.service"
             with open(service_path, 'w') as f:
                 f.write(service_content)
-            os.system(f"systemctl enable {service_path}")
-            os.system(f"systemctl start {service_path}")
+            _os.system(f"systemctl enable {service_path}")
+            _os.system(f"systemctl start {service_path}")
         elif event_time == "login":
             cron_command = f'@reboot {script_path}'
-            subprocess.run(f'(crontab -l; echo "{cron_command}") | crontab -'.split(" "), check=True)
+            _subprocess.run(f'(crontab -l; echo "{cron_command}") | crontab -'.split(" "), check=True)
 
     def send_native_notification(self, title: str, message: str):
         try:
-            subprocess.run(["notify-send", title, message])
+            _subprocess.run(["notify-send", title, message])
         except FileNotFoundError:
             print("notify-send command not found.")
-        except subprocess.CalledProcessError as e:
+        except _subprocess.CalledProcessError as e:
             print(f"Exception occurred: {e}")
 
     def get_battery_status(self):
         command = "pmset -g batt" if self.os == 'Darwin' else "upower -i /org/freedesktop/UPower/devices/battery_BAT0"
         try:
-            output = subprocess.check_output(command.split(" ")).decode().strip()
+            output = _subprocess.check_output(command.split(" ")).decode().strip()
             return output
-        except subprocess.CalledProcessError:
+        except _subprocess.CalledProcessError:
             return "Battery status not available."
 
     def get_clipboard(self):
         command = "xclip -selection clipboard -o"
         try:
-            return subprocess.check_output(command.split(" ")).decode().strip()
-        except subprocess.CalledProcessError:
+            return _subprocess.check_output(command.split(" ")).decode().strip()
+        except _subprocess.CalledProcessError:
             return ""
 
     def set_clipboard(self, data: str):
         command = f'echo "{data}" | xclip -selection clipboard'
-        subprocess.run(command.split(" "))
+        _subprocess.run(command.split(" "))
 
 
 class System:
     @staticmethod
-    def system() -> Union[_WindowsSystem, _DarwinSystem, _LinuxSystem, _BaseSystem]:
-        os_name = platform.system()
+    def system() -> _typing.Union[_WindowsSystem, _DarwinSystem, _LinuxSystem, _BaseSystem]:
+        os_name = _platform.system()
         if os_name == 'Windows':
             return _WindowsSystem()
         elif os_name == 'Darwin':
@@ -684,7 +817,7 @@ class System:
         elif os_name == 'Linux':
             return _LinuxSystem()
         else:
-            warnings.warn("Unsupported Operating System, returning _BaseSystem instance.", RuntimeWarning, 2)
+            _warnings.warn("Unsupported Operating System, returning _BaseSystem instance.", RuntimeWarning, 2)
             return _BaseSystem()
 
 
@@ -698,7 +831,7 @@ def print_system_info():
 
 
 def safe_os_command_execution(command: str) -> str:
-    return subprocess.check_output(command.split(" ")).decode().strip()
+    return _subprocess.check_output(command.split(" ")).decode().strip()
 
 
 def safe_exec(command: str) -> str:
@@ -709,9 +842,9 @@ def safe_exec(command: str) -> str:
     """
     try:
         # Split the command by spaces and run it using subprocess
-        result = subprocess.run(command.split(), check=True, capture_output=True, text=True)
+        result = _subprocess.run(command.split(), check=True, capture_output=True, text=True)
         return result.stdout
-    except subprocess.CalledProcessError as e:
+    except _subprocess.CalledProcessError as e:
         return f"An error occurred: {e}"
 
 
@@ -719,7 +852,7 @@ def local_test():
     try:
         print_system_info()
         system = System.system()
-        # system.send_notification("Zenra", "Hello, how are you?", (), (), ())
+        _BaseSystem.send_notification(None, "Zenra", "Hello, how are you?", (), (), ())
         system.send_native_notification("Zenra,", "NOWAYY")
         print("System RAM", system.get_memory_info())
         print(f"Pc has been turned on since {int(System.system().get_uptime(),)} minutes")
@@ -741,4 +874,4 @@ def local_test():
 
 if __name__ == "__main__":
     local_test()
-    time.sleep(100)
+    _time.sleep(100)
