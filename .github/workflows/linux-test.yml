@@ -1,0 +1,45 @@
+name: Linux Test
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.x'  # Replace with the version you need
+
+    - name: Install pytest
+      run: |
+        python -m pip install --upgrade pip
+        pip install pytest
+
+    - name: Install dependencies using upype
+      run: |
+        python -c "import aplustools; aplustools.install_all_dependencies()"
+
+    - name: Prepare test_data directory
+      run: |
+        DIR=test_data
+        if [ -d "$DIR" ]; then
+          echo "Clearing directory $DIR..."
+          rm -rf "$DIR"
+        fi
+        echo "Creating directory $DIR..."
+        mkdir "$DIR"
+
+    - name: Install package
+      run: |
+        pip install -e .
+
+    - name: Run tests
+      run: |
+        echo "Running tests..."
+        pytest aplustools/tests
+        echo "Tests completed."

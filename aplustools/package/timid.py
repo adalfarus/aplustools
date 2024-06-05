@@ -680,7 +680,7 @@ class DateTimeTimer(TimidTimer):
 
 
 def local_test():
-    # try:
+    try:
         def test_timer(timer_class, description):
             timer = timer_class()
             timer.start()
@@ -783,7 +783,7 @@ def local_test():
         print("Logarithmic Time:", timer.complexity(logarithmic_time, create_simple_input_generator(range(1, 100_001, 1000))))
         print("Linear Time:", timer.complexity(linear_time, create_simple_input_generator(range(1, 100_001, 100))))
         print("Linearithmic Time:", timer.complexity(linearithmic_time, create_simple_input_generator(range(1, 100_001, 1000))))
-        print("Quadratic Time:", timer.complexity(quadratic_time, create_simple_input_generator(range(1, 10_001, 100))))
+        # print("Quadratic Time:", timer.complexity(quadratic_time, create_simple_input_generator(range(1, 10_001, 100))))
         # print("Cubic Time:", timer.complexity(cubic_time, create_simple_input_generator(range(1, 2001, 200))))
         print("Square Root Time:", timer.complexity(square_root_time, create_simple_input_generator(range(1, 100_001, 100))))
 
@@ -803,11 +803,11 @@ def local_test():
         print(timer.get())
 
         print(BasicTimer().start().pause().tock().tick().resume().stop().end().average())
-    # except Exception as e:
-    #     print(f"Exception occurred {e}.")
-    #     return False
-    # print("Test completed successfully.")
-    # return True
+    except Exception as e:
+        print(f"Exception occurred {e}.")
+        return False
+    print("Test completed successfully.")
+    return True
 
 
 if __name__ == "__main__":

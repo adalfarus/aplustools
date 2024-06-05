@@ -68,11 +68,14 @@ class GithubUpdater:
     def get_latest_release_title_version(self) -> Union[None, str]:
         try:
             response = requests.get(f"https://api.github.com/repos/{self.author}/{self.repo_name}/releases/latest")
-            repo_version = ''.join([x if sum(c.isnumeric() for c in x) >= 3 else "" for x in
-                                    response.json()["name"].split("v")])
-            return repo_version
+            response.raise_for_status()
+            release_name = response.json()["name"]
+            repo_version = ''.join([x if sum(c.isnumeric() for c in x) >= 3 else "" for x in release_name.split("v")])
+            return repo_version.strip()
+        except requests.RequestException as e:
+            print(f"HTTP request error: {e}")
         except KeyError:
-            print("Github repo not correctly set-up, please check the documentation and try again.")
+            print("GitHub repo not correctly set-up, please check the documentation and try again.")
         except Exception as e:
             print(f"Unexpected exception occurred: {e}")
         return None
@@ -80,10 +83,16 @@ class GithubUpdater:
     def get_latest_tag_version(self) -> Union[None, str]:
         try:
             response = requests.get(f"https://api.github.com/repos/{self.author}/{self.repo_name}/tags")
-            repo_version = response.json()[0]["name"].replace("v", "")
-            return repo_version
+            response.raise_for_status()
+            tags = response.json()
+            if tags:
+                repo_version = tags[0]["name"].replace("v", "").strip()
+                return repo_version
+            return None
+        except requests.RequestException as e:
+            print(f"HTTP request error: {e}")
         except KeyError:
-            print("Github repo not correctly set-up, please check the documentation and try again.")
+            print("GitHub repo not correctly set-up, please check the documentation and try again.")
         except Exception as e:
             print(f"Unexpected exception occurred: {e}")
         return None
