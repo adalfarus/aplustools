@@ -344,6 +344,18 @@ class PasswordGenerator:
     def generate_secure_sentence(self, length=4):
         return ' '.join(self._rng.sample(self.words, length))
 
+    def reduce_password(self, password: str, by: Union[int, Literal["all"]] = 0):
+        by = by if by != "all" else len(password)
+        result = []
+
+        for chunk in (password[i:i+by+1] for i in range(0, len(password), by + 1)):
+            rnd = self._rng.randint(0, 2)
+            match rnd:
+                case 0:
+                    pass
+                case _:
+                    pass
+
     def generate_password(self, length=18, filter_=None):
         self._debug_print(f"Generating password of length {length}")
         characters = string.ascii_letters + string.digits + string.punctuation
@@ -655,7 +667,7 @@ class SecurePasswordManager:
                                                              num_length, special_chars_length)
 
 
-
+PasswordGenerator().reduce_password("HELLO WORLD", by=1)
 from zxcvbn import zxcvbn
 
 def tell_pass_sec(password):
