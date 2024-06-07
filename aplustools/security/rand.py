@@ -142,19 +142,23 @@ class CustomRandomGenerator:
         return char_list
 
     @classmethod
-    def sample(cls, s: Union[str, list], k: int) -> Union[str, List]:
-        is_string = isinstance(s, str)
-        char_list = list(s) if is_string else s
+    def sample(cls, s: Union[str, list], k: int) -> List:
+        if isinstance(s, str):
+            char_list = list(s)
+        else:
+            char_list = s
+
         n = len(char_list)
-        sampled_indices = set()
+        if k > n:
+            raise ValueError("Sample size k cannot be greater than the length of the input sequence.")
 
-        # Generate k unique random indices
-        while len(sampled_indices) < k:
-            index = int(cls.random() * n)
-            sampled_indices.add(index)
-
+        sampled_indices = random.sample(range(n), k)
         sample = [char_list[i] for i in sampled_indices]
-        return ''.join(sample) if is_string else sample
+        return sample
+
+    @classmethod
+    def string_sample(cls, s: Union[str, list], k: int) -> str:
+        return ''.join(cls.sample(s, k))
 
     @classmethod
     def generate_random_string(cls, length: int, char_set: str = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ") -> str:
@@ -228,6 +232,9 @@ class WeightedRandom:
         :return: Randomly selected element from the sequence.
         """
         return self._generator.shuffle(seq)
+
+    def sample(self, s: Union[str, list], k: int):
+        return self._generator.sample(s, k)
 
     @staticmethod
     def _transform_and_scale(x: float, transform_func: Callable[[float], float], lower_bound: Union[float, int],

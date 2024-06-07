@@ -1,4 +1,4 @@
-from typing import Callable, Union, List, Tuple, Optional, Type, Iterable, Any, Generator
+from typing import Callable, Union, List, Tuple, Optional, Type, Iterable, Any, Generator, Literal
 from sklearn.linear_model import RANSACRegressor
 from datetime import timedelta, datetime
 from scipy.optimize import curve_fit
@@ -169,15 +169,80 @@ class BasicTimer:
         return TimeFormat.get_static_readable(self.get(), format_to)
 
 
+class SmallTimeDiff:
+    def __init__(self, days=0, seconds=0, microseconds=0):
+        total_seconds = days * 86400 + seconds + microseconds / 1e6
+        self.negative = total_seconds < 0
+        abs_seconds = abs(total_seconds)
+        self._timedelta = timedelta(seconds=abs_seconds)
+
+    def __str__(self):
+        total_seconds = self._timedelta.total_seconds()
+        hours, remainder = divmod(int(total_seconds), 3600)
+        minutes, seconds = divmod(remainder, 60)
+        microseconds = self._timedelta.microseconds
+
+        time_str = f"{hours}:{minutes:02}:{seconds:02}"
+        if microseconds > 0:
+            time_str += f".{microseconds:06}"
+
+        if self.negative:
+            time_str = f"-{time_str}"
+
+        return time_str
+
+    def __repr__(self):
+        return f"SmallTimeDiff({self.days}, {self.seconds}, {self.microseconds})"
+
+    def __add__(self, other):
+        if isinstance(other, timedelta):
+            result = self._timedelta + other
+            return SmallTimeDiff(seconds=result.total_seconds() * (-1 if self.negative else 1))
+        return NotImplemented
+
+    def __sub__(self, other):
+        if isinstance(other, timedelta):
+            result = self._timedelta - other
+            return SmallTimeDiff(seconds=result.total_seconds() * (-1 if self.negative else 1))
+        return NotImplemented
+
+    def __mul__(self, other):
+        if isinstance(other, (int, float)):
+            result = self._timedelta * other
+            return SmallTimeDiff(seconds=result.total_seconds() * (-1 if self.negative else 1))
+        return NotImplemented
+
+    def __truediv__(self, other):
+        if isinstance(other, (int, float)):
+            result = self._timedelta / other
+            return SmallTimeDiff(seconds=result.total_seconds() * (-1 if self.negative else 1))
+        return NotImplemented
+
+    @property
+    def days(self):
+        return -self._timedelta.days if self.negative else self._timedelta.days
+
+    @property
+    def seconds(self):
+        return -self._timedelta.seconds if self.negative else self._timedelta.seconds
+
+    @property
+    def microseconds(self):
+        return -self._timedelta.microseconds if self.negative else self._timedelta.microseconds
+
+    def total_seconds(self):
+        return -self._timedelta.total_seconds() if self.negative else self._timedelta.total_seconds()
+
+
 class TimidTimer:
     """If a time value is not specified as something specific, it's in seconds."""
-    EMPTY = (None, None, None, 0, None)
+    EMPTY = (0, 0, 0, None)
 
     def __init__(self, start_at: Union[float, int] = 0, start_now: bool = True):
         self._fires: List[Tuple[Optional[threading.Thread], Optional[threading.Event]]] = []
-        self._times: List[Optional[Tuple[Union[float, int]], Optional[Union[float, int]], Optional[Union[float, int]],
-                          Union[float, int], Optional[threading.Lock]]] = []
-        self._tick_tocks: List[List[Tuple[Union[float, int], Union[float, int]]]] = []
+        self._times: List[Optional[Tuple[
+                        Union[float, int]], Union[float, int], Union[float, int], Optional[threading.Lock]]] = []
+        self._tick_tocks: List[List[Union[float, int, Tuple[Union[float, int], Union[float, int]]]]] = []
         self._exit_index = 0
 
         if start_now:
@@ -190,35 +255,31 @@ class TimidTimer:
 
     def start(self, index: int = None, start_at: Union[float, int] = 0) -> "TimidTimer":
         start_time = self._time()
-        if index and index < len(self._times) and self._times[index][2] is not None:
-            self.resume(index)
-            return
         if index is None:
             index = len(self._times)
-        # Ensure the _times list has enough elements
-        while len(self._times) < index:
+        if index < len(self._times) and self._times[index][2] != 0:
+            self.resume(index)
+            return self
+        while len(self._times) < index:  # Ensure the _times and _tick_tocks lists has enough elements
             self._times.append(self.EMPTY)
-        # Ensure the _tick_tocks list has enough elements
-        while len(self._tick_tocks) < index:
             self._tick_tocks.append([])
-        # Insert or replace the elements at the specified index
-        if index < len(self._times) and self._times[index] is self.EMPTY:
-            self._times[index] = (start_time + (start_at * 1e9), None, None, 0, threading.Lock())
+        if index < len(self._times) and self._times[index] is self.EMPTY:  # Append or replace the elements
+            self._times[index] = (start_time + (start_at * 1e9), 0, 0, threading.Lock())  # at the specified index
             self._tick_tocks[index] = []
         elif index == len(self._times):
-            self._times.insert(index, (start_time + (start_at * 1e9), None, None, 0, threading.Lock()))
-            self._tick_tocks.insert(index, [])
+            self._times.append((start_time + (start_at * 1e9), 0, 0, threading.Lock()))
+            self._tick_tocks.append([])
         else:
             raise Exception(f"A Timer already running on index {index}")
         return self
 
     def _get_first_index(self):
-        curr_index, max_length = 0, len(self._times)
-        while curr_index < max_length and self._times[curr_index] is self.EMPTY:
-            curr_index += 1
-        return curr_index
+        for i, t in enumerate(self._times):
+            if t is not self.EMPTY:
+                return i
+        raise IndexError("No active timers.")
 
-    def pause(self, index: Optional[int] = None, for_seconds: Optional[int] = None) -> "TimidTimer":
+    def pause(self, index: Optional[int] = None, for_seconds: Optional[Union[float, int]] = None) -> "TimidTimer":
         pause_time = self._time()
         index = index or self._get_first_index()  # If it's 0 it just sets it to 0 so it's okay.
 
@@ -226,15 +287,19 @@ class TimidTimer:
             raise IndexError(f"Index {index} doesn't exist or is not running.")
 
         with self._times[index][-1]:
-            start, end, paused_at, paused_time, lock = self._times[index]
+            start, end, paused_time, lock = self._times[index]
+            if paused_time != 0:
+                raise ValueError(f"Timer on index {index} is already paused.")
+            self._times[index] = (start, end, pause_time, lock)
             if for_seconds:
-                self._times[index] = (start, end, None, paused_time + (for_seconds * 1e9), lock)
+                self._tick_tocks[index].append(for_seconds * 1e9)
             else:
-                self._times[index] = (start, end, pause_time, paused_time, lock)
+                self._tick_tocks[index].append(float('inf'))
         return self
 
     def resume(self, index: Optional[int] = None) -> "TimidTimer":
         resumed_time = self._time()
+        index = index or self._get_first_index()  # If it's 0 it just sets it to 0 so it's okay.
 
         if index >= len(self._times) or self._times[index] is self.EMPTY:
             raise IndexError(f"Index {index} doesn't exist or is not paused.")
@@ -244,10 +309,13 @@ class TimidTimer:
         return self
 
     def _resume(self, resumed_time, index: Optional[int] = None):
-        index = index or self._get_first_index()  # If it's 0 it just sets it to 0 so it's okay.
-        start, end, paused_at, paused_time, lock = self._times[index]
-        if paused_at is not None:
-            self._times[index] = (start, end, None, paused_time + (resumed_time - paused_at), lock)
+        start, end, paused_time, lock = self._times[index]
+        if paused_time != 0:
+            max_paused_timedelta = self._tick_tocks[index].pop(-1)
+            actual_paused_time = min((resumed_time - paused_time), max_paused_timedelta)
+            self._times[index] = (start + actual_paused_time, (end + actual_paused_time) if end > 0 else end, 0, lock)
+        else:
+            raise ValueError(f"Timer on index {index} isn't paused.")
 
     def stop(self, index: Optional[int] = None) -> "TimidTimer":
         end_time = self._time()
@@ -256,11 +324,11 @@ class TimidTimer:
             raise IndexError(f"Index {index} doesn't exist or is not running.")
 
         with self._times[index][-1]:
-            start, end, paused_at, paused_time, lock = self._times[index]
-            if paused_time is not None:
-                self._resume(self._time(), index)
-            _, __, ___, paused_time, ____ = self._times[index]
-            self._times[index] = (start, end_time, None, paused_time, lock)
+            start, end, paused_time, lock = self._times[index]
+            if paused_time != 0:
+                self._resume(end_time, index)
+            start, _, __, ___ = self._times[index]
+            self._times[index] = (start, end_time, 0, lock)
         return self
 
     def get(self, index: Optional[int] = None):
@@ -268,55 +336,68 @@ class TimidTimer:
         if index >= len(self._times) or self._times[index] is self.EMPTY:
             raise IndexError(f"Index {index} doesn't exist or is not running.")
         with self._times[index][-1]:
-            start, end, _, paused_time, __ = self._times[index]
-        elapsed_time = (end or self._time()) - start - paused_time
+            start, end, paused_time, _ = self._times[index]
+        max_paused_time = float('inf')
+        if paused_time != 0:
+            paused_time = self._time() - paused_time
+            max_paused_time = self._tick_tocks[-1]
+        elapsed_time = (end or self._time()) - min(max_paused_time, start + paused_time)
         return timedelta(microseconds=elapsed_time / 1000)
 
-    def end(self, index: Optional[int] = None, return_datetime: bool = True) -> Union[timedelta, "TimidTimer"]:
+    def end(self, index: Optional[int] = None, return_timedelta: bool = True) -> Union[timedelta, "TimidTimer"]:
         end_time = self._time()
         index = index or self._get_first_index()  # If it's 0 it just sets it to 0 so it's okay.
         if index >= len(self._times) or self._times[index] is self.EMPTY:
             raise IndexError(f"Index {index} doesn't exist or is not running.")
         with self._times[index][-1]:
-            start, _, paused_at, __, ___ = self._times[index]
-            if paused_at is not None:
-                self._resume(self._time(), index)
-            _, __, ___, paused_time, ____ = self._times[index]
+            start, _, paused_time, __ = self._times[index]
+            if paused_time != 0:
+                self._resume(end_time, index)
+            start, __, ___, ____ = self._times[index]
             self._times[index] = self.EMPTY
             self._tick_tocks[index] = []
-        if return_datetime:
-            elapsed_time = end_time - start - paused_time
-            return timedelta(microseconds=elapsed_time / 1000)
+        if return_timedelta:
+            elapsed_time = end_time - start
+            return SmallTimeDiff(microseconds=elapsed_time / 1000)
         return self
 
-    def tick(self, index: Optional[int] = None, return_datetime: bool = True) -> Union[timedelta, "TimidTimer"]:
+    def tick(self, index: Optional[int] = None, return_timedelta: bool = True) -> Union[timedelta, "TimidTimer"]:
         """Return how much time has passed till the start. (Could also be called elapsed)"""
         tick_time = self._time()
         index = index or self._get_first_index()  # If it's 0 it just sets it to 0 so it's okay.
         if index >= len(self._times) or self._times[index] is self.EMPTY:
             raise IndexError(f"Index {index} doesn't exist or is not running.")
         with self._times[index][-1]:
-            start, _, __, ___, ____ = self._times[index]
+            start, _, paused_time, __ = self._times[index]
+            if tick_time - start < 0:
+                raise ValueError(f"Please don't tick when the timer is paused.")
+            if paused_time != 0:
+                self._resume(tick_time, index)
             self._tick_tocks[index].append((start, tick_time))
-        if return_datetime:
-            return timedelta(microseconds=(tick_time - start) / 1000)
+        if return_timedelta:
+            return SmallTimeDiff(microseconds=(tick_time - start) / 1000)
         return self
 
-    def tock(self, index: Optional[int] = None, return_datetime: bool = True) -> Union[timedelta, "TimidTimer"]:
+    def tock(self, index: Optional[int] = None, return_timedelta: bool = True) -> Union[timedelta, "TimidTimer"]:
         """Returns how much time has passed till the last tock. (Could also be called round/lap/split)"""
         tock_time = self._time()
         index = index or self._get_first_index()  # If it's 0 it just sets it to 0 so it's okay.
         if index >= len(self._times) or self._times[index] is self.EMPTY:
             raise IndexError(f"Index {index} doesn't exist or is not running.")
         with self._times[index][-1]:
-            start, end, paused_at, paused_time, lock = self._times[index]
+            start, end, paused_time, lock = self._times[index]
 
+            if paused_time != 0:
+                self._resume(tock_time, index)
+                start, end, _, __ = self._times[index]
             last_time = end or start
+            if tock_time - last_time < 0:
+                raise ValueError(f"Please don't tock when the timer is paused.")
             end = tock_time
-            self._times[index] = (start, end, paused_at, paused_time, lock)
+            self._times[index] = (start, end, 0, lock)
             self._tick_tocks[index].append((last_time, end))
-        if return_datetime:
-            return timedelta(microseconds=(end - last_time) / 1000)
+        if return_timedelta:
+            return SmallTimeDiff(microseconds=(end - last_time) / 1000)
         return self
 
     def tally(self, *indices: Optional[int]) -> timedelta:
@@ -328,15 +409,15 @@ class TimidTimer:
             if index >= len(self._times) or self._times[index] is self.EMPTY:
                 continue
             with self._times[index][-1]:
-                start, end, _, __, ___ = self._times[index]
+                start, end, _, __ = self._times[index]
                 tick_tocks = self._tick_tocks[index].copy()
-            if end is not None and len(tick_tocks) > 0:
+            if end != 0 and len(tick_tocks) > 0:
                 tick_tocks.append((tick_tocks[-1][1], end))
-            elif end is not None:
+            elif end != 0:
                 tick_tocks.append((start, end))
             total_time += sum((end - start for start, end in tick_tocks))
 
-        return timedelta(microseconds=total_time / 1000)
+        return SmallTimeDiff(microseconds=total_time / 1000)
 
     def average(self, *indices: Optional[int]) -> timedelta:
         """Calculate the average time across all recorded ticks and tocks."""
@@ -347,17 +428,29 @@ class TimidTimer:
             if index >= len(self._times) or self._times[index] is self.EMPTY:
                 continue
             with self._times[index][-1]:
-                _, end, __, ___, ____ = self._times[index]
+                _, end, __, ___ = self._times[index]
                 tick_tocks = self._tick_tocks[index].copy()
-            total_tocks += len(tick_tocks) + (1 if end is not None and end != ([(0, 0)] + tick_tocks)[-1][1] else 0)
+            total_tocks += len(tick_tocks) + (1 if end != 0 and end != ([(0, 0)] + tick_tocks)[-1][1] else 0)
 
         if total_tocks == 0:
             return timedelta(0)
 
         return self.tally(*indices) / total_tocks
 
-    def get_readable(self, format_to: int = TimeFormat.SECONDS) -> str:
-        return TimeFormat.get_static_readable(self.get(), format_to)
+    def show_tick_tocks(self, index: Optional[int] = None, format_to: int = TimeFormat.SECONDS):
+        index = index or self._get_first_index()  # If it's 0 it just sets it to 0 so it's okay.
+        print("Tick Tock times:")
+        with self._times[index][-1]:
+            my_tick_tocks = self._tick_tocks[index].copy()
+            _, __, is_paused, _ = self._times[index]
+        if is_paused:
+            my_tick_tocks.pop(-1)
+        for i, (start, end) in enumerate(my_tick_tocks, start=1):
+            td = timedelta(microseconds=(end - start) / 1000)
+            print(f"Lap {i}: {TimeFormat.get_static_readable(td, format_to)}")
+
+    def get_readable(self, index: Optional[int] = None, format_to: int = TimeFormat.SECONDS) -> str:
+        return TimeFormat.get_static_readable(self.get(index), format_to)
 
     def _warmup(self, rounds: int = 3):
         for _ in range(rounds):
@@ -365,6 +458,51 @@ class TimidTimer:
             self.end()
         self._times = []
         self._tick_tocks = []
+
+    def countdown(self, seconds: Union[float, int], callback: Callable = print, args: tuple = (), kwargs: dict = None):
+        if kwargs is None:
+            kwargs = {}
+        self.single_shot(seconds, callback, args or (f"Countdown for {seconds}s is done.",), kwargs)
+
+    def countdown_ms(self, milliseconds: Union[float, int], callback: Callable = print, args: tuple = (),
+                     kwargs: dict = None):
+        if kwargs is None:
+            kwargs = {}
+        self.single_shot_ms(milliseconds, callback, args or (f"Countdown for {milliseconds}ms is done.",), kwargs)
+
+    def interval(self, interval: Union[float, int], count: Union[int, Literal["inf"]] = "inf",
+                 callback: Callable = print, args: tuple = (), kwargs: dict = None):
+        if kwargs is None:
+            kwargs = {}
+        if count == "inf":
+            self.fire(interval, callback, args or (f"{interval}s is over.",), kwargs)
+        else:
+            self.shoot(interval, callback, args or (f"{interval}s is over.",), kwargs, iterations=count)
+
+    def interval_ms(self, interval_ms: Union[float, int], count: Union[int, Literal["inf"]] = "inf",
+                    callback: Callable = print, args: tuple = (), kwargs: dict = None):
+        if kwargs is None:
+            kwargs = {}
+        if count == "inf":
+            self.fire_ms(interval_ms, callback, args or (f"{interval_ms}s is over.",), kwargs)
+        else:
+            self.shoot_ms(interval_ms, callback, args or (f"{interval_ms}s is over.",), kwargs, iterations=count)
+
+    def set_alarm(self, alarm_time, callback: Callable = print, args: tuple = (), kwargs: dict = None):
+        alarm_time = datetime.strptime(alarm_time, "%H:%M:%S").time()
+        current_time = datetime.now().time()
+        current_datetime = datetime.combine(datetime.today(), current_time)
+        alarm_datetime = datetime.combine(datetime.today(), alarm_time)
+        if alarm_datetime < current_datetime:
+            alarm_datetime += timedelta(days=1)  # Set alarm for the next day if time has already passed today
+        diff = alarm_datetime - current_datetime
+        self.single_shot(diff.total_seconds(), callback, args or (f"Timer for {alarm_time} is over.",), kwargs)
+
+    def save_state(self) -> bytes:
+        state = {
+            "_times": self._times,
+            "_tick_tocks": self._tick_tocks  # Save fires and exit index?? Also make enter threadsafe
+        }
 
     @classmethod
     def setup_timer_func(cls, func: Callable, to_nanosecond_multiplier: Union[float, int]) -> Type["TimidTimer"]:
@@ -647,6 +785,11 @@ class TimidTimer:
             return result
         return wrapper
 
+    @staticmethod
+    def display_current_time():
+        current_time = datetime.now().strftime("%H:%M:%S")
+        print(f"Current Time: {current_time}")
+
     def enter(self, index: Optional[int] = None):
         self.start(index)
         self._exit_index = index
@@ -661,8 +804,8 @@ class TimidTimer:
         print(f"Codeblock {self._exit_index} took {td} to execute.")
 
 
-Timer = TimidTimer.setup_timer_func(time.time, 1e9)
-TimerNS = TimidTimer.setup_timer_func(time.time_ns, 1)
+TimeTimer = TimidTimer.setup_timer_func(time.time, 1e9)
+TimeTimerNS = TimidTimer.setup_timer_func(time.time_ns, 1)
 PerfTimer = TimidTimer.setup_timer_func(time.perf_counter, 1e9)
 PerfTimerNS = TimidTimer.setup_timer_func(time.perf_counter_ns, 1)
 CPUTimer = TimidTimer.setup_timer_func(time.process_time, 1e9)
@@ -681,6 +824,9 @@ class DateTimeTimer(TimidTimer):
 
 def local_test():
     try:
+        print(TimidTimer(start_at=2).end())
+        print(dir(TimidTimer))
+
         def test_timer(timer_class, description):
             timer = timer_class()
             timer.start()
@@ -699,14 +845,17 @@ def local_test():
                   f"{TimeFormat.get_static_readable(elapsed)}")
 
         timer1 = TimidTimer()
-        timer1.shoot(1, lambda: print(timer1.tock(return_datetime=True)), iterations=3)
+        timer1.shoot(1, lambda: print(timer1.tock(return_timedelta=True)), iterations=3)
         print("400 ms,", timer1.wait_ms(400).get())
         TimidTimer.wait_static()
 
         timer = TimidTimer()
         for _ in range(4):
+            timer.pause(for_seconds=0.1)
             timer.wait_ms_static(1000)
             timer.tock()
+        print(timer.tally())
+        print(timer.show_tick_tocks())
         print("Average 1 second sleep extra delay: ", timer.average() - timedelta(seconds=1))
         print("TTD", TimidTimer.test_delay_ms(1000) - timedelta(seconds=1))
 
@@ -715,7 +864,8 @@ def local_test():
 
         print("Starting timer tests...")
         test_timer(TimidTimer, "Timid Timer")
-        test_timer(Timer, "Normal Timer")
+        test_timer(TimeTimer, "Time Timer")
+        test_timer(TimeTimerNS, "Time Timer Nanosecond")
         test_timer(PerfTimer, "Performance Timer")
         test_timer(PerfTimerNS, "Performance Timer Nanosecond")
         test_timer(CPUTimer, "CPU Timer")
@@ -725,7 +875,8 @@ def local_test():
 
         print("\nTesting sleep accuracy...")
         sleep_and_measure(TimidTimer, "Timid Timer")
-        sleep_and_measure(Timer, "Normal Timer")
+        sleep_and_measure(TimeTimer, "Time Timer")
+        sleep_and_measure(TimeTimerNS, "Time Timer Nanosecond")
         sleep_and_measure(PerfTimer, "Performance Timer")
         sleep_and_measure(PerfTimerNS, "Performance Timer Nanosecond")
         sleep_and_measure(CPUTimer, "CPU Timer")
