@@ -498,11 +498,11 @@ class TimidTimer:
         diff = alarm_datetime - current_datetime
         self.single_shot(diff.total_seconds(), callback, args or (f"Timer for {alarm_time} is over.",), kwargs)
 
-    def save_state(self) -> bytes:
-        state = {
-            "_times": self._times,
-            "_tick_tocks": self._tick_tocks  # Save fires and exit index?? Also make enter threadsafe
-        }d
+    # def save_state(self) -> bytes:
+    #     state = {
+    #         "_times": self._times,
+    #         "_tick_tocks": self._tick_tocks  # Save fires and exit index?? Also make enter threadsafe
+    #     }d
 
     @classmethod
     def setup_timer_func(cls, func: Callable, to_nanosecond_multiplier: Union[float, int]) -> Type["TimidTimer"]:

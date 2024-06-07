@@ -1,17 +1,15 @@
-import os.path
-
-from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-from cryptography.hazmat.backends import default_backend
-from aplustools.security.rand import WeightedRandom
-from typing import Union, Literal, Dict, Optional
-from aplustools.io.environment import strict
-from aplustools.data import nice_number
-from enum import Enum
-import unicodedata
-import secrets
-import string
-import random
-import math
+from cryptography.hazmat.primitives.ciphers import Cipher as _Cipher, algorithms as _algorithms, modes as _modes
+from typing import Union as _Union, Literal as _Literal, Optional as _Optional, Dict as _Dict
+from cryptography.hazmat.backends import default_backend as _default_backend
+from aplustools.security.rand import WeightedRandom as _WeightedRandom
+from aplustools.io.environment import strict as _strict
+from zxcvbn import zxcvbn as _zxcvbn
+import unicodedata as _unicodedata
+import secrets as _secrets
+import string as _string
+import random as _random
+import math as _math
+import os as _os
 
 
 class PasswordFilter:
@@ -21,7 +19,7 @@ class PasswordFilter:
         self.exclude_similar = exclude_similar
         self.extra_chars_dict = self._classify_extra_chars(extra_chars)
 
-    def _classify_extra_chars(self, extra_chars):
+    def _classify_extra_chars(self, extra_chars: str) -> str:
         # Classify each extra char into the correct character set
         classified_chars = {
             "letters": "",
@@ -42,7 +40,7 @@ class PasswordFilter:
 
         return classified_chars
 
-    def apply(self, character_set, set_name):
+    def apply(self, character_set: str, set_name: _Literal["letters", "numbers", "punctuations", "unicode"]) -> str:
         if self.exclude_similar:
             similar_chars = "il1Lo0O"
             character_set = ''.join(ch for ch in character_set if ch not in similar_chars)
@@ -51,7 +49,7 @@ class PasswordFilter:
         character_set += self.extra_chars_dict[set_name]
         return character_set
 
-    def filter_word(self, word):
+    def filter_word(self, word: str) -> str:
         # Filter the word according to the current settings
         filtered_word = ''.join(ch for ch in word if ch not in self.exclude_chars)
         if self.exclude_similar:
@@ -59,13 +57,13 @@ class PasswordFilter:
             filtered_word = ''.join(ch for ch in filtered_word if ch not in similar_chars)
         return filtered_word
 
-    def will_filter(self, char):
+    def will_filter(self, char: str) -> bool:
         return self.filter_word(char) == ""
 
 
 class QuickGeneratePasswords:
-    _rng = random
-    characters = string.ascii_letters + string.digits
+    _rng = _random
+    characters = _string.ascii_letters + _string.digits
     debug = False
 
     @classmethod
@@ -73,20 +71,21 @@ class QuickGeneratePasswords:
         if cls.debug:
             print(*args, **kwargs)
 
-    def quick_secure_password(self, password, passes=3, expand: bool = True):
-        self._debug_print(f"Quick securing password: {password}")
-        characters = string.ascii_letters + string.digits + string.punctuation
+    @classmethod
+    def quick_secure_password(cls, password: str, passes: int = 3, expand: bool = True) -> str:
+        cls._debug_print(f"Quick securing password: {password}")
+        characters = _string.ascii_letters + _string.digits + _string.punctuation
 
         for _ in range(passes):
             if expand:
                 # Add a random character
-                password += random.choice(characters)
+                password += cls._rng.choice(characters)
             else:
-                rng = random.randint(0, len(password)-1)
-                password = password[:rng] + random.choice(characters) + password[rng+1:]
+                rng = cls._rng.randint(0, len(password)-1)
+                password = password[:rng] + cls._rng.choice(characters) + password[rng+1:]
 
             # Switch a random character's case
-            pos = random.randint(0, len(password) - 1)
+            pos = cls._rng.randint(0, len(password) - 1)
             char = password[pos]
             if char.islower():
                 char = char.upper()
@@ -95,45 +94,45 @@ class QuickGeneratePasswords:
             password = password[:pos] + char + password[pos+1:]
 
             # Add a random digit or punctuation
-            pos = random.randint(0, len(password)-1)
-            password = password[:pos] + random.choice(string.digits + string.punctuation) + password[(pos if expand else pos+1):]
+            pos = cls._rng.randint(0, len(password)-1)
+            password = password[:pos] + cls._rng.choice(_string.digits + _string.punctuation) + password[(pos if expand else pos+1):]
 
         # Shuffle the resulting password to ensure randomness
         password_list = list(password)
-        random.shuffle(password_list)
+        cls._rng.shuffle(password_list)
         password = ''.join(password_list)
 
-        self._debug_print(f"Quick secured password: {password}")
+        cls._debug_print(f"Quick secured password: {password}")
         return password
 
     @classmethod
-    def generate_password(cls, length=12, filter_=None):
+    def generate_password(cls, length: int = 12, filter_: _Optional[PasswordFilter] = None) -> str:
         cls._debug_print(f"Generating password of length {length}")
-        characters = string.ascii_letters + string.digits + string.punctuation
+        characters = _string.ascii_letters + _string.digits + _string.punctuation
         if filter_:
             characters = filter_.apply(characters, "letters")
-            characters += filter_.apply(string.digits, "numbers")
-            characters += filter_.apply(string.punctuation, "punctuations")
+            characters += filter_.apply(_string.digits, "numbers")
+            characters += filter_.apply(_string.punctuation, "punctuations")
             cls._debug_print(f"Filtered characters: {characters}")
         password = ''.join(cls._rng.choice(characters) for _ in range(length))
         cls._debug_print(f"Generated password: {password}")
         return password
 
     @classmethod
-    def generate_secure_password(cls, length=12, filter_=None):
+    def generate_secure_password(cls, length: int = 12, filter_: _Optional[PasswordFilter] = None) -> str:
         cls._debug_print(f"Generating secure password of length {length}")
-        characters = string.ascii_letters + string.digits + string.punctuation
+        characters = _string.ascii_letters + _string.digits + _string.punctuation
         if filter_:
             characters = filter_.apply(characters, "letters")
-            characters += filter_.apply(string.digits, "numbers")
-            characters += filter_.apply(string.punctuation, "punctuations")
+            characters += filter_.apply(_string.digits, "numbers")
+            characters += filter_.apply(_string.punctuation, "punctuations")
             cls._debug_print(f"Filtered characters: {characters}")
-        password = ''.join(secrets.choice(characters) for _ in range(length))
+        password = ''.join(_secrets.choice(characters) for _ in range(length))
         cls._debug_print(f"Generated secure password: {password}")
         return password
 
     @classmethod
-    def generate_passphrase(cls, words: list, num_words=4, filter_=None):
+    def generate_passphrase(cls, words: list, num_words: int = 4, filter_: _Optional[PasswordFilter] = None) -> str:
         cls._debug_print(f"Generating passphrase with {num_words} words")
         if filter_:
             words = list(filter(filter_.filter_word, words))
@@ -143,16 +142,16 @@ class QuickGeneratePasswords:
         return passphrase
 
     @classmethod
-    def generate_pattern_password(cls, pattern="XXX-999-xxx", filter_=None):
+    def generate_pattern_password(cls, pattern: str = "XXX-999-xxx", filter_: _Optional[PasswordFilter] = None) -> str:
         cls._debug_print(f"Generating pattern password with pattern {pattern}")
 
         def random_char(c):
             if c == 'X':
-                chars = string.ascii_uppercase
+                chars = _string.ascii_uppercase
             elif c == 'x':
-                chars = string.ascii_lowercase
+                chars = _string.ascii_lowercase
             elif c == '9':
-                chars = string.digits
+                chars = _string.digits
             else:
                 return c
 
@@ -167,23 +166,23 @@ class QuickGeneratePasswords:
         return password
 
     @classmethod
-    def generate_complex_password(cls, length=12, filter_=None):
+    def generate_complex_password(cls, length: int = 12, filter_: _Optional[PasswordFilter] = None) -> str:
         cls._debug_print(f"Generating complex password of length {length}")
         if length < 4:
             raise ValueError("Password length should be at least 4")
 
-        all_characters = string.ascii_letters + string.digits + string.punctuation
+        all_characters = _string.ascii_letters + _string.digits + _string.punctuation
         if filter_:
             all_characters = filter_.apply(all_characters, "letters")
-            all_characters += filter_.apply(string.digits, "numbers")
-            all_characters += filter_.apply(string.punctuation, "punctuations")
+            all_characters += filter_.apply(_string.digits, "numbers")
+            all_characters += filter_.apply(_string.punctuation, "punctuations")
             cls._debug_print(f"Filtered all characters: {all_characters}")
 
         password = [
-            cls._rng.choice(filter_.apply(string.ascii_uppercase, "letters")),
-            cls._rng.choice(filter_.apply(string.ascii_lowercase, "letters")),
-            cls._rng.choice(filter_.apply(string.digits, "numbers")),
-            cls._rng.choice(filter_.apply(string.punctuation, "punctuations"))
+            cls._rng.choice(filter_.apply(_string.ascii_uppercase, "letters")),
+            cls._rng.choice(filter_.apply(_string.ascii_lowercase, "letters")),
+            cls._rng.choice(filter_.apply(_string.digits, "numbers")),
+            cls._rng.choice(filter_.apply(_string.punctuation, "punctuations"))
         ]
 
         remaining_chars = all_characters
@@ -194,12 +193,12 @@ class QuickGeneratePasswords:
         return ''.join(password)
 
     @classmethod
-    def generate_mnemonic_password(cls, filter_=None):
+    def generate_mnemonic_password(cls, filter_: _Optional[PasswordFilter] = None) -> str:
         cls._debug_print(f"Generating mnemonic password")
         adjectives = ["quick", "lazy", "sleepy", "noisy", "hungry"]
         nouns = ["fox", "dog", "cat", "mouse", "bear"]
-        symbols = string.punctuation
-        numbers = string.digits
+        symbols = _string.punctuation
+        numbers = _string.digits
 
         adj = cls._rng.choice(adjectives)
         noun = cls._rng.choice(nouns)
@@ -217,8 +216,8 @@ class QuickGeneratePasswords:
         return password
 
     @classmethod
-    def generate_ratio_based_password(cls, length=12, letter_ratio=0.4, digit_ratio=0.3, symbol_ratio=0.3,
-                                      filter_=None):
+    def generate_ratio_based_password(cls, length: int = 12, letter_ratio: float = 0.4, digit_ratio: float = 0.3,
+                                      symbol_ratio: float = 0.3, filter_: _Optional[PasswordFilter] = None) -> str:
         cls._debug_print(f"Generating ratio-based password of length {length}")
 
         num_letters = int(length * letter_ratio)
@@ -226,9 +225,9 @@ class QuickGeneratePasswords:
         num_symbols = length - num_letters - num_digits
 
         characters = (
-                (filter_.apply(string.ascii_letters, "letters") if filter_ else string.ascii_letters) * num_letters +
-                (filter_.apply(string.digits, "numbers") if filter_ else string.digits) * num_digits +
-                (filter_.apply(string.punctuation, "punctuations") if filter_ else string.punctuation) * num_symbols
+                (filter_.apply(_string.ascii_letters, "letters") if filter_ else _string.ascii_letters) * num_letters +
+                (filter_.apply(_string.digits, "numbers") if filter_ else _string.digits) * num_digits +
+                (filter_.apply(_string.punctuation, "punctuations") if filter_ else _string.punctuation) * num_symbols
         )
 
         password = ''.join(cls._rng.choice(characters) for _ in range(length))
@@ -236,12 +235,12 @@ class QuickGeneratePasswords:
         return password
 
     @classmethod
-    def generate_sentence_based_password(cls, structure="WwWn!"):
+    def generate_sentence_based_password(cls, structure: str = "WwWn!") -> str:
         cls._debug_print(f"Generating sentence-based password with structure {structure}")
 
         words = ["quick", "brown", "fox", "jumps", "over", "lazy", "dog"]
-        symbols = string.punctuation
-        digits = string.digits
+        symbols = _string.punctuation
+        digits = _string.digits
 
         password = []
         for char in structure:
@@ -259,15 +258,15 @@ class QuickGeneratePasswords:
         return password_str
 
     @classmethod
-    def generate_sentence_based_password_v2(cls, sentence: str,
-                                            char_position: Union[Literal["random", "keep"], int] = 'random',
-                                            random_case: bool = False, extra_char: str = '', num_length: int = 0,
-                                            special_chars_length: int = 0):
+    def generate_custom_sentence_based_password_v2(cls, sentence: str,
+                                                   char_position: _Union[_Literal["random", "keep"], int] = 'random',
+                                                   random_case: bool = False, extra_char: str = '', num_length: int = 0,
+                                                   special_chars_length: int = 0):
         words = sentence.split(' ')
         word_chars = []
         for word in words:
             if char_position == 'random':
-                index = random.randint(0, len(word) - 1)
+                index = cls._rng.randint(0, len(word) - 1)
             elif char_position == 'keep':
                 index = 0
             elif type(char_position) is int:
@@ -276,23 +275,27 @@ class QuickGeneratePasswords:
                 return "Invalid char_position."
             char = word[index]
             if random_case:
-                char = char.lower() if random.random() < 0.5 else char.upper()
+                char = char.lower() if cls._rng.random() < 0.5 else char.upper()
             word_chars.append(char)
             cls._debug_print("Word characters after processing:", word_chars)
-        num_string = ''.join(random.choices('0123456789', k=num_length))
+        num_string = ''.join(cls._rng.choices('0123456789', k=num_length))
         cls._debug_print("Numeric string after generation:", num_string)
-        special_chars_string = ''.join(random.choices('!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~', k=special_chars_length))
+        special_chars_string = ''.join(cls._rng.choices('!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~', k=special_chars_length))
         cls._debug_print("Special characters string after generation:", special_chars_string)
         password = ''.join(word_chars) + extra_char + num_string + special_chars_string
         cls._debug_print("Final password:", password)
         return password
 
 
-class PasswordGenerator:
+class SpecificPasswordGenerator:
     """The random generators security can be adjusted, and all default arguments will result in a password
     that has an average worst case crack time of multiple years (Verified using zxcvbn)."""
-    def __init__(self, random_generator: Literal["weak", "ok", "strong"] = "strong", debug: bool = False):
-        self._rng = WeightedRandom({"weak": "random", "ok": "os", "strong": "secrets"}[random_generator])
+    def __init__(self, random_generator: _Union[_Literal["weak", "average", "strong"], _WeightedRandom] = "strong",
+                 debug: bool = False):
+        if not isinstance(random_generator, _WeightedRandom):
+            self._rng = _WeightedRandom({"weak": "random", "average": "np_random", "strong": "secrets"}[random_generator])
+        else:
+            self._rng = random_generator
         self.debug = debug
         self.words = []
 
@@ -301,12 +304,12 @@ class PasswordGenerator:
             print(*args, **kwargs)
 
     def load_def_dict(self):
-        with open(os.path.abspath("def_dict.txt"), "r") as f:
-            self.words = f.readlines()
+        with open(_os.path.abspath("def_dict.txt"), "r") as f:
+            self.words = [line.strip() for line in f]
 
-    def secure_password(self, password, passes=3, expand: bool = True):
+    def secure_password(self, password: str, passes: int = 3, expand: bool = True) -> str:
         self._debug_print(f"Securing password: {password}")
-        characters = string.ascii_letters + string.digits + string.punctuation
+        characters = _string.ascii_letters + _string.digits + _string.punctuation
 
         for _ in range(passes):
             if expand:
@@ -327,50 +330,82 @@ class PasswordGenerator:
 
             # Add a random digit
             pos = self._rng.randint(0, len(password)-1)
-            password = password[:pos] + self._rng.choice(string.digits) + password[(pos if expand else pos+1):]
+            password = password[:pos] + self._rng.choice(_string.digits) + password[(pos if expand else pos+1):]
 
             # Add a random punctuation
             pos = self._rng.randint(0, len(password)-1)
-            password = password[:pos] + self._rng.choice(string.punctuation) + password[(pos if expand else pos+1):]
+            password = password[:pos] + self._rng.choice(_string.punctuation) + password[(pos if expand else pos+1):]
 
-        # Shuffle the resulting password to ensure randomness
+        # Calculate the number of characters to switch
+        length = len(password)
+        percentage_to_switch = self._rng.choice([10, 20, 30])
+        num_to_switch = max(2, (length * percentage_to_switch) // 100)
+
+        # Switch around the selected percentage of characters
         password_list = list(password)
-        self._rng.shuffle(password_list)
-        password = ''.join(password_list)
+        for _ in range(num_to_switch // 2):
+            idx1, idx2 = self._rng.sample(range(length), 2)
+            password_list[idx1], password_list[idx2] = password_list[idx2], password_list[idx1]
 
         self._debug_print(f"Secured password: {password}")
         return password
 
-    def generate_secure_sentence(self, length=4):
+    def generate_secure_sentence(self, length: int = 4) -> str:
         return ' '.join(self._rng.sample(self.words, length))
 
-    def reduce_password(self, password: str, by: Union[int, Literal["all"]] = 0):
+    def reduce_password(self, password: str, by: _Union[int, _Literal["all"]] = 0) -> str:
         by = by if by != "all" else len(password)
         result = []
 
         for chunk in (password[i:i+by+1] for i in range(0, len(password), by + 1)):
-            rnd = self._rng.randint(0, 2)
+            if by == 0:
+                chunk = chunk + chunk  # Duplicate the character to make a two-character chunk
+            while len(chunk) < by + 1:
+                chunk += chunk  # Repeat the chunk until it reaches the desired size
+            chunk = chunk[:by + 1]  # Trim the chunk to the exact desired size
+
+            rnd = self._rng.randint(0, 5)
+            reduced_char = chunk[0]
+
             match rnd:
                 case 0:
-                    pass
-                case _:
-                    pass
+                    for char in chunk[1:]:
+                        reduced_char = chr(ord(reduced_char) | ord(char))
+                case 1:
+                    for char in chunk[1:]:
+                        reduced_char = chr(ord(reduced_char) & ord(char))
+                case 2:
+                    for char in chunk[1:]:
+                        reduced_char = chr(ord(reduced_char) ^ ord(char))
+                case 3:
+                    reduced_char = chr(~ord(reduced_char) & 0xFF)  # NOT operation
+                case 4:
+                    for char in chunk[1:]:
+                        reduced_char = chr((ord(reduced_char) << 1) & 0xFF)  # Left shift
+                case 5:
+                    for char in chunk[1:]:
+                        reduced_char = chr(ord(reduced_char) >> 1)  # Right shift
 
-    def generate_password(self, length=18, filter_=None):
+            result.append(reduced_char)
+
+        return ''.join(result)
+
+    def generate_random_password(self, length: int = 18, filter_: _Optional[PasswordFilter] = None) -> str:
         self._debug_print(f"Generating password of length {length}")
-        characters = string.ascii_letters + string.digits + string.punctuation
+        characters = _string.ascii_letters + _string.digits + _string.punctuation
         if filter_:
             characters = filter_.apply(characters, "letters")
-            characters += filter_.apply(string.digits, "numbers")
-            characters += filter_.apply(string.punctuation, "punctuations")
+            characters += filter_.apply(_string.digits, "numbers")
+            characters += filter_.apply(_string.punctuation, "punctuations")
             self._debug_print(f"Filtered characters: {characters}")
         password = ''.join(self._rng.choice(characters) for _ in range(length))
         self._debug_print(f"Generated password: {password}")
         return password
 
-    def generate_passphrase(self, words: list = None, num_words=6, filter_=None):
+    def _generate_passphrase(self, words: list = None, num_words: int = 6, filter_: _Optional[PasswordFilter] = None
+                             ) -> str:
         if words is None:
-            words = ["These", "can", "be", "insecure", "aslong", "as", "the", "password", "is", "long"]
+            words = ["These", "can", "be", "insecure", "as", "long", "as", "the", "password", "is", "long"]
         self._debug_print(f"Generating passphrase with {num_words} words")
         if filter_:
             words = list(filter(filter_.filter_word, words))
@@ -379,16 +414,21 @@ class PasswordGenerator:
         self._debug_print(f"Generated passphrase: {passphrase}")
         return passphrase
 
-    def generate_pattern_password(self, pattern="9/XxX-999xXx-99/XxX-999xXx-9", filter_=None):
+    def generate_secure_passphrase(self, words: list = None, num_words: int = 6,
+                                   filter_: _Optional[PasswordFilter] = None) -> str:
+        return self.secure_password(self._generate_passphrase(words, num_words, filter_), passes=1)
+
+    def generate_pattern_password(self, pattern: str = "9/XxX-999xXx-99/XxX-999xXx-9",
+                                  filter_: _Optional[PasswordFilter] = None) -> str:
         self._debug_print(f"Generating pattern password with pattern {pattern}")
 
         def random_char(c):
             if c == 'X':
-                chars = string.ascii_uppercase
+                chars = _string.ascii_uppercase
             elif c == 'x':
-                chars = string.ascii_lowercase
+                chars = _string.ascii_lowercase
             elif c == '9':
-                chars = string.digits
+                chars = _string.digits
             else:
                 return c
 
@@ -402,27 +442,27 @@ class PasswordGenerator:
         self._debug_print(f"Generated pattern password: {password}")
         return password
 
-    def generate_complex_password(self, length=18, filter_=None):
+    def generate_complex_password(self, length: int = 18, filter_: _Optional[PasswordFilter] = None) -> str:
         self._debug_print(f"Generating complex password of length {length}")
         if length < 4:
             raise ValueError("Password length should be at least 4")
 
-        all_characters = string.ascii_letters + string.digits + string.punctuation
+        all_characters = _string.ascii_letters + _string.digits + _string.punctuation
 
         if filter_:
-            upper_chars = filter_.apply(string.ascii_uppercase, "letters")
-            lower_chars = filter_.apply(string.ascii_lowercase, "letters")
-            digit_chars = filter_.apply(string.digits, "numbers")
-            punct_chars = filter_.apply(string.punctuation, "punctuations")
+            upper_chars = filter_.apply(_string.ascii_uppercase, "letters")
+            lower_chars = filter_.apply(_string.ascii_lowercase, "letters")
+            digit_chars = filter_.apply(_string.digits, "numbers")
+            punct_chars = filter_.apply(_string.punctuation, "punctuations")
 
             all_characters = filter_.apply(all_characters, "letters") + \
-                             filter_.apply(string.digits, "numbers") + \
-                             filter_.apply(string.punctuation, "punctuations")
+                             filter_.apply(_string.digits, "numbers") + \
+                             filter_.apply(_string.punctuation, "punctuations")
         else:
-            upper_chars = string.ascii_uppercase
-            lower_chars = string.ascii_lowercase
-            digit_chars = string.digits
-            punct_chars = string.punctuation
+            upper_chars = _string.ascii_uppercase
+            lower_chars = _string.ascii_lowercase
+            digit_chars = _string.digits
+            punct_chars = _string.punctuation
 
         self._debug_print(f"Filtered all characters: {all_characters}")
 
@@ -440,12 +480,13 @@ class PasswordGenerator:
         self._debug_print(f"Generated complex password: {''.join(password)}")
         return ''.join(password)
 
-    def generate_mnemonic_password(self, length=20, filter_=None):
+    def generate_mnemonic_password(self, length: int = 20, filter_: _Optional[PasswordFilter] = None,
+                                   _return_info: bool = False) -> str:
         self._debug_print(f"Generating mnemonic password")
         adjectives = ["quick", "lazy", "sleepy", "noisy", "hungry", "brave", "clever", "fierce", "jolly", "kind"]
         nouns = ["fox", "dog", "cat", "mouse", "bear", "tiger", "lion", "wolf", "eagle", "shark"]
-        symbols = string.punctuation
-        numbers = string.digits
+        symbols = _string.punctuation
+        numbers = _string.digits
 
         adj = self._rng.choice(adjectives)
         noun = self._rng.choice(nouns)
@@ -468,18 +509,18 @@ class PasswordGenerator:
 
         password = f"{adj}{extra_symbols}{noun}{extra_numbers}"
         self._debug_print(f"Generated mnemonic password: {password}")
-        return password
+        return (password, adj, noun) if _return_info else password
 
     def generate_ratio_based_password_v3(self, length: int = 24, letters_ratio: float = 0.5, numbers_ratio: float = 0.3,
                                          punctuations_ratio: float = 0.2, unicode_ratio: float = 0.0,
-                                         filter_: PasswordFilter = None):
+                                         filter_: _Optional[PasswordFilter] = None) -> str:
         """Generate a ratio based password, version 3"""
         character_sets = {
             "letters": 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ',
             "numbers": '0123456789',
             "punctuations": '!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~',
             "unicode": unicode_ratio and   # Not generated, because it's 0 in most cases
-            ''.join(chr(i) for i in range(0x110000) if unicodedata.category(chr(i)).startswith('P'))
+            ''.join(chr(i) for i in range(0x110000) if _unicodedata.category(chr(i)).startswith('P'))
         }
         self._debug_print(f"Generated char_sets {character_sets}")
 
@@ -491,10 +532,10 @@ class PasswordGenerator:
         self._debug_print(f"Filtered char_sets {character_sets}")
 
         non_zero_lengths = {ratio_name: ratio for ratio_name, ratio in
-                            {"letters": math.ceil(length * letters_ratio),
-                             "numbers": math.ceil(length * numbers_ratio),
-                             "punctuations": math.ceil(length * punctuations_ratio),
-                             "unicode": math.ceil(length * unicode_ratio)}.items()
+                            {"letters": _math.ceil(length * letters_ratio),
+                             "numbers": _math.ceil(length * numbers_ratio),
+                             "punctuations": _math.ceil(length * punctuations_ratio),
+                             "unicode": _math.ceil(length * unicode_ratio)}.items()
                             if ratio != 0 and len(character_sets[ratio_name]) != 0}
         remaining_length = length - sum(non_zero_lengths.values())
 
@@ -520,11 +561,11 @@ class PasswordGenerator:
 
         return ''.join(password_characters)
 
-    def generate_words_based_password_v3(self, sentence: Optional[str] = None, shuffle_words: bool = True,
+    def generate_words_based_password_v3(self, sentence: _Optional[str] = None, shuffle_words: bool = True,
                                          shuffle_characters: bool = True, repeat_words: bool = False,
-                                         filter_: PasswordFilter = None):
+                                         filter_: PasswordFilter = None, _return_info: bool = False) -> str:
         if sentence is None:
-            sentence = self.generate_secure_sentence(length=2)
+            sentence = self.generate_secure_sentence(length=5)
         words = sentence.split(' ')
 
         self._debug_print("Words", words)
@@ -546,14 +587,14 @@ class PasswordGenerator:
             password = ''.join(words)
 
         self._debug_print("Generated password", password)
-        return password
+        return (password, sentence) if _return_info else password
 
-    def generate_sentence_based_password_v3(self, sentence: Optional[str] = None,
-                                            char_position: Union[Literal["random", "keep"], int] = 'keep',
+    def generate_sentence_based_password_v3(self, sentence: _Optional[str] = None,
+                                            char_position: _Union[_Literal["random", "keep"], int] = 'keep',
                                             random_case: bool = True, extra_char: str = '/', num_length: int = 6,
                                             special_chars_length: int = 4,
                                             password_format: str = "{words}{special}{extra}{numbers}",
-                                            filter_: PasswordFilter = None):
+                                            filter_: PasswordFilter = None, _return_info: bool = False) -> str:
         if sentence is None:
             sentence = self.generate_secure_sentence(length=8)
         words = sentence.split(' ')
@@ -596,18 +637,75 @@ class PasswordGenerator:
                                           special=special_chars_string)
         self._debug_print("Final password:", password)
 
-        return password
+        return (password, sentence) if _return_info else password
 
 
-@strict
+class SecurePasswordGenerator:
+    def __init__(self, security: _Literal["weak", "average", "strong"]):
+        self._rng = _WeightedRandom({"weak": "random", "average": "np_random", "strong": "secrets"}[security])
+        self._gen = SpecificPasswordGenerator(self._rng)
+        self._gen.load_def_dict()
+
+    def generate_secure_password(self, predetermined: _Optional[_Literal["random", "passphrase", "pattern", "complex",
+                                                                       "mnemonic", "ratio", "words",
+                                                                       "sentence"]] = None) -> dict:
+        rnd = self._rng.randint(0, 7) if predetermined is None else \
+            {
+                "random": 0,
+                "passphrase": 1,
+                "pattern": 2,
+                "complex": 3,
+                "mnemonic": 4,
+                "ratio": 5,
+                "words": 6,
+                "sentence": 7
+            }[predetermined]
+        result = {"extra_info": "", "password": ""}
+
+        match rnd:
+            case 0:
+                pw = self._gen.generate_random_password()
+                result = {"extra_info": "Entirely random", "password": pw}
+            case 1:
+                pw = self._gen.generate_secure_passphrase(self._gen.words)
+                result = {"extra_info": "Passphrase, secure as it's very long.", "password": pw}
+            case 2:
+                pattern = ''.join(self._rng.choices("/XXXxxx-999", 28))
+                pw = self._gen.generate_pattern_password(pattern)
+                result = {"extra_info": f"A pattern password with the pattern '{pattern}'.", "password": pw}
+            case 3:
+                pw = self._gen.generate_complex_password()
+                result = {"extra_info": "Entirely random, a complex password.", "password": pw}
+            case 4:
+                pw, adj, noun = self._gen.generate_mnemonic_password(_return_info=True)
+                result = {"extra_info": f"A mnemonic password using the adj '{adj}' and the noun '{noun}'.",
+                          "password": pw}
+            case 5:
+                pw = self._gen.generate_ratio_based_password_v3()
+                result = {"extra_info": "Entirely random, a ratio based password.", "password": pw}
+            case 6:
+                pw, sentence = self._gen.generate_words_based_password_v3(_return_info=True)
+                result = {"extra_info": f"A words based password using the sentence '{sentence}_.", "password": pw}
+            case 7:
+                spec_char = self._rng.choice('!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~')
+                pattern = ''.join(self._rng.sample(["{words}", "{special}", "{extra}", "{numbers}"], 4))
+                pw, sentence = self._gen.generate_sentence_based_password_v3(extra_char=spec_char,
+                                                                             password_format=pattern, _return_info=True)
+                result = {"extra_info": f"A sentence based password using the sentence '{sentence}' "
+                                        f"and the pattern '{pattern}'.", "password": pw}
+
+        return result
+
+
+@_strict
 class SecurePasswordManager:
-    def __init__(self, key: bytes = secrets.token_bytes(32), debug: bool = False):
+    def __init__(self, key: bytes = _secrets.token_bytes(32), debug: bool = False):
         # The key should be securely generated and stored.
         self._key = key
-        self._passwords: Dict[str, str] = {}
-        self._temp_buffer: Dict[int, str] = {}
+        self._passwords: _Dict[str, str] = {}
+        self._temp_buffer: _Dict[int, str] = {}
 
-        self._pass_gen = PasswordGenerator(debug=debug)
+        self._pass_gen = SpecificPasswordGenerator(debug=debug)
         self._debug = debug
 
     @property
@@ -619,8 +717,8 @@ class SecurePasswordManager:
         self._debug = self._pass_gen.debug = new_value
 
     def add_password(self, account: str, username: str, password: str) -> None:
-        iv = secrets.token_bytes(16)
-        cipher = Cipher(algorithms.AES(self._key), modes.CBC(iv), backend=default_backend())
+        iv = _secrets.token_bytes(16)
+        cipher = _Cipher(_algorithms.AES(self._key), _modes.CBC(iv), backend=_default_backend())
         encryptor = cipher.encryptor()
 
         # Padding for AES block size
@@ -634,7 +732,7 @@ class SecurePasswordManager:
             raise ValueError("Account not found")
 
         data = self._passwords[account]
-        cipher = Cipher(algorithms.AES(self._key), modes.CBC(data['iv']), backend=default_backend())
+        cipher = _Cipher(_algorithms.AES(self._key), _modes.CBC(data['iv']), backend=_default_backend())
         decryptor = cipher.decryptor()
 
         decrypted_password = decryptor.update(data['password']) + decryptor.finalize()
@@ -649,35 +747,51 @@ class SecurePasswordManager:
 
         return self._temp_buffer[password_id]
 
-    def generate_ratio_based_password_v2(self, length: int = 16, letters_ratio: float = 0.5, numbers_ratio: float = 0.3,
-                                         punctuations_ratio: float = 0.2, unicode_ratio: float = 0,
-                                         extra_chars: str = '', exclude_chars: str = '', exclude_similar: bool = False):
-        return self._pass_gen.generate_ratio_password_v2(length, letters_ratio, numbers_ratio, punctuations_ratio,
-                                                         unicode_ratio, extra_chars, exclude_chars, exclude_similar)
+    def generate_ratio_based_password(self, length: int = 16, letters_ratio: float = 0.5, numbers_ratio: float = 0.3,
+                                      punctuations_ratio: float = 0.2, unicode_ratio: float = 0,
+                                      extra_chars: str = '', exclude_chars: str = '', exclude_similar: bool = False
+                                      ) -> str:
+        return self._pass_gen.generate_ratio_based_password_v3(length, letters_ratio, numbers_ratio, punctuations_ratio,
+                                                               unicode_ratio, filter_=PasswordFilter(exclude_chars,
+                                                                                                     extra_chars,
+                                                                                                     exclude_similar))
 
-    def generate_sentence_based_password_v2(self, sentence: str, shuffle_words: bool = True,
-                                            shuffle_characters: bool = True):
-        return self._pass_gen.generate_words_password_v2(sentence, shuffle_words, shuffle_characters)
+    def generate_sentence_based_password(self, sentence: str, shuffle_words: bool = True,
+                                         shuffle_characters: bool = True) -> str:
+        return self._pass_gen.generate_words_based_password_v3(sentence, shuffle_words, shuffle_characters)
 
-    def generate_custom_sentence_based_password_v2(self, sentence: str,
-                                                   char_position: Union[Literal["random", "keep"], int] = 'random',
-                                                   random_case: bool = False, extra_char: str = '', num_length: int = 0,
-                                                   special_chars_length: int = 0):
-        return self._pass_gen.generator_sentence_password_v2(sentence, char_position, random_case, extra_char,
-                                                             num_length, special_chars_length)
+    def generate_custom_sentence_based_password(self, sentence: str,
+                                                char_position: _Union[_Literal["random", "keep"], int] = 'random',
+                                                random_case: bool = False, extra_char: str = '', num_length: int = 0,
+                                                special_chars_length: int = 0) -> str:
+        return self._pass_gen.generate_sentence_based_password_v3(sentence, char_position, random_case, extra_char,
+                                                                  num_length, special_chars_length)
 
 
-PasswordGenerator().reduce_password("HELLO WORLD", by=1)
-from zxcvbn import zxcvbn
+class PasswordCrackEstimator:
+    """Using zxcvbn to deliver an easy result as it's a hard to find and a bit confusing package for beginners."""
+    @staticmethod
+    def estimate_time_to_crack(password: str) -> tuple:
+        result = _zxcvbn(password)
+        return result["password"], result["crack_times_display"]
 
-def tell_pass_sec(password):
-    result = zxcvbn(password)
-    return result["password"], result["crack_times_seconds"]#crack_times_display
+    @staticmethod
+    def tell_pass_sec(password: str) -> tuple:
+        result = _zxcvbn(password)
+        return result["password"], result["crack_times_seconds"]
+
+
+generator = SecurePasswordGenerator("strong")
+for _ in range(6):
+    print(generator.generate_secure_password(predetermined="passphrase"))
+
+print("REDC", SpecificPasswordGenerator().reduce_password("HELLO WORLD", by=0))
+print(SpecificPasswordGenerator().secure_password("Hello World", passes=1, expand=False))
 
 
 # Function to test the average worst-case time to crack passwords
 def tes_password_strength(preset, num_passwords=1000):
-    generator = PasswordGenerator()
+    generator = SpecificPasswordGenerator()
     generator.load_def_dict()
     worst_times = []
 
@@ -702,7 +816,7 @@ presets = [
     {'length': 24},
     {'length': 26}
 ]
-presets = [
+presetsV2 = [
     {'length': 1},
     {'length': 2},
     {'length': 3},
@@ -727,6 +841,11 @@ def tell_pass_sec(password):
     return result["password"], "Worst Case: " + result["crack_times_display"]["offline_fast_hashing_1e10_per_second"]
 
 
+generator = SecurePasswordGenerator("strong")
+for _ in range(6):
+    print(tell_pass_sec(generator.generate_secure_password()["password"]))
+
+
 if __name__ == "__main__":
     from aplustools.package.timid import TimidTimer
 
@@ -745,19 +864,18 @@ if __name__ == "__main__":
     print(tell_pass_sec(QuickGeneratePasswords.generate_sentence_based_password("WwWn!")))
     print(timer.end())
 
-    password_generator = PasswordGenerator()
+    password_generator = SpecificPasswordGenerator()
 
     # Generate different types of passwords
     timer.start()
     password_generator.load_def_dict()
     print("Sentence_V3", tell_pass_sec(password_generator.generate_sentence_based_password_v3()))
-    print("Default", tell_pass_sec(password_generator.generate_password(filter_=password_filter)))
-    print("Phrase", tell_pass_sec(password_generator.generate_passphrase(filter_=password_filter)))
+    print("Default", tell_pass_sec(password_generator.generate_random_password(filter_=password_filter)))
+    print("Phrase", tell_pass_sec(password_generator._generate_passphrase(filter_=password_filter)))
     print("Pattern", tell_pass_sec(password_generator.generate_pattern_password(filter_=password_filter)))
     print("Complex", tell_pass_sec(password_generator.generate_complex_password(filter_=password_filter)))
     print("Mnemonic", tell_pass_sec(password_generator.generate_mnemonic_password(filter_=password_filter)))
     print(timer.end())
-    input()
 
     from matplotlib import pyplot
 
@@ -771,183 +889,17 @@ if __name__ == "__main__":
     # print(gen.gen_sentence_pw_v2("Hello my beautiful world!!", char_position="keep"), timer.tock())
     # print(gen.gen_sentence_pw_v3("Hello my beautiful world!!", char_position="keep", filter_=PasswordFilter(exclude_chars="Helo")), timer.end())
 
-    manager = SecurePasswordManager()
-    password = manager.generate_ratio_based_password_v2(length=26, letters_ratio=0.5, numbers_ratio=0.3,
-                                                        punctuations_ratio=0.2, exclude_similar=True)
-    manager.add_password("example.com", "json-the-greatest", password)
-    manager.store_in_buffer("example.com", 0)  # Stores unencrypted password in a buffer
-    print(manager.get_password("example.com"), "|", manager.use_from_buffer(0))  # for faster access.
+    # manager = SecurePasswordManager()
+    # password = manager.generate_ratio_based_password_v2(length=26, letters_ratio=0.5, numbers_ratio=0.3,
+    #                                                     punctuations_ratio=0.2, exclude_similar=True)
+    # manager.add_password("example.com", "json-the-greatest", password)
+    # manager.store_in_buffer("example.com", 0)  # Stores unencrypted password in a buffer
+    # print(manager.get_password("example.com"), "|", manager.use_from_buffer(0))  # for faster access.
 
-    print(GenerateWeakPasswords.generate_custom_sentence_based_password_v1(
-        "Exploring the unknown -- discovering new horizons...", random_case=True, extra_char="_",
-        char_position="keep", num_length=5, special_chars_length=2))
-
-
-class CharSet(Enum):
-    NUMERIC = "Numeric"
-    ALPHA = "Alphabetic"
-    ALPHANUMERIC = "Alphanumeric"
-    ASCII = "ASCII"
-    UNICODE = "Unicode"
-
-
-class ComputerType(Enum):
-    # Operations per second
-    FASTEST_COMPUTER = 10**30 // 2  # One Quintillion (exascale), divided by 2 due to storage speed limits
-    SUPERCOMPUTER = 1_102_000_000_000_000_000 // 2  # (Frontier), divided by 2 due to storage speed limits
-    HIGH_END_PC = 1_000_000_000  # high-end desktop x86 processor
-    NORMAL_PC = 50_000_000  # Example: A standard home computer
-    OFFICE_PC = 1_000_000  # Example: An office PC
-    OLD_XP_MACHINE = 10_000  # Example: An old Windows XP machine
-    UNTHROTTLED_ONLINE = 10
-    THROTTLED_ONLINE = 0.02777777777777778
-
-
-class Efficiency(Enum):
-    LOW = 0.5  # Low efficiency
-    MEDIUM = 0.75  # Medium efficiency
-    HIGH = 1.0  # High efficiency
-
-
-class HashingAlgorithm(Enum):
-    NTLM = 1_000_000_000  # NTLM (fast)
-    MD5 = 500_000_000  # MD5 (medium speed)
-    SHA1 = 200_000_000  # SHA1 (slow)
-    BCRYPT = 1_000  # bcrypt (very slow)
-
-
-class PasswordCrackEstimator:
-    CHARSET_RANGES = {
-        CharSet.NUMERIC: "0123456789",
-        CharSet.ALPHA: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ",
-        CharSet.ALPHANUMERIC: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
-        CharSet.ASCII: ''.join(chr(i) for i in range(128)),
-        CharSet.UNICODE: ''.join(chr(i) for i in range(1114112))
-    }
-
-    CHARSET_SIZES = {
-        CharSet.NUMERIC: 10,
-        CharSet.ALPHA: 26 * 2,
-        CharSet.ALPHANUMERIC: 10 + 26 * 2,
-        CharSet.ASCII: 128,
-        CharSet.UNICODE: 1114112
-    }
-
-    def __init__(self, charset, computer_type, efficiency, hashing_algorithm):
-        self.charset = charset
-        self.computer_type = computer_type
-        self.efficiency = efficiency
-        self.hashing_algorithm = hashing_algorithm
-
-    def estimate_time_to_crack(self, password: str, length_range: Optional[Union[int, tuple]] = None,
-                               personal_info: Optional[list] = None):
-        cleaned_password = self._remove_common_patterns(password, personal_info)
-        if not self._filter_by_charset(password):
-            return cleaned_password, "Password not in charset"
-
-        if isinstance(length_range, int):
-            length_range = (length_range, length_range)
-        else:
-            length_range = length_range
-
-        if length_range and (len(cleaned_password) < length_range[0] or len(cleaned_password) > length_range[1]):
-            return cleaned_password, "Password length is outside the specified range"
-
-        charset_size = self.CHARSET_SIZES[self.charset]
-        if length_range:
-            min_length, max_length = length_range
-            total_combinations = sum(charset_size ** length for length in range(min_length, max_length + 1))
-        else:
-            total_combinations = charset_size ** len(cleaned_password)
-
-        adjusted_ops_per_second = self.computer_type.value * self.efficiency.value * self.hashing_algorithm.value
-        estimated_seconds = total_combinations / adjusted_ops_per_second
-        return cleaned_password, self._format_time(estimated_seconds)
-
-    def _remove_common_patterns(self, password, personal_info):
-        common_patterns = self._generate_common_patterns()
-        for pattern in common_patterns:
-            if pattern in password:
-                password = password.replace(pattern, "")
-
-        if personal_info:
-            personal_info.extend(self._generate_birthday_formats(personal_info))
-            for info in personal_info:
-                if info in password:
-                    password = password.replace(info, "")
-                if self._is_significant_match(info, password):
-                    password = ''.join([c for c in password if c not in info])
-
-        return password
-
-    def _filter_by_charset(self, password):
-        valid_chars = self.CHARSET_RANGES[self.charset]
-        for char in password:
-            if char in valid_chars:
-                continue
-            return False
-        return True
-
-    def _generate_common_patterns(self):
-        patterns = []
-        for i in range(10000):  # Generate number sequences from 0000 to 9999
-            patterns.append(str(i).zfill(4))
-            patterns.append(str(i).zfill(4)[::-1])  # Add reversed patterns
-        return patterns
-
-    @staticmethod
-    def _generate_birthday_formats(personal_info):
-        formats = []
-        for info in personal_info:
-            if len(info) == 8 and info.isdigit():  # YYYYMMDD
-                year, month, day = info[:4], info[4:6], info[6:8]
-                formats.extend([
-                    f"{year}{month}{day}",
-                    f"{day}{month}{year}",
-                    f"{month}{day}{year}",
-                    f"{year}-{month}-{day}",
-                    f"{day}-{month}-{year}",
-                    f"{month}-{day}-{year}",
-                    f"{month}-{day}",
-                    f"{month}{day}",
-                    f"{day}-{month}",
-                    f"{day}{month}",
-                    f"{year}-{day}",
-                    f"{year}{day}",
-                    f"{day}-{year}",
-                    f"{day}{year}"
-                    f"{year}-{month}",
-                    f"{year}{month}",
-                    f"{month}-{year}",
-                    f"{month}{year}"
-                ])
-        return formats
-
-    def _is_significant_match(self, info, password):
-        matches = sum(1 for char in info if char in password)
-        return matches / len(info) >= 0.9
-
-    def _format_time(self, seconds):
-        if seconds < 60:
-            return f"{seconds:.2f} seconds"
-        elif seconds < 3600:
-            return f"{seconds / 60:.2f} minutes"
-        elif seconds < 86400:
-            return f"{seconds / 3600:.2f} hours"
-        elif seconds < 31536000:
-            return f"{seconds / 86400:.2f} days"
-        else:
-            return f"{nice_number(int(seconds / 31536000))} years"
+    print(QuickGeneratePasswords.generate_custom_sentence_based_password_v2(
+        "Exploring the unknown -- discovering new horizons..."))
 
 
 if __name__ == "__main__":
-    charset = CharSet.ASCII
-    computer_type = ComputerType.THROTTLED_ONLINE
-    efficiency = Efficiency.HIGH
-    hashing_algorithm = HashingAlgorithm.BCRYPT
-
-    estimator = PasswordCrackEstimator(charset, computer_type, efficiency, hashing_algorithm)
     password = "HMBlw:_88008?@"
-    personal_info = ["John", "19841201", "Doe"]
-    actual_password, time_to_crack = estimator.estimate_time_to_crack(password, length_range=(1, 24), personal_info=personal_info)
-    print(f"Estimated time to crack the password '{password}' [{actual_password}]: {time_to_crack}")
+    print(PasswordCrackEstimator.estimate_time_to_crack(password))

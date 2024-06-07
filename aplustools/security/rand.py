@@ -1,4 +1,5 @@
 from typing import Callable, Type, Protocol, Union, Any, List, Literal
+from numpy import random as np_random
 import secrets
 import random
 import math
@@ -164,6 +165,49 @@ class CustomRandomGenerator:
     def generate_random_string(cls, length: int, char_set: str = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ") -> str:
         return ''.join(cls.choice(char_set) for _ in range(length))
 
+    @classmethod
+    def binomialvariate(cls, n: int, p: float) -> int:
+        successes = 0
+        for _ in range(n):
+            if cls.random() < p:
+                successes += 1
+        return successes
+
+    @classmethod
+    def vonmisesvariate(cls, mu: float, kappa: float) -> float:
+        if kappa <= 1e-6:
+            return cls.uniform(0, 2 * math.pi)
+
+        a = 1 + math.sqrt(1 + 4 * kappa ** 2)
+        b = (a - math.sqrt(2 * a)) / (2 * kappa)
+        r = (1 + b ** 2) / (2 * b)
+
+        while True:
+            u1 = cls.random()
+            z = math.cos(math.pi * u1)
+            f = (1 + r * z) / (r + z)
+            c = kappa * (r - f)
+
+            u2 = cls.random()
+            if u2 < c * (2 - c) or u2 <= c * math.exp(1 - c):
+                u3 = cls.random()
+                theta = mu if u3 < 0.5 else mu + math.pi
+                return (theta + math.acos(f)) % (2 * math.pi)
+
+    @classmethod
+    def normalvariate(cls, mu: float, sigma: float) -> float:
+        return cls.gauss(mu, sigma)
+
+    @classmethod
+    def paretovariate(cls, alpha: float) -> float:
+        u = cls.random()
+        return 1 / (u ** (1 / alpha))
+
+    @classmethod
+    def weibullvariate(cls, alpha: float, beta: float) -> float:
+        u = cls.random()
+        return alpha * (-math.log(1 - u)) ** (1 / beta)
+
 
 def os_random() -> float:
     return int.from_bytes(os.urandom(7), "big") / (1 << 56)
@@ -178,8 +222,8 @@ SecretsRandomGenerator = CustomRandomGenerator.setup_random_func(secrets_random)
 
 
 class WeightedRandom:
-    def __init__(self, generator: Literal["random", "os", "sys_random", "secrets"] = "sys_random"):
-        self._generator = {"random": random, "os": OSRandomGenerator, "sys_random": secrets.SystemRandom(),
+    def __init__(self, generator: Literal["random", "np_random", "os", "sys_random", "secrets"] = "sys_random"):
+        self._generator = {"random": random, "np_random": np_random, "os": OSRandomGenerator, "sys_random": secrets.SystemRandom(),
                            "secrets": SecretsRandomGenerator}[generator]
 
     def random(self) -> float:
@@ -233,7 +277,7 @@ class WeightedRandom:
         """
         return self._generator.shuffle(seq)
 
-    def sample(self, s: Union[str, list], k: int):
+    def sample(self, s: Union[str, list, range], k: int):
         return self._generator.sample(s, k)
 
     @staticmethod
@@ -425,6 +469,10 @@ class WeightedRandom:
             return slopes[-1] * (x - breakpoints[-1])
 
         return self._transform_and_scale(self._generator.random(), piecewise, lower_bound, upper_bound)
+
+    def binomial(self, n, p):
+        secrets.SystemRandom().bi
+        OSRandomGenerator.bi
 
 
 if __name__ == "__main__":
