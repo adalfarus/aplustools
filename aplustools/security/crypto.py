@@ -10,7 +10,7 @@ import secrets
 import os
 
 
-from aplustools.security.passwords import PasswordGenerator, PasswordFilter
+from aplustools.security.passwords import SpecificPasswordGenerator, PasswordFilter
 from aplustools.io.environment import save_remove
 from tempfile import mkdtemp
 from quantcrypt.kem import Kyber
@@ -220,7 +220,7 @@ class ModernCryptUtils:
 
     @staticmethod
     def generate_secure_password(length: int = 24):
-        return PasswordGenerator().generate_ratio_based_password_v3(length, filter_=PasswordFilter(exclude_similar=True))
+        return SpecificPasswordGenerator().generate_ratio_based_password_v3(length, filter_=PasswordFilter(exclude_similar=True))
 
     @staticmethod
     def hash(password: str, hash_type: Literal["argon2"] = "argon2") -> str:
