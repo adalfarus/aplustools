@@ -162,7 +162,7 @@ class CustomRandomGenerator:
         return ''.join(cls.sample(s, k))
 
     @classmethod
-    def generate_random_string(cls, length: int, char_set: str = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ") -> str:
+    def generate_random_string(cls, length: int, char_set: str = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~') -> str:
         return ''.join(cls.choice(char_set) for _ in range(length))
 
     @classmethod
@@ -223,8 +223,8 @@ SecretsRandomGenerator = CustomRandomGenerator.setup_random_func(secrets_random)
 
 class WeightedRandom:
     def __init__(self, generator: Literal["random", "np_random", "os", "sys_random", "secrets"] = "sys_random"):
-        self._generator = {"random": random, "np_random": np_random, "os": OSRandomGenerator, "sys_random": secrets.SystemRandom(),
-                           "secrets": SecretsRandomGenerator}[generator]
+        self._generator = {"random": random, "np_random": np_random, "os": OSRandomGenerator,
+                           "sys_random": secrets.SystemRandom(), "secrets": SecretsRandomGenerator}[generator]
 
     def random(self) -> float:
         return self._generator.random()
@@ -469,10 +469,6 @@ class WeightedRandom:
             return slopes[-1] * (x - breakpoints[-1])
 
         return self._transform_and_scale(self._generator.random(), piecewise, lower_bound, upper_bound)
-
-    def binomial(self, n, p):
-        secrets.SystemRandom().bi
-        OSRandomGenerator.bi
 
 
 if __name__ == "__main__":

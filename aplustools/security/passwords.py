@@ -1,3 +1,5 @@
+import os
+
 from cryptography.hazmat.primitives.ciphers import Cipher as _Cipher, algorithms as _algorithms, modes as _modes
 from typing import Union as _Union, Literal as _Literal, Optional as _Optional, Dict as _Dict, Tuple as _Tuple
 from cryptography.hazmat.backends import default_backend as _default_backend
@@ -306,19 +308,25 @@ class SpecificPasswordGenerator:
             print(*args, **kwargs)
 
     def load_def_dict(self):
-        with _resources.path("aplustools.security", "def-dict.txt") as file_path:
+        with _resources.path("aplustools.security.dicts", "def-dict.txt") as file_path:
             with open(file_path, "r") as f:
                 self.words.extend([line.strip() for line in f])
 
     def load_google_10000_dict(self):
-        with _resources.path("aplustools.security", "google-10000-dict.txt") as file_path:
+        with _resources.path("aplustools.security.dicts", "google-10000-dict.txt") as file_path:
             with open(file_path, "r") as f:
                 self.words.extend([line.strip() for line in f])
 
     def load_scowl_dict(self, size: _Literal[50, 60, 70, 80, 95] = 50):
-        with _resources.path("aplustools.security", f"scowl-{size}-dict.txt") as file_path:
+        with _resources.path("aplustools.security.dicts", f"scowl-{size}-dict.txt") as file_path:
             with open(file_path, "r") as f:
                 self.words.extend([line.strip() for line in f])
+
+    def load_12_dicts(self):
+        with _resources.path("aplustools.security.dicts", "12-dicts") as file_path:
+            for file in os.listdir(file_path):
+                with open(os.path.join(file_path, file), "r") as f:
+                    self.words.extend([line.strip() for line in f])
 
     def unload_dicts(self):
         self.words = []
@@ -711,6 +719,11 @@ class SecurePasswordGenerator:
                                         f"and the pattern '{pattern}'.", "password": pw}
 
         return result
+
+
+class PasswordReGenerator:
+    def __init__(self):
+        pass
 
 
 @_strict
