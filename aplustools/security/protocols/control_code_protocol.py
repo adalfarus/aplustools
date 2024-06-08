@@ -78,6 +78,8 @@ class ControlCodeProtocol:
                 control_code, add_in = rest[:2]
                 for key, value in self._control_codes.items():
                     if control_code == value:
+                        if add_in is not None:
+                            add_in = add_in[1:-1]
                         return key, add_in
                 return "Invalid control code", None
             return "Invalid key", None

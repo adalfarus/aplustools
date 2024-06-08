@@ -142,7 +142,7 @@ class SecureSocketServer:
                         print("Shutting down server")
                         break
                     elif chunk.code == "input":
-                        inp = input(chunk.add)
+                        inp = input(chunk.add if chunk.add is not None else "")
                         self._encoder.add_message(inp)
 
                         encoded_blocks = self._encoder.flush()
