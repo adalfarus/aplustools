@@ -36,6 +36,9 @@ class ControlCodeProtocol:
     def get_exec_code_delimiters(self) -> tuple:
         return self._exec_code_start, self._exec_code_end
 
+    def get_comm_code(self) -> str:
+        return self._comm_code
+
     @staticmethod
     def _generate_random_string(length):
         # Calculate how many bytes are needed to get the desired string length after Base64 encoding
@@ -48,8 +51,17 @@ class ControlCodeProtocol:
         # Return the required length
         return random_string_base64[:length]
 
+    def _escape(self, string: str):
+        for escape in [self._exec_code_start, self._exec_code_end, '"']:
+            string = string.replace(escape, f"\\{escape}")
+        return string
+
     def get_control_code(self, control_code: str, add_in: Optional[str] = None) -> str:
-        add_in_str = f"{self._exec_code_delimiter}{add_in}" if add_in else ""
+        if add_in:
+            add_in = ('"' + self._escape(add_in) + '"')
+            add_in_str = f"{self._exec_code_delimiter}{add_in}"
+        else:
+            add_in_str = ""
         return (f"{self._exec_code_start}"
                 f"{self._comm_code}{self._exec_code_delimiter}{self._control_codes.get(control_code.lower())}"
                 f"{add_in_str}{self._exec_code_end}")
@@ -99,3 +111,9 @@ class _ControlCode:
 
 def is_control_code(obj: Any) -> bool:
     return isinstance(obj, _ControlCode)
+
+
+if __name__ == "__main__":
+    protocol = ControlCodeProtocol()
+    print(protocol.get_control_code("input", '"HELLO WORLD" [Please input your message]: '))
+    print(protocol.get_control_code("input", f'[{protocol.get_control_code.__self__._comm_code}::IN::"EXX"]'))

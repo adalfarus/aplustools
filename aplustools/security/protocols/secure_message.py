@@ -207,39 +207,52 @@ class MessageDecoder:
 
         return actual_message
 
-    def add_chunk(self, encrypted_chunk):
-        # Decrypt and validate the chunk
-        try:
-            decrypted_chunk = self._decrypt_and_validate_chunk(encrypted_chunk).decode('utf-8')
-        except Exception as e:
-            print(f"Error in decryption/validation: {e}")
-            return
-        self._buffer += decrypted_chunk
-
+    def _split_buffer_into_parts(self):
         # Process complete and partial messages in buffer
-        exec_start, exec_end = self._protocol.get_exec_code_delimiters()
-        pattern = fr'(\{exec_start}{exec_start}^\{exec_end}{exec_end}+\{exec_end})|({exec_start}^\{exec_start}\{exec_end}{exec_end}+)'
-        matches = re.findall(pattern, self._buffer)
+        exec_start, exec_end = map(re.escape, self._protocol.get_exec_code_delimiters())
+        comm_code = re.escape(self._protocol.get_comm_code())
+        pattern = re.compile(r'(' + exec_start + comm_code + r'::.*?[^\\]' + exec_end + ')')
+        matches = pattern.finditer(self._buffer)
 
         if not matches:
             return
 
-        # Flatten the tuple results and filter out empty matches
-        parsed_parts = [part for match in matches for part in match if part]
-        validations = []
-
+        # Initial positions
         last_end = 0
+        results = []
+
+        for match in matches:
+            start, end = match.span()
+            # Append everything before the current match that hasn't been matched yet
+            if start > last_end:
+                results.append(self._buffer[last_end:start])
+            # Append the current match
+            results.append(match.group(0))
+            last_end = end
+
+        # Append any remaining part of the text after the last match
+        if last_end < len(self._buffer):
+            results.append(self._buffer[last_end:])
+
+        return results
+
+    def _process_parsed_parts(self, parsed_parts):
+        # Validate and process the parsed parts
+        validations = []
+        last_end = 0
+
         for i, expression in enumerate(parsed_parts):
             try:
                 validation_result, add_in = self._protocol.validate_control_code(expression)
             except ValueError:
                 continue
+
             if validation_result == "end":
                 # Consider message as complete
                 self._complete_buffer[-1] += ''.join(parsed_parts[last_end:i])
                 len_to_remove = len(self._complete_buffer[-1]) + len(parsed_parts[i])
                 self._buffer = self._buffer[len_to_remove:]
-                last_end = i
+                last_end = i + 1  # Move to the next part
                 self._complete_buffer.extend([_ControlCode(validation_result, add_in)] + validations + [""])
                 validations.clear()
             elif validation_result in ["Invalid control code", "Invalid key"]:
@@ -251,11 +264,25 @@ class MessageDecoder:
                 start_index = self._buffer.find(expression)
                 end_index = start_index + len(expression)
                 self._buffer = self._buffer[:start_index] + self._buffer[end_index:]
+
         if self._complete_buffer[-1] == "":
             self._complete_buffer = self._complete_buffer[:-1]
+
         self._complete_buffer.extend(validations)
         self._complete_buffer.append("")
         validations.clear()
+
+    def add_chunk(self, encrypted_chunk):
+        # Decrypt and validate the chunk
+        try:
+            decrypted_chunk = self._decrypt_and_validate_chunk(encrypted_chunk).decode('utf-8')
+        except Exception as e:
+            print(f"Error in decryption/validation: {e}")
+            return
+        self._buffer += decrypted_chunk
+
+        parsed_parts = self._split_buffer_into_parts()
+        self._process_parsed_parts(parsed_parts)
 
     def get_complete(self):
         return_lst = self._complete_buffer[:-1] if self._complete_buffer[-1] == "" else self._complete_buffer
@@ -271,15 +298,49 @@ class MessageDecoder:
 
 
 if __name__ == "__main__":
+    from aplustools.security.rand import SecretsRandomGenerator
+    from aplustools.package.timid import TimidTimer
+
+    timer = TimidTimer()
     protocol = ControlCodeProtocol()
 
     decoder = MessageDecoder(protocol=protocol)
     encoder = MessageEncoder(protocol=protocol, public_key_bytes=decoder.get_public_key_bytes())
 
-    encoder.add_message("HEllo")
-    message = encoder.flush()
+    while True:
+        try:
+            # Generate and add random messages
+            random_messages = [SecretsRandomGenerator.generate_random_string(length=50) for _ in range(5)]
 
-    for chunk in message:
-        decoder.add_chunk(chunk)
+            for msg in random_messages:
+                encoder.add_message(msg)
 
-    print(decoder.get_complete())
+            message = encoder.flush()
+
+            for chunk in message:
+                decoder.add_chunk(chunk)
+
+            decoded_messages = decoder.get_complete()
+
+            # Verify the results
+            correct = True
+            for msg in random_messages:
+                if msg not in decoded_messages:
+                    print(f"Missing message: {msg}")
+                    correct = False
+
+            control_codes_correct = all(
+                isinstance(part, _ControlCode) or isinstance(part, str) for part in decoded_messages
+            )
+
+            if correct and control_codes_correct:
+                print("All messages and control codes are correct.")
+            else:
+                print("There was an error in the encoding/decoding process.")
+                raise KeyboardInterrupt
+
+            end = timer.tock()
+            print("Decoded messages:", decoded_messages)
+            print("Time taken:", end)
+        except KeyboardInterrupt:
+            print("Ending")

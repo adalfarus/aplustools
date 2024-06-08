@@ -13,19 +13,30 @@ packages = [
   "aplustools.tests",
   "aplustools.io.gui",
   "aplustools.security",
-  "aplustools.security.protocols"
+  "aplustools.security.protocols",
+  "aplustools.security.dicts"
 ]
 include-package-data = true
 
 [tool.setuptools.package-data]
-"aplustools.security" = [
+"aplustools.security.dicts" = [
   "def-dict.txt",
   "google-10000-dict.txt",
   "scowl-50-dict.txt",
   "scowl-60-dict.txt",
   "scowl-70-dict.txt",
   "scowl-80-dict.txt",
-  "scowl-95-dict.txt"
+  "scowl-95-dict.txt",
+  "12-dicts/2of4brif.txt",
+  "12-dicts/2of5core.txt",
+  "12-dicts/2of12.txt",
+  "12-dicts/2of12inf.txt",
+  "12-dicts/3esl.txt",
+  "12-dicts/3of6all.txt",
+  "12-dicts/3of6game.txt",
+  "12-dicts/5d+2a.txt",
+  "12-dicts/6of12.txt",
+  "12-dicts/6phrase.txt"
 ]
 
 [project]
