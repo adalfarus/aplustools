@@ -137,7 +137,7 @@ def absolute_path(relative_path: str, file_path: str) -> str:
     return _os.path.join(base_dir, relative_path)
 
 
-def save_remove(paths: _typing.Union[str, _Path, _typing.Tuple[_typing.Union[str, _Path]],
+def remove(paths: _typing.Union[str, _Path, _typing.Tuple[_typing.Union[str, _Path]],
                                      _typing.List[_typing.Union[str, _Path]]]):
     if not isinstance(paths, list):
         paths = (str(paths),) if isinstance(paths, (str, _Path)) else tuple(str(p) for p in paths)
@@ -154,11 +154,19 @@ def save_remove(paths: _typing.Union[str, _Path, _typing.Tuple[_typing.Union[str
                     else:
                         _shutil.rmtree(path)
                 else:
-                    print("Bug, please report")
+                    raise OSError(f"Bug, please report, path {path} is neither a file or a directory.")
             else:
-                print("Path not accessible")
+                raise ValueError(f"Path {path} not accessible")
         else:
-            print("Path doesn't exist")
+            raise ValueError(f"Path {path} doesn't exist.")
+
+
+def safe_remove(paths: _typing.Union[str, _Path, _typing.Tuple[_typing.Union[str, _Path]],
+                                     _typing.List[_typing.Union[str, _Path]]]):
+    try:
+        remove(paths)
+    except Exception as e:
+        print(e)
 
 
 def contains_only_directories(path: str) -> bool:
@@ -292,6 +300,20 @@ def privatize(cls: _typing.Type[_typing.Any]):
 
 
 def auto_repr(cls):
+    """
+    Decorator that automatically generates a __repr__ method for a class.
+    """
+    if cls.__repr__ is object.__repr__:
+        def __repr__(self):
+            attributes = ', '.join(f"{key}={getattr(self, key)}" for key in self.__dict__ if not key.startswith("_")
+                                   or (key.startswith("__") and key.endswith("__")))
+            return f"{cls.__name__}({attributes})"
+
+        cls.__repr__ = __repr__
+    return cls
+
+
+def auto_repr_with_privates(cls):
     """
     Decorator that automatically generates a __repr__ method for a class.
     """

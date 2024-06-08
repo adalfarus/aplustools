@@ -3,7 +3,30 @@ requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-packages = ["aplustools", "aplustools.data", "aplustools.io", "aplustools.utils", "aplustools.web", "aplustools.package", "aplustools.tests", "aplustools.io.gui", "aplustools.security", "aplustools.security.protocols"]
+packages = [
+  "aplustools",
+  "aplustools.data",
+  "aplustools.io",
+  "aplustools.utils",
+  "aplustools.web",
+  "aplustools.package",
+  "aplustools.tests",
+  "aplustools.io.gui",
+  "aplustools.security",
+  "aplustools.security.protocols"
+]
+include-package-data = true
+
+[tool.setuptools.package-data]
+"aplustools.security" = [
+  "def-dict.txt",
+  "google-10000-dict.txt",
+  "scowl-50-dict.txt",
+  "scowl-60-dict.txt",
+  "scowl-70-dict.txt",
+  "scowl-80-dict.txt",
+  "scowl-95-dict.txt"
+]
 
 [project]
 name = "aplustools"

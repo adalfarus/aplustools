@@ -163,6 +163,13 @@ from aplustools.security.passwords import QuickGeneratePasswords
 input_sentence = input("Please input a sentence of your choosing: ")
 password = QuickGeneratePasswords.generate_sentence_based_password(input_sentence)
 print(f"Your password is {password}")
+
+
+from aplustools.security.passwords import SecurePasswordGenerator
+
+generator = SecurePasswordGenerator("strong")
+secure_password = generator.generate_secure_password()
+print(f"Secure password {secure_password}")
 ````
 
 (If you want to ensure that all dependencies are installed please run `upype import aplustools; aplustools.install_all_dependencies()`)

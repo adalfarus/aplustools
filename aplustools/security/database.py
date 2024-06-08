@@ -1,6 +1,12 @@
 from aplustools.security.crypto import CryptUtils
-from typing import Dict, Any
+from typing import Dict, Any, Union
 import sqlite3
+import os
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+import base64
 
 
 class SecureDatabase:
@@ -9,7 +15,7 @@ class SecureDatabase:
 
     def _get_all_tables(self) -> tuple:
         cursor = self.conn.cursor()
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%';")
         tables = cursor.fetchall()
         return tuple(table[0] for table in tables)
 
@@ -30,79 +36,96 @@ class SecureDatabase:
             cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN encrypted TEXT;")
             self.conn.commit()
 
-    @staticmethod
-    def _step_through(dic):
-        curr_dict = dic
-        while True:
-            try:
-                key, value = next(iter(curr_dict.items()))
-                yield key
-                curr_dict = value
-            except StopIteration:
-                 break
+    def _encrypt_data(self, data: str, password: str, return_in_base64: bool = False) -> Union[bytes, str]:
+        salt = os.urandom(16)
+        kdf = PBKDF2HMAC(
+            algorithm=hashes.SHA256(),
+            length=32,
+            salt=salt,
+            iterations=100000,
+            backend=default_backend()
+        )
+        key = kdf.derive(password.encode())
 
-    def _get_all(self, levels):
-        curr_config = []
-        for level in levels:
-            curr_config.append(level[0])
+        iv = os.urandom(16)
+        cipher = Cipher(algorithms.AES(key), modes.GCM(iv), backend=default_backend())
+        encryptor = cipher.encryptor()
+        encrypted_data = encryptor.update(data.encode()) + encryptor.finalize()
 
-        all_getter = [self._get_all_tables, self._get_all_columns, lambda *args: "*"][len(curr_config)]
-        return all_getter(*curr_config)
+        if return_in_base64:
+            # Return base64 encoded string
+            return base64.b64encode(salt + iv + encryptor.tag + encrypted_data).decode('utf-8')
+        return salt + iv + encryptor.tag + encrypted_data
 
-    def _encrypt_data(self, data: str, password: str) -> bytes:
-        key = CryptUtils.generate_aes_key(256)
-        iv, encrypted_data, tag = CryptUtils.aes_encrypt(data.encode(), key)
-        return CryptUtils.pack_ae_data(iv, encrypted_data, tag)
-
-    def encrypt(self, encryption_config: Dict[str, Any], password: str):
+    def encrypt(self, encryption_config: Dict[str, Any], password: str, save_in_base64: bool = False):
         cursor = self.conn.cursor()
 
-        levels = []
-        for config in self._step_through(encryption_config):
-            if isinstance(config, tuple):
-                levels.append(config)
+        got = encryption_config.get("ALL", None)
+        if got is not None:
+            encryption_config = {table: {"columns": got, "rows": "ALL"} for table in self._get_all_tables()}
+
+        for table, config in encryption_config.items():
+            columns = config.get("columns", "ALL")
+            rows = config.get("rows", "ALL")
+
+            self._add_encrypted_column(table)
+
+            # if columns == "ALL":
+            #     columns = self._get_all_columns(table)
+
+            if rows == "ALL":
+                cursor.execute(f"SELECT rowid, * FROM {table}")
             else:
-                levels.append((config,) if config != "ALL" else (self._get_all(levels)))
+                cursor.execute(f"SELECT rowid, * FROM {table} WHERE {rows}")
+            rows_data = cursor.fetchall()
+            all_columns = self._get_all_columns(table)
 
-        print(levels)
+            for row in rows_data:
+                primary_key_value = row[0]
+                encrypted_row = list(row[1:])  # exclude rowid
+                encryption_bits = ""
 
-        for level in levels:
-            if len(level) == 1:
-                table_name = level[0]
-                self._add_encrypted_column(table_name)
-                columns = self._get_all_columns(table_name)
-                cursor.execute(f"SELECT * FROM {table_name}")
-                rows = cursor.fetchall()
+                for i, value in enumerate(encrypted_row):
+                    if columns == "ALL" or (isinstance(columns, list) and all_columns[i] in columns):
+                        encrypted_value = self._encrypt_data(str(value), password, return_in_base64=save_in_base64)
+                        encrypted_row[i] = encrypted_value
+                        encryption_bits += "1"
+                    else:
+                        encryption_bits += "0"
 
-                for row in rows:
-                    primary_key_value = row[0]
-                    encrypted_row = []
-                    encryption_bits = ""
+                # Ensure the encryption_bits string is the same length as the number of columns
+                while len(encryption_bits) < len(all_columns):
+                    encryption_bits += "0"
 
-                    for i, value in enumerate(row):
-                        if i == 0:
-                            encrypted_row.append(value)
-                            encryption_bits += "0"
-                        else:
-                            encrypted_value = self._encrypt_data(str(value), password)
-                            encrypted_row.append(encrypted_value)
-                            encryption_bits += "1"
-
-                    encrypted_row.append(encryption_bits)
-                    placeholders = ', '.join(['?' for _ in encrypted_row])
-                    cursor.execute(f"INSERT OR REPLACE INTO {table_name} VALUES ({placeholders})", encrypted_row)
-            elif len(level) == 2:
-                table_name, column_name = level
-                self._add_encrypted_column(table_name)
-                cursor.execute(f"SELECT {column_name} FROM {table_name}")
-                rows = cursor.fetchall()
-
-                for row in rows:
-                    value = row[0]
-                    encrypted_value = self._encrypt_data(str(value), password)
-                    cursor.execute(f"UPDATE {table_name} SET {column_name} = ? WHERE {column_name} = ?", (encrypted_value, value))
+                encrypted_row.append(encryption_bits)
+                placeholders = ', '.join(['?' for _ in encrypted_row])
+                cursor.execute(f"UPDATE {table} SET {', '.join([f'{col} = ?' for col in all_columns])}, encrypted = ? WHERE rowid = ?", encrypted_row + [primary_key_value])
 
         self.conn.commit()
 
     def decrypt(self, encryption_config: Dict[str, Any]):
         pass
+
+
+if __name__ == "__main__":
+    # Example usage
+    db_conn = sqlite3.connect(":memory:")
+    secure_db = SecureDatabase(db_conn)
+
+    # Create example table and data
+    cursor = db_conn.cursor()
+    cursor.execute("CREATE TABLE table1 (column1 TEXT, column2 TEXT, column3 TEXT)")
+    cursor.execute("INSERT INTO table1 (column1, column2, column3) VALUES ('value1', 'value2', 'value3')")
+    db_conn.commit()
+
+    # Example encryption configuration
+    encryption_config = {
+        "ALL": "ALL",  # Encrypt all tables and all columns
+        "table1": {
+            "columns": ["column1", "column2"],  # Columns to encrypt
+            "rows": "column3 = 'value3'"  # Row selection criteria
+        }
+    }
+
+    # Encrypt the database with the given config and password
+    secure_db.encrypt(encryption_config, "example_password")

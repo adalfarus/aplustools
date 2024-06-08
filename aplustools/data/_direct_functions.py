@@ -3,6 +3,7 @@ from typing import Union as _Union
 import ctypes as _ctypes
 import typing as _typing
 from aplustools.package.argumint import EndPoint as _EndPoint
+import json as _json
 
 
 def install_dependencies():
@@ -330,6 +331,40 @@ def cutoff_iterable(iterable: _Union[list, tuple, dict, set], max_elements_start
 def cutoff_string(string: str, max_chars_start: int = 4, max_chars_end: int = 0,
                   show_hidden_chars_num: bool = False):
     return ''.join(cutoff_iterable(list(string), max_chars_start, max_chars_end, show_hidden_chars_num, True))
+
+
+def _custom_serializer(obj):
+    """
+    Custom serializer function for handling non-serializable objects.
+
+    Args:
+        obj (any): The object to be serialized.
+
+    Returns:
+        str: The serialized object as a string.
+    """
+    try:
+        return str(obj)
+    except Exception:
+        raise TypeError(f"Type {type(obj)} not serializable")
+
+
+def beautify_json(data_dict):
+    """
+    Beautifies a dictionary by converting it to a pretty-printed JSON string.
+
+    Args:
+        data_dict (dict): The dictionary to be beautified.
+
+    Returns:
+        str: The beautified JSON string.
+    """
+    try:
+        # Convert dictionary to a pretty-printed JSON string using custom serializer
+        pretty_json = _json.dumps(data_dict, indent=4, sort_keys=True, default=_custom_serializer)
+        return pretty_json
+    except (TypeError, ValueError) as e:
+        return f"Error converting dictionary to JSON: {e}"
 
 
 if __name__ == "__main__":
