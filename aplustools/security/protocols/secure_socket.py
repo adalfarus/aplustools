@@ -71,9 +71,9 @@ class SecureSocketServer:
 
                 self._connection, addr = server_socket.accept()
             except Exception as e:
-                print(f"Error setting up connection: {e}. Retrying in 5 seconds ...")
+                print(f"Error setting up connection: {e}. Retrying in 3 seconds ...")
                 self._connection = None  # Making sure no faulty socket gets trough
-                time.sleep(5)
+                time.sleep(3)
 
     def _send_public_key(self):
         while True:
@@ -86,6 +86,9 @@ class SecureSocketServer:
 
     def _receive_public_key(self):
         while not self._key_exchange_done and not self._encoder:
+            if not self._connection:
+                print("No connection available to receive public key.")
+                break
             try:
                 # Receive client's public key here
                 encrypted_client_public_key_bytes = self._connection.recv(739)
@@ -238,12 +241,15 @@ class SecureSocketClient:
                 self._connection = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 self._connection.connect((self._host, self._port))
             except ConnectionError as e:
-                print(f"Connection error: {e}. Retrying in 5 seconds ...")
+                print(f"Connection error: {e}. Retrying in 3 seconds ...")
                 self._connection = None  # Making sure no faulty socket gets trough
-                time.sleep(5)  # Wait before retrying
+                time.sleep(3)  # Wait before retrying
 
     def _receive_public_key(self):
         while not self._encoder:
+            if not self._connection:
+                print("No connection available to receive public key.")
+                break
             try:
                 # Receive initial message from the server
                 public_key_bytes = self._connection.recv(self._chunk_size)
@@ -356,22 +362,63 @@ class SecureSocketClient:
 
 
 if __name__ == "__main__":
+    import random
+    import string
     protocol = ControlCodeProtocol()
     client = SecureSocketClient(protocol)
     server = SecureSocketServer(client.get_socket(), protocol)
 
-    client.startup()
-    server.startup()
+    def client_thread():
+        try:
+            client.startup()
+            while not client.is_shutdown():
+                # Simulate random message sending
+                for _ in range(random.randint(1, 5)):
+                    random_message = ''.join(random.choices(string.ascii_letters + string.digits, k=20))
+                    client.add_message(random_message)
+                client.sendall()
+                time.sleep(random.uniform(0.1, 1.0))  # Simulate random delays
 
-    client.add_message("Hello, server!")
-    client.sendall()
+                # Simulate random disconnections and reconnections
+                if random.random() < 0.1:  # 10% chance to disconnect
+                    print("Client disconnecting...")
+                    client.close_connection()
+                    time.sleep(random.uniform(1, 3))  # Wait before reconnecting
+                    print("Client reconnecting...")
+                    client.startup()
+        except Exception as e:
+            print(f"Client error: {e}")
+        finally:
+            client.cleanup()
 
+    def server_thread():
+        try:
+            server.startup()
+            while not server.is_shutdown():
+                time.sleep(1)  # Simulate server running
+        except Exception as e:
+            print(f"Server error: {e}")
+        finally:
+            server.cleanup()
+
+    # Start the server in a separate thread
+    server_thread = threading.Thread(target=server_thread)
+    server_thread.start()
+
+    # Start the client in a separate thread
+    client_thread = threading.Thread(target=client_thread)
+    client_thread.start()
+
+    # Simulate sending a shutdown message from the server after some time
+    time.sleep(5)
+    print("Sending shutdown message from the server.")
     server.shutdown_client()
-    client.cleanup()
-    server.cleanup()
-    print(client.get_socket())
-    print("----------------------- Two-Way SecureSocket Comm test done -----------------------")
 
     from aplustools.io import diagnose_shutdown_blockers
+    diagnose_shutdown_blockers()
 
-    print(diagnose_shutdown_blockers())
+    # Wait for the threads to complete
+    client_thread.join()
+    server_thread.join()
+
+    print("----------------------- Two-Way SecureSocket Comm stress test done -----------------------")
