@@ -1,8 +1,10 @@
 from cryptography.hazmat.primitives.ciphers import Cipher as _Cipher, algorithms as _algorithms, modes as _modes
-from typing import Union as _Union, Literal as _Literal, Optional as _Optional, Dict as _Dict
+from typing import Union as _Union, Literal as _Literal, Optional as _Optional, Dict as _Dict, Tuple as _Tuple
 from cryptography.hazmat.backends import default_backend as _default_backend
 from aplustools.security.rand import WeightedRandom as _WeightedRandom
+from aplustools.data import beautify_json as _beautify_json
 from aplustools.io.environment import strict as _strict
+from importlib import resources as _resources
 from zxcvbn import zxcvbn as _zxcvbn
 import unicodedata as _unicodedata
 import secrets as _secrets
@@ -304,8 +306,22 @@ class SpecificPasswordGenerator:
             print(*args, **kwargs)
 
     def load_def_dict(self):
-        with open(_os.path.abspath("def_dict.txt"), "r") as f:
-            self.words = [line.strip() for line in f]
+        with _resources.path("aplustools.security", "def-dict.txt") as file_path:
+            with open(file_path, "r") as f:
+                self.words.extend([line.strip() for line in f])
+
+    def load_google_10000_dict(self):
+        with _resources.path("aplustools.security", "google-10000-dict.txt") as file_path:
+            with open(file_path, "r") as f:
+                self.words.extend([line.strip() for line in f])
+
+    def load_scowl_dict(self, size: _Literal[50, 60, 70, 80, 95] = 50):
+        with _resources.path("aplustools.security", f"scowl-{size}-dict.txt") as file_path:
+            with open(file_path, "r") as f:
+                self.words.extend([line.strip() for line in f])
+
+    def unload_dicts(self):
+        self.words = []
 
     def secure_password(self, password: str, passes: int = 3, expand: bool = True) -> str:
         self._debug_print(f"Securing password: {password}")
@@ -769,6 +785,27 @@ class SecurePasswordManager:
 
 
 class PasswordCrackEstimator:
+    long_presets = [
+    {'length': 12},
+    {'length': 14},
+    {'length': 16},
+    {'length': 18},
+    {'length': 20},
+    {'length': 22},
+    {'length': 24},
+    {'length': 26}
+]
+    short_presets = [
+    {'length': 1},
+    {'length': 2},
+    {'length': 3},
+    {'length': 4},
+    {'length': 5},
+    {'length': 6},
+    {'length': 7},
+    {'length': 8}
+]
+
     """Using zxcvbn to deliver an easy result as it's a hard to find and a bit confusing package for beginners."""
     @staticmethod
     def estimate_time_to_crack(password: str) -> tuple:
@@ -780,70 +817,40 @@ class PasswordCrackEstimator:
         result = _zxcvbn(password)
         return result["password"], result["crack_times_seconds"]
 
+    @staticmethod
+    def zxcvbn(password: str, user_inputs: list = None):
+        if user_inputs is None:
+            user_inputs = []
+        return _beautify_json(_zxcvbn(password, user_inputs))
 
-generator = SecurePasswordGenerator("strong")
-for _ in range(6):
-    print(generator.generate_secure_password(predetermined="passphrase"))
+    @classmethod
+    def _test_password_strength(cls, function, preset, num_passwords=1000):
+        worst_times = []
 
-print("REDC", SpecificPasswordGenerator().reduce_password("HELLO WORLD", by=0))
-print(SpecificPasswordGenerator().secure_password("Hello World", passes=1, expand=False))
+        for _ in range(max(1, num_passwords)):
+            password = function(*preset[0], **preset[1])
+            security = cls.tell_pass_sec(password)
+            worst_time = security[1]['offline_fast_hashing_1e10_per_second']
+            worst_times.append(float(worst_time))
 
+        average_worst_time = sum(worst_times) / len(worst_times)
+        return security[0], average_worst_time / (60 * 60 * 24 * 365.25)  # Convert seconds to years
 
-# Function to test the average worst-case time to crack passwords
-def tes_password_strength(preset, num_passwords=1000):
-    generator = SpecificPasswordGenerator()
-    generator.load_def_dict()
-    worst_times = []
+    @classmethod
+    def find_best_preset(cls, function, presets: _Tuple[tuple, dict]):
+        for preset in presets:
+            sec, average_worst_case_years = cls._test_password_strength(function, preset)
+            print(f"Preset {preset} average worst-case time to crack: {average_worst_case_years:.2f} years [{sec}]")
+            if average_worst_case_years >= 2:  # Adjust the threshold as needed
+                print(
+                    f"Preset {preset} meets the security criteria with an average worst-case time to crack of {average_worst_case_years:.2f} years.")
+                break
 
-    for _ in range(num_passwords):
-        password = generator.generate_sentence_based_password_v3()
-        security = tell_pass_sec(password)
-        worst_time = security[1]['offline_fast_hashing_1e10_per_second']
-        worst_times.append(float(worst_time))
-
-    average_worst_time = sum(worst_times) / len(worst_times)
-    return security[0], average_worst_time / (60 * 60 * 24 * 365.25)  # Convert seconds to years
-
-
-# Define various presets to test
-presets = [
-    {'length': 12},
-    {'length': 14},
-    {'length': 16},
-    {'length': 18},
-    {'length': 20},
-    {'length': 22},
-    {'length': 24},
-    {'length': 26}
-]
-presetsV2 = [
-    {'length': 1},
-    {'length': 2},
-    {'length': 3},
-    {'length': 4},
-    {'length': 5},
-    {'length': 6},
-    {'length': 7},
-    {'length': 8}
-]
-
-# Run tests and find the preset that meets the security criteria
-for preset in presets:
-    sec, average_worst_case_years = tes_password_strength(preset)
-    print(f"Preset {preset} average worst-case time to crack: {average_worst_case_years:.2f} years [{sec}]")
-    if average_worst_case_years >= 2:  # Adjust the threshold as needed
-        print(
-            f"Preset {preset} meets the security criteria with an average worst-case time to crack of {average_worst_case_years:.2f} years.")
-        break
-
-def tell_pass_sec(password):
-    result = zxcvbn(password)
-    return result["password"], "Worst Case: " + result["crack_times_display"]["offline_fast_hashing_1e10_per_second"]
-
-
-generator = SecurePasswordGenerator("strong")
-for _ in range(6):
-    print(tell_pass_sec(generator.generate_secure_password()["password"]))
+    @staticmethod
+    def tell_worst_case(password: str) -> tuple:
+        result = _zxcvbn(password)
+        return result["password"], "Worst Case: " + result["crack_times_display"][
+            "offline_fast_hashing_1e10_per_second"]
 
 
 if __name__ == "__main__":
@@ -853,31 +860,52 @@ if __name__ == "__main__":
     password_filter = PasswordFilter(exclude_chars="abc", extra_chars="@", exclude_similar=True)
 
     timer = TimidTimer()
-    print(tell_pass_sec(QuickGeneratePasswords.generate_password(12, filter_=password_filter)))
-    print(tell_pass_sec(QuickGeneratePasswords.generate_secure_password(12, filter_=password_filter)))
-    print(tell_pass_sec(QuickGeneratePasswords.generate_passphrase(["Hello", "world", "abc"], 4, filter_=password_filter)))
-    print(tell_pass_sec(QuickGeneratePasswords.generate_pattern_password("XXX-999-xxx", filter_=password_filter)))
-    print(tell_pass_sec(QuickGeneratePasswords.generate_complex_password(12, filter_=password_filter)))
-    print(tell_pass_sec(QuickGeneratePasswords.generate_mnemonic_password(filter_=password_filter)))
-    print(tell_pass_sec(QuickGeneratePasswords.generate_ratio_based_password(12, letter_ratio=0.4, digit_ratio=0.3, symbol_ratio=0.3,
+
+    print("QuickGeneratePassword: ")
+    print(PasswordCrackEstimator.tell_worst_case(QuickGeneratePasswords.generate_password(12, filter_=password_filter)))
+    print(PasswordCrackEstimator.tell_worst_case(QuickGeneratePasswords.generate_secure_password(12, filter_=password_filter)))
+    print(PasswordCrackEstimator.tell_worst_case(QuickGeneratePasswords.generate_passphrase(["Hello", "world", "abc"], 4, filter_=password_filter)))
+    print(PasswordCrackEstimator.tell_worst_case(QuickGeneratePasswords.generate_pattern_password("XXX-999-xxx", filter_=password_filter)))
+    print(PasswordCrackEstimator.tell_worst_case(QuickGeneratePasswords.generate_complex_password(12, filter_=password_filter)))
+    print(PasswordCrackEstimator.tell_worst_case(QuickGeneratePasswords.generate_mnemonic_password(filter_=password_filter)))
+    print(PasswordCrackEstimator.tell_worst_case(QuickGeneratePasswords.generate_ratio_based_password(12, letter_ratio=0.4, digit_ratio=0.3, symbol_ratio=0.3,
                                                                filter_=password_filter)))
-    print(tell_pass_sec(QuickGeneratePasswords.generate_sentence_based_password("WwWn!")))
+    print(PasswordCrackEstimator.tell_worst_case(QuickGeneratePasswords.generate_sentence_based_password("WwWn!")))
     print(timer.end())
 
-    password_generator = SpecificPasswordGenerator()
+    print("----------------------------------------- DONE -----------------------------------------")
+
+    password_generator = SpecificPasswordGenerator("strong")
 
     # Generate different types of passwords
     timer.start()
     password_generator.load_def_dict()
-    print("Sentence_V3", tell_pass_sec(password_generator.generate_sentence_based_password_v3()))
-    print("Default", tell_pass_sec(password_generator.generate_random_password(filter_=password_filter)))
-    print("Phrase", tell_pass_sec(password_generator._generate_passphrase(filter_=password_filter)))
-    print("Pattern", tell_pass_sec(password_generator.generate_pattern_password(filter_=password_filter)))
-    print("Complex", tell_pass_sec(password_generator.generate_complex_password(filter_=password_filter)))
-    print("Mnemonic", tell_pass_sec(password_generator.generate_mnemonic_password(filter_=password_filter)))
+    print("SpecificPasswordGenerator: ")
+    print("Sentence_V3", PasswordCrackEstimator.tell_worst_case(password_generator.generate_sentence_based_password_v3()))
+    print("Default", PasswordCrackEstimator.tell_worst_case(password_generator.generate_random_password(filter_=password_filter)))
+    print("Phrase", PasswordCrackEstimator.tell_worst_case(password_generator._generate_passphrase(filter_=password_filter)))
+    print("Pattern", PasswordCrackEstimator.tell_worst_case(password_generator.generate_pattern_password(filter_=password_filter)))
+    print("Complex", PasswordCrackEstimator.tell_worst_case(password_generator.generate_complex_password(filter_=password_filter)))
+    print("Mnemonic", PasswordCrackEstimator.tell_worst_case(password_generator.generate_mnemonic_password(filter_=password_filter)))
     print(timer.end())
 
-    from matplotlib import pyplot
+    print("----------------------------------------- DONE -----------------------------------------")
+
+    print("SecurePasswordGenerator: ")
+    generator = SecurePasswordGenerator("strong")
+    for _ in range(6):
+        print(PasswordCrackEstimator.tell_worst_case(generator.generate_secure_password()["password"]))
+        print(PasswordCrackEstimator.tell_worst_case(generator.generate_secure_password(predetermined="passphrase")["password"]))
+
+    print("----------------------------------------- DONE -----------------------------------------")
+
+    print("REDC", SpecificPasswordGenerator().reduce_password("HELLO WORLD", by=0))
+    print(SpecificPasswordGenerator().secure_password("Hello World", passes=1, expand=False))
+
+    password = "HMBlw:_88008?@"
+    print(PasswordCrackEstimator.zxcvbn(password))
+
+    # from matplotlib import pyplot
 
     # print("V2", timer.complexity(gen.gen_ratio_pw_v2, range(1000, 24_000, 100), matplotlib_pyplt=pyplot))
     # print("V3", timer.complexity(gen.gen_ratio_pw_v3, range(1000, 24_000, 100), matplotlib_pyplt=pyplot))
@@ -889,17 +917,12 @@ if __name__ == "__main__":
     # print(gen.gen_sentence_pw_v2("Hello my beautiful world!!", char_position="keep"), timer.tock())
     # print(gen.gen_sentence_pw_v3("Hello my beautiful world!!", char_position="keep", filter_=PasswordFilter(exclude_chars="Helo")), timer.end())
 
-    # manager = SecurePasswordManager()
-    # password = manager.generate_ratio_based_password_v2(length=26, letters_ratio=0.5, numbers_ratio=0.3,
-    #                                                     punctuations_ratio=0.2, exclude_similar=True)
-    # manager.add_password("example.com", "json-the-greatest", password)
-    # manager.store_in_buffer("example.com", 0)  # Stores unencrypted password in a buffer
-    # print(manager.get_password("example.com"), "|", manager.use_from_buffer(0))  # for faster access.
+    manager = SecurePasswordManager()
+    password = manager.generate_ratio_based_password(length=26, letters_ratio=0.5, numbers_ratio=0.3,
+                                                     punctuations_ratio=0.2, exclude_similar=True)
+    manager.add_password("example.com", "json-the-greatest", password)
+    manager.store_in_buffer("example.com", 0)  # Stores unencrypted password in a buffer
+    print(manager.get_password("example.com"), "|", manager.use_from_buffer(0))  # for faster access.
 
     print(QuickGeneratePasswords.generate_custom_sentence_based_password_v2(
         "Exploring the unknown -- discovering new horizons..."))
-
-
-if __name__ == "__main__":
-    password = "HMBlw:_88008?@"
-    print(PasswordCrackEstimator.estimate_time_to_crack(password))

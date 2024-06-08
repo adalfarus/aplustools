@@ -11,7 +11,7 @@ import os
 
 
 from aplustools.security.passwords import SpecificPasswordGenerator, PasswordFilter
-from aplustools.io.environment import save_remove
+from aplustools.io.environment import safe_remove
 from tempfile import mkdtemp
 from quantcrypt.kem import Kyber
 from quantcrypt.cipher import KryptonKEM
@@ -171,51 +171,73 @@ class ModernCryptUtils:
         return Kyber().keygen()
 
     @staticmethod
-    def kyber_encrypt(public_key: bytes, plaintext: bytes, get: Literal["content", "path", "file"] = "content"
-                      ) -> Union[bytes, Path, IO]:
+    def kyber_encrypt(public_key: bytes, plaintext_path_or_file: Union[bytes, IO, Path],
+                      get: Literal["content", "path", "file"] = "content") -> Union[bytes, Path, IO]:
         """
         Encrypts a file using the Kyber public key.
         """
         krypton = KryptonKEM(Kyber)
         temp_dir = mkdtemp()
-        plaintext_file = Path(os.path.join(temp_dir, "kyper_inp"))
-        with open(plaintext_file, "wb") as f:
-            f.write(plaintext)
+        if isinstance(plaintext_path_or_file, (bytes, IO)):
+            plaintext_file = Path(os.path.join(temp_dir, "kyper_inp"))
+
+            if isinstance(plaintext_path_or_file, IO):
+                with plaintext_path_or_file as f:
+                    plaintext_path_or_file = f.read()
+
+            with open(plaintext_file, "wb") as f:
+                f.write(plaintext_path_or_file)
+        elif isinstance(plaintext_path_or_file, Path):
+            plaintext_file = plaintext_path_or_file
+        else:
+            raise ValueError("Please only input accepted types as plaintext.")
         ciphertext_file = Path(os.path.join(temp_dir, "kyper_out"))
         krypton.encrypt(public_key, plaintext_file, ciphertext_file)
 
-        save_remove(plaintext_file)
+        if not isinstance(plaintext_path_or_file, Path):
+            safe_remove(plaintext_file)
         if get == "path":
             return ciphertext_file
         elif get == "file":
             return open(ciphertext_file, "rb")
         with open(ciphertext_file, "rb") as f:
             content = f.read()
-        save_remove(temp_dir)
+        safe_remove(temp_dir)
         return content
 
     @staticmethod
-    def kyber_decrypt(secret_key: bytes, ciphertext: bytes, get: Literal["content", "path", "file"] = "content"
-                      ) -> Union[bytes, Path, IO]:
+    def kyber_decrypt(secret_key: bytes, ciphertext_path_or_file: Union[bytes, IO, Path],
+                      get: Literal["content", "path", "file"] = "content") -> Union[bytes, Path, IO]:
         """
         Decrypts a file to memory using the Kyber secret key.
         """
         krypton = KryptonKEM(Kyber)
         temp_dir = mkdtemp()
-        ciphertext_file = Path(os.path.join(temp_dir, "kyper_inp"))
-        with open(ciphertext_file, "wb") as f:
-            f.write(ciphertext)
+        if isinstance(ciphertext_path_or_file, (bytes, IO)):
+            ciphertext_file = Path(os.path.join(temp_dir, "kyper_inp"))
+
+            if isinstance(ciphertext_path_or_file, IO):
+                with ciphertext_path_or_file as f:
+                    ciphertext_path_or_file = f.read()
+
+            with open(ciphertext_file, "wb") as f:
+                f.write(ciphertext_path_or_file)
+        elif isinstance(ciphertext_path_or_file, Path):
+            ciphertext_file = ciphertext_path_or_file
+        else:
+            raise ValueError("Please only input accepted types as ciphertext.")
         plaintext_file = Path(os.path.join(temp_dir, "kyper_out"))
         krypton.decrypt_to_file(secret_key, ciphertext_file, plaintext_file)
 
-        save_remove(ciphertext_file)
+        if not isinstance(ciphertext_path_or_file, Path):
+            safe_remove(ciphertext_file)
         if get == "path":
             return plaintext_file
         elif get == "file":
             return open(plaintext_file, "rb")
         with open(plaintext_file, "rb") as f:
             content = f.read()
-        save_remove(temp_dir)
+        safe_remove(temp_dir)
         return content
 
     @staticmethod
@@ -263,6 +285,11 @@ if __name__ == "__main__":
     encrypted = ModernCryptUtils.kyber_encrypt(public_key, "Hello World".encode())
 
     # Decrypt the ciphertext file to a new file
-    decrypted = ModernCryptUtils.kyber_decrypt(secret_key, encrypted)
+    decrypted = ModernCryptUtils.kyber_decrypt(secret_key, encrypted).decode()
 
     print(encrypted, decrypted)
+
+    path = ModernCryptUtils.kyber_encrypt(public_key, "HELLO".encode(), get="path")
+    decrypted = ModernCryptUtils.kyber_decrypt(secret_key, path, get="content")
+    safe_remove(path)
+    print(decrypted.decode())
