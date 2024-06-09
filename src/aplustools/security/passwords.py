@@ -1,13 +1,13 @@
-import os
-
 from cryptography.hazmat.primitives.ciphers import Cipher as _Cipher, algorithms as _algorithms, modes as _modes
-from typing import Union as _Union, Literal as _Literal, Optional as _Optional, Dict as _Dict, Tuple as _Tuple
 from cryptography.hazmat.backends import default_backend as _default_backend
+from zxcvbn import zxcvbn as _zxcvbn
+
 from aplustools.security.rand import WeightedRandom as _WeightedRandom
 from aplustools.data import beautify_json as _beautify_json
 from aplustools.io.environment import strict as _strict
+
+from typing import Union as _Union, Literal as _Literal, Optional as _Optional, Dict as _Dict, Tuple as _Tuple
 from importlib import resources as _resources
-from zxcvbn import zxcvbn as _zxcvbn
 import unicodedata as _unicodedata
 import secrets as _secrets
 import string as _string
@@ -324,8 +324,8 @@ class SpecificPasswordGenerator:
 
     def load_12_dicts(self):
         with _resources.path("aplustools.security.dicts", "12-dicts") as file_path:
-            for file in os.listdir(file_path):
-                with open(os.path.join(file_path, file), "r") as f:
+            for file in _os.listdir(file_path):
+                with open(_os.path.join(file_path, file), "r") as f:
                     self.words.extend([line.strip() for line in f])
 
     def unload_dicts(self):
