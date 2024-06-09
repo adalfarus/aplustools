@@ -77,7 +77,7 @@ run_tests() {
 
     # Run tests
     echo "Running tests..."
-    pytest aplustools/tests
+    pytest src/aplustools/tests
     echo "Tests completed."
 }
 
