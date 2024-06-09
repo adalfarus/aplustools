@@ -17,6 +17,7 @@ packages = [
   "aplustools.security.dicts"
 ]
 include-package-data = true
+package-dir = {"" = "src"}
 
 [tool.setuptools.package-data]
 "aplustools.security.dicts" = [

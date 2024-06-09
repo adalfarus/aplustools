@@ -35,8 +35,9 @@ python -m build
 Here are a few quick examples of how to use aplustools:
 
 ### Search Engine usage
+
 ```python
-from aplustools.web.search import Search, GoogleSearchCore
+from src.aplustools import Search, GoogleSearchCore
 
 # Call the `google_provider` function with a query
 searcher = Search(GoogleSearchCore(advanced=True))
@@ -45,7 +46,7 @@ results = searcher.search("Cute puppies", num_results=10)
 # Print the results
 print(results)
 
-from aplustools.web.utils import WebPage
+from src.aplustools import WebPage
 
 web_page = WebPage(next(iter(results)).get("url"))
 
@@ -56,7 +57,7 @@ if web_page.crawlable:
 ### Timer usage
 
 ````python
-from aplustools.package.timid import TimidTimer
+from src.aplustools import TimidTimer
 from datetime import timedelta
 import time
 
@@ -135,8 +136,9 @@ print(
 ````
 
 ### System
+
 ````python
-from aplustools.io.environment import System
+from src.aplustools import System
 
 
 local_system = System.system()
@@ -155,8 +157,9 @@ for process in local_system.get_running_processes():
 ````
 
 ### Security
+
 ````python
-from aplustools.security.passwords import QuickGeneratePasswords
+from src.aplustools import QuickGeneratePasswords
 
 
 input_sentence = input("Please input a sentence of your choosing: ")
@@ -164,7 +167,7 @@ password = QuickGeneratePasswords.generate_sentence_based_password(input_sentenc
 print(f"Your password is {password}")
 
 
-from aplustools.security.passwords import SecurePasswordGenerator
+from src.aplustools import SecurePasswordGenerator
 
 generator = SecurePasswordGenerator("strong")
 secure_password = generator.generate_secure_password()
