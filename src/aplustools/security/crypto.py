@@ -165,7 +165,11 @@ class CryptUtils:
         return digest.finalize().hex()
 
 
-class ModernCryptUtils:
+class ModernCryptUtils:  # QuantumCryptography
+    def __init__(self):
+        warnings.warn("This module is experimental as the exact specifications for Quantum Cryptography haven't been "
+                      "decided on yet and will likely change in the future.", category=RuntimeWarning, stacklevel=2)
+
     @staticmethod
     def generate_kyber_keypair() -> Tuple[bytes, bytes]:
         """
@@ -264,12 +268,6 @@ class ModernCryptUtils:
             return True
         except Exception:
             return False
-
-
-class QuantumCryptography:
-    def __init__(self):
-        warnings.warn("This module is experimental as the exact specifications for Quantum Cryptography haven't been "
-                      "decided on yet and will likely change in the future.", category=RuntimeWarning, stacklevel=2)
 
 
 # Example usage

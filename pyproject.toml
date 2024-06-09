@@ -89,7 +89,7 @@ package = [
   "scikit-learn==1.4.1.post1; os_name == 'nt'",
   "scikit-learn; os_name != 'nt'"
 ]
-security = ["cryptography>=42.0.5", "quantcrypt==0.4.2; python_version == '3.12'"]
+security = ["cryptography>=42.0.5", "quantcrypt==0.4.2; python_version == '3.12'", "zxcvbn==4.4.28"]
 web = ["requests>=2.32.0", "BeautifulSoup4>=4.12.2", "aiohttp==3.9.5"]
 dev = ["pytest"]
 all = [
@@ -109,8 +109,8 @@ all = [
   "scipy==1.13.0",
   "scikit-learn==1.4.1.post1; os_name == 'nt'",
   "scikit-learn; os_name != 'nt'",
-  "cryptography>=42.0.5; python_version == '3.12'",
-  "quantcrypt==0.4.2; python_version == '3.12' and os_name == 'nt'",
+  "cryptography>=42.0.5",
+  "quantcrypt==0.4.2; python_version == '3.12'",
   "pytest"
 ]
 
