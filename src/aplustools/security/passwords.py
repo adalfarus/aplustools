@@ -670,9 +670,12 @@ class SecurePasswordGenerator:
         self._gen = SpecificPasswordGenerator(self._rng)
         self._gen.load_def_dict()
 
-    def generate_secure_password(self, predetermined: _Optional[_Literal["random", "passphrase", "pattern", "complex",
-                                                                       "mnemonic", "ratio", "words",
-                                                                       "sentence"]] = None) -> dict:
+    def generate_secure_password(self, return_worst_case: bool = True, predetermined: _Optional[
+                                                                                      _Literal["random", "passphrase",
+                                                                                               "pattern", "complex",
+                                                                                               "mnemonic", "ratio",
+                                                                                               "words", "sentence"
+                                                                                      ]] = None) -> dict:
         rnd = self._rng.randint(0, 7) if predetermined is None else \
             {
                 "random": 0,
@@ -684,7 +687,7 @@ class SecurePasswordGenerator:
                 "words": 6,
                 "sentence": 7
             }[predetermined]
-        result = {"extra_info": "", "password": ""}
+        result = {"extra_info": "", "password": "", "worst_case": ""}
 
         match rnd:
             case 0:
@@ -717,6 +720,9 @@ class SecurePasswordGenerator:
                                                                              password_format=pattern, _return_info=True)
                 result = {"extra_info": f"A sentence based password using the sentence '{sentence}' "
                                         f"and the pattern '{pattern}'.", "password": pw}
+
+        if return_worst_case:
+            result["worst_case"] = _zxcvbn(result["password"])["crack_times_display"]["offline_fast_hashing_1e10_per_second"]
 
         return result
 
@@ -799,25 +805,25 @@ class SecurePasswordManager:
 
 class PasswordCrackEstimator:
     long_presets = [
-    {'length': 12},
-    {'length': 14},
-    {'length': 16},
-    {'length': 18},
-    {'length': 20},
-    {'length': 22},
-    {'length': 24},
-    {'length': 26}
-]
+        (tuple(), {'length': 12}),
+        (tuple(), {'length': 14}),
+        (tuple(), {'length': 16}),
+        (tuple(), {'length': 18}),
+        (tuple(), {'length': 20}),
+        (tuple(), {'length': 22}),
+        (tuple(), {'length': 24}),
+        (tuple(), {'length': 26})
+    ]
     short_presets = [
-    {'length': 1},
-    {'length': 2},
-    {'length': 3},
-    {'length': 4},
-    {'length': 5},
-    {'length': 6},
-    {'length': 7},
-    {'length': 8}
-]
+        (tuple(), {'length': 1}),
+        (tuple(), {'length': 2}),
+        (tuple(), {'length': 3}),
+        (tuple(), {'length': 4}),
+        (tuple(), {'length': 5}),
+        (tuple(), {'length': 6}),
+        (tuple(), {'length': 7}),
+        (tuple(), {'length': 8})
+    ]
 
     """Using zxcvbn to deliver an easy result as it's a hard to find and a bit confusing package for beginners."""
     @staticmethod
