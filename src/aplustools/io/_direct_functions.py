@@ -1,4 +1,3 @@
-from aplustools.package import install_dependencies_lst as _install_dependencies_lst
 import multiprocessing as _multiprocessing
 import subprocess as _subprocess
 import threading as _threading
@@ -13,13 +12,6 @@ try:
     import msvcrt as _msvcrt
 except Exception:
     _msvcrt = None
-
-
-def install_dependencies():
-    success = _install_dependencies_lst(["speedtest-cli==2.1.3", "windows-toasts==1.1.1; os_name == 'nt'"])
-    if not success:
-        return
-    print("Done, all possible dependencies for the io module installed ...")
 
 
 def diagnose_shutdown_blockers(suggestions: bool = True):

@@ -25,13 +25,9 @@ jobs:
         python -m pip install --upgrade pip
         pip install pytest
 
-    - name: Install aplustools in editable mode
+    - name: Install aplustools with all optional dependencies
       run: |
-        pip install -e .
-
-    - name: Install dependencies using aplustools
-      run: |
-        python -c "import aplustools; aplustools.install_all_dependencies()"
+        pip install -e '.[all]'
 
     - name: Prepare test_data directory (macOS/Linux)
       if: runner.os != 'Windows'
@@ -62,5 +58,5 @@ jobs:
     - name: Run tests
       run: |
         echo "Running tests..."
-        pytest aplustools/tests
+        pytest src/aplustools/tests
         echo "Tests completed."
