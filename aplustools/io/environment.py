@@ -1,6 +1,4 @@
 # environment.py
-from aplustools.data import bytes_to_human_readable_binary_iec as _bytes_to_human_readable_binary_iec
-from aplustools.data import bits_to_human_readable as _bits_to_human_readable
 from types import FrameType as _FrameType
 from pathlib import Path as _Path
 import subprocess as _subprocess
@@ -13,11 +11,15 @@ import sys as _sys
 import os as _os
 import psutil as _psutil
 import time as _time
-import speedtest as _speedtest
 import tempfile as _tempfile
 from enum import Enum as _Enum
 import ctypes as _ctypes
+
 from PIL import Image as _Image
+import speedtest as _speedtest
+
+from aplustools.data import bytes_to_human_readable_binary_iec as _bytes_to_human_readable_binary_iec
+from aplustools.data import bits_to_human_readable as _bits_to_human_readable
 
 
 try:
@@ -137,28 +139,27 @@ def absolute_path(relative_path: str, file_path: str) -> str:
     return _os.path.join(base_dir, relative_path)
 
 
-def remove(paths: _typing.Union[str, _Path, _typing.Tuple[_typing.Union[str, _Path]],
-                                     _typing.List[_typing.Union[str, _Path]]]):
-    if not isinstance(paths, list):
-        paths = (str(paths),) if isinstance(paths, (str, _Path)) else tuple(str(p) for p in paths)
+def remove(paths: _typing.Union[str, _Path, _typing.Tuple[_typing.Union[str, _Path]], _typing.List[_typing.Union[str, _Path]]]):
+    if isinstance(paths, (str, _Path)):
+        paths = [str(paths)]
+    else:
+        paths = [str(p) for p in paths]
+
     for path in paths:
-        if _os.path.exists(path):
-            if is_accessible(path):
-                if _os.path.isfile(path):
-                    _os.remove(path)
-                elif _os.path.isdir(path):
-                    if len(_os.listdir(path)) == 0:
-                        _os.rmdir(path)
-                    elif is_empty_directory(path):
-                        _shutil.rmtree(path)
-                    else:
-                        _shutil.rmtree(path)
-                else:
-                    raise OSError(f"Bug, please report, path {path} is neither a file or a directory.")
-            else:
-                raise ValueError(f"Path {path} not accessible")
-        else:
+        if not _os.path.exists(path):
             raise ValueError(f"Path {path} doesn't exist.")
+        if not is_accessible(path):
+            raise ValueError(f"Path {path} not accessible")
+
+        if _os.path.isfile(path):
+            _os.remove(path)
+        elif _os.path.isdir(path):
+            if not _os.listdir(path):
+                _os.rmdir(path)
+            else:
+                _shutil.rmtree(path)
+        else:
+            raise OSError(f"Bug, please report, path {path} is neither a file or a directory.")
 
 
 def safe_remove(paths: _typing.Union[str, _Path, _typing.Tuple[_typing.Union[str, _Path]],
@@ -167,17 +168,6 @@ def safe_remove(paths: _typing.Union[str, _Path, _typing.Tuple[_typing.Union[str
         remove(paths)
     except Exception as e:
         print(e)
-
-
-def contains_only_directories(path: str) -> bool:
-    try:
-        for item in _os.listdir(path):
-            if not _os.path.isdir(_os.path.join(path, item)):
-                return False
-        return True
-    except Exception as e:
-        print(f"An error occurred in contains_only_directories: {e}")
-        raise
 
 
 def is_accessible(path: str):

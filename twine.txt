@@ -1,2 +1,0 @@
-twine upload dist/*
-twine upload -r testpypi dist/*
