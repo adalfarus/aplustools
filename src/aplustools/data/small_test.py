@@ -1,5 +1,5 @@
-from src.aplustools import TimidTimer
-from src.aplustools import nice_number as nn
+from aplustools.package.timid import TimidTimer
+from aplustools.data import nice_number as nn
 from typing import Optional
 
 
@@ -80,7 +80,7 @@ class Test:
         cls._null_bytes(from_start_position, from_end_position - from_start_position)
 
     def _pack_block_info(self, block):
-        from src.aplustools import bytes_length, set_bits, nice_bits, encode_positive_int
+        from aplustools.data import bytes_length, set_bits, nice_bits, encode_positive_int
 
         result = set_bits(int(0).to_bytes(), 0, nice_bits(encode_positive_int(bytes_length(len(block["block"])))))
         block_len =

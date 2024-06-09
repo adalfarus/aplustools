@@ -1,7 +1,7 @@
 from PySide6.QtWidgets import QApplication, QWidget, QVBoxLayout, QPushButton, QLabel, QLineEdit, QTextEdit
-from src.aplustools import get_temp
+from aplustools.io.environment import get_temp
 from PySide6.QtCore import Signal, QThread
-from src.aplustools import updaters
+from aplustools.data import updaters
 import sys
 import os
 

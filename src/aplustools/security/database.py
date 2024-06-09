@@ -1,4 +1,4 @@
-from src.aplustools import CryptUtils
+from aplustools.security.crypto import CryptUtils
 from typing import Dict, Any, Union
 import sqlite3
 import os

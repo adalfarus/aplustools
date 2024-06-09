@@ -10,8 +10,8 @@ import secrets
 import os
 
 
-from src.aplustools import SpecificPasswordGenerator, PasswordFilter
-from src.aplustools import safe_remove
+from aplustools.security.passwords import SpecificPasswordGenerator, PasswordFilter
+from aplustools.io.environment import safe_remove
 from tempfile import mkdtemp
 try:
     from quantcrypt.kem import Kyber

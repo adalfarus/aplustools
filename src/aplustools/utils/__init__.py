@@ -1,6 +1,6 @@
 # utils __init__
 
-from src.aplustools import LazyModuleLoader as _LazyModuleLoader
+from aplustools.package import LazyModuleLoader as _LazyModuleLoader
 
 # Lazy loading modules
 dummy = _LazyModuleLoader('aplustools.utils.dummy')
@@ -9,7 +9,7 @@ dummy = _LazyModuleLoader('aplustools.utils.dummy')
 __all__ = ['dummy']
 
 # Dynamically add exports from _direct_functions
-from src.aplustools.utils._direct_functions import *
+from aplustools.utils._direct_functions import *
 
 # Update __all__ with the public members from _direct_functions and clean up globals
 for name in list(globals()):

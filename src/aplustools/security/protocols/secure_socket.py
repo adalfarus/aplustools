@@ -1,8 +1,8 @@
-from src.aplustools.security.protocols.secure_message import MessageEncoder, MessageDecoder
-from src.aplustools.security.protocols.control_code_protocol import ControlCodeProtocol
-from src.aplustools import strict, auto_repr
-from src.aplustools import CryptUtils
-from src.aplustools import PortUtils
+from aplustools.security.protocols.secure_message import MessageEncoder, MessageDecoder
+from aplustools.security.protocols.control_code_protocol import ControlCodeProtocol
+from aplustools.io.environment import strict, auto_repr
+from aplustools.security.crypto import CryptUtils
+from aplustools.utils import PortUtils
 from typing import Union, Tuple
 import threading
 import datetime
@@ -414,7 +414,7 @@ if __name__ == "__main__":
     print("Sending shutdown message from the server.")
     server.shutdown_client()
 
-    from src.aplustools import diagnose_shutdown_blockers
+    from aplustools.io import diagnose_shutdown_blockers
     diagnose_shutdown_blockers()
 
     # Wait for the threads to complete

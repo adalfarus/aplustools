@@ -1,4 +1,4 @@
-from src.aplustools import strict
+from aplustools.io.environment import strict
 from typing import Tuple, Optional, Any
 import base64
 import json

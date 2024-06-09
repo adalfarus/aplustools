@@ -18,8 +18,8 @@ import ctypes as _ctypes
 from PIL import Image as _Image
 import speedtest as _speedtest
 
-from src.aplustools import bytes_to_human_readable_binary_iec as _bytes_to_human_readable_binary_iec
-from src.aplustools import bits_to_human_readable as _bits_to_human_readable
+from aplustools.data import bytes_to_human_readable_binary_iec as _bytes_to_human_readable_binary_iec
+from aplustools.data import bits_to_human_readable as _bits_to_human_readable
 
 
 try:
@@ -448,7 +448,7 @@ class _BaseSystem:
                           selections: _typing.Tuple[_typing.Tuple[str, str, _typing.List[tuple], int], ...] = (("selection_arg", "Sel Display Name", ["selection_name", "Selection Display Name"], 0)),
                           buttons: _typing.Tuple[_typing.Tuple[str, _typing.Callable], ...] = (("Accept", lambda: None), ("Cancel", lambda: None),),
                           click_callback: _typing.Callable = lambda: None):
-        from src.aplustools.io.gui.balloon_tip import NotificationManager  # To prevent a circular import
+        from aplustools.io.gui.balloon_tip import NotificationManager  # To prevent a circular import
 
         icon_path = Window.get_app_icon_path()
         NotificationManager.show_notification(

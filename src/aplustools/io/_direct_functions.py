@@ -1,4 +1,4 @@
-from src.aplustools import install_dependencies_lst as _install_dependencies_lst
+from aplustools.package import install_dependencies_lst as _install_dependencies_lst
 import multiprocessing as _multiprocessing
 import subprocess as _subprocess
 import threading as _threading

@@ -442,7 +442,7 @@ def local_test():
             """
             print(f"Building file {path} ..., {num}")
 
-        from src.aplustools import timid
+        from aplustools.package import timid
 
         timer = timid.TimidTimer()
 

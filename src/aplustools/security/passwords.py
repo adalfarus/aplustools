@@ -3,9 +3,9 @@ import os
 from cryptography.hazmat.primitives.ciphers import Cipher as _Cipher, algorithms as _algorithms, modes as _modes
 from typing import Union as _Union, Literal as _Literal, Optional as _Optional, Dict as _Dict, Tuple as _Tuple
 from cryptography.hazmat.backends import default_backend as _default_backend
-from src.aplustools import WeightedRandom as _WeightedRandom
-from src.aplustools import beautify_json as _beautify_json
-from src.aplustools import strict as _strict
+from aplustools.security.rand import WeightedRandom as _WeightedRandom
+from aplustools.data import beautify_json as _beautify_json
+from aplustools.io.environment import strict as _strict
 from importlib import resources as _resources
 from zxcvbn import zxcvbn as _zxcvbn
 import unicodedata as _unicodedata
@@ -867,7 +867,7 @@ class PasswordCrackEstimator:
 
 
 if __name__ == "__main__":
-    from src.aplustools import TimidTimer
+    from aplustools.package.timid import TimidTimer
 
     QuickGeneratePasswords.debug = False
     password_filter = PasswordFilter(exclude_chars="abc", extra_chars="@", exclude_similar=True)

@@ -1,4 +1,4 @@
-from src.aplustools import utils, request, search
+from aplustools.web import utils, request, search
 
 
 class TestUtils:

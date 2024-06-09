@@ -1,10 +1,10 @@
-from src.aplustools import execute_python_command
-from src.aplustools import change_working_dir_to_script_location
+from aplustools import execute_python_command
+from aplustools.io.environment import change_working_dir_to_script_location
 import subprocess
 import os
 import shutil
 import sys
-from src.aplustools import ArguMint, ArgStruct
+from aplustools.package.argumint import ArguMint, ArgStruct
 
 
 class APTTestRunner:

@@ -3,8 +3,8 @@ import os.path
 from PySide6.QtWidgets import (QApplication, QSystemTrayIcon, QMenu, QWidget, QVBoxLayout, QLabel, QPushButton,
                                QLineEdit, QComboBox, QSizePolicy, QScrollArea)
 from PySide6.QtCore import QTimer, QEasingCurve, QPropertyAnimation, Qt, QRect, QCoreApplication
-from src.aplustools import QNoSpacingHBoxLayout, UserActivityTracker
-from src.aplustools import System, Theme
+from aplustools.io.gui import QNoSpacingHBoxLayout, UserActivityTracker
+from aplustools.io.environment import System, Theme
 from PySide6.QtGui import QIcon, QGuiApplication
 import threading
 import time

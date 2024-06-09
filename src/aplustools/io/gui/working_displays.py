@@ -3,8 +3,8 @@ from PySide6.QtWidgets import (QGraphicsView, QGraphicsScene, QGraphicsPixmapIte
 from PySide6.QtGui import QPixmap, QPainter, QWheelEvent, QKeyEvent, QPen, QFont, QTextOption
 from PySide6.QtCore import Qt, QTimer, QPropertyAnimation, QEasingCurve, Slot, QRectF, QByteArray, QObject, Signal
 from typing import Literal, List, Optional
-from src.aplustools import url_validator
-from src.aplustools import QNoSpacingHBoxLayout, QNoSpacingVBoxLayout
+from aplustools.web.utils import url_validator
+from aplustools.io.gui import QNoSpacingHBoxLayout, QNoSpacingVBoxLayout
 import httpx
 from concurrent.futures import ThreadPoolExecutor
 import time
@@ -1405,8 +1405,8 @@ if __name__ == '__main__':
     window.setManagement(HorizontalManagement)
     window.scrollBarsBackgroundRedraw(True)
 
-    for item in os.listdir("test_images"):
-        test_image = QScalingGraphicPixmapItem(os.path.join("test_images", item))
+    for item in os.listdir("./test_images"):
+        test_image = QScalingGraphicPixmapItem(os.path.join("./test_images", item))
         window.addImageToScene(test_image)
 
     # window.setManagement(VerticalManagement)
@@ -1426,8 +1426,8 @@ if __name__ == '__main___':
     # window.scrollBarsBackgroundRedraw(True)
 
     total_height = 0
-    for item in os.listdir("test_images"):
-        test_image = QScalingGraphicPixmapItem(os.path.join("test_images", item))
+    for item in os.listdir("./test_images"):
+        test_image = QScalingGraphicPixmapItem(os.path.join("./test_images", item))
         #window.addImageToScene(test_image)
         window.scene().addItem(test_image)
         test_image.scaledToWidth(1000)

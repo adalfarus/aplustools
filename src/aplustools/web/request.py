@@ -75,7 +75,7 @@ class UnifiedRequestHandlerAdvanced:
 
 def local_test():
     try:
-        from src.aplustools import TimidTimer
+        from aplustools.package.timid import TimidTimer
         timer = TimidTimer()
 
         # Synchronous request

@@ -1,4 +1,4 @@
-from src.aplustools import timid, argumint
+from aplustools.package import timid, argumint
 
 
 class TestTimid:
