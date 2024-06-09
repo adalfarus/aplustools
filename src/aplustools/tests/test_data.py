@@ -1,4 +1,4 @@
-from src.aplustools import database, imagetools, updaters, faker, advanced_imagetools, compressor
+from aplustools.data import database, imagetools, updaters, faker, advanced_imagetools, compressor
 
 
 class TestUpdaters:

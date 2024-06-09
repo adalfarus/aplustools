@@ -1,12 +1,12 @@
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-from src.aplustools.security.protocols.control_code_protocol import _ControlCode
+from aplustools.security.protocols.control_code_protocol import _ControlCode
 from cryptography.hazmat.primitives.asymmetric import rsa, padding
 from cryptography.hazmat.primitives import padding as sym_padding
 from cryptography.hazmat.primitives import serialization, hashes
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
-from src.aplustools import ControlCodeProtocol
+from aplustools.security.protocols import ControlCodeProtocol
 from cryptography.hazmat.backends import default_backend
-from src.aplustools import strict
+from aplustools.io.environment import strict
 from typing import List, Union
 import datetime
 import struct
@@ -298,8 +298,8 @@ class MessageDecoder:
 
 
 if __name__ == "__main__":
-    from src.aplustools import SecretsRandomGenerator
-    from src.aplustools import TimidTimer
+    from aplustools.security.rand import SecretsRandomGenerator
+    from aplustools.package.timid import TimidTimer
 
     timer = TimidTimer()
     protocol = ControlCodeProtocol()

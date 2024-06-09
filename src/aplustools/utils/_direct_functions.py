@@ -169,8 +169,8 @@ class Sorters:
 
 
 if __name__ == "__main__":
-    from src.aplustools import TimidTimer
-    from src.aplustools import cutoff_iterable
+    from aplustools.package.timid import TimidTimer
+    from aplustools.data import cutoff_iterable
 
     lst = [0, 1, 5, -1] * 10000
     timer = TimidTimer()

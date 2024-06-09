@@ -1,8 +1,8 @@
-from src.aplustools import install_dependencies_lst as _install_dependencies_lst
+from aplustools.package import install_dependencies_lst as _install_dependencies_lst
 from typing import Union as _Union
 import ctypes as _ctypes
 import typing as _typing
-from src.aplustools import EndPoint as _EndPoint
+from aplustools.package.argumint import EndPoint as _EndPoint
 import json as _json
 
 
@@ -402,7 +402,7 @@ if __name__ == "__main__":
     print(cutoff_iterable({1: 2, 4: 5, 6: 6, 8: 6, 82: 12, 2: 2, 99: 2, 0: 1}, max_elements_start=4, max_elements_end=3,
                           show_hidden_elements_num=True))
 
-    from src.aplustools import TimidTimer
+    from aplustools.package.timid import TimidTimer
     timer = TimidTimer()
 
     for _ in range(1_000_000):

@@ -1,4 +1,4 @@
-from src.aplustools import execute_python_command, set_dir_to_ex
+from aplustools import execute_python_command, set_dir_to_ex
 
 
 class TestDirectFunctions:

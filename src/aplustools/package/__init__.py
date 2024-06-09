@@ -1,6 +1,6 @@
 # package __init__
 
-from src.aplustools.package._direct_functions import LazyModuleLoader as _LazyModuleLoader
+from aplustools.package._direct_functions import LazyModuleLoader as _LazyModuleLoader
 
 # Lazy loading modules
 timid = _LazyModuleLoader('aplustools.package.timid')
@@ -10,7 +10,7 @@ argumint = _LazyModuleLoader('aplustools.package.argumint')
 __all__ = ['timid', 'argumint']
 
 # Dynamically add exports from _direct_functions
-from src.aplustools.package._direct_functions import *
+from aplustools.package._direct_functions import *
 
 # Update __all__ with the public members from _direct_functions and clean up globals
 for name in list(globals()):

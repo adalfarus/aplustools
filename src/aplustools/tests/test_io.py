@@ -1,4 +1,4 @@
-from src.aplustools import environment, loggers
+from aplustools.io import environment, loggers
 
 
 class TestEnvironment:

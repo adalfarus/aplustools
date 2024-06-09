@@ -1,4 +1,4 @@
-from src.aplustools import dummy
+from aplustools.utils import dummy
 
 
 class TestDummy:

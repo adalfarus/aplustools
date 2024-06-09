@@ -1,5 +1,5 @@
-from src.aplustools import get_temp
-from src.aplustools import updaters
+from aplustools.io.environment import get_temp
+from aplustools.data import updaters
 from typing import List, Any
 import sys
 import os

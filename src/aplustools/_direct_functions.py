@@ -2,7 +2,7 @@ import subprocess as _subprocess
 import sys as _sys
 import os as _os
 import warnings as _warnings
-from src.aplustools import install_dependencies_lst as _install_dependencies_lst
+from aplustools.package import install_dependencies_lst as _install_dependencies_lst
 import typing as _typing
 
 
