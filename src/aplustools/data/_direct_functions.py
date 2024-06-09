@@ -1,17 +1,8 @@
-from aplustools.package import install_dependencies_lst as _install_dependencies_lst
 from typing import Union as _Union
 import ctypes as _ctypes
 import typing as _typing
 from aplustools.package.argumint import EndPoint as _EndPoint
 import json as _json
-
-
-def install_dependencies():
-    success = _install_dependencies_lst(["requests==2.32.0", "PySide6==6.7.0", "Pillow==10.3.0", "aiohttp==3.9.4",
-                                         "opencv-python==4.9.0.80", "pillow_heif==0.15.0", "numpy==1.26.4"])
-    if not success:
-        return
-    print("Done, all possible dependencies for the data module installed ...")
 
 
 def truedivmod(__x, __y):

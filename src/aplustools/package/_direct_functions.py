@@ -31,7 +31,7 @@ class LazyModuleLoader:
         return dir(self.module)
 
 
-def _execute_python_command(arguments: _Optional[list] = None, *args, **kwargs) -> _subprocess.CompletedProcess[str]:
+def _execute_python_command(arguments: _Optional[list] = None, *args, **kwargs) -> _subprocess.CompletedProcess[str]:  # Shared code
     if arguments is None:
         arguments = []
     print(' '.join([_sys.executable] + arguments))
@@ -49,13 +49,6 @@ def install_dependencies_lst(dependencies: list) -> bool:
             print("An error occurred:" + str(e))
             return False
     return True
-
-
-def install_dependencies():
-    success = install_dependencies_lst(["numpy==1.26.4", "scipy==1.13.0", "scikit-learn==1.4.1.post1"])
-    if not success:
-        return
-    print("Done, all possible dependencies for the package module installed ...")
 
 
 class AttributeObject:
