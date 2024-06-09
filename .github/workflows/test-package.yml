@@ -29,25 +29,27 @@ jobs:
       run: |
         python -c "import aplustools; aplustools.install_all_dependencies()"
 
-    - name: Prepare test_data directory
+    - name: Prepare test_data directory (macOS/Linux)
+      if: runner.os != 'Windows'
       run: |
-        if [ "${{ matrix.os }}" = "windows-latest" ]; then
-          $dir = "test_data"
-          if (Test-Path $dir) {
-            Write-Host "Clearing directory $dir..."
-            Remove-Item -Recurse -Force $dir
-          }
-          Write-Host "Creating directory $dir..."
-          New-Item -ItemType Directory -Force -Path $dir
-        else
-          DIR=test_data
-          if [ -d "$DIR" ]; then
-            echo "Clearing directory $DIR..."
-            rm -rf "$DIR"
-          fi
-          echo "Creating directory $DIR..."
-          mkdir "$DIR"
+        DIR=test_data
+        if [ -d "$DIR" ]; then
+          echo "Clearing directory $DIR..."
+          rm -rf "$DIR"
         fi
+        echo "Creating directory $DIR..."
+        mkdir "$DIR"
+
+    - name: Prepare test_data directory (Windows)
+      if: runner.os == 'Windows'
+      run: |
+        $dir = "test_data"
+        if (Test-Path $dir) {
+          Write-Host "Clearing directory $dir..."
+          Remove-Item -Recurse -Force $dir
+        }
+        Write-Host "Creating directory $dir..."
+        New-Item -ItemType Directory -Force -Path $dir
 
     - name: Install package
       run: |
