@@ -25,7 +25,7 @@ def install_all_dependencies():
                                          "opencv-python==4.9.0.80", "brotli==1.1.0",
                                          "zstandard==0.22.0", "py7zr==0.21.0", "pillow_heif==0.15.0", "numpy==1.26.4",
                                          "speedtest-cli==2.1.3", "windows-toasts==1.1.1; os_name == 'nt'",
-                                         "quantcrypt==0.4.2", "scipy==1.13.0", "scikit-learn==1.5.0"])
+                                         "quantcrypt==0.4.2; os_name == 'nt'", "scipy==1.13.0", "scikit-learn==1.5.0"])
     if not success:
         return
     print("Done, all possible dependencies installed ...")

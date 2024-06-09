@@ -13,9 +13,12 @@ import os
 from aplustools.security.passwords import SpecificPasswordGenerator, PasswordFilter
 from aplustools.io.environment import safe_remove
 from tempfile import mkdtemp
-from quantcrypt.kem import Kyber
-from quantcrypt.cipher import KryptonKEM
-from quantcrypt.kdf import Argon2
+try:
+    from quantcrypt.kem import Kyber
+    from quantcrypt.cipher import KryptonKEM
+    from quantcrypt.kdf import Argon2
+except ImportError:
+    Kyber = KryptonKEM = Argon2 = None
 
 
 class CryptUtils:
