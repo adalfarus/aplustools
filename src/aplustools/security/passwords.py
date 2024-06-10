@@ -1,5 +1,8 @@
 from cryptography.hazmat.primitives.ciphers import Cipher as _Cipher, algorithms as _algorithms, modes as _modes
 from cryptography.hazmat.backends import default_backend as _default_backend
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC as _PBKDF2HMAC
+from cryptography.hazmat.primitives import hashes as _hashes
+from cryptography.hazmat.primitives import padding as _padding
 from zxcvbn import zxcvbn as _zxcvbn
 
 from aplustools.security.rand import WeightedRandom as _WeightedRandom
@@ -728,8 +731,64 @@ class SecurePasswordGenerator:
 
 
 class PasswordReGenerator:
-    def __init__(self):
-        pass
+    def __init__(self, key: bytes = None, seed_file: str = "seed_file.enc", debug: bool = False):
+        self._key = key or _os.urandom(32)
+        self._seed_file = seed_file
+        self._debug = debug
+        self._load_or_create_seed_file()
+
+    def _load_or_create_seed_file(self):
+        if _os.path.exists(self._seed_file):
+            self._load_seed_file()
+        else:
+            self._create_seed_file()
+
+    def _load_seed_file(self):
+        with open(self._seed_file, 'rb') as f:
+            encrypted_seed = f.read()
+
+        # Decrypt the seed
+        iv = encrypted_seed[:16]
+        cipher = _Cipher(_algorithms.AES(self._key), _modes.CBC(iv), backend=_default_backend())
+        decryptor = cipher.decryptor()
+        padded_seed = decryptor.update(encrypted_seed[16:]) + decryptor.finalize()
+
+        # Unpad the seed
+        unpadder = _padding.PKCS7(_algorithms.AES.block_size).unpadder()
+        self._seed = unpadder.update(padded_seed) + unpadder.finalize()
+
+    def _create_seed_file(self):
+        self._seed = _os.urandom(32)
+
+        # Encrypt the seed
+        iv = _os.urandom(16)
+        cipher = _Cipher(_algorithms.AES(self._key), _modes.CBC(iv), backend=_default_backend())
+        encryptor = cipher.encryptor()
+
+        # Pad the seed
+        padder = _padding.PKCS7(_algorithms.AES.block_size).padder()
+        padded_seed = padder.update(self._seed) + padder.finalize()
+
+        encrypted_seed = iv + encryptor.update(padded_seed) + encryptor.finalize()
+
+        with open(self._seed_file, 'wb') as f:
+            f.write(encrypted_seed)
+
+    def generate_password(self, identifier: str, simple_password: str, length: int = 64) -> str:
+        salt = self._seed + identifier.encode() + simple_password.encode()
+        kdf = _PBKDF2HMAC(
+            algorithm=_hashes.SHA256(),
+            length=length,
+            salt=salt,
+            iterations=100000,
+            backend=_default_backend()
+        )
+        password = kdf.derive(self._key)
+        return self._format_password(password, length)
+
+    def _format_password(self, password: bytes, length: int) -> str:
+        # Convert to a readable password
+        return password.hex()[:length]
 
 
 @_strict
@@ -943,5 +1002,9 @@ if __name__ == "__main__":
     manager.store_in_buffer("example.com", 0)  # Stores unencrypted password in a buffer
     print(manager.get_password("example.com"), "|", manager.use_from_buffer(0))  # for faster access.
 
-    print(QuickGeneratePasswords.generate_custom_sentence_based_password_v2(
-        "Exploring the unknown -- discovering new horizons..."))
+    print(manager.generate_custom_sentence_based_password(
+        "Exploring the unknown -- discovering new horizons...", char_position="keep", num_length=5,
+        special_chars_length=2))
+
+    gen = PasswordReGenerator(b'\x13V\xf8\xa8\xab\x96\xe6\x15\xdb\xbf?\xd0\xb5\x0c\xc6\x07\x94\n~Jy3\\\x97\x87\xfd\xff\x9d\x8c\xac\x90a')
+    print(gen.generate_password("websize.com", "mypass"))
