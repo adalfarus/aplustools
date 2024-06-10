@@ -175,6 +175,8 @@ class ModernCryptUtils:  # QuantumCryptography
         """
         Generates a Kyber public and private key pair.
         """
+        if Kyber is None:
+            raise EnvironmentError("Module QuantCrypt is not installed.")
         return Kyber().keygen()
 
     @staticmethod
@@ -183,6 +185,8 @@ class ModernCryptUtils:  # QuantumCryptography
         """
         Encrypts a file using the Kyber public key.
         """
+        if Kyber is None:
+            raise EnvironmentError("Module QuantCrypt is not installed.")
         krypton = KryptonKEM(Kyber)
         temp_dir = mkdtemp()
         if isinstance(plaintext_path_or_file, (bytes, IO)):
@@ -218,6 +222,8 @@ class ModernCryptUtils:  # QuantumCryptography
         """
         Decrypts a file to memory using the Kyber secret key.
         """
+        if Kyber is None:
+            raise EnvironmentError("Module QuantCrypt is not installed.")
         krypton = KryptonKEM(Kyber)
         temp_dir = mkdtemp()
         if isinstance(ciphertext_path_or_file, (bytes, IO)):
@@ -263,10 +269,13 @@ class ModernCryptUtils:  # QuantumCryptography
         """
         Verifies a password against an Argon2 hash.
         """
+        if Kyber is None:
+            raise EnvironmentError("Module QuantCrypt is not installed.")
         try:
             Argon2.Hash(password, hash)
             return True
-        except Exception:
+        except Exception as e:
+            print(f"Exception occurred: {e}")
             return False
 
 
