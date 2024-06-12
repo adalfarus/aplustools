@@ -1,5 +1,6 @@
 from PySide6.QtCore import QTimer, Signal, QObject, QEvent, QDateTime, QSize, Qt, QRect
 from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout, QLayout, QWidget, QTextEdit
+from PySide6.QtGui import QTextCursor
 from typing import Optional, Tuple
 
 
@@ -127,30 +128,84 @@ class QQuickHBoxLayout(QHBoxLayout):
             apply_layout_to.setLayout(self)
 
 
-class BulletPointTextEdit(QTextEdit):
+class QBulletPointTextEdit(QTextEdit):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setAcceptRichText(False)
-        self.insertBulletPoint()
+        self.ensure_bullet_point()
 
-    def insertBulletPoint(self):
+    def ensure_bullet_point(self):
         cursor = self.textCursor()
-        cursor.insertText("• ")
+        if cursor.block().text().strip() == "":
+            cursor.insertText("• ")
+        else:
+            block_text = cursor.block().text()
+            if not block_text.startswith("• "):
+                cursor.select(QTextCursor.SelectionType.BlockUnderCursor)
+                cursor.removeSelectedText()
+                cursor.insertText("• " + block_text.replace("•", "").strip())
         self.setTextCursor(cursor)
 
     def keyPressEvent(self, event):
+        cursor = self.textCursor()
+
         if event.key() in [Qt.Key.Key_Return, Qt.Key.Key_Enter]:
             super().keyPressEvent(event)
-            self.insertBulletPoint()
+            self.ensure_bullet_point()
         elif event.key() == Qt.Key.Key_Backspace:
-            cursor = self.textCursor()
-            if cursor.positionInBlock() <= 2:  # Position in block considers bullet point
+            block_text = cursor.block().text().strip()
+            if cursor.blockNumber() == 0 and block_text + " " == "• ":  # If at the first block with only a bullet point
                 return
-            super().keyPressEvent(event)
-        elif event.key() == Qt.Key.Key_Delete:
-            cursor = self.textCursor()
+            elif block_text + " " == "• ":  # If the line only contains a bullet point
+                cursor.select(QTextCursor.SelectionType.BlockUnderCursor)
+                cursor.removeSelectedText()
+                # cursor.deletePreviousChar()
+            else:
+                super().keyPressEvent(event)
+        elif event.key() in [Qt.Key.Key_Delete]:
             if cursor.atBlockEnd():
+                position_in_block = cursor.positionInBlock()
+                start_block = cursor.block()
+                cursor.movePosition(QTextCursor.MoveOperation.NextBlock)
+                if cursor.blockNumber() == 0 or start_block == cursor.block():  # If at the first block with only a bullet point or the last point
+                    return
+
+                next_block_text = cursor.block().text()
+                cursor.select(QTextCursor.SelectionType.BlockUnderCursor)
+                cursor.removeSelectedText()
+                rest = next_block_text[2:]
+
+                cursor.movePosition(QTextCursor.MoveOperation.EndOfBlock)
+                cursor.insertText(rest)
+                cursor.movePosition(QTextCursor.MoveOperation.StartOfBlock)
+                cursor.movePosition(QTextCursor.MoveOperation.Right, QTextCursor.MoveMode.MoveAnchor, position_in_block)
+                self.setTextCursor(cursor)
+            elif cursor.blockNumber() == 0:  # If at the first block with only a bullet point
                 return
-            super().keyPressEvent(event)
+            else:
+                super().keyPressEvent(event)
         else:
+            if cursor.hasSelection():
+                start = cursor.selectionStart()
+                end = cursor.selectionEnd()
+                cursor.setPosition(start)
+                # Check if the selection includes the bullet point
+                if cursor.block().text().startswith("•") and start < cursor.block().position() + 2:
+                    return
+
             super().keyPressEvent(event)
+            self.ensure_bullet_point()  # Ensure a space after bullet point if missing
+
+    def get_bullet_points(self) -> list:
+        bullet_points = []
+        cursor = QTextCursor(self.document())
+        cursor.movePosition(QTextCursor.MoveOperation.Start)
+
+        while True:
+            block = cursor.block()
+            text = block.text().strip()
+            if text.startswith("• "):
+                bullet_points.append(text[2:])
+            if not cursor.movePosition(QTextCursor.MoveOperation.NextBlock):
+                break
+        return bullet_points
