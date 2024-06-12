@@ -232,7 +232,6 @@ Dependencies (except for the standard libraries) are:
 - [`none`]
   - data.database
   - io.loggers
-  - data.faker
   - utils.dummy
   - package.lazy_loader
 - [`requests`]

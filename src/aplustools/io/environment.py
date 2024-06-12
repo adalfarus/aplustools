@@ -415,7 +415,7 @@ class Window:
             raise OSError(f"Unsupported operating system: {_os.name}")
 
 
-class Theme(_Enum):
+class SystemTheme(_Enum):
     LIGHT = "Light"
     DARK = "Dark"
     UNKNOWN = "Unknown"
@@ -567,9 +567,9 @@ class _WindowsSystem(_BaseSystem):
         output = _subprocess.check_output(command.split(" ")).decode()
         return [line.strip() for line in output.split('\n') if line.strip()][1:]
 
-    def get_system_theme(self) -> Theme:
+    def get_system_theme(self) -> SystemTheme:
         if not winreg:
-            return Theme.UNKNOWN
+            return SystemTheme.UNKNOWN
 
         key = r'SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize'
         value = 'AppsUseLightTheme'
@@ -577,10 +577,10 @@ class _WindowsSystem(_BaseSystem):
             reg_key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, key)
             theme_value, _ = winreg.QueryValueEx(reg_key, value)
             winreg.CloseKey(reg_key)
-            return Theme.DARK if theme_value == 0 else Theme.LIGHT
+            return SystemTheme.DARK if theme_value == 0 else SystemTheme.LIGHT
         except Exception as e:
             print(f"Exception occurred: {e}")
-            return Theme.UNKNOWN
+            return SystemTheme.UNKNOWN
 
     def schedule_event(self, name: str, script_path: str, event_time: _typing.Literal["startup", "login"]):
         """Schedule an event to run at startup or login on Windows."""
@@ -685,13 +685,13 @@ class _DarwinSystem(_BaseSystem):
         output = _subprocess.check_output(command.split(" ")).decode()
         return [line.split(': ')[1].strip() for line in output.split('\n') if 'Chipset Model' in line]
 
-    def get_system_theme(self) -> Theme:
+    def get_system_theme(self) -> SystemTheme:
         command = "defaults read -g AppleInterfaceStyle"
         try:
             theme = _subprocess.check_output(command.split(" ")).decode().strip()
-            return Theme.DARK if theme.lower() == 'dark' else Theme.LIGHT
+            return SystemTheme.DARK if theme.lower() == 'dark' else SystemTheme.LIGHT
         except _subprocess.CalledProcessError:
-            return Theme.LIGHT  # Default to Light since Dark mode is not set
+            return SystemTheme.LIGHT  # Default to Light since Dark mode is not set
 
     def schedule_event(self, name: str, script_path: str, event_time: _typing.Literal["startup", "login"]):
         """Schedule an event to run at startup or login on macOS."""
@@ -779,14 +779,14 @@ class _LinuxSystem(_BaseSystem):
                 print("sudo yum install mesa-libEGL")  # For Red Hat-based systems
             return []
 
-    def get_system_theme(self) -> Theme:
+    def get_system_theme(self) -> SystemTheme:
         # This might vary depending on the desktop environment (GNOME example)
         command = "gsettings get org.gnome.desktop.interface gtk-theme"
         try:
             theme = _subprocess.check_output(command.split(" ")).decode().strip().strip("'")
-            return Theme.DARK if "dark" in theme.lower() else Theme.LIGHT
+            return SystemTheme.DARK if "dark" in theme.lower() else SystemTheme.LIGHT
         except _subprocess.CalledProcessError:
-            return Theme.UNKNOWN
+            return SystemTheme.UNKNOWN
 
     def schedule_event(self, name: str, script_path: str, event_time: _typing.Literal["startup", "login"]):
         """Schedule an event to run at startup or login on Linux."""
