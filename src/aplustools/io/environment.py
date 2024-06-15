@@ -6,7 +6,8 @@ import warnings as _warnings
 import platform as _platform
 import inspect as _inspect
 import shutil as _shutil
-import typing as _typing
+from typing import (Callable as _Callable, cast as _cast, Any as _Any, Union as _Union, Optional as _Optional,
+                    Literal as _Literal)
 import sys as _sys
 import os as _os
 import psutil as _psutil
@@ -121,7 +122,7 @@ def change_working_dir_to_userprofile_folder(folder: str):
         raise
 
 
-def inject_current_file_path(func: _typing.Callable):
+def inject_current_file_path(func: _Callable):
     def wrapper(relative_path: str):
         frame = _inspect.currentframe().f_back
         module = _inspect.getmodule(frame)
@@ -139,7 +140,7 @@ def absolute_path(relative_path: str, file_path: str) -> str:
     return _os.path.join(base_dir, relative_path)
 
 
-def remove(paths: _typing.Union[str, _Path, _typing.Tuple[_typing.Union[str, _Path]], _typing.List[_typing.Union[str, _Path]]]):
+def remove(paths: _Union[str, _Path, tuple[_Union[str, _Path]], list[_Union[str, _Path]]]):
     if isinstance(paths, (str, _Path)):
         paths = [str(paths)]
     else:
@@ -162,8 +163,7 @@ def remove(paths: _typing.Union[str, _Path, _typing.Tuple[_typing.Union[str, _Pa
             raise OSError(f"Bug, please report, path {path} is neither a file or a directory.")
 
 
-def safe_remove(paths: _typing.Union[str, _Path, _typing.Tuple[_typing.Union[str, _Path]],
-                                     _typing.List[_typing.Union[str, _Path]]]):
+def safe_remove(paths: _Union[str, _Path, tuple[_Union[str, _Path]], list[_Union[str, _Path]]]):
     try:
         remove(paths)
     except Exception as e:
@@ -204,87 +204,90 @@ def safe_rename(org_nam: str, new_nam: str) -> bool:
         return False
 
 
-def strict(cls: _typing.Type[_typing.Any]):
-    class_name = cls.__name__ + "Cover"
-    original_setattr = cls.__setattr__
+def strict(mark_class_as_cover: bool = True) -> _Callable:
+    """The strict decorator is used to prevent hackers from easily getting passwords/private keys stored in instances"""
+    def _decorator(cls: type) -> type:
+        class_name = cls.__name__ + ("Cover" if mark_class_as_cover else "")
+        original_setattr = cls.__setattr__
 
-    # Overridden __setattr__ for the original class
-    def new_setattr(self, name, value):
-        original_setattr(self, name, value)
-        # Update the cover class if attribute is public
-        if not name.startswith('_') and hasattr(self, '_cover') and getattr(self._cover, name) != value:
-            setattr(self._cover, name, value)
+        # Overridden __setattr__ for the original class
+        def _new_setattr(self, name, value):
+            original_setattr(self, name, value)
+            # Update the cover class if attribute is public
+            if not name.startswith('_') and hasattr(self, '_cover') and getattr(self._cover, name) != value:
+                setattr(self._cover, name, value)
 
-    # Replace __setattr__ in the original class
-    cls.__setattr__ = new_setattr
+        # Replace __setattr__ in the original class
+        cls.__setattr__ = _new_setattr
 
-    # Define new __init__ for the cover class
-    def new_init(self, *args, **kwargs):
-        # Create an instance of the original class
-        original_instance = cls(*args, **kwargs)
-        original_instance._cover = self  # Reference to the cover class
+        # Define new __init__ for the cover class
+        def _new_init(self, *args, **kwargs):
+            # Create an instance of the original class
+            original_instance = cls(*args, **kwargs)
+            original_instance._cover = self  # Reference to the cover class
 
-        # Bind public methods and attributes to the cover class instance
-        for attr_name in dir(original_instance):
-            if not attr_name.startswith('_'):  # or attr_name in ('__dict__', '__module__'):
-                attr_value = getattr(original_instance, attr_name)
-                if _inspect.isfunction(attr_value):
-                    setattr(self, attr_name, attr_value.__get__(self, cls))
-                else:
-                    setattr(self, attr_name, attr_value)
+            # Bind public methods and attributes to the cover class instance
+            for attr_name in dir(original_instance):
+                if not attr_name.startswith('_'):  # or attr_name in ('__dict__', '__module__'):
+                    attr_value = getattr(original_instance, attr_name)
+                    if _inspect.isfunction(attr_value):
+                        setattr(self, attr_name, attr_value.__get__(self, cls))
+                    else:
+                        setattr(self, attr_name, attr_value)
 
-        def custom_setattr(instance, name, value):
-            object.__setattr__(instance, name, value)
-            if not name.startswith('_') and getattr(original_instance, name) != value:
-                setattr(original_instance, name, value)
+            def _custom_setattr(instance, name, value):
+                object.__setattr__(instance, name, value)
+                if not name.startswith('_') and getattr(original_instance, name) != value:
+                    setattr(original_instance, name, value)
 
-        self._dynamic_setattr = custom_setattr
+            self._dynamic_setattr = _custom_setattr
 
-        # Remove reference to original instance
-        # del original_instance
+            # Remove reference to original instance
+            # del original_instance
 
-    def setattr_overwrite(self, name, value):
-        if hasattr(self, '_dynamic_setattr'):
-            self._dynamic_setattr(self, name, value)
-        else:
-            object.__setattr__(self, name, value)
+        def _setattr_overwrite(self, name, value):
+            if hasattr(self, '_dynamic_setattr'):
+                self._dynamic_setattr(self, name, value)
+            else:
+                object.__setattr__(self, name, value)
 
-    # Create a new cover class with the new __init__ and other methods/attributes
-    cover_class_attrs = {
-        '__init__': new_init,
-        '__class__': cls,
-        '__setattr__': setattr_overwrite,
-    }
-    for attr_name in dir(cls):
-        if callable(getattr(cls, attr_name)) and not attr_name.startswith('_'):
-            cover_class_attrs[attr_name] = getattr(cls, attr_name)
+        # Create a new cover class with the new __init__ and other methods/attributes
+        cover_class_attrs = {
+            '__init__': _new_init,
+            '__class__': cls,
+            '__setattr__': _setattr_overwrite,
+        }
+        for attr_name in dir(cls):
+            if callable(getattr(cls, attr_name)) and not attr_name.startswith('_'):
+                cover_class_attrs[attr_name] = getattr(cls, attr_name)
 
-    CoverClass = type(class_name, (object,), cover_class_attrs)
-    return CoverClass
+        CoverClass = type(class_name, (object,), cover_class_attrs)
+        return CoverClass
+    return _decorator
 
 
-def privatize(cls: _typing.Type[_typing.Any]):
-    """A class decorator that protects private attributes."""
+def privatize(cls: type) -> type:
+    """A class decorator that "protects" private attributes."""
 
     original_getattr = cls.__getattribute__
     original_setattr = cls.__setattr__
 
     def _get_caller_name() -> str:
         """Return the calling function's name."""
-        return _typing.cast(_FrameType, _typing.cast(_FrameType, _inspect.currentframe()).f_back).f_code.co_name
+        return _cast(_FrameType, _cast(_FrameType, _inspect.currentframe()).f_back).f_code.co_name
 
-    def protected_getattr(self, name: str) -> _typing.Any:
+    def _protected_getattr(self, name: str) -> _Any:
         if name.startswith('_') and _get_caller_name() not in dir(cls):
             raise AttributeError(f"Access to private attribute {name} is forbidden")
         return original_getattr(self, name)
 
-    def protected_setattr(self, name: str, value: _typing.Any) -> None:
+    def _protected_setattr(self, name: str, value: _Any) -> None:
         if name.startswith('_') and _get_caller_name() not in dir(cls):
             raise AttributeError(f"Modification of private attribute {name} is forbidden")
         original_setattr(self, name, value)
 
-    cls.__getattribute__ = protected_getattr
-    cls.__setattr__ = protected_setattr
+    cls.__getattribute__ = _protected_getattr
+    cls.__setattr__ = _protected_setattr
 
     return cls
 
@@ -305,7 +308,7 @@ def auto_repr(cls):
 
 def auto_repr_with_privates(cls):
     """
-    Decorator that automatically generates a __repr__ method for a class.
+    Decorator that automatically generates a __repr__ method for a class, including all private attributes.
     """
     if cls.__repr__ is object.__repr__:
         def __repr__(self):
@@ -440,14 +443,14 @@ class _BaseSystem:
             return _subprocess.check_output(command, shell=True).decode().split(': ')[1].strip()
         return "Unknown"
 
-    def schedule_event(self, name: str, script_path: str, event_time: _typing.Literal["startup", "login"]):
+    def schedule_event(self, name: str, script_path: str, event_time: _Literal["startup", "login"]):
         raise NotImplementedError("schedule_event is not implemented")
 
     def send_notification(self, title: str, message: str,
-                          input_fields: _typing.Tuple[_typing.Tuple[str, str, str], ...] = (("input_arg", "Input", "Hint"),),
-                          selections: _typing.Tuple[_typing.Tuple[str, str, _typing.List[tuple], int], ...] = (("selection_arg", "Sel Display Name", ["selection_name", "Selection Display Name"], 0)),
-                          buttons: _typing.Tuple[_typing.Tuple[str, _typing.Callable], ...] = (("Accept", lambda: None), ("Cancel", lambda: None),),
-                          click_callback: _typing.Callable = lambda: None):
+                          input_fields: tuple[tuple[str, str, str], ...] = (("input_arg", "Input", "Hint"),),
+                          selections: tuple[tuple[str, str, list[tuple], int], ...] = (("selection_arg", "Sel Display Name", ["selection_name", "Selection Display Name"], 0),),
+                          buttons: tuple[tuple[str, _Callable], ...] = (("Accept", lambda: None), ("Cancel", lambda: None),),
+                          click_callback: _Callable = lambda: None):
         from aplustools.io.gui.balloon_tip import NotificationManager  # To prevent a circular import
 
         icon_path = Window.get_app_icon_path()
@@ -482,7 +485,7 @@ class _BaseSystem:
                 pass
         return processes
 
-    def get_disk_usage(self, path: _typing.Optional[str] = None):
+    def get_disk_usage(self, path: _Optional[str] = None):
         """Get disk usage statistics."""
         if path is None:
             path = self.get_home_directory()
@@ -582,7 +585,7 @@ class _WindowsSystem(_BaseSystem):
             print(f"Exception occurred: {e}")
             return SystemTheme.UNKNOWN
 
-    def schedule_event(self, name: str, script_path: str, event_time: _typing.Literal["startup", "login"]):
+    def schedule_event(self, name: str, script_path: str, event_time: _Literal["startup", "login"]):
         """Schedule an event to run at startup or login on Windows."""
         task_name, command = f"{name} (APT-{event_time.capitalize()} Task)", ""
         if event_time == "startup":
@@ -592,10 +595,10 @@ class _WindowsSystem(_BaseSystem):
         _subprocess.run(command.split(" "), check=True)
 
     def send_notification(self, title: str, message: str,
-                          input_fields: _typing.Tuple[_typing.Tuple[str, str, str], ...] = (("input_arg", "Input", "Hint"),),
-                          selections: _typing.Tuple[_typing.Tuple[str, str, _typing.List[tuple], int], ...] = (("selection_arg", "Sel Display Name", [("selection_name", "Selection Display Name")], 0)),
-                          buttons: _typing.Tuple[_typing.Tuple[str, _typing.Callable], ...] = (("Accept", lambda: None), ("Cancel", lambda: None),),
-                          click_callback: _typing.Callable = lambda: None):
+                          input_fields: tuple[tuple[str, str, str], ...] = (("input_arg", "Input", "Hint"),),
+                          selections: tuple[tuple[str, str, list[tuple], int], ...] = (("selection_arg", "Sel Display Name", ["selection_name", "Selection Display Name"], 0),),
+                          buttons: tuple[tuple[str, _Callable], ...] = (("Accept", lambda: None), ("Cancel", lambda: None),),
+                          click_callback: _Callable = lambda: None):
         if not (input_fields or selections or buttons):
             if WindowsToaster is not None and Toast is not None:
                 toaster = WindowsToaster(title)
@@ -693,7 +696,7 @@ class _DarwinSystem(_BaseSystem):
         except _subprocess.CalledProcessError:
             return SystemTheme.LIGHT  # Default to Light since Dark mode is not set
 
-    def schedule_event(self, name: str, script_path: str, event_time: _typing.Literal["startup", "login"]):
+    def schedule_event(self, name: str, script_path: str, event_time: _Literal["startup", "login"]):
         """Schedule an event to run at startup or login on macOS."""
         plist_content = f"""
         <?xml version="1.0" encoding="UTF-8"?>
@@ -788,7 +791,7 @@ class _LinuxSystem(_BaseSystem):
         except _subprocess.CalledProcessError:
             return SystemTheme.UNKNOWN
 
-    def schedule_event(self, name: str, script_path: str, event_time: _typing.Literal["startup", "login"]):
+    def schedule_event(self, name: str, script_path: str, event_time: _Literal["startup", "login"]):
         """Schedule an event to run at startup or login on Linux."""
         if event_time == "startup":
             service_content = f"""
@@ -841,23 +844,21 @@ class _LinuxSystem(_BaseSystem):
         _subprocess.run(command.split(" "))
 
 
-class System:
-    @staticmethod
-    def system() -> _typing.Union[_WindowsSystem, _DarwinSystem, _LinuxSystem, _BaseSystem]:
-        os_name = _platform.system()
-        if os_name == 'Windows':
-            return _WindowsSystem()
-        elif os_name == 'Darwin':
-            return _DarwinSystem()
-        elif os_name == 'Linux':
-            return _LinuxSystem()
-        else:
-            _warnings.warn("Unsupported Operating System, returning _BaseSystem instance.", RuntimeWarning, 2)
-            return _BaseSystem()
+def get_system() -> _Union[_WindowsSystem, _DarwinSystem, _LinuxSystem, _BaseSystem]:
+    os_name = _platform.system()
+    if os_name == 'Windows':
+        return _WindowsSystem()
+    elif os_name == 'Darwin':
+        return _DarwinSystem()
+    elif os_name == 'Linux':
+        return _LinuxSystem()
+    else:
+        _warnings.warn("Unsupported Operating System, returning _BaseSystem instance.", RuntimeWarning, 2)
+        return _BaseSystem()
 
 
 def print_system_info():
-    sys_info = System.system()
+    sys_info = get_system()
     print(f"Operating System: {sys_info.os}")
     print(f"OS Version: {sys_info.major_os_version}")
     print(f"CPU Architecture: {sys_info.cpu_arch}")
@@ -886,11 +887,11 @@ def safe_exec(command: str) -> str:
 def local_test():
     try:
         print_system_info()
-        system = System.system()
+        system = get_system()
         # _BaseSystem.send_notification(None, "Zenra", "Hello, how are you?", (), (), ())
         system.send_native_notification("Zenra,", "NOWAYY")
         print("System RAM", system.get_memory_info())
-        print(f"Pc has been turned on since {int(System.system().get_uptime(),)} minutes")
+        print(f"Pc has been turned on since {int(system.get_uptime(),)} minutes")
         # print("Network test", System.system().measure_network_speed())
 
         @strict

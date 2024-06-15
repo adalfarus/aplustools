@@ -1,5 +1,5 @@
 from typing import Callable, Type, Protocol, Union, Any, List, Literal
-from numpy import random as np_random
+from numpy import random as _np_random, ndarray as _ndarray
 import secrets
 import random
 import math
@@ -221,9 +221,112 @@ OSRandomGenerator = CustomRandomGenerator.setup_random_func(os_random)
 SecretsRandomGenerator = CustomRandomGenerator.setup_random_func(secrets_random)
 
 
+class NumPyRandomGenerator:
+    _generator = _np_random.default_rng()
+
+    @staticmethod
+    def random() -> float:
+        return NumPyRandomGenerator._generator.random()
+
+    @classmethod
+    def setup_random_func(cls, func: Callable) -> Type["NumPyRandomGenerator"]:
+        NewClass = type('NumPyRandomGeneratorModified', (cls,), {
+            'random': staticmethod(func)
+        })
+        return NewClass
+
+    @classmethod
+    def uniform(cls, a: float, b: float) -> float:
+        return cls._generator.uniform(a, b)
+
+    @classmethod
+    def randint(cls, a: int, b: int) -> int:
+        return cls._generator.integers(a, b + 1)
+
+    @classmethod
+    def randbelow(cls, b: int) -> int:
+        return cls.randint(0, b)
+
+    @classmethod
+    def choice(cls, seq: Union[str, list, tuple, _ndarray]) -> Any:
+        if isinstance(seq, str):
+            return ''.join(cls._generator.choice(list(seq)))
+        return cls._generator.choice(seq)
+
+    @classmethod
+    def choices(cls, seq: Union[str, list, tuple, _ndarray], k: int) -> Union[str, List]:
+        if isinstance(seq, str):
+            return ''.join(cls._generator.choice(list(seq), size=k, replace=True).tolist())
+        return cls._generator.choice(seq, size=k, replace=True).tolist()
+
+    @classmethod
+    def gauss(cls, mu: float, sigma: float) -> float:
+        return cls._generator.normal(mu, sigma)
+
+    @classmethod
+    def expovariate(cls, lambd: float) -> float:
+        return cls._generator.exponential(1 / lambd)
+
+    @classmethod
+    def gammavariate(cls, alpha: float, beta: float) -> float:
+        return cls._generator.gamma(alpha, beta)
+
+    @classmethod
+    def betavariate(cls, alpha: float, beta: float) -> float:
+        return cls._generator.beta(alpha, beta)
+
+    @classmethod
+    def lognormvariate(cls, mean: float, sigma: float) -> float:
+        return cls._generator.lognormal(mean, sigma)
+
+    @classmethod
+    def shuffle(cls, s: Union[str, list]) -> Union[str, list]:
+        if isinstance(s, str):
+            s_list = list(s)
+            cls._generator.shuffle(s_list)
+            return ''.join(s_list)
+        else:
+            cls._generator.shuffle(s)
+            return s
+
+    @classmethod
+    def sample(cls, s: Union[str, list], k: int) -> Union[str, List]:
+        if isinstance(s, str):
+            return ''.join(cls._generator.choice(list(s), size=k, replace=False).tolist())
+        return cls._generator.choice(s, size=k, replace=False).tolist()
+
+    @classmethod
+    def string_sample(cls, s: Union[str, list], k: int) -> str:
+        return ''.join(cls.sample(s, k))
+
+    @classmethod
+    def generate_random_string(cls, length: int, char_set: str = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~') -> str:
+        return ''.join(cls.choice(list(char_set)) for _ in range(length))
+
+    @classmethod
+    def binomialvariate(cls, n: int, p: float) -> int:
+        return cls._generator.binomial(n, p)
+
+    @classmethod
+    def vonmisesvariate(cls, mu: float, kappa: float) -> float:
+        return cls._generator.vonmises(mu, kappa)
+
+    @classmethod
+    def normalvariate(cls, mu: float, sigma: float) -> float:
+        return cls._generator.normal(mu, sigma)
+
+    @classmethod
+    def paretovariate(cls, alpha: float) -> float:
+        return cls._generator.pareto(alpha)
+
+    @classmethod
+    def weibullvariate(cls, alpha: float, beta: float) -> float:
+        return cls._generator.weibull(beta) * alpha
+
+
 class WeightedRandom:
     def __init__(self, generator: Literal["random", "np_random", "os", "sys_random", "secrets"] = "sys_random"):
-        self._generator = {"random": random, "np_random": np_random, "os": OSRandomGenerator,
+        self._generator = {"random": random, "np_random": NumPyRandomGenerator, "os": OSRandomGenerator,
                            "sys_random": secrets.SystemRandom(), "secrets": SecretsRandomGenerator}[generator]
 
     def random(self) -> float:
@@ -266,7 +369,7 @@ class WeightedRandom:
         :param k: Number of choices.
         :return: Randomly selected element from the sequence.
         """
-        return self._generator.choices(seq, k)
+        return self._generator.choices(seq, k=k)
 
     def shuffle(self, seq):
         """

@@ -9,13 +9,17 @@ from aplustools.security.rand import WeightedRandom as _WeightedRandom
 from aplustools.data import beautify_json as _beautify_json
 from aplustools.io.environment import strict as _strict
 
-from typing import Union as _Union, Literal as _Literal, Optional as _Optional, Dict as _Dict, Tuple as _Tuple
-from importlib import resources as _resources
+from typing import Union as _Union, Literal as _Literal, Optional as _Optional, Callable as _Callable
+from aplustools.data import nice_number as _nice_number
+from importlib_resources import files as _files
+from threading import Timer as _Timer
 import unicodedata as _unicodedata
 import secrets as _secrets
 import string as _string
+import base64 as _base64
 import random as _random
 import math as _math
+import json as _json
 import os as _os
 
 
@@ -310,26 +314,33 @@ class SpecificPasswordGenerator:
         if self.debug:
             print(*args, **kwargs)
 
+    def _add_unique_words(self, words):
+        unique_words = set(self.words)  # Create a set of current words for fast membership testing
+        for word in words:
+            if word not in unique_words:
+                self.words.append(word)
+                unique_words.add(word)
+
     def load_def_dict(self):
-        with _resources.path("aplustools.security.dicts", "def-dict.txt") as file_path:
-            with open(file_path, "r") as f:
-                self.words.extend([line.strip() for line in f])
+        file_path = _files("aplustools.security.dicts").joinpath("def-dict.txt")
+        with file_path.open("r") as f:
+            self._add_unique_words([line.strip() for line in f])
 
     def load_google_10000_dict(self):
-        with _resources.path("aplustools.security.dicts", "google-10000-dict.txt") as file_path:
-            with open(file_path, "r") as f:
-                self.words.extend([line.strip() for line in f])
+        file_path = _files("aplustools.security.dicts").joinpath("google-10000-dict.txt")
+        with file_path.open("r") as f:
+            self._add_unique_words([line.strip() for line in f])
 
     def load_scowl_dict(self, size: _Literal[50, 60, 70, 80, 95] = 50):
-        with _resources.path("aplustools.security.dicts", f"scowl-{size}-dict.txt") as file_path:
-            with open(file_path, "r") as f:
-                self.words.extend([line.strip() for line in f])
+        file_path = _files("aplustools.security.dicts").joinpath(f"scowl-{size}-dict.txt")
+        with file_path.open("r") as f:
+            self._add_unique_words([line.strip() for line in f])
 
     def load_12_dicts(self):
-        with _resources.path("aplustools.security.dicts", "12-dicts") as file_path:
-            for file in _os.listdir(file_path):
-                with open(_os.path.join(file_path, file), "r") as f:
-                    self.words.extend([line.strip() for line in f])
+        dir_path = _files("aplustools.security.dicts").joinpath("12-dicts")
+        for file in dir_path.iterdir():
+            with file.open("r") as f:
+                self._add_unique_words([line.strip() for line in f])
 
     def unload_dicts(self):
         self.words = []
@@ -442,8 +453,10 @@ class SpecificPasswordGenerator:
         return passphrase
 
     def generate_secure_passphrase(self, words: list = None, num_words: int = 6,
-                                   filter_: _Optional[PasswordFilter] = None) -> str:
-        return self.secure_password(self._generate_passphrase(words, num_words, filter_), passes=1)
+                                   filter_: _Optional[PasswordFilter] = None, _return_info=True) -> str:
+        passphrase = self._generate_passphrase(words, num_words, filter_)
+        secure_passphrase = self.secure_password(passphrase, passes=1)
+        return (secure_passphrase, passphrase) if _return_info else secure_passphrase
 
     def generate_pattern_password(self, pattern: str = "9/XxX-999xXx-99/XxX-999xXx-9",
                                   filter_: _Optional[PasswordFilter] = None) -> str:
@@ -668,10 +681,39 @@ class SpecificPasswordGenerator:
 
 
 class SecurePasswordGenerator:
-    def __init__(self, security: _Literal["weak", "average", "strong"]):
-        self._rng = _WeightedRandom({"weak": "random", "average": "np_random", "strong": "secrets"}[security])
+    """
+    Generates an always secure password that takes at least over one year to crack in the worst case. This is also
+    guaranteed if some of your passwords are already compromised as the password generation pattern is also entirely
+    random.
+
+    The number of unique words for random sentence generation grows with the security settings (All duplicates are
+    filtered out): - Weak: 10.027 words - Average: 105.705 words - Strong: 223.242 words - Super Strong: 400.172 words
+    """
+
+    def __init__(self, security: _Literal["weak", "average", "strong", "super_strong"]):
+        self._rng = _WeightedRandom({"weak": "random", "average": "np_random", "strong": "secrets",
+                                     "super_strong": "secrets"}[security])
         self._gen = SpecificPasswordGenerator(self._rng)
-        self._gen.load_def_dict()
+
+        match security:
+            case "weak":
+                self._gen.load_def_dict()
+                self._gen.load_google_10000_dict()
+            case "average":
+                self._gen.load_def_dict()
+                self._gen.load_google_10000_dict()
+                self._gen.load_scowl_dict()
+            case "strong":
+                self._gen.load_def_dict()
+                self._gen.load_google_10000_dict()
+                self._gen.load_scowl_dict(size=70)
+                self._gen.load_12_dicts()
+            case "super_strong":
+                self._gen.load_def_dict()
+                self._gen.load_google_10000_dict()
+                self._gen.load_scowl_dict(size=80)
+                self._gen.load_12_dicts()
+        print(f"Loaded {_nice_number(len(self._gen.words))} unique words")
 
     def generate_secure_password(self, return_worst_case: bool = True, predetermined: _Optional[
                                                                                       _Literal["random", "passphrase",
@@ -679,50 +721,50 @@ class SecurePasswordGenerator:
                                                                                                "mnemonic", "ratio",
                                                                                                "words", "sentence"
                                                                                       ]] = None) -> dict:
-        rnd = self._rng.randint(0, 7) if predetermined is None else \
+        rnd = round(self._rng.functional(lambda x: x if x <= 3 else 3 + (x - 3) / 3, 0, 7), 0) if predetermined is None else \
             {
-                "random": 0,
+                "mnemonic": 0,
                 "passphrase": 1,
                 "pattern": 2,
-                "complex": 3,
-                "mnemonic": 4,
-                "ratio": 5,
-                "words": 6,
-                "sentence": 7
+                "sentence": 3,
+                "words": 4,
+                "random": 5,
+                "complex": 6,
+                "ratio": 7
             }[predetermined]
         result = {"extra_info": "", "password": "", "worst_case": ""}
 
         match rnd:
             case 0:
-                pw = self._gen.generate_random_password()
-                result = {"extra_info": "Entirely random", "password": pw}
+                pw, adj, noun = self._gen.generate_mnemonic_password(_return_info=True)
+                result = {"extra_info": f"A mnemonic password using the adj '{adj}' and the noun '{noun}'.",
+                          "password": pw}
             case 1:
-                pw = self._gen.generate_secure_passphrase(self._gen.words)
-                result = {"extra_info": "Passphrase, secure as it's very long.", "password": pw}
+                pw, sentence = self._gen.generate_secure_passphrase(self._gen.words, _return_info=True)
+                result = {"extra_info": f"Passphrase, secure as it's very long, using the sentence '{sentence}'", "password": pw}
             case 2:
                 pattern = ''.join(self._rng.choices("/XXXxxx-999", 28))
                 pw = self._gen.generate_pattern_password(pattern)
                 result = {"extra_info": f"A pattern password with the pattern '{pattern}'.", "password": pw}
             case 3:
-                pw = self._gen.generate_complex_password()
-                result = {"extra_info": "Entirely random, a complex password.", "password": pw}
-            case 4:
-                pw, adj, noun = self._gen.generate_mnemonic_password(_return_info=True)
-                result = {"extra_info": f"A mnemonic password using the adj '{adj}' and the noun '{noun}'.",
-                          "password": pw}
-            case 5:
-                pw = self._gen.generate_ratio_based_password_v3()
-                result = {"extra_info": "Entirely random, a ratio based password.", "password": pw}
-            case 6:
-                pw, sentence = self._gen.generate_words_based_password_v3(_return_info=True)
-                result = {"extra_info": f"A words based password using the sentence '{sentence}_.", "password": pw}
-            case 7:
                 spec_char = self._rng.choice('!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~')
                 pattern = ''.join(self._rng.sample(["{words}", "{special}", "{extra}", "{numbers}"], 4))
                 pw, sentence = self._gen.generate_sentence_based_password_v3(extra_char=spec_char,
                                                                              password_format=pattern, _return_info=True)
                 result = {"extra_info": f"A sentence based password using the sentence '{sentence}' "
                                         f"and the pattern '{pattern}'.", "password": pw}
+            case 4:
+                pw, sentence = self._gen.generate_words_based_password_v3(_return_info=True)
+                result = {"extra_info": f"A words based password using the sentence '{sentence}_.", "password": pw}
+            case 5:
+                pw = self._gen.generate_random_password()
+                result = {"extra_info": "Entirely random", "password": pw}
+            case 6:
+                pw = self._gen.generate_complex_password()
+                result = {"extra_info": "Entirely random, a complex password.", "password": pw}
+            case 7:
+                pw = self._gen.generate_ratio_based_password_v3()
+                result = {"extra_info": "Entirely random, a ratio based password.", "password": pw}
 
         if return_worst_case:
             result["worst_case"] = _zxcvbn(result["password"])["crack_times_display"]["offline_fast_hashing_1e10_per_second"]
@@ -730,12 +772,226 @@ class SecurePasswordGenerator:
         return result
 
 
+def reducer_2(input_str: str, ord_range: range, jump_size: int, tries: int = 100, debug: bool = False):
+    """While loop is worse when the tries are fully used but that should ideally not happen very often."""
+    def debug_print(*args, **kwargs):
+        if debug:
+            print(*args, **kwargs)
+
+    max_range, min_range = max(ord_range), min(ord_range)
+    output = ""
+    for i in input_str:
+        ord_i = ord(i)
+        debug_print(f"Char {repr(i)} -> Ord {ord_i}")
+        current_tries = 0
+        while ord_i not in ord_range and current_tries < tries:  # Just send it through both
+            while ord_i > max_range:
+                ord_i -= jump_size
+            i = chr(ord_i)  # To make sure it's within chars allowed range
+            ord_i = ord(i)
+            debug_print(f"New char {repr(i)} -> Ord {ord_i}")
+            while ord_i < min_range:
+                ord_i += jump_size
+            i = chr(ord_i)
+            current_tries += 1
+        if ord_i not in ord_range:
+            continue
+        output += i
+    return output
+
+
+def big_reducer_2(input_str: str, ord_ranges: list[range], jump_size: int, tries: int = 100,
+                  debug: bool = False):
+    """Around 10 times faster than the old big_reducer (43ms vs 400+ms)"""
+    def debug_print(*args, **kwargs):
+        if debug:
+            print(*args, **kwargs)
+
+    def within_ranges(ord_val, ranges):
+        for minimum, maximum in ranges.values():
+            debug_print(f"Min: {minimum}, Max: {maximum}, Char: {chr(ord_val)}({ord_val})")
+            if minimum <= ord_val <= maximum:
+                return True
+        return False
+
+    def adjust_to_nearest_range(ord_val, ranges: dict, jump_size, tries):
+        def nearest_int(target, int1, int2, jump_size):
+            diff1 = abs(target - int1)
+            diff2 = abs(target - int2)
+
+            if diff1 < diff2:
+                return int1
+            elif diff2 < diff1:
+                return int2
+            else:
+                # If both are equal, just use the one that better fits the jump_size
+                diff1_jump = diff1 / jump_size
+                diff2_jump = diff2 / jump_size
+                return int1 if diff1_jump < diff2_jump else int2
+
+        range_items: list[tuple[range, tuple[int, int]]] = list(ranges.items())
+
+        for _ in range(tries):
+            for i, (range1, _) in enumerate(range_items):
+                range2 = range_items[i + 1][0] if i != len(range_items) - 1 else range(range1.stop, range1.stop)
+                end, start = range1.stop, range2.start
+
+                debug_print(end, "<", ord_val, "<", start)
+
+                if end < ord_val < start:
+                    target = nearest_int(ord_val, end, start, jump_size)
+                    debug_print("Target: ", target)
+                    if target == end:
+                        while ord_val > end:
+                            ord_val -= jump_size
+                    else:
+                        while ord_val < start:
+                            ord_val += jump_size
+                elif ord_val < range1.start and i == 0:
+                    while ord_val < range1.start:
+                        ord_val += jump_size
+                elif ord_val > range2.stop and i == len(ranges) - 1:
+                    while ord_val > range2.stop:
+                        ord_val -= jump_size
+
+            if within_ranges(ord_val, ranges):
+                break
+            else:
+                debug_print(f"Recalculating char {chr(ord_val)}, {ord_val}")
+
+        return ord_val
+
+    range_tuples = [(r, [r.start, r.stop]) for r in ord_ranges]
+    sorted_range_tuples = sorted(range_tuples, key=lambda r: r[0].start)
+    ranges = {k: v for k, v in sorted_range_tuples}
+    debug_print(ranges)
+
+    output = ""
+    for char in input_str:
+        ord_i = ord(char)
+        debug_print(f"Char {repr(char)} -> Ord {ord_i}")
+
+        if not within_ranges(ord_i, ranges):
+            ord_i = adjust_to_nearest_range(ord_i, ranges, jump_size, tries)
+            char = chr(ord_i)
+            debug_print(f"New char {repr(char)} -> Ord {ord_i}")
+
+        output += char
+    return output
+
+
+def reducer_3(input_str: str, ord_range: range):
+    """Around 3.34 times faster than reducer_2 (7ms vs 18ms)"""
+    chars = tuple(chr(x) for x in ord_range)
+    return ''.join(chars[ord(b) % len(chars)] for b in input_str if ord(b) not in ord_range)
+
+
+def quick_reducer_3(input_str: str, ord_range: range):
+    """Around 3.6 times faster than reducer_2 (5ms vs 18ms)"""
+    chars = tuple(chr(x) for x in ord_range)
+    return ''.join(chars[ord(b) % len(chars)] for b in input_str)
+
+
+def big_reducer_3(input_str: str, ord_ranges: list[range], debug: bool = False):
+    """Around twice as fast as big_reducer_2 (43ms vs 24ms)"""
+    def debug_print(*args, **kwargs):
+        if debug:
+            print(*args, **kwargs)
+
+    def within_ranges(ord_val, ranges):
+        for minimum, maximum in ranges.values():
+            debug_print(f"Min: {minimum}, Max: {maximum}, Char: {chr(ord_val)}({ord_val})")
+            if minimum <= ord_val <= maximum:
+                return True
+        return False
+
+    def adjust_to_nearest_range(ord_val, ranges: dict):
+        def nearest_int(target, int1, int2):
+            diff1 = abs(target - int1)
+            diff2 = abs(target - int2)
+
+            if diff1 < diff2:
+                return int1
+            elif diff2 < diff1:
+                return int2
+            else:
+                # If both are equal, just use the one that better fits the jump_size
+                diff1_jump = diff1 / 1
+                diff2_jump = diff2 / 1
+                return int1 if diff1_jump < diff2_jump else int2
+
+        range_items: list[tuple[range, tuple[int, int]]] = list(ranges.items())
+
+        for i, (range1, _) in enumerate(range_items):
+            range2 = range_items[i + 1][0] if i != len(range_items) - 1 else range(range1.stop, range1.stop)
+            end, start = range1.stop, range2.start
+
+            debug_print(end, "<", ord_val, "<", start)
+
+            if end < ord_val < start:
+                target = nearest_int(ord_val, end, start)
+                debug_print("Target: ", target)
+                if target == end:
+                    ord_val = range1[ord_val % (end - range1.start)]
+                else:
+                    ord_val = range2[ord_val % (range2.stop - start)]
+                break
+            elif ord_val < range1.start and i == 0:
+                ord_val = range1[ord_val % (end - range1.start)]
+                break
+            elif ord_val > range2.stop and i == len(ranges) - 1:
+                ord_val = range2[ord_val % (range2.stop - start)]
+                break
+
+        else:
+            debug_print(f"Recalculating char {chr(ord_val)}, {ord_val}")
+
+        return ord_val
+
+    range_tuples = [(r, [r.start, r.stop]) for r in ord_ranges]
+    sorted_range_tuples = sorted(range_tuples, key=lambda r: r[0].start)
+    ranges = {k: v for k, v in sorted_range_tuples}
+    debug_print(ranges)
+
+    output = ""
+    for char in input_str:
+        ord_i = ord(char)
+        debug_print(f"Char {repr(char)} -> Ord {ord_i}")
+
+        if not within_ranges(ord_i, ranges):
+            ord_i = adjust_to_nearest_range(ord_i, ranges)
+            char = chr(ord_i)
+            debug_print(f"New char {repr(char)} -> Ord {ord_i}")
+
+        output += char
+    return output
+
+
+def quick_big_reducer_3(input_str: str, ord_ranges: list[range]):
+    """Around 10.75 times faster than big_reducer_2 (43ms vs 4ms) and
+    around 6 times faster than big_reducer_3 (24ms vs 4ms)"""
+    chars = [chr(c) for rng in ord_ranges for c in rng]
+    return ''.join(chars[ord(b) % len(chars)] for b in input_str)
+
+
+@_strict(mark_class_as_cover=False)  # For security purposes
 class PasswordReGenerator:
-    def __init__(self, key: bytes = None, seed_file: str = "seed_file.enc", debug: bool = False):
-        self._key = key or _os.urandom(32)
+    """Create a secure password from a weak one plus an identifier like a website name. This is made possible by used
+    an encrypted seed file in combination with the PBKDF2HMAC algorithm (using 100_000 iterations and sha 256)."""
+    def __init__(self, key: bytes, seed_file: str = "seed_file.enc", debug: bool = False):
+        self._key = key
         self._seed_file = seed_file
         self._debug = debug
         self._load_or_create_seed_file()
+
+    @staticmethod
+    def generate_suitable_password() -> bytes:
+        """
+        Generates a suitable password for encryption
+        :return: The suitable password
+        :rtype: bytes
+        """
+        return _os.urandom(32)
 
     def _load_or_create_seed_file(self):
         if _os.path.exists(self._seed_file):
@@ -774,7 +1030,22 @@ class PasswordReGenerator:
         with open(self._seed_file, 'wb') as f:
             f.write(encrypted_seed)
 
-    def generate_password(self, identifier: str, simple_password: str, length: int = 64) -> str:
+    def generate_password(self, identifier: str, simple_password: str, length: int = 64,
+                          charset: _Literal["hex", "base64", "alphanumeric", "ascii"] = "hex") -> str:
+        """
+        "Generate" a new password from the hash of an identifier and a simple password to the given length and charset.
+
+        :param identifier: A unique identifier for the password, ideally something you can remember easily.
+        :type identifier: str
+        :param simple_password: A simple password
+        :type simple_password: str
+        :param length: The length of the new password
+        :type length: int
+        :param charset: The charset to which the new password should be collapsed to
+        :type charset: Literal["hex", "base64", "alphanumeric", "ascii"]
+        :return: The generated password
+        :rtype: str
+        """
         salt = self._seed + identifier.encode() + simple_password.encode()
         kdf = _PBKDF2HMAC(
             algorithm=_hashes.SHA256(),
@@ -784,33 +1055,56 @@ class PasswordReGenerator:
             backend=_default_backend()
         )
         password = kdf.derive(self._key)
-        return self._format_password(password, length)
+        return self._format_password(password, length, charset)
 
-    def _format_password(self, password: bytes, length: int) -> str:
+    def _format_password(self, password: bytes, length: int, charset: _Literal["hex", "base64", "alphanumeric", "ascii"]
+                         ) -> str:
         # Convert to a readable password
-        return password.hex()[:length]
+        match charset:
+            case "hex":
+                return password.hex()[:length]
+            case "base64":
+                return _base64.urlsafe_b64encode(password).decode('utf-8')[:length]
+            case "alphanumeric":
+                chars = _string.ascii_letters + _string.digits
+                return ''.join(chars[b % len(chars)] for b in password)[:length]
+            case "ascii":
+                chars = _string.printable[:94]  # Exclude non-printable characters
+                return ''.join(chars[b % len(chars)] for b in password)[:length]
+            case _:
+                raise ValueError(f"Unsupported charset: {charset}")
 
 
-@_strict
+@_strict(mark_class_as_cover=False)  # For security purposes
 class SecurePasswordManager:
-    def __init__(self, key: bytes = _secrets.token_bytes(32), debug: bool = False):
+    """Securely stores passwords and gives various options to generate them too."""
+    def __init__(self, key: bytes, buffer_timeout: int = 30, debug: bool = False):
         # The key should be securely generated and stored.
         self._key = key
-        self._passwords: _Dict[str, str] = {}
-        self._temp_buffer: _Dict[int, str] = {}
+        self._storage: dict[str, dict[str, bytes]] = {}
+        self._quick_access_buffer = {}
+        self._buffer_timeout = buffer_timeout  # Time in seconds before clearing the buffer
+        self.debug = debug
 
-        self._pass_gen = SpecificPasswordGenerator(debug=debug)
-        self._debug = debug
+    @staticmethod
+    def generate_suitable_password() -> bytes:
+        """
+        Generates a suitable password for encryption
+        :return: The suitable password
+        :rtype: bytes
+        """
+        return _secrets.token_bytes(32)
 
-    @property
-    def debug(self):
-        return self._debug
+    def store_password(self, identifier: str, password: str):
+        """
+        Adds a password for a specific account and username.
 
-    @debug.setter
-    def debug(self, new_value):
-        self._debug = self._pass_gen.debug = new_value
-
-    def add_password(self, account: str, username: str, password: str) -> None:
+        :param identifier: The identifier of the password
+        :type identifier: str
+        :param password: The password of the identifier
+        :type password: str
+        :return:
+        """
         iv = _secrets.token_bytes(16)
         cipher = _Cipher(_algorithms.AES(self._key), _modes.CBC(iv), backend=_default_backend())
         encryptor = cipher.encryptor()
@@ -819,50 +1113,70 @@ class SecurePasswordManager:
         padded_password = password + ' ' * (16 - len(password) % 16)
         ciphertext = encryptor.update(padded_password.encode()) + encryptor.finalize()
 
-        self._passwords[account] = {'username': username, 'password': ciphertext, 'iv': iv}
+        self._storage[identifier] = {'password': ciphertext, 'iv': iv}
 
-    def get_password(self, account: str) -> str:
-        if account not in self._passwords:
-            raise ValueError("Account not found")
+    def retrieve_password(self, identifier: str) -> str:
+        """
+        Get the password of a given account.
 
-        data = self._passwords[account]
-        cipher = _Cipher(_algorithms.AES(self._key), _modes.CBC(data['iv']), backend=_default_backend())
-        decryptor = cipher.decryptor()
+        :param identifier: The identifier of the password
+        :type identifier: str
+        :return: The password of the given identifier
+        :rtype: str
+        """
+        # Check if password is in quick access buffer
+        if identifier in self._quick_access_buffer:
+            return self._quick_access_buffer[identifier]
 
-        decrypted_password = decryptor.update(data['password']) + decryptor.finalize()
-        return decrypted_password.rstrip().decode()  # Removing padding
+        data = self._storage.get(identifier)
+        if data:
+            cipher = _Cipher(_algorithms.AES(self._key), _modes.CBC(data['iv']), backend=_default_backend())
+            decryptor = cipher.decryptor()
 
-    def store_in_buffer(self, account: str, password_id: int) -> None:
-        self._temp_buffer[password_id] = self.get_password(account)
+            decrypted_password = decryptor.update(data['password']) + decryptor.finalize()
+            self._add_to_buffer(identifier, decrypted_password)
+            return decrypted_password.rstrip().decode()  # Removing padding
+        else:
+            raise KeyError("Password not found")
 
-    def use_from_buffer(self, password_id: int) -> str:
-        if password_id not in self._temp_buffer:
-            raise ValueError("Password ID not found in buffer")
+    def _add_to_buffer(self, identifier, password):
+        self._quick_access_buffer[identifier] = password
+        timer = _Timer(self._buffer_timeout, self._remove_from_buffer, [identifier])
+        timer.start()
 
-        return self._temp_buffer[password_id]
+    def _remove_from_buffer(self, identifier):
+        if identifier in self._quick_access_buffer:
+            del self._quick_access_buffer[identifier]
 
-    def generate_ratio_based_password(self, length: int = 16, letters_ratio: float = 0.5, numbers_ratio: float = 0.3,
-                                      punctuations_ratio: float = 0.2, unicode_ratio: float = 0,
-                                      extra_chars: str = '', exclude_chars: str = '', exclude_similar: bool = False
-                                      ) -> str:
-        return self._pass_gen.generate_ratio_based_password_v3(length, letters_ratio, numbers_ratio, punctuations_ratio,
-                                                               unicode_ratio, filter_=PasswordFilter(exclude_chars,
-                                                                                                     extra_chars,
-                                                                                                     exclude_similar))
+    def dump_encrypted_passwords(self, file_path):
+        """
+        Dumps all encrypted passwords to the specified filepath.
 
-    def generate_sentence_based_password(self, sentence: str, shuffle_words: bool = True,
-                                         shuffle_characters: bool = True) -> str:
-        return self._pass_gen.generate_words_based_password_v3(sentence, shuffle_words, shuffle_characters)
+        :param file_path: The specified filepath
+        :type file_path: str
+        :return:
+        """
+        with open(file_path, 'wb') as file:
+            data = {
+                "storage": self._storage
+            }
+            file.write(_json.dumps(data).encode())
 
-    def generate_custom_sentence_based_password(self, sentence: str,
-                                                char_position: _Union[_Literal["random", "keep"], int] = 'random',
-                                                random_case: bool = False, extra_char: str = '', num_length: int = 0,
-                                                special_chars_length: int = 0) -> str:
-        return self._pass_gen.generate_sentence_based_password_v3(sentence, char_position, random_case, extra_char,
-                                                                  num_length, special_chars_length)
+    def load_encrypted_passwords(self, file_path):
+        """
+        Loads a dumped file into the current instance.
+        The passwords from the loaded file will overwrite all duplicate identifiers.
+        
+        :param file_path: 
+        :return: 
+        """
+        with open(file_path, 'rb') as file:
+            data = _json.loads(file.read().decode())
+            self._storage.update(data["storage"])
 
 
 class PasswordCrackEstimator:
+    """Using zxcvbn to deliver an easy result as it's a hard to find and a bit confusing package for beginners."""
     long_presets = [
         (tuple(), {'length': 12}),
         (tuple(), {'length': 14}),
@@ -884,27 +1198,74 @@ class PasswordCrackEstimator:
         (tuple(), {'length': 8})
     ]
 
-    """Using zxcvbn to deliver an easy result as it's a hard to find and a bit confusing package for beginners."""
     @staticmethod
-    def estimate_time_to_crack(password: str) -> tuple:
+    def estimate_time_to_crack(password: str) -> tuple[str, tuple[str]]:
+        """
+        Calculates the different times it takes to crack a given password and returns it as tuple[password, tuple[times]].
+
+        Calculates the different times it takes to crack a given password using zxcvbn["crack_times_display"] and returns it as tuple[password, tuple[times]].
+
+        :param password:
+        :type password: str
+        :return: A tuple containing the password and the different times it takes to crack.
+        :rtype: tuple[str, tuple[str]]
+        """
         result = _zxcvbn(password)
         return result["password"], result["crack_times_display"]
 
     @staticmethod
-    def tell_pass_sec(password: str) -> tuple:
+    def tell_pass_sec(password: str) -> tuple[str, str]:
+        """
+        Calculates the average time to crack of a given password and returns it as tuple[password, average time to crack].
+
+        Calculates the average time to crack of a given password using zxcvbn["crack_times_seconds"] and returns it as tuple[password, average time to crack].
+
+        :param password:
+        :type password: str
+        :return: A tuple containing the password and the average time to crack.
+        :rtype: tuple[str, str]
+        """
         result = _zxcvbn(password)
         return result["password"], result["crack_times_seconds"]
 
     @staticmethod
-    def zxcvbn(password: str, user_inputs: list = None):
+    def tell_worst_case(password: str) -> tuple[str, str]:
+        """
+        Calculates the worst case of a given password and returns it as tuple[password, worst_case].
+
+        Calculates the worst case of a given password using zxcvbn["crack_times_display"]["offline_fast_hashing_1e10_per_second"] and returns it as tuple[password, worst_case].
+
+        :param password:
+        :type password: str
+        :return: A tuple containing the password and the worst case formatted as a string.
+        :rtype: tuple[str, str]
+        """
+        result = _zxcvbn(password)
+        return result["password"], "Worst Case: " + result["crack_times_display"][
+            "offline_fast_hashing_1e10_per_second"]
+
+    @staticmethod
+    def zxcvbn(password: str, user_inputs: list[str] = None) -> str:
+        """
+        A basic wrapper around the default zxcvbn function that simply beautifies the returned dictionary in a json style.
+
+        :param password: The password to test.
+        :type password: str
+        :param user_inputs: Any personal user data
+        :type user_inputs: list[str]
+        :return: A beautified dictionary of information about the passwords crack security.
+        :rtype: str
+        """
         if user_inputs is None:
             user_inputs = []
         return _beautify_json(_zxcvbn(password, user_inputs))
 
     @classmethod
-    def _test_password_strength(cls, function, preset, num_passwords=1000):
+    def _test_password_strength(cls, function: _Callable, preset: tuple[tuple, dict], num_passwords: int = 1000
+                                ) -> tuple[str, float]:
         worst_times = []
 
+        password = None
         for _ in range(max(1, num_passwords)):
             password = function(*preset[0], **preset[1])
             security = cls.tell_pass_sec(password)
@@ -912,10 +1273,23 @@ class PasswordCrackEstimator:
             worst_times.append(float(worst_time))
 
         average_worst_time = sum(worst_times) / len(worst_times)
-        return security[0], average_worst_time / (60 * 60 * 24 * 365.25)  # Convert seconds to years
+        return password, average_worst_time / (60 * 60 * 24 * 365.25)  # Convert seconds to years
 
     @classmethod
-    def find_best_preset(cls, function, presets: _Tuple[tuple, dict]):
+    def find_best_preset(cls, function: _Callable, presets: tuple[tuple[tuple, dict]]):
+        """
+        Finds the best preset (the average worst case time is above 2 years) of a given function and presets tuple).
+        This function doesn't return anything, it prints out all results.
+
+        Finds the best preset (the average worst case time is above 2 years) of a given function and preset tuple[tuple[tuple[args], dict[kwargs]]].
+        This function doesn't return anything, it prints out all results.
+
+        :param function: The function to test and find the best preset for.
+        :type function: Callable
+        :param presets: All presets to test (should be sorted from small -> big as it stops as soon as it finds a suitable one)
+        :type presets: tuple[tuple[tuple, dict]]
+        :return:
+        """
         for preset in presets:
             sec, average_worst_case_years = cls._test_password_strength(function, preset)
             print(f"Preset {preset} average worst-case time to crack: {average_worst_case_years:.2f} years [{sec}]")
@@ -924,11 +1298,139 @@ class PasswordCrackEstimator:
                     f"Preset {preset} meets the security criteria with an average worst-case time to crack of {average_worst_case_years:.2f} years.")
                 break
 
-    @staticmethod
-    def tell_worst_case(password: str) -> tuple:
-        result = _zxcvbn(password)
-        return result["password"], "Worst Case: " + result["crack_times_display"][
-            "offline_fast_hashing_1e10_per_second"]
+
+class PasswordTypeHelper:
+    """
+    Types out a password in any of the defined layout. If it isn't able to type out a specific character, it will mark
+    it with [UT], which means UnicodeTyper, a program I develop to be able to type unicode on a default ascii keyboard.
+    """
+    layouts = {
+        "us": {
+            "a": "a", "b": "b", "c": "c", "d": "d", "e": "e", "f": "f",
+            "g": "g", "h": "h", "i": "i", "j": "j", "k": "k", "l": "l",
+            "m": "m", "n": "n", "o": "o", "p": "p", "q": "q", "r": "r",
+            "s": "s", "t": "t", "u": "u", "v": "v", "w": "w", "x": "x",
+            "y": "y", "z": "z", "1": "1", "2": "2", "3": "3", "4": "4",
+            "5": "5", "6": "6", "7": "7", "8": "8", "9": "9", "0": "0",
+            " ": "space", ",": "comma", ".": "period", ";": "semicolon",
+            "'": "quote", "-": "minus", "=": "equal", "[": "left_bracket",
+            "]": "right_bracket", "\\": "backslash", "/": "slash",
+            "`": "grave"
+        },
+        "de": {
+            "a": "a", "b": "b", "c": "c", "d": "d", "e": "e", "f": "f",
+            "g": "g", "h": "h", "i": "i", "j": "j", "k": "k", "l": "l",
+            "m": "m", "n": "n", "o": "o", "p": "p", "q": "q", "r": "r",
+            "s": "s", "t": "t", "u": "u", "v": "v", "w": "w", "x": "x",
+            "y": "y", "z": "z", "1": "1", "2": "2", "3": "3", "4": "4",
+            "5": "5", "6": "6", "7": "7", "8": "8", "9": "9", "0": "0",
+            " ": "space", ",": "comma", ".": "period", ";": "semicolon",
+            "'": "quote", "-": "minus", "=": "equal", "[": "left_bracket",
+            "]": "right_bracket", "\\": "backslash", "/": "slash",
+            "`": "grave", "ü": "ue", "ä": "ae", "ö": "oe"
+        }
+        # Add more layouts as needed
+    }
+
+    # Define the shift mappings for special characters
+    shift_mappings = {
+        "us": {
+            "!": "1", "@": "2", "#": "3", "$": "4", "%": "5", "^": "6",
+            "&": "7", "*": "8", "(": "9", ")": "0", "_": "-", "+": "=",
+            "{": "[", "}": "]", ":": ";", "\"": "'", "<": ",", ">": ".",
+            "?": "/", "|": "\\"
+        },
+        "de": {
+            "!": "1", "\"": "2", "§": "3", "$": "4", "%": "5", "&": "6",
+            "/": "7", "(": "8", ")": "9", "=": "0", "?": "ß", "*": "+",
+            "`": "´", "²": "2", "³": "3", "{": "[", "}": "]", "\\": "\\",
+            "'": "#", "<": "<", ">": ">", "|": "|"
+        }
+        # Add more mappings as needed
+    }
+
+    def __init__(self, layout: str):
+        self._current_layout = None
+        self.set_layout(layout)
+
+    def get_layout(self) -> str:
+        """
+        Get the current keyboard layout/mapping.
+
+        :return:
+        """
+        return self._current_layout
+
+    def set_layout(self, layout: str):
+        """
+        Set the current keyboard layout/mapping.
+
+        :param layout: The keyboard layout/mapping to use.
+        :type layout: str
+        :return:
+        """
+        if layout in self.layouts:
+            self._current_layout = layout
+        else:
+            raise ValueError(f"Layout '{layout}' is not defined.")
+
+    def _char_to_keystrokes(self, char: str) -> list[str]:
+        if char.isupper():
+            return [f"shift+{char.lower()}"]
+        if char in self.shift_mappings[self._current_layout]:
+            return [f"shift+{self.shift_mappings[self._current_layout][char]}"]
+        if char in self.layouts[self._current_layout]:
+            return [self.layouts[self._current_layout][char]]
+        # Use UnicodeTyper for characters not in the layout
+        return [f"alt+caps+{ord(char):04X} [UT]"]
+
+    def type_out(self, password: str) -> list[str]:
+        """
+        Types out a password in the current keyboard layout/mapping.
+
+        Takes in a password and returns a list of keyboard instructions to type the password in the current keyboard layout/mapping.
+
+        :param password: The password to be typed out.
+        :type password: str
+        :return: A list of typing instructions.
+        :rtype: list[str]
+        """
+        keystrokes = []
+        for char in password:
+            keystrokes.extend(self._char_to_keystrokes(char))
+        return keystrokes
+
+    @classmethod
+    def type_out_static(cls, password: str, layout: str) -> list[str]:
+        """
+        Types out a password statically (no need for an instance) in the current keyboard layout/mapping.
+
+        Takes in a password and returns a list of keyboard instructions to type the password in the current keyboard
+        layout/mapping statically (no need for an instance).
+
+        :param password: The password to type out.
+        :type password: str
+        :param layout: The keyboard layout/mapping to use.
+        :type layout: str
+        :return: The typed out password as a list.
+        :rtype: list[str]
+        """
+        if layout not in cls.layouts:
+            raise ValueError(f"Layout '{layout}' is not defined.")
+
+        keystrokes = []
+        for char in password:
+            if char.isupper():
+                keystroke = [f"shift+{char.lower()}"]
+            elif char in cls.shift_mappings[layout]:
+                keystroke = [f"shift+{cls.shift_mappings[layout][char]}"]
+            elif char in cls.layouts[layout]:
+                keystroke = [cls.layouts[layout][char]]
+            else:
+                # Use UnicodeTyper for characters not in the layout
+                keystroke = [f"alt+caps+{ord(char):04X} [UT]"]
+            keystrokes.extend(keystroke)
+        return keystrokes
 
 
 if __name__ == "__main__":
@@ -983,6 +1485,8 @@ if __name__ == "__main__":
     password = "HMBlw:_88008?@"
     print(PasswordCrackEstimator.zxcvbn(password))
 
+    print("----------------------------------------- DONE -----------------------------------------")
+
     # from matplotlib import pyplot
 
     # print("V2", timer.complexity(gen.gen_ratio_pw_v2, range(1000, 24_000, 100), matplotlib_pyplt=pyplot))
@@ -995,6 +1499,7 @@ if __name__ == "__main__":
     # print(gen.gen_sentence_pw_v2("Hello my beautiful world!!", char_position="keep"), timer.tock())
     # print(gen.gen_sentence_pw_v3("Hello my beautiful world!!", char_position="keep", filter_=PasswordFilter(exclude_chars="Helo")), timer.end())
 
+    print("SecurePasswordManager: ")
     manager = SecurePasswordManager()
     password = manager.generate_ratio_based_password(length=26, letters_ratio=0.5, numbers_ratio=0.3,
                                                      punctuations_ratio=0.2, exclude_similar=True)
@@ -1006,5 +1511,35 @@ if __name__ == "__main__":
         "Exploring the unknown -- discovering new horizons...", char_position="keep", num_length=5,
         special_chars_length=2))
 
+    print("----------------------------------------- DONE -----------------------------------------")
+
+    print("PasswordReGenerator: ")
     gen = PasswordReGenerator(b'\x13V\xf8\xa8\xab\x96\xe6\x15\xdb\xbf?\xd0\xb5\x0c\xc6\x07\x94\n~Jy3\\\x97\x87\xfd\xff\x9d\x8c\xac\x90a')
     print(gen.generate_password("websize.com", "mypass"))
+    print(gen.generate_password("web3", "my_pass", charset="ascii"))
+
+    print("----------------------------------------- DONE -----------------------------------------")
+
+    print("PasswordTypeHelper: ")
+    pth = PasswordTypeHelper("us")
+    print(pth.type_out("MyPassword$$"))
+    print(pth.type_out("Hello, World! 😊"))
+    print(PasswordTypeHelper.type_out_static("MySecurePASSWORD", "us"))
+
+    print("----------------------------------------- DONE -----------------------------------------")
+
+    print("Reducers: ")
+    print("REdC2", reducer_2("Hello Worl", range(70, 73), 1),
+          reducer_2("SAtar", range(128, 255), 1))
+    print("REdC3", reducer_3("Hello Worl", range(70, 73)),
+          reducer_3("SAtar", range(128, 255)))
+    print("QREdC3", quick_reducer_3("Hello Worl", range(70, 73)),
+          quick_reducer_3("SAtar", range(128, 255)))
+    print("BREdC2", big_reducer_2("Hello Worl", [range(32, 126), range(128, 255)], 1),
+          big_reducer_2("SAtar", [range(32, 55), range(128, 255)], 1))
+    print("BREdC3", big_reducer_3("Hello Worl", [range(32, 126), range(128, 255)]),
+          big_reducer_3("SAtar", [range(32, 55), range(128, 255)]))
+    print("QBREdC3", quick_big_reducer_3("Hello Worl", [range(32, 126), range(128, 255)]),
+          quick_big_reducer_3("SAtar", [range(32, 55), range(128, 255)]))
+
+    print("----------------------------------------- DONE -----------------------------------------")

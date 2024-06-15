@@ -3,6 +3,8 @@ import ctypes as _ctypes
 import typing as _typing
 from aplustools.package.argumint import EndPoint as _EndPoint
 import json as _json
+import locale as _locale
+_locale.setlocale(_locale.LC_ALL, '')
 
 
 def truedivmod(__x, __y):
@@ -145,6 +147,7 @@ def isOddString(x: str) -> bool:
 
 
 def nice_number(number: int, seperator: str = "."):
+    """0:00:00.517792 for 1 million calls"""
     if type(number) is not int:  # Bool is technically an int
         return number
     formatted_number = [str(number)[-((i * 3) + 1) - 2:-(i * 3) or None] for i, part in enumerate(str(number)[-1::-3])]
@@ -152,7 +155,21 @@ def nice_number(number: int, seperator: str = "."):
     return f"{seperator.join(formatted_number)}"
 
 
-def what_func(func, type_names: bool = False):
+def nn(number: int, seperator: str = "."):
+    """0:00:00.234248 for 1 million calls"""
+    if type(number) is not int:  # Bool is technically an int
+        return number
+    return f"{number:,}".replace(",", seperator)
+
+
+def local_nn(number: int):
+    """0:00:00.221144 for 1 million calls"""
+    if type(number) is not int:  # Bool is technically an int
+        return number
+    return f'{number:n}'
+
+
+def what_func(func: _typing.Callable, type_names: bool = False, return_def: bool = False) -> _typing.Optional[str]:
     endpoint = _EndPoint(func)
 
     def get_type_name(t):
@@ -164,7 +181,30 @@ def what_func(func, type_names: bool = False):
     arguments_str = ''.join([f"{argument.name}: "
                              f"{(get_type_name(argument.type) or type(argument.default)).__name__ if type_names else get_type_name(argument.type) or type(argument.default)}"
                              f" = {argument.default}, " for argument in endpoint.arguments])[:-2]
-    print(f"{func.__module__}.{endpoint.name}({arguments_str}){(' -> ' + str(endpoint.return_type)) if endpoint.return_type is not None else ''}")
+    definition = f"{func.__module__}.{endpoint.name}({arguments_str}){(' -> ' + str(endpoint.return_type)) if endpoint.return_type is not None else ''}"
+    if return_def:
+        return definition
+    print(definition)
+
+
+def what_class(cls: _typing.Type, type_names: bool = False, return_def: bool = False) -> _typing.Optional[str]:
+    class_name = cls.__name__
+    methods = [attr for attr in dir(cls) if callable(getattr(cls, attr)) and (not attr.startswith("_") or
+                                                                              (attr == "__init__"))]
+
+    class_def = [f"{class_name}:"]
+    where = "???"
+    for method in methods:
+        where, method_def = what_func(getattr(cls, method), type_names=type_names,
+                                      return_def=True).split(".", maxsplit=1)
+        class_def.append(f"    {method_def}\n")
+
+    class_def[0] = "class " + where + "." + class_def[0]
+    result = "\n".join(class_def)
+
+    if return_def:
+        return result
+    print(result)
 
 
 def bytes_to_human_readable_binary_iec(size: int) -> str:
