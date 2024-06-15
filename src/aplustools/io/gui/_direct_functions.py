@@ -134,16 +134,18 @@ class QBulletPointTextEdit(QTextEdit):
         self.setAcceptRichText(False)
         self.ensure_bullet_point()
 
-    def ensure_bullet_point(self):
+    def ensure_bullet_point(self, new: bool = False):
         cursor = self.textCursor()
         if cursor.block().text().strip() == "":
             cursor.insertText("• ")
         else:
             block_text = cursor.block().text()
             if not block_text.startswith("• "):
-                cursor.select(QTextCursor.SelectionType.BlockUnderCursor)
-                cursor.removeSelectedText()
-                cursor.insertText("• " + block_text.replace("•", "").strip())
+                cursor.movePosition(QTextCursor.MoveOperation.NextBlock)
+                if cursor.block().text() != "":
+                    cursor.movePosition(QTextCursor.MoveOperation.PreviousBlock)
+                cursor.movePosition(QTextCursor.MoveOperation.StartOfBlock)
+                cursor.insertText("• ")
         self.setTextCursor(cursor)
 
     def keyPressEvent(self, event):
@@ -154,11 +156,16 @@ class QBulletPointTextEdit(QTextEdit):
             self.ensure_bullet_point()
         elif event.key() == Qt.Key.Key_Backspace:
             block_text = cursor.block().text().strip()
-            if cursor.blockNumber() == 0 and block_text + " " == "• ":  # If at the first block with only a bullet point
+            if cursor.blockNumber() == 0 and (block_text + " ").startswith("• ") and cursor.positionInBlock() == 2:  # If at the first block with only a bullet point
                 return
-            elif block_text + " " == "• ":  # If the line only contains a bullet point
+            elif cursor.positionInBlock() == 2 and (block_text + " ").startswith("• "):  # If the line only contains a bullet point
                 cursor.select(QTextCursor.SelectionType.BlockUnderCursor)
                 cursor.removeSelectedText()
+                cursor.movePosition(QTextCursor.MoveOperation.EndOfBlock)
+                cursor.insertText(block_text[2:])
+                cursor.movePosition(QTextCursor.MoveOperation.EndOfBlock)
+                cursor.movePosition(QTextCursor.MoveOperation.Left, QTextCursor.MoveMode.MoveAnchor, len(block_text[2:]))
+                self.setTextCursor(cursor)
                 # cursor.deletePreviousChar()
             else:
                 super().keyPressEvent(event)

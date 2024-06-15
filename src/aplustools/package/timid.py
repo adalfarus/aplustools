@@ -11,6 +11,7 @@ import numpy as _np
 
 
 class TimeFormat:
+    """Used to define and convert to different TimeFormats"""
     WEEKS = 0
     DAYS = 1
     HOURS = 2
@@ -20,7 +21,8 @@ class TimeFormat:
     MICROSEC = 6
 
     @classmethod
-    def get_static_readable(cls, td: _timedelta, format_to: _Optional[int] = None) -> str:
+    def get_static_readable(cls, td: _timedelta, format_to: _Optional["TimeFormat"] = None) -> str:
+        """Convert to a specific TimeFormat"""
         if format_to is None:
             format_to = cls.SECONDS
 
@@ -470,7 +472,7 @@ class TimidTimer:
             td = _timedelta(microseconds=(end - start) / 1000)
             print(f"Lap {i}: {TimeFormat.get_static_readable(td, format_to)}")
 
-    def get_readable(self, index: _Optional[int] = None, format_to: int = TimeFormat.SECONDS) -> str:
+    def get_readable(self, index: _Optional[int] = None, format_to: TimeFormat = TimeFormat.SECONDS) -> str:
         return TimeFormat.get_static_readable(self.get(index), format_to)
 
     def _warmup(self, rounds: int = 3):
@@ -535,7 +537,7 @@ class TimidTimer:
         self._tick_tocks = state["_tick_tocks"]
 
     @classmethod
-    def setup_timer_func(cls, func: _Callable, to_nanosecond_multiplier: _Union[float, int]) -> _Type["TimidTimer"]:
+    def setup_timer_func(cls, func: _Callable, to_nanosecond_multiplier: _Union[float, int]) -> type["TimidTimer"]:
         NewClass = type('TimidTimerModified', (cls,), {
             '_time': lambda self=None: func() * to_nanosecond_multiplier
         })
@@ -806,14 +808,26 @@ class TimidTimer:
         return best_fit
 
     @classmethod
-    def time(cls, func):
-        def wrapper(*args, **kwargs):
-            timer = cls()
-            result = func(*args, **kwargs)
-            elapsed = timer.end()
-            print(f"Function {func.__name__} took {TimeFormat.get_static_readable(elapsed)} to complete.")
-            return result
-        return wrapper
+    def time(cls, time_format: TimeFormat = TimeFormat.SECONDS):
+        """
+        Time how long it takes a specific function to execute as a decorator. This function doesn't return anything, all results are printed
+
+        Time how long it takes a specific function to execute as a decorator. It used the classes timer to time the function execution.
+        This function doesn't return anything, all results are printed
+
+        :param time_format:
+        :type time_format: TimeFormat
+        :return:
+        """
+        def _decorator(func):
+            def _wrapper(*args, **kwargs):
+                timer = cls()
+                result = func(*args, **kwargs)
+                elapsed = timer.end()
+                print(f"Function {func.__name__} took {TimeFormat.get_static_readable(elapsed, time_format)} to complete.")
+                return result
+            return _wrapper
+        return _decorator
 
     @staticmethod
     def display_current_time():
