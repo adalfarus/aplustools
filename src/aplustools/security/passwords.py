@@ -465,9 +465,10 @@ class SpecificPasswordGenerator:
         """Unloads all currently loaded dictionaries."""
         self.words = []
 
-    def secure_password(self, password: str, passes: int = 3, expand: bool = True) -> str:
+    def dynamic_secure_password(self, password: str, passes: int = 3, expand: bool = True) -> str:
         """
         Makes the inputted password more secure by introducing slight changes each iteration.
+        Dynamically changes less the longer the password, as they are already really secure.
 
         :param password: The password to be secured
         :param passes: How many iterations this should run for
@@ -506,6 +507,58 @@ class SpecificPasswordGenerator:
         length = len(password)
         percentage_to_switch = self._rng.choice([10, 20, 30])
         num_to_switch = max(2, (length * percentage_to_switch) // 100)
+
+        # Switch around the selected percentage of characters
+        password_list = list(password)
+        for _ in range(num_to_switch // 2):
+            idx1, idx2 = self._rng.sample(range(length), 2)
+            password_list[idx1], password_list[idx2] = password_list[idx2], password_list[idx1]
+
+        self._debug_print(f"Secured password: {password}")
+        return password
+
+    def static_secure_password(self, password: str, passes: int = 3, expand: bool = True) -> str:
+        """
+        Makes the inputted password more secure by introducing slight changes each iteration.
+
+        :param password: The password to be secured
+        :param passes: How many iterations this should run for
+        :param expand: If the password should be able to get larger
+        :return: The secured password
+        """
+        self._debug_print(f"Securing password: {password}")
+        characters = _string.ascii_letters + _string.digits + _string.punctuation
+        length = len(password)
+        get_num = lambda: max(2, (length * self._rng.choice([10, 20, 30])) // 100)
+
+        for _ in range(passes):
+            for _ in range(get_num()):
+                if expand:
+                    # Add a random character
+                    password += self._rng.choice(characters)
+                else:
+                    rng = self._rng.randint(0, len(password)-1)
+                    password = password[:rng] + self._rng.choice(characters) + password[rng+1:]
+
+                # Switch a random character's case
+                pos = self._rng.randint(0, len(password) - 1)
+                char = password[pos]
+                if char.islower():
+                    char = char.upper()
+                elif char.isupper():
+                    char = char.lower()
+                password = password[:pos] + char + password[pos+1:]
+
+                # Add a random digit
+                pos = self._rng.randint(0, len(password)-1)
+                password = password[:pos] + self._rng.choice(_string.digits) + password[(pos if expand else pos+1):]
+
+                # Add a random punctuation
+                pos = self._rng.randint(0, len(password)-1)
+                password = password[:pos] + self._rng.choice(_string.punctuation) + password[(pos if expand else pos+1):]
+
+        # Calculate the number of characters to switch
+        num_to_switch = get_num()
 
         # Switch around the selected percentage of characters
         password_list = list(password)
@@ -613,7 +666,7 @@ class SpecificPasswordGenerator:
         :return: The generated password
         """
         passphrase = self._generate_passphrase(words, num_words, filter_)
-        secure_passphrase = self.secure_password(passphrase, passes=1)
+        secure_passphrase = self.dynamic_secure_password(passphrase, passes=1)
         return (secure_passphrase, passphrase) if _return_info else secure_passphrase
 
     def generate_pattern_password(self, pattern: str = "9/XxX-999xXx-99/XxX-999xXx-9",
@@ -1671,7 +1724,7 @@ if __name__ == "__main__":
     print("----------------------------------------- DONE -----------------------------------------")
 
     print("REDC", SpecificPasswordGenerator().reduce_password("HELLO WORLD", by=0))
-    print(SpecificPasswordGenerator().secure_password("Hello World", passes=1, expand=False))
+    print(SpecificPasswordGenerator().dynamic_secure_password("Hello World", passes=1, expand=False))
 
     password = "HMBlw:_88008?@"
     print(PasswordCrackEstimator.zxcvbn(password))
