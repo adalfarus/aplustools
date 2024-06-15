@@ -894,7 +894,7 @@ def local_test():
         print(f"Pc has been turned on since {int(system.get_uptime(),)} minutes")
         # print("Network test", System.system().measure_network_speed())
 
-        @strict
+        @strict()
         class MyCls:
             _attr = ""
         var = MyCls()._attr

@@ -9,9 +9,10 @@ imagetools = _LazyModuleLoader('aplustools.data.imagetools')
 advanced_imagetools = _LazyModuleLoader('aplustools.data.advanced_imagetools')
 compressor = _LazyModuleLoader('aplustools.data.compressor')
 unien = _LazyModuleLoader('aplustools.data.unien')
+faker_pro = _LazyModuleLoader('aplustools.data.faker_pro')
 
 # Define __all__ to limit what gets imported with 'from <package> import *'
-__all__ = ['database', 'updaters', 'imagetools', 'advanced_imagetools', 'compressor', 'unien']
+__all__ = ['database', 'updaters', 'imagetools', 'advanced_imagetools', 'compressor', 'unien', 'faker_pro']
 
 # Dynamically add exports from _direct_functions
 from aplustools.data._direct_functions import *
