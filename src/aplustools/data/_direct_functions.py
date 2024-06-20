@@ -398,6 +398,11 @@ def beautify_json(data_dict):
         return f"Error converting dictionary to JSON: {e}"
 
 
+def update_dict_if_absent(original_dict, new_data):
+    for key, value in new_data.items():
+        original_dict.setdefault(key, value)
+
+
 if __name__ == "__main__":
     bit = nice_bits(encode("Hello you world!"), True, 6, True, True)
     bitss = bits(encode_float(0.3))

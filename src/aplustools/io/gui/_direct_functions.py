@@ -1,7 +1,18 @@
-from PySide6.QtCore import QTimer, Signal, QObject, QEvent, QDateTime, QSize, Qt, QRect
-from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout, QLayout, QWidget, QTextEdit
-from PySide6.QtGui import QTextCursor
+from PySide6.QtWidgets import (QVBoxLayout, QHBoxLayout, QLayout, QWidget, QTextEdit, QPushButton, QFrame, QScrollArea,
+                               QLabel)
+from PySide6.QtCore import QTimer, Signal, QObject, QEvent, QDateTime, QSize, Qt, QRect, QUrl
+from PySide6.QtGui import QTextCursor, QPixmap
+from PySide6.QtMultimedia import QMediaPlayer
+from PySide6.QtMultimediaWidgets import QVideoWidget
+from PySide6.QtPdf import QPdfDocument
+from PySide6.QtPdfWidgets import QPdfView
+
+from aplustools.io.environment import get_system, SystemTheme
+from aplustools.package.timid import TimidTimer
+
 from typing import Optional, Tuple
+import itertools
+import os
 
 
 class QNoSpacingVBoxLayout(QVBoxLayout):
@@ -91,7 +102,7 @@ class QCenteredLayout(QLayout):
         return None
 
     def expandingDirections(self):
-        return Qt.Horizontal | Qt.Vertical
+        return Qt.Orientation.Horizontal | Qt.Orientation.Vertical
 
 
 class QQuickVBoxLayout(QVBoxLayout):
@@ -216,3 +227,395 @@ class QBulletPointTextEdit(QTextEdit):
             if not cursor.movePosition(QTextCursor.MoveOperation.NextBlock):
                 break
         return bullet_points
+
+
+class QThemeSensor(QObject):
+    themeChanged = Signal()
+
+    def __init__(self):
+        super().__init__()
+        self.timer = TimidTimer(start_now=False)
+
+        self.system = get_system()
+        self.theme = self.system.get_system_theme()
+
+        self.timer.fire(1, self.check_theme)
+
+    def check_theme(self):
+        current_theme = self.system.get_system_theme()
+        if current_theme != self.theme:
+            self.theme = current_theme
+            self.themeChanged.emit()
+
+    def cleanup(self):
+        self.__del__()
+
+    def __del__(self):
+        self.timer.stop_fire()
+
+
+global_theme_sensor = QThemeSensor()
+
+
+class QSmartTextEdit(QTextEdit):
+    def __init__(self, max_height=100, parent=None):
+        super().__init__(parent)
+        self.max_height = max_height
+        self.textChanged.connect(self.adjustHeight)
+
+    def adjustHeight(self):
+        doc_height = self.document().size().height()
+        if doc_height > self.max_height:
+            self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+            self.setFixedHeight(self.max_height)
+        else:
+            self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+            self.setFixedHeight(int(doc_height))
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        self.adjustHeight()
+
+    def text(self) -> str:
+        return self.toPlainText()
+
+
+class QBaseDocumentViewerControls(QWidget):
+    fit_changed = Signal(str)
+    pop_changed = Signal(str)
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle('Document Viewer')
+
+        self.mode_iterator = itertools.cycle(("./assets/fit_both.svg", "./assets/no_limit.svg", "./assets/fit_width.svg", "./assets/fit_height.svg"))
+        self.popout_iterator = itertools.cycle(("./assets/pop_out.svg", "./assets/pop_in.svg"))
+
+        self.main_layout = QHBoxLayout(self)
+        self.controls_layout = QVBoxLayout(self)
+
+        self.pop_button = QPushButton()
+        self.pop_button.setIcon(QPixmap(next(self.popout_iterator)))
+        self.pop_button.clicked.connect(self.change_pop)
+        self.pop_button.setFixedSize(40, 40)
+        self.controls_layout.addWidget(self.pop_button)
+
+        self.fit_button = QPushButton()
+        self.fit_button.setIcon(QPixmap(next(self.mode_iterator)))
+        self.fit_button.clicked.connect(self.change_fit)
+        self.fit_button.setFixedSize(40, 40)
+        self.controls_layout.addWidget(self.fit_button)
+
+        self.fit_window_button = QPushButton()
+        self.fit_window_button.setIcon(QPixmap("assets/fit_window.svg"))
+        self.FIT_WINDOW = self.fit_window_button.clicked
+        self.fit_window_button.setFixedSize(40, 40)
+        self.controls_layout.addWidget(self.fit_window_button)
+
+        self.controls_frame = QFrame()
+        self.controls_frame.setMaximumWidth(60)
+        self.controls_frame.setFrameShape(QFrame.Shape.StyledPanel)
+        self.controls_frame.setFrameShadow(QFrame.Shadow.Raised)
+        self.controls_frame.setLayout(self.controls_layout)
+
+        self.setMinimumSize(300, 200)
+
+        self.main_layout.addWidget(self.controls_frame, alignment=Qt.AlignmentFlag.AlignLeft)
+
+        self.setLayout(self.main_layout)
+
+        self.fit_emit = "fit_both"
+        self.pop_emit = "pop_out"
+
+    def change_fit(self):
+        fit = next(self.mode_iterator)
+        self.fit_button.setIcon(QPixmap(fit))
+        self.fit_emit = os.path.basename(fit).split(".")[0]
+        self.fit_changed.emit(self.fit_emit)
+
+    def change_pop(self):
+        pop = next(self.popout_iterator)
+        self.pop_button.setIcon(QPixmap(pop))
+        self.pop_emit = os.path.basename(pop).split(".")[0]
+        self.pop_changed.emit(self.pop_emit)
+
+
+class QDocumentViewer(QBaseDocumentViewerControls):
+    def __init__(self, parent=None, allow_multiple_popouts: bool = False):
+        super().__init__(parent)
+        self.theme = global_theme_sensor.theme
+        self.scroll_area = QScrollArea()  # Scroll area for the content
+        self.scroll_area.setWidgetResizable(True)
+        self.scroll_content = QWidget()
+        self.scroll_layout = QVBoxLayout(self.scroll_content)
+        self.scroll_area.setWidget(self.scroll_content)
+        self.scroll_area.setFrameShape(QFrame.Shape.StyledPanel)
+        self.scroll_area.setFrameShadow(QFrame.Shadow.Raised)
+        self.scroll_area.setStyleSheet(f"""
+                    QScrollArea {{
+                        border-radius: 5px;
+                        background-color: #{"2d2d2d" if self.theme == SystemTheme.DARK else "fbfbfb"};
+                        margin: 1px;
+                    }}
+                    QScrollArea > QWidget > QWidget {{
+                        border: none;
+                        border-radius: 15px;
+                        background-color: transparent;
+                    }}
+                    QScrollBar:vertical {{
+                        border: none;
+                        background: #{'3c3c3c' if self.theme == SystemTheme.DARK else 'f0f0f0'};
+                        width: 15px;
+                        margin: 15px 0 15px 0;
+                        border-radius: 7px;
+                    }}
+                    QScrollBar::handle:vertical {{
+                        background: #{'888888' if self.theme == SystemTheme.DARK else 'cccccc'};
+                        min-height: 20px;
+                        border-radius: 7px;
+                    }}
+                    QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
+                        border: none;
+                        background: none;
+                    }}
+                    QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {{
+                        background: none;
+                    }}
+                    QScrollBar:horizontal {{
+                        border: none;
+                        background: #{'3c3c3c' if self.theme == SystemTheme.DARK else 'f0f0f0'};
+                        height: 15px;
+                        margin: 0 15px 0 15px;
+                        border-radius: 7px;
+                    }}
+                    QScrollBar::handle:horizontal {{
+                        background: #{'888888' if self.theme == SystemTheme.DARK else 'cccccc'};
+                        min-width: 20px;
+                        border-radius: 7px;
+                    }}
+                    QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {{
+                        border: none;
+                        background: none;
+                    }}
+                    QScrollBar::add-page:horizontal, QScrollBar::sub-page:horizontal {{
+                        background: none;
+                    }}
+                """)
+
+        self.general_preview_widget = QLabel()
+        self.general_preview_widget.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        self.general_preview_widget.setWordWrap(True)
+
+        self.video_widget = QVideoWidget()
+        self.media_player = QMediaPlayer()
+        self.media_player.setVideoOutput(self.video_widget)
+        self.media_player.setLoops(QMediaPlayer.Loops.Infinite)
+
+        self.pdf_view = QPdfView()
+        self.pdf_document = QPdfDocument(self)
+        self.pdf_view.setDocument(self.pdf_document)
+
+        self.scroll_layout.addWidget(self.general_preview_widget)
+        self.scroll_layout.addWidget(self.video_widget)
+        self.scroll_layout.addWidget(self.pdf_view)
+        self.general_preview_widget.hide()
+        self.video_widget.hide()
+        self.pdf_view.hide()
+
+        self.main_layout.addWidget(self.scroll_area)
+        self.is_popped_out = False
+        self.current_file_path = ""
+        self.pop_changed.connect(self.pop_out_in)
+        self.wins = []
+        self.allow_multiple_popouts = allow_multiple_popouts
+        self.fit_changed.connect(self.fit_content)
+        self.FIT_WINDOW.connect(self.fit_window)
+        global_theme_sensor.themeChanged.connect(self.reapply_theme)
+
+    def fit_content(self):
+        if self.fit_emit == "fit_width":
+            if self.pdf_view.isVisible():
+                self.pdf_view.setZoomMode(QPdfView.ZoomMode.FitToWidth)
+            elif self.video_widget.isVisible():
+                self.video_widget.setFixedSize(self.scroll_area.width(), self.video_widget.height())
+            elif self.general_preview_widget.isVisible():
+                if self.general_preview_widget.pixmap().isNull():
+                    self.general_preview_widget.setWordWrap(False)
+                else:
+                    pixmap = QPixmap(self.current_file_path)
+                    self.general_preview_widget.setPixmap(pixmap.scaled(self.scroll_area.width(), pixmap.height(),
+                                                                        Qt.AspectRatioMode.KeepAspectRatio))
+            self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+            self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        elif self.fit_emit == "fit_height":
+            if self.pdf_view.isVisible():
+                self.pdf_view.setZoomMode(QPdfView.ZoomMode.FitInView)
+                self.pdf_view.setZoomFactor(0.0)
+                self.pdf_view.setZoomMode(QPdfView.ZoomMode.Custom)
+                self.pdf_view.setZoomFactor((self.scroll_area.height() / self.pdf_document.pagePointSize(0).height()) / 1.4)
+            elif self.video_widget.isVisible():
+                self.video_widget.setFixedSize(self.video_widget.width(), self.scroll_area.height())
+            if self.general_preview_widget.isVisible():
+                if self.general_preview_widget.pixmap().isNull():
+                    self.general_preview_widget.setWordWrap(True)
+                else:
+                    pixmap = QPixmap(self.current_file_path)
+                    self.general_preview_widget.setPixmap(pixmap.scaled(pixmap.width(), self.scroll_area.height(),
+                                                                        Qt.AspectRatioMode.KeepAspectRatio))
+            self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+            self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        elif self.fit_emit == "fit_both":
+            if self.pdf_view.isVisible():
+                self.pdf_view.setZoomMode(QPdfView.ZoomMode.FitInView)
+            elif self.video_widget.isVisible():
+                self.video_widget.setFixedSize(self.scroll_area.size())
+            elif self.general_preview_widget.isVisible():
+                if self.general_preview_widget.pixmap().isNull():
+                    self.general_preview_widget.setWordWrap(True)
+                else:
+                    pixmap = QPixmap(self.current_file_path)
+                    self.general_preview_widget.setPixmap(pixmap.scaled(self.scroll_area.size()))
+            self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+            self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        elif self.fit_emit == "no_limit":  # fit_none
+            if self.pdf_view.isVisible():
+                self.pdf_view.setZoomMode(QPdfView.ZoomMode.Custom)
+                self.pdf_view.setZoomFactor(1.0)
+            elif self.video_widget.isVisible():
+                self.video_widget.setFixedSize(600, 400)
+            if self.general_preview_widget.isVisible():
+                if self.general_preview_widget.pixmap().isNull():
+                    self.general_preview_widget.setWordWrap(True)
+                else:
+                    pixmap = QPixmap(self.current_file_path)
+                    self.general_preview_widget.setPixmap(pixmap)
+            self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+            self.scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+
+    def pop_out_in(self):
+        if self.is_popped_out:
+            self.close()
+        else:
+            if not self.allow_multiple_popouts and len(self.wins) > 0:
+                self.wins[0].close()
+                del self.wins[0]
+            win = QDocumentViewer()
+            win.preview_document(self.current_file_path)
+            win.pop_button.setIcon(QPixmap(next(win.popout_iterator)))
+            win.is_popped_out = True
+            win.show()
+            win.scroll_area.verticalScrollBar().setValue(self.scroll_area.verticalScrollBar().value())
+            win.scroll_area.horizontalScrollBar().setValue(self.scroll_area.horizontalScrollBar().value())
+            win.fit_in(self.fit_emit, itertools.tee(self.mode_iterator)[0])
+            win.fit_content()
+            self.wins.append(win)
+
+    def fit_in(self, current_fit, iterator):
+        self.mode_iterator = iterator
+        self.fit_button.setIcon(QPixmap(f"./assets/{current_fit}.svg"))
+        self.fit_emit = current_fit
+
+    def change_pop(self):
+        pop = next(self.popout_iterator)
+        self.pop_emit = os.path.basename(pop).split(".")[0]
+        self.pop_changed.emit(self.pop_emit)
+
+    def preview_document(self, file_path: str):
+        self.current_file_path = file_path
+
+        self.general_preview_widget.hide()
+        self.video_widget.hide()
+        self.pdf_view.hide()
+
+        if not file_path:
+            return
+
+        if file_path.lower().endswith(('.png', '.jpg', '.jpeg', '.svg')):
+            self.general_preview_widget.show()
+            self.general_preview_widget.setPixmap(QPixmap(file_path))
+        elif file_path.lower().endswith('.pdf'):
+            self.pdf_view.show()
+            self.pdf_document.load(file_path)
+        elif file_path.lower().endswith(('.mp4', '.mov')):
+            self.video_widget.show()
+            self.media_player.setSource(QUrl.fromLocalFile(file_path))
+            self.media_player.play()
+        else:
+            self.general_preview_widget.show()
+            try:
+                with open(file_path, 'r') as f:
+                    contents = f.read()
+                self.general_preview_widget.setText(contents)
+            except Exception:
+                self.general_preview_widget.setText(f"Unsupported file format: {file_path}")
+
+        self.fit_content()
+
+    def fit_window(self, arg):
+        if self.is_popped_out:
+            # Adjust the scroll area to its contents
+            self.scroll_area.adjustSize()
+
+            # Calculate the new size based on the content
+            content_size = self.scroll_content.sizeHint()
+
+            # Set the scroll area size to match the content size
+            self.setMinimumSize(content_size)
+            self.setMaximumSize(content_size)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self.fit_content()
+
+    def reapply_theme(self):
+        self.theme = global_theme_sensor.theme
+        self.scroll_area.setStyleSheet(f"""
+                    QScrollArea {{
+                        border-radius: 5px;
+                        background-color: #{"2d2d2d" if self.theme == SystemTheme.DARK else "fbfbfb"};
+                        margin: 1px;
+                    }}
+                    QScrollArea > QWidget > QWidget {{
+                        border: none;
+                        border-radius: 15px;
+                        background-color: transparent;
+                    }}
+                    QScrollBar:vertical {{
+                        border: none;
+                        background: #{'3c3c3c' if self.theme == SystemTheme.DARK else 'f0f0f0'};
+                        width: 15px;
+                        margin: 15px 0 15px 0;
+                        border-radius: 7px;
+                    }}
+                    QScrollBar::handle:vertical {{
+                        background: #{'888888' if self.theme == SystemTheme.DARK else 'cccccc'};
+                        min-height: 20px;
+                        border-radius: 7px;
+                    }}
+                    QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
+                        border: none;
+                        background: none;
+                    }}
+                    QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {{
+                        background: none;
+                    }}
+                    QScrollBar:horizontal {{
+                        border: none;
+                        background: #{'3c3c3c' if self.theme == SystemTheme.DARK else 'f0f0f0'};
+                        height: 15px;
+                        margin: 0 15px 0 15px;
+                        border-radius: 7px;
+                    }}
+                    QScrollBar::handle:horizontal {{
+                        background: #{'888888' if self.theme == SystemTheme.DARK else 'cccccc'};
+                        min-width: 20px;
+                        border-radius: 7px;
+                    }}
+                    QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {{
+                        border: none;
+                        background: none;
+                    }}
+                    QScrollBar::add-page:horizontal, QScrollBar::sub-page:horizontal {{
+                        background: none;
+                    }}
+                """)

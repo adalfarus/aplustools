@@ -14,7 +14,7 @@ except Exception:
     _msvcrt = None
 
 
-def diagnose_shutdown_blockers(suggestions: bool = True):
+def diagnose_shutdown_blockers(suggestions: bool = True, return_result: bool = False):
     blockers = []
 
     # Check for active threads
@@ -44,10 +44,13 @@ def diagnose_shutdown_blockers(suggestions: bool = True):
         blockers.append("Suggestion: Ensure all network connections are properly closed.")
 
     if not blockers:
-        return "No obvious blockers preventing Python from shutting down."
+        returns = "No obvious blockers preventing Python from shutting down."
     else:
-        return "\n".join(blockers if suggestions else blockers[::2])
+        returns = "\n".join(blockers if suggestions else blockers[::2])
 
+    if return_result:
+        return returns
+    print(returns)
 
 def clear_screen():
     if _platform.system() == "Windows":
