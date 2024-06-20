@@ -465,6 +465,61 @@ class SpecificPasswordGenerator:
         """Unloads all currently loaded dictionaries."""
         self.words = []
 
+    def basic_secure_password(self, password: str, passes: int = 3, expand: bool = True) -> str:
+        """
+        Makes the inputted password more secure by introducing slight changes each iteration.
+
+        :param password: The password to be secured
+        :param passes: How many iterations this should run for
+        :param expand: If the password should be able to get larger
+        :return: The secured password
+        """
+        self._debug_print(f"Securing password: {password}")
+        characters = _string.ascii_letters + _string.digits + _string.punctuation
+
+        for _ in range(passes):
+            rnd = self._rng.randint(0, 3)
+
+            match rnd:
+                case 0:
+                    if expand:
+                        # Add a random character
+                        password += self._rng.choice(characters)
+                    else:
+                        rng = self._rng.randint(0, len(password)-1)
+                        password = password[:rng] + self._rng.choice(characters) + password[rng+1:]
+                case 1:
+                    # Switch a random character's case
+                    pos = self._rng.randint(0, len(password) - 1)
+                    char = password[pos]
+                    if char.islower():
+                        char = char.upper()
+                    elif char.isupper():
+                        char = char.lower()
+                    password = password[:pos] + char + password[pos+1:]
+                case 2:
+                    # Add a random digit
+                    pos = self._rng.randint(0, len(password)-1)
+                    password = password[:pos] + self._rng.choice(_string.digits) + password[(pos if expand else pos+1):]
+                case 3:
+                    # Add a random punctuation
+                    pos = self._rng.randint(0, len(password)-1)
+                    password = password[:pos] + self._rng.choice(_string.punctuation) + password[(pos if expand else pos+1):]
+
+        # Calculate the number of characters to switch
+        length = len(password)
+        percentage_to_switch = self._rng.choice([10, 20, 30])
+        num_to_switch = max(2, (length * percentage_to_switch) // 100)
+
+        # Switch around the selected percentage of characters
+        password_list = list(password)
+        for _ in range(num_to_switch // 2):
+            idx1, idx2 = self._rng.sample(range(length), 2)
+            password_list[idx1], password_list[idx2] = password_list[idx2], password_list[idx1]
+
+        self._debug_print(f"Secured password: {password}")
+        return password
+
     def dynamic_secure_password(self, password: str, passes: int = 3, expand: bool = True) -> str:
         """
         Makes the inputted password more secure by introducing slight changes each iteration.
@@ -573,11 +628,12 @@ class SpecificPasswordGenerator:
         """
         Generates a secure sentence using the currently loaded dictionaries,
         often used internally for secure sentence generation.
+        [Choices is more secure than sample]
 
         :param length: The length of the sentence in words
         :return: The generated sentence
         """
-        return ' '.join(self._rng.sample(self.words, length))
+        return ' '.join(self._rng.choices(self.words, length))
 
     def reduce_password(self, password: str, by: _Union[int, _Literal["all"]] = 0) -> str:
         """
@@ -1174,15 +1230,31 @@ def big_reducer_3(input_str: str, ord_ranges: list[range], debug: bool = False):
                 target = _nearest_int(ord_val, end, start)
                 _debug_print("Target: ", target)
                 if target == end:
-                    ord_val = range1[ord_val % (end - range1.start)]
+                    num = end - range1.start
+                    if num <= 0:  # Handle empty or single-character range
+                        ord_val = range1.start
+                    else:
+                        ord_val = range1.start + (ord_val % num)
                 else:
-                    ord_val = range2[ord_val % (range2.stop - start)]
+                    num = range2.stop - start
+                    if num <= 0:  # Handle empty or single-character range
+                        ord_val = range2.start
+                    else:
+                        ord_val = range2.start + (ord_val % num)
                 break
             elif ord_val < range1.start and i == 0:
-                ord_val = range1[ord_val % (end - range1.start)]
+                num = end - range1.start
+                if num <= 0:  # Handle empty or single-character range
+                    ord_val = range1.start
+                else:
+                    ord_val = range1.start + (ord_val % num)
                 break
             elif ord_val > range2.stop and i == len(ranges) - 1:
-                ord_val = range2[ord_val % (range2.stop - start)]
+                num = range2.stop - start
+                if num <= 0:  # Handle empty or single-character range
+                    ord_val = range2.start
+                else:
+                    ord_val = range2.start + (ord_val % num)
                 break
 
         else:
@@ -1764,7 +1836,7 @@ if __name__ == "__main__":
 
     print("PasswordTypeHelper: ")
     pth = PasswordTypeHelper("us")
-    print(pth.type_out("MyPassword$$"))
+    print(pth.type_out("MyPeassword$$"))
     print(pth.type_out("Hello, World! 😊"))
     print(PasswordTypeHelper.type_out_static("MySecurePASSWORD", "us"))
 

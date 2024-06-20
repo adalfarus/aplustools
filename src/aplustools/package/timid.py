@@ -1,5 +1,7 @@
 from typing import (Callable as _Callable, Union as _Union, List as _List, Tuple as _Tuple, Optional as _Optional,
                     Type as _Type, Iterable as _Iterable, Any as _Any, Generator as _Generator, Literal as _Literal)
+
+from openpyxl.worksheet.scenario import ScenarioList
 from sklearn.linear_model import RANSACRegressor as _RANSACRegressor
 from datetime import timedelta as _timedelta, datetime as _datetime
 from scipy.optimize import curve_fit as _curve_fit
@@ -258,24 +260,25 @@ class TimidTimer:
     def _time() -> _Union[float, int]:
         return _default_timer() * 1e9
 
-    def start(self, index: int = None, start_at: _Union[float, int] = 0) -> "TimidTimer":
+    def start(self, *indices: _Optional[int], start_at: _Union[float, int] = 0) -> "TimidTimer":
         start_time = self._time()
-        if index is None:
-            index = len(self._times)
-        if index < len(self._times) and self._times[index][2] != 0:
-            self.resume(index)
-            return self
-        while len(self._times) < index:  # Ensure the _times and _tick_tocks lists has enough elements
-            self._times.append(self.EMPTY)
-            self._tick_tocks.append([])
-        if index < len(self._times) and self._times[index] is self.EMPTY:  # Append or replace the elements
-            self._times[index] = (start_time + (start_at * 1e9), 0, 0, _threading.Lock())  # at the specified index
-            self._tick_tocks[index] = []
-        elif index == len(self._times):
-            self._times.append((start_time + (start_at * 1e9), 0, 0, _threading.Lock()))
-            self._tick_tocks.append([])
-        else:
-            raise Exception(f"A Timer already running on index {index}")
+        indices = indices or [len(self._times)]
+
+        for index in indices:
+            if index < len(self._times) and self._times[index][2] != 0:
+                self.resume(index)
+                return self
+            while len(self._times) < index:  # Ensure the _times and _tick_tocks lists has enough elements
+                self._times.append(self.EMPTY)
+                self._tick_tocks.append([])
+            if index < len(self._times) and self._times[index] is self.EMPTY:  # Append or replace the elements
+                self._times[index] = (start_time + (start_at * 1e9), 0, 0, _threading.Lock())  # at the specified index
+                self._tick_tocks[index] = []
+            elif index == len(self._times):
+                self._times.append((start_time + (start_at * 1e9), 0, 0, _threading.Lock()))
+                self._tick_tocks.append([])
+            else:
+                raise Exception(f"A Timer already running on index {index}")
         return self
 
     def _get_first_index(self):
@@ -284,33 +287,35 @@ class TimidTimer:
                 return i
         raise IndexError("No active timers.")
 
-    def pause(self, index: _Optional[int] = None, for_seconds: _Optional[_Union[float, int]] = None) -> "TimidTimer":
+    def pause(self, *indices: _Optional[int], for_seconds: _Optional[_Union[float, int]] = None) -> "TimidTimer":
         pause_time = self._time()
-        index = index or self._get_first_index()  # If it's 0 it just sets it to 0 so it's okay.
+        indices = indices or [self._get_first_index()]  # If it's 0 it just sets it to 0 so it's okay.
 
-        if index >= len(self._times) or self._times[index] is self.EMPTY:
-            raise IndexError(f"Index {index} doesn't exist or is not running.")
+        for index in indices:
+            if index >= len(self._times) or self._times[index] is self.EMPTY:
+                raise IndexError(f"Index {index} doesn't exist or is not running.")
 
-        with self._times[index][-1]:
-            start, end, paused_time, lock = self._times[index]
-            if paused_time != 0:
-                raise ValueError(f"Timer on index {index} is already paused.")
-            self._times[index] = (start, end, pause_time, lock)
-            if for_seconds:
-                self._tick_tocks[index].append(for_seconds * 1e9)
-            else:
-                self._tick_tocks[index].append(float('inf'))
+            with self._times[index][-1]:
+                start, end, paused_time, lock = self._times[index]
+                if paused_time != 0:
+                    raise ValueError(f"Timer on index {index} is already paused.")
+                self._times[index] = (start, end, pause_time, lock)
+                if for_seconds:
+                    self._tick_tocks[index].append(for_seconds * 1e9)
+                else:
+                    self._tick_tocks[index].append(float('inf'))
         return self
 
-    def resume(self, index: _Optional[int] = None) -> "TimidTimer":
+    def resume(self, *indices: _Optional[int]) -> "TimidTimer":
         resumed_time = self._time()
-        index = index or self._get_first_index()  # If it's 0 it just sets it to 0 so it's okay.
+        indices = indices or [self._get_first_index()]  # If it's 0 it just sets it to 0 so it's okay.
 
-        if index >= len(self._times) or self._times[index] is self.EMPTY:
-            raise IndexError(f"Index {index} doesn't exist or is not paused.")
+        for index in indices:
+            if index >= len(self._times) or self._times[index] is self.EMPTY:
+                raise IndexError(f"Index {index} doesn't exist or is not paused.")
 
-        with self._times[index][-1]:
-            self._resume(resumed_time, index)
+            with self._times[index][-1]:
+                self._resume(resumed_time, index)
         return self
 
     def _resume(self, resumed_time, index: _Optional[int] = None):
@@ -322,102 +327,122 @@ class TimidTimer:
         else:
             raise ValueError(f"Timer on index {index} isn't paused.")
 
-    def stop(self, index: _Optional[int] = None) -> "TimidTimer":
+    def stop(self, *indices: _Optional[int]) -> "TimidTimer":
         end_time = self._time()
-        index = index or self._get_first_index()  # If it's 0 it just sets it to 0 so it's okay.
-        if index >= len(self._times) or self._times[index] is self.EMPTY:
-            raise IndexError(f"Index {index} doesn't exist or is not running.")
+        indices = indices or [self._get_first_index()]  # If it's 0 it just sets it to 0 so it's okay.
 
-        with self._times[index][-1]:
-            start, end, paused_time, lock = self._times[index]
-            if paused_time != 0:
-                self._resume(end_time, index)
-            start, _, __, ___ = self._times[index]
-            self._times[index] = (start, end_time, 0, lock)
+        for index in indices:
+            if index >= len(self._times) or self._times[index] is self.EMPTY:
+                raise IndexError(f"Index {index} doesn't exist or is not running.")
+
+            with self._times[index][-1]:
+                start, end, paused_time, lock = self._times[index]
+                if paused_time != 0:
+                    self._resume(end_time, index)
+                start, _, __, ___ = self._times[index]
+                self._times[index] = (start, end_time, 0, lock)
         return self
 
-    def get(self, index: _Optional[int] = None, return_type: _Literal["timedelta", "SmallTimeDiff"] = "SmallTimeDiff"
-            ) -> _Union[SmallTimeDiff, _timedelta]:
-        index = index or self._get_first_index()  # If it's 0 it just sets it to 0 so it's okay.
-        if index >= len(self._times) or self._times[index] is self.EMPTY:
-            raise IndexError(f"Index {index} doesn't exist or is not running.")
-        with self._times[index][-1]:
-            start, end, paused_time, _ = self._times[index]
-        max_paused_time = float('inf')
-        if paused_time != 0:
-            paused_time = self._time() - paused_time
-            max_paused_time = self._tick_tocks[-1]
-        elapsed_time = (end or self._time()) - min(max_paused_time, start + paused_time)
-        return SmallTimeDiff(microseconds=elapsed_time / 1000) if return_type == "SmallTimeDiff" \
-            else _timedelta(microseconds=elapsed_time / 1000)
+    def get(self, *indices: _Optional[int], return_type: _Literal["timedelta", "SmallTimeDiff"] = "SmallTimeDiff"
+            ) -> list[SmallTimeDiff | _timedelta] | SmallTimeDiff | _timedelta:
+        indices = indices or [self._get_first_index()]  # If it's 0 it just sets it to 0 so it's okay.
+        returns = []
 
-    def end(self, index: _Optional[int] = None,
-            return_type: _Literal["timedelta", "SmallTimeDiff", None] = "SmallTimeDiff"
-            ) -> _Union[SmallTimeDiff, _timedelta, "TimidTimer"]:
-        end_time = self._time()
-        index = index or self._get_first_index()  # If it's 0 it just sets it to 0 so it's okay.
-        if index >= len(self._times) or self._times[index] is self.EMPTY:
-            raise IndexError(f"Index {index} doesn't exist or is not running.")
-        with self._times[index][-1]:
-            start, _, paused_time, __ = self._times[index]
+        for index in indices:
+            if index >= len(self._times) or self._times[index] is self.EMPTY:
+                raise IndexError(f"Index {index} doesn't exist or is not running.")
+            with self._times[index][-1]:
+                start, end, paused_time, _ = self._times[index]
+            max_paused_time = float('inf')
             if paused_time != 0:
-                self._resume(end_time, index)
-            start, __, ___, ____ = self._times[index]
-            self._times[index] = self.EMPTY
-            self._tick_tocks[index] = []
-        if return_type == "SmallTimeDiff":
-            elapsed_time = end_time - start
-            return SmallTimeDiff(microseconds=elapsed_time / 1000)
-        elif return_type == "timedelta":
-            elapsed_time = end_time - start
-            return SmallTimeDiff(microseconds=elapsed_time / 1000)
+                paused_time = self._time() - paused_time
+                max_paused_time = self._tick_tocks[-1]
+            elapsed_time = (end or self._time()) - min(max_paused_time, start + paused_time)
+            if return_type == "SmallTimeDiff":
+                returns.append(SmallTimeDiff(microseconds=elapsed_time / 1000))
+            else:
+                returns.append(_timedelta(microseconds=elapsed_time / 1000))
+        return returns if len(returns) > 1 else returns[0]
+
+    def end(self, *indices: _Optional[int], return_type: _Literal["timedelta", "SmallTimeDiff", None] = "SmallTimeDiff"
+            ) -> list[SmallTimeDiff | _timedelta] | "TimidTimer" | SmallTimeDiff | _timedelta:
+        end_time = self._time()
+        indices = indices or [self._get_first_index()]  # If it's 0 it just sets it to 0 so it's okay.
+        returns = []
+
+        for index in indices:
+            if index >= len(self._times) or self._times[index] is self.EMPTY:
+                raise IndexError(f"Index {index} doesn't exist or is not running.")
+            with self._times[index][-1]:
+                start, _, paused_time, __ = self._times[index]
+                if paused_time != 0:
+                    self._resume(end_time, index)
+                start, __, ___, ____ = self._times[index]
+                self._times[index] = self.EMPTY
+                self._tick_tocks[index] = []
+            if return_type == "SmallTimeDiff":
+                elapsed_time = end_time - start
+                returns.append(SmallTimeDiff(microseconds=elapsed_time / 1000))
+            elif return_type == "timedelta":
+                elapsed_time = end_time - start
+                returns.append(SmallTimeDiff(microseconds=elapsed_time / 1000))
+        if return_type is not None:
+            return returns if len(returns) > 1 else returns[0]
         return self
 
-    def tick(self, index: _Optional[int] = None,
-             return_type: _Literal["timedelta", "SmallTimeDiff", None] = "SmallTimeDiff"
-             ) -> _Union[SmallTimeDiff, _timedelta, "TimidTimer"]:
+    def tick(self, *indices: _Optional[int], return_type: _Literal["timedelta", "SmallTimeDiff", None] = "SmallTimeDiff"
+             ) -> list[SmallTimeDiff | _timedelta] | "TimidTimer" | SmallTimeDiff | _timedelta:
         """Return how much time has passed till the start. (Could also be called elapsed)"""
         tick_time = self._time()
-        index = index or self._get_first_index()  # If it's 0 it just sets it to 0 so it's okay.
-        if index >= len(self._times) or self._times[index] is self.EMPTY:
-            raise IndexError(f"Index {index} doesn't exist or is not running.")
-        with self._times[index][-1]:
-            start, _, paused_time, __ = self._times[index]
-            if tick_time - start < 0:
-                raise ValueError(f"Please don't tick when the timer is paused.")
-            if paused_time != 0:
-                self._resume(tick_time, index)
-            self._tick_tocks[index].append((start, tick_time))
-        if return_type == "SmallTimeDiff":
-            return SmallTimeDiff(microseconds=(tick_time - start) / 1000)
-        elif return_type == "timedelta":
-            return _timedelta(microseconds=(tick_time - start) / 1000)
+        indices = indices or [self._get_first_index()]  # If it's 0 it just sets it to 0 so it's okay.
+        returns = []
+
+        for index in indices:
+            if index >= len(self._times) or self._times[index] is self.EMPTY:
+                raise IndexError(f"Index {index} doesn't exist or is not running.")
+            with self._times[index][-1]:
+                start, _, paused_time, __ = self._times[index]
+                if tick_time - start < 0:
+                    raise ValueError(f"Please don't tick when the timer is paused.")
+                if paused_time != 0:
+                    self._resume(tick_time, index)
+                self._tick_tocks[index].append((start, tick_time))
+            if return_type == "SmallTimeDiff":
+                returns.append(SmallTimeDiff(microseconds=(tick_time - start) / 1000))
+            elif return_type == "timedelta":
+                returns.append(_timedelta(microseconds=(tick_time - start) / 1000))
+        if return_type is not None:
+            return returns if len(returns) > 1 else returns[0]
         return self
 
-    def tock(self, index: _Optional[int] = None,
-             return_type: _Literal["timedelta", "SmallTimeDiff", None] = "SmallTimeDiff"
-             ) -> _Union[SmallTimeDiff, _timedelta, "TimidTimer"]:
+    def tock(self, *indices: _Optional[int], return_type: _Literal["timedelta", "SmallTimeDiff", None] = "SmallTimeDiff"
+             ) -> list[SmallTimeDiff | _timedelta] | "TimidTimer" | SmallTimeDiff | _timedelta:
         """Returns how much time has passed till the last tock. (Could also be called round/lap/split)"""
         tock_time = self._time()
-        index = index or self._get_first_index()  # If it's 0 it just sets it to 0 so it's okay.
-        if index >= len(self._times) or self._times[index] is self.EMPTY:
-            raise IndexError(f"Index {index} doesn't exist or is not running.")
-        with self._times[index][-1]:
-            start, end, paused_time, lock = self._times[index]
+        indices = indices or [self._get_first_index()]  # If it's 0 it just sets it to 0 so it's okay.
+        returns = []
 
-            if paused_time != 0:
-                self._resume(tock_time, index)
-                start, end, _, __ = self._times[index]
-            last_time = end or start
-            if tock_time - last_time < 0:
-                raise ValueError(f"Please don't tock when the timer is paused.")
-            end = tock_time
-            self._times[index] = (start, end, 0, lock)
-            self._tick_tocks[index].append((last_time, end))
-        if return_type == "SmallTimeDiff":
-            return SmallTimeDiff(microseconds=(end - last_time) / 1000)
-        elif return_type == "timedelta":
-            return _timedelta(microseconds=(end - last_time) / 1000)
+        for index in indices:
+            if index >= len(self._times) or self._times[index] is self.EMPTY:
+                raise IndexError(f"Index {index} doesn't exist or is not running.")
+            with self._times[index][-1]:
+                start, end, paused_time, lock = self._times[index]
+
+                if paused_time != 0:
+                    self._resume(tock_time, index)
+                    start, end, _, __ = self._times[index]
+                last_time = end or start
+                if tock_time - last_time < 0:
+                    raise ValueError(f"Please don't tock when the timer is paused.")
+                end = tock_time
+                self._times[index] = (start, end, 0, lock)
+                self._tick_tocks[index].append((last_time, end))
+            if return_type == "SmallTimeDiff":
+                returns.append(SmallTimeDiff(microseconds=(end - last_time) / 1000))
+            elif return_type == "timedelta":
+                returns.append(_timedelta(microseconds=(end - last_time) / 1000))
+        if return_type is not None:
+            return returns if len(returns) > 1 else returns[0]
         return self
 
     def tally(self, *indices: _Optional[int], return_type: _Literal["timedelta", "SmallTimeDiff"] = "SmallTimeDiff"
