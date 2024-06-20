@@ -1,5 +1,6 @@
 from faker import Faker
 import random
+from typing import Literal as _Literal
 
 from aplustools.security.passwords import SpecificPasswordGenerator, big_reducer_3
 
@@ -58,7 +59,7 @@ class FakerPro(Faker):
             else:  # Generate a single person not part of a family
                 return self._create_identity(gender=random.choice(['male', 'female']))
 
-    def gender_relational_name(self, gender, include_last_name=False):
+    def gender_relational_name(self, gender: _Literal["male", "female", "other"], include_last_name=False):
         first_name = self.first_name_male() if gender.lower() == 'male' else self.first_name_female()
         if include_last_name:
             last_name = self.last_name()
