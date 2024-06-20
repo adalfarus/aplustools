@@ -364,8 +364,23 @@ class TimidTimer:
                 returns.append(_timedelta(microseconds=elapsed_time / 1000))
         return returns if len(returns) > 1 else returns[0]
 
+    def delete(self, *indices: _Optional[int], return_type: _Literal["timedelta", "SmallTimeDiff", None] = "SmallTimeDiff"
+               ) -> "TimidTimer":
+        indices = indices or [self._get_first_index()]  # If it's 0 it just sets it to 0 so it's okay.
+        returns = []
+
+        for index in indices:
+            if index >= len(self._times) or self._times[index] is self.EMPTY:
+                raise IndexError(f"Index {index} doesn't exist or is not running.")
+            with self._times[index][-1]:
+                self._times[index] = self.EMPTY
+                self._tick_tocks[index] = []
+        if return_type is not None:
+            return returns if len(returns) > 1 else returns[0]
+        return self
+
     def end(self, *indices: _Optional[int], return_type: _Literal["timedelta", "SmallTimeDiff", None] = "SmallTimeDiff"
-            ) -> list[SmallTimeDiff | _timedelta] | "TimidTimer" | SmallTimeDiff | _timedelta:
+            ) -> _Union[list[SmallTimeDiff | _timedelta], SmallTimeDiff, _timedelta, "TimidTimer"]:
         end_time = self._time()
         indices = indices or [self._get_first_index()]  # If it's 0 it just sets it to 0 so it's okay.
         returns = []
@@ -391,7 +406,7 @@ class TimidTimer:
         return self
 
     def tick(self, *indices: _Optional[int], return_type: _Literal["timedelta", "SmallTimeDiff", None] = "SmallTimeDiff"
-             ) -> list[SmallTimeDiff | _timedelta] | "TimidTimer" | SmallTimeDiff | _timedelta:
+             ) -> _Union[list[SmallTimeDiff | _timedelta], SmallTimeDiff, _timedelta, "TimidTimer"]:
         """Return how much time has passed till the start. (Could also be called elapsed)"""
         tick_time = self._time()
         indices = indices or [self._get_first_index()]  # If it's 0 it just sets it to 0 so it's okay.
@@ -416,7 +431,7 @@ class TimidTimer:
         return self
 
     def tock(self, *indices: _Optional[int], return_type: _Literal["timedelta", "SmallTimeDiff", None] = "SmallTimeDiff"
-             ) -> list[SmallTimeDiff | _timedelta] | "TimidTimer" | SmallTimeDiff | _timedelta:
+             ) -> _Union[list[SmallTimeDiff | _timedelta], SmallTimeDiff, _timedelta, "TimidTimer"]:
         """Returns how much time has passed till the last tock. (Could also be called round/lap/split)"""
         tock_time = self._time()
         indices = indices or [self._get_first_index()]  # If it's 0 it just sets it to 0 so it's okay.
@@ -446,7 +461,7 @@ class TimidTimer:
         return self
 
     def tally(self, *indices: _Optional[int], return_type: _Literal["timedelta", "SmallTimeDiff"] = "SmallTimeDiff"
-              ) -> _Union[SmallTimeDiff, _timedelta]:
+              ) -> SmallTimeDiff | _timedelta:
         """Return the total time recorded across all ticks and tocks."""
         indices = indices or [self._get_first_index()]  # If it's 0 it just sets it to 0 so it's okay.
         total_time = 0
@@ -467,7 +482,7 @@ class TimidTimer:
             else _timedelta(microseconds=total_time / 1000)
 
     def average(self, *indices: _Optional[int], return_type: _Literal["timedelta", "SmallTimeDiff"] = "SmallTimeDiff"
-                ) -> _Union[SmallTimeDiff, _timedelta]:
+                ) -> SmallTimeDiff | _timedelta:
         """Calculate the average time across all recorded ticks and tocks."""
         indices = indices or [self._get_first_index()]  # If it's 0 it just sets it to 0 so it's okay.
         total_tocks = 0
