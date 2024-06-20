@@ -113,7 +113,8 @@ all = [
   "cryptography>=42.0.5",
   "quantcrypt>=0.4.2; python_version == '3.12'",
   "pytest",
-  "Faker>=25.8.0"
+  "Faker>=25.8.0",
+  "zxcvbn>=4.4.28"
 ]
 
 [project.urls]
