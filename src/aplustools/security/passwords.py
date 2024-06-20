@@ -11,7 +11,7 @@ from aplustools.io.environment import strict as _strict
 
 from typing import Union as _Union, Literal as _Literal, Optional as _Optional, Callable as _Callable
 from aplustools.data import nice_number as _nice_number
-from importlib_resources import files as _files
+from importlib.resources import files as _files
 from threading import Timer as _Timer
 import unicodedata as _unicodedata
 import secrets as _secrets
