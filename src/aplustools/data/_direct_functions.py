@@ -7,7 +7,7 @@ import locale as _locale
 _locale.setlocale(_locale.LC_ALL, '')
 
 
-def truedivmod(__x, __y):
+def truedivmod(__x: int | float, __y: int | float):
     return (lambda q, r: (int(q), r))(*divmod(__x, __y))
 
 

@@ -103,7 +103,7 @@ def pack_number_at_end(num, total_bytes):
     return output
 
 
-class UnienEnAndDeCoder:
+class Unien:
     def __init__(self):
         self._buffer = ""
         self._completed = ""
@@ -205,7 +205,7 @@ class UnienEnAndDeCoder:
 
 
 if __name__ == "__main__":
-    un = UnienEnAndDeCoder()
+    un = Unien()
     encoded_uni_str = un.encode("👋Hell🆕o World„„🏃“")
     utf8_uni_str = "👋Hell🆕o World„„🏃“".encode("utf-8")
     print(f"{encoded_uni_str}/{utf8_uni_str} ({len(encoded_uni_str)}/{len(utf8_uni_str)})")
