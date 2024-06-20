@@ -1,13 +1,17 @@
+import os.path
+
 from cryptography.hazmat.primitives.ciphers import Cipher as _Cipher, algorithms as _algorithms, modes as _modes
 from cryptography.hazmat.backends import default_backend as _default_backend
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC as _PBKDF2HMAC
 from cryptography.hazmat.primitives import hashes as _hashes
 from cryptography.hazmat.primitives import padding as _padding
+from sympy import arg
 from zxcvbn import zxcvbn as _zxcvbn
 
 from aplustools.security.rand import WeightedRandom as _WeightedRandom
 from aplustools.data import beautify_json as _beautify_json
 from aplustools.io.environment import strict as _strict
+from aplustools.security.crypto import CryptUtils
 
 from typing import Union as _Union, Literal as _Literal, Optional as _Optional, Callable as _Callable
 from aplustools.data import nice_number as _nice_number
@@ -1292,11 +1296,29 @@ def quick_big_reducer_3(input_str: str, ord_ranges: list[range]):
 class PasswordReGenerator:
     """Create a secure password from a weak one plus an identifier like a website name. This is made possible by used
     an encrypted seed file in combination with the PBKDF2HMAC algorithm (using 100_000 iterations and sha 256)."""
-    def __init__(self, key: bytes, seed_file: str = "seed_file.enc", debug: bool = False):
+    def __init__(self, key: bytes, seed_file_or_seed: str | bytes = "seed_file.enc", debug: bool = False,
+                 _got_seed: bool = False):
         self._key = key
-        self._seed_file = seed_file
+        self._seed_file = seed_file_or_seed
         self._debug = debug
-        self._load_or_create_seed_file()
+
+        if not _got_seed:
+            self._load_or_create_seed_file()
+        else:
+            self._seed = self._seed_file
+            self._seed_file = None
+
+    @classmethod
+    def load_from_file(cls, file_path: str) -> "PasswordReGenerator":
+        """Use a default file as the seed (hashed)."""
+        try:
+            with open(file_path, "r") as f:
+                contents = f.read()
+        except IOError:
+            with open(file_path, "rb") as f:
+                contents = f.read()
+        seed = CryptUtils.pbkdf2(contents, CryptUtils.generate_hash(file_path, "strong").encode(), 32, 1_000_000)
+        return cls(CryptUtils.generate_hash(os.path.basename(file_path), "strong").encode(), seed, False, True)
 
     @staticmethod
     def generate_suitable_password() -> bytes:
@@ -1387,6 +1409,11 @@ class PasswordReGenerator:
                 return ''.join(chars[b % len(chars)] for b in password)[:length]
             case _:
                 raise ValueError(f"Unsupported charset: {charset}")
+
+
+generator = PasswordReGenerator.load_from_file(r"C:\Users\till_\OneDrive\Desktop\generate_password.bat")
+print(generator.generate_password("Hello WOrld", "MyPass"))
+input()
 
 
 @_strict(mark_class_as_cover=False)  # For security purposes

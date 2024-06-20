@@ -21,6 +21,99 @@ except ImportError:
     Kyber = KryptonKEM = Argon2 = None
 
 
+# Bunch of enums to make it easier for the user
+class Hash:
+    """Provides an easy way for the user to specify a hash algorithm."""
+    SHA1 = 0
+    class SHA2:
+        """SHA2"""
+        SHA224 = 1
+        SHA256 = 2
+        SHA384 = 3
+        SHA512 = 4
+    class SHA3:
+        """SHA3"""
+        SHA224 = 5
+        SHA256 = 6
+        SHA384 = 7
+        SHA512 = 8
+    class BLAKE2:
+        """BLAKE2"""
+        BLAKE2b = 9
+        BLAKE2s = 10
+    ARGON2 = 11
+    MD5 = 12
+    BCRYPT = 13
+
+
+class Hasher:
+    def generate_hash(self, to_hash: bytes, algo: Hash):
+        return
+
+    def verify_hash(self, to_verify: bytes, hash, algo: Hash):
+        return
+
+
+class SymCipher:  # Symmetric Encryption
+    class AES:  # Advanced Encryption Standard
+        AES256 = 0
+    ChaCha20 = 1
+    TripleDES = 2
+    Blowfish = 3
+    CASTS = 4
+
+
+class SymOperation:  # Modes of Operation
+    """Different modes of operation"""
+    ECB = 0  # Electronic Codebook
+    CBC = 1  # Cipher Block Chaining
+    CFB = 2  # Cipher Feedback
+    OFB = 3  # Output Feedback
+    CTR = 4  # Counter
+    GCM = 5  # Galois/Counter Mode
+    OCB = 6  # Offset Codebook Mode
+
+
+class ASymCipher:  # Asymmetric Encryption
+    class RSA:  # Rivest-Shamir-Adleman
+        RSA1024 = 0
+    DSA = 1  # Digital Signature Algorithm
+    class ECC:  # Elliptic Curve Cryptography
+        ECDSA = 2  # Elliptic Curve Digital Signature Algorithm
+        ECDH = 3  # Elliptic Curve Diffie-Hellman
+        Ed25519 = 4
+        Ed448 = 5
+
+
+class KeyDev:  # Key Derivation Functions (KDFs)
+    PBKDF2 = 0  # Password-Based Key Derivation Function 2
+    Scrypt = 1
+    HKDF = 2  # HMAC-based Extract-and-Expand Key Derivation Function
+    X9dot63 = 3
+    X9dot42 = 4
+
+
+class SymPadding:  # Padding Schemes
+    PKCS7 = 0
+    ANSIX923 = 1
+    ISO7816 = 2
+
+
+class ASymcPadding:  # Asymmetric Encryption Padding Schemes
+    PKCShash1v1dot5 = 0  # Older padding scheme for RSA
+    OAEP = 1  # Optimal Asymmetric Encryption Padding
+    PSS = 2  # Probabilistic Signature Scheme
+
+
+class AuthCodes:  # Authentication Codes
+    HMAC = 0  # Hash-based Message Authentication Code
+    CMAC = 1  # Cipher-based Message Authentication Cod
+
+
+class AdvancedCryptography:
+    pass
+
+
 class CryptUtils:
     @staticmethod
     def pbkdf2(password: str, salt: bytes, length: int, cycles: int) -> bytes:
