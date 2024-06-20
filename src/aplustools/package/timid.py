@@ -1,7 +1,5 @@
 from typing import (Callable as _Callable, Union as _Union, List as _List, Tuple as _Tuple, Optional as _Optional,
                     Type as _Type, Iterable as _Iterable, Any as _Any, Generator as _Generator, Literal as _Literal)
-
-from openpyxl.worksheet.scenario import ScenarioList
 from sklearn.linear_model import RANSACRegressor as _RANSACRegressor
 from datetime import timedelta as _timedelta, datetime as _datetime
 from scipy.optimize import curve_fit as _curve_fit

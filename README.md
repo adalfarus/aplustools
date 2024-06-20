@@ -19,7 +19,7 @@ aplustools is a simple, user-friendly Python library for performing amazing task
 You can install aplustools via pip:
 
 ```sh
-pip install aplustools --upgrade
+pip install aplustools[all] --upgrade
 ```
 
 Or clone the repository and install manually:
@@ -28,7 +28,6 @@ Or clone the repository and install manually:
 git clone https://github.com/Adalfarus/aplustools.git
 cd aplustools
 python -m build
-```
 
 ## Usage
 
@@ -170,56 +169,25 @@ generator = SecurePasswordGenerator("strong")
 secure_password = generator.generate_secure_password()
 print(f"Secure password {secure_password}")
 ````
-
-(If you want to ensure that all dependencies are installed please run `upype import aplustools; aplustools.install_all_dependencies()`)
-(Correct shortform for aplustools is apt, so please use ```import aplustools as apt``` for consistency)
-
-There are multiple clis added through this package:
-
-### pype (python pipe)
-```bash
-C:\Users\user_>pype
-Enter Python expression: 1 + 2
-3
-
-C:\Users\user_>pype 1 // 3
-0
-```
-### upype (unified python pipe)
-```bash
-C:\Users\user_>upype import aplustools; print(aplustools.__version__)
-1.4.4
-
-C:\Users\user_>upype
-Enter Python code (type 'end' on a new line to finish):
-... class Test:
-...     def hello_word(self):
-...             print("Hello, you!")
-... test = Test()
-... test.hello_word()
-... end
-Hello, you!
-```
-These can also be used in e.g. batch files like this
+You can use the password generators like this in e.g. batch scripts:
 ```batch
 @echo off
-set /p id=Enter ID: 
-upype from aplustools.security.passwords import QuickGeneratePasswords; print(QuickGeneratePasswords.generate_sentence_based_password("""%id%"""))
+python -c "from aplustools.security.passwords import SecurePasswordGenerator; pw = SecurePasswordGenerator(""strong"").generate_secure_password(); print(f""{pw[""password""]}\n{pw[""extra_info""]} -> {pw[""worst_case""]}"")"
 pause
-
 ```
 or like this
 ````batch
 @echo off
 set /p id=Enter ID: 
-upype from aplustools.security.passwords import PasswordGenerator; print(PasswordGenerator().generate_sentence_based_password_v3("""%id%""", random_case=True, extra_char="""_""", char_position=0, num_length=5, special_chars_length=2))
+python -c "from aplustools.security.passwords import SpecificPasswordGenerator; print(SpecificPasswordGenerator().generate_sentence_based_password_v3("""%id%""", random_case=True, extra_char="""_""", char_position=0, num_length=5, special_chars_length=2))"
 pause
-
 ````
 
-### apt
-Can currently run tests with ```apt tests run``` and show a basic help using ```apt help```.
+(If you have problems with the package please use `py -3.12 -m pip install aplustools[all] --upgrade --user`)
+(Correct shortform for aplustools is apt, so please use ```import aplustools as apt``` for consistency)
 
+### apt cli
+Can currently run tests with ```apt tests run``` and show a basic help using ```apt help```.
 
 For more detailed usage and examples, check out our [documentation](https://github.com/adalfarus/aplustools/wiki).
 
@@ -263,6 +231,21 @@ We welcome contributions! Please see our [contributing guidelines](https://githu
 3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
 4. Push to the branch (`git push origin feature/AmazingFeature`)
 5. Open a pull request
+
+### Apt Build master
+
+You can use the apt_build_master script for your os to make your like a lot easier.
+It supports running tests, installing, building and much more as well as chain together as many commands as you like.
+
+This example runs test, build the project and then installs it
+````commandline
+call .\apt_build_master.bat 134
+````
+
+````shell
+chmod +x ./apt_build_master.sh
+./apt_build_master.sh 134
+````
 
 ## License
 
