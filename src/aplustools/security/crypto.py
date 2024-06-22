@@ -1,6 +1,5 @@
-from comtypes.automation import _
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-from cryptography.hazmat.primitives.asymmetric import rsa, padding as _padding
+from cryptography.hazmat.primitives.asymmetric import rsa, padding as _padding, ec, dsa
 from cryptography.hazmat.primitives import serialization, hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.backends import default_backend
@@ -9,7 +8,7 @@ from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 from cryptography.hazmat.primitives.kdf.concatkdf import ConcatKDFHash
 from cryptography.hazmat.primitives.kdf.x963kdf import X963KDF
 from cryptography.hazmat.primitives import hmac, cmac
-from typing import Literal, Tuple, Optional, IO, Union
+from typing import Literal, Tuple, Optional, IO, Union, Any
 from pathlib import Path
 import warnings
 import secrets
@@ -20,10 +19,9 @@ import os
 from aplustools.security.passwords import SpecificPasswordGenerator, PasswordFilter
 from aplustools.io.environment import safe_remove, strict
 from aplustools.data import enum_auto
-from aplustools.package import EasyAttribute
+from aplustools.security import Security
 from tempfile import mkdtemp
 
-from traits.trait_types import self
 
 try:
     from quantcrypt.kem import Kyber
@@ -33,12 +31,73 @@ except ImportError:
     Kyber = KryptonKEM = Argon2 = None
 
 
-class Security:
-    """Baseclass for different security levels"""
-    WEAK = enum_auto()
-    AVERAGE = enum_auto()
-    STRONG = enum_auto()
-    SUPERSTRONG = enum_auto()
+class _BASIC_KEY:
+    def __init__(self, key: bytes, original_key):
+        self._key = key
+        self._original_key = original_key
+
+    def get_key(self) -> bytes:
+        """Get the key"""
+        return self._key
+
+    def get_original_key(self) -> str:
+        """Get the original key used to generate the key"""
+        return self._original_key
+
+    def __bytes__(self):
+        return self._key
+
+    def __str__(self):
+        return self._key.hex()
+
+    def __repr__(self):
+        return str(self)
+
+
+class _BASIC_KEYPAIR:
+    def __init__(self, private_key, public_key):
+        self._private_key = private_key
+        self._public_key = public_key
+
+    @staticmethod
+    def _load_pem_private_key(key_to_load: bytes | str):
+        if isinstance(key_to_load, (bytes, str)):
+            if isinstance(key_to_load, str):
+                key_to_load = bytes(key_to_load, "utf-8")
+            key_to_load = serialization.load_pem_private_key(key_to_load, None, default_backend())
+        return key_to_load
+
+    def get_private_key(self):
+        """Returns the private key"""
+        return self._private_key
+
+    def get_public_key(self):
+        """Returns the public key"""
+        return self._public_key
+
+    def get_private_bytes(self) -> bytes:
+        """Returns the private key in a byte format"""
+        return self._private_key.private_bytes(
+                encoding=serialization.Encoding.PEM,
+                format=serialization.PrivateFormat.PKCS8,
+                encryption_algorithm=serialization.NoEncryption()
+            )
+
+    def get_public_bytes(self) -> bytes:
+        """Returns the public key in a byte format"""
+        return self._public_key.public_bytes(
+                encoding=serialization.Encoding.PEM,
+                format=serialization.PublicFormat.SubjectPublicKeyInfo
+            )
+
+    def __bytes__(self):
+        return self.get_public_bytes()
+
+    def __str__(self):
+        return bytes(self).decode()
+
+    def __repr__(self):
+        return str(self)
 
 
 # Bunch of enums to make it easier for the user
@@ -80,22 +139,25 @@ class HashAlgorithm:
     ARGON2 = enum_auto()
 
 
-class _AESKEY:
+class _AES_KEY(_BASIC_KEY):
     def __init__(self, key_size: Literal[128, 192, 256], key: Optional[bytes | str]):
-        self._original_key = key if key is not None else secrets.token_hex(key_size // 8)
-        if isinstance(self._original_key, bytes):
-            if len(self._original_key) * 8 != float(key_size):
-                raise ValueError(f"Key size of given key ({len(self._original_key) * 8}) "
+        _original_key = key if key is not None else secrets.token_hex(key_size // 8)
+        if isinstance(_original_key, bytes):
+            if len(_original_key) * 8 != float(key_size):
+                raise ValueError(f"Key size of given key ({len(_original_key) * 8}) "
                                  f"doesn't match the specified key size ({key_size})")
-            self._key = self._original_key
+            _key = _original_key
         else:
-            self._key = PBKDF2HMAC(algorithm=hashes.SHA3_512(), length=32, salt=os.urandom(64), iterations=800_000,
-                                   backend=default_backend()).derive(self._original_key.encode())
+            _key = PBKDF2HMAC(algorithm=hashes.SHA3_512(), length=32, salt=os.urandom(64), iterations=800_000,
+                                   backend=default_backend()).derive(_original_key.encode())
+        super().__init__(_key, _original_key)
 
     def get_key(self) -> bytes:
+        """Get the AES key"""
         return self._key
 
     def get_original_key(self) -> str:
+        """Get the original key used to generate the AES key"""
         return self._original_key
 
     def __bytes__(self):
@@ -110,8 +172,10 @@ class _AESKEY:
 
 class _AES:  # Advanced Encryption Standard
     @staticmethod
-    def key(key_size: Literal[128, 192, 256], key: Optional[bytes | str] = None):
-        return _AESKEY(key_size, key)
+    def key(key_size: Literal[128, 192, 256], key: Optional[bytes | str] = None) -> _AES_KEY:
+        return _AES_KEY(key_size, key)
+
+    AES128 = AES192 = AES256 = None
 
 
 def _create_aes_subclass(key_size: Literal[128, 192, 256]):
@@ -120,7 +184,7 @@ def _create_aes_subclass(key_size: Literal[128, 192, 256]):
 
     class SubClass(_AES):
         @classmethod
-        def key(cls, key: Optional[bytes | str] = None):
+        def key(cls, key: Optional[bytes | str] = None) -> _AES_KEY:
             return _AES.key(key_size, key)
 
     SubClass.__name__ = subclass_name
@@ -159,72 +223,38 @@ class SymPadding:
     ISO7816 = enum_auto()
 
 
-class _RSAKEYPAIR:
+class _RSA_KEYPAIR(_BASIC_KEYPAIR):
     """You need to give a pem private key if it's in bytes"""
     public_exponent = 65537
 
     def __init__(self, key_size: Literal[512, 768, 1024, 2048, 3072, 4096, 8192, 15360],
                  private_key: Optional[bytes | str | rsa.RSAPrivateKey] = None):
-        self._private_key = self._load_pem_private_key(private_key) \
+        _private_key = self._load_pem_private_key(private_key) \
             if private_key is not None else rsa.generate_private_key(public_exponent=self.public_exponent,
                                                                      key_size=key_size)
-        if self._private_key.key_size != key_size:
-            raise ValueError(f"Key size of given private key ({self._private_key.key_size}) "
+        if _private_key.key_size != key_size:
+            raise ValueError(f"Key size of given private key ({_private_key.key_size}) "
                              f"doesn't match the specified key size ({key_size})")
-        self._public_key = self._private_key.public_key()
-
-    @staticmethod
-    def _load_pem_private_key(key_to_load: bytes | str | rsa.RSAPrivateKey) -> rsa.RSAPrivateKey:
-        if isinstance(key_to_load, (bytes, str)):
-            if isinstance(key_to_load, str):
-                key_to_load = bytes(key_to_load, "utf-8")
-            key_to_load = serialization.load_pem_private_key(key_to_load, None, default_backend())
-        return key_to_load
-
-    def get_private_key(self) -> rsa.RSAPrivateKey:
-        return self._private_key
-
-    def get_public_key(self) -> rsa.RSAPublicKey:
-        return self._public_key
-
-    def get_private_bytes(self) -> bytes:
-        return self._private_key.private_bytes(
-                encoding=serialization.Encoding.PEM,
-                format=serialization.PrivateFormat.PKCS8,
-                encryption_algorithm=serialization.NoEncryption()
-            )
-
-    def get_public_bytes(self) -> bytes:
-        return self._public_key.public_bytes(
-                encoding=serialization.Encoding.PEM,
-                format=serialization.PublicFormat.SubjectPublicKeyInfo
-            )
-
-    def __bytes__(self):
-        return self.get_public_bytes()
-
-    def __str__(self):
-        return bytes(self).decode()
-
-    def __repr__(self):
-        return str(self)
+        _public_key = _private_key.public_key()
+        super().__init__(_private_key, _public_key)
 
 
 class _RSA:  # Rivest-Shamir-Adleman
     @staticmethod
     def key(key_size: Literal[512, 768, 1024, 2048, 3072, 4096, 8192, 15360],
-            private_key: Optional[bytes | str | rsa.RSAPrivateKey] = None):
-        return _RSAKEYPAIR(key_size, private_key)
+            private_key: Optional[bytes | str | rsa.RSAPrivateKey] = None) -> _RSA_KEYPAIR:
+        return _RSA_KEYPAIR(key_size, private_key)
+
+    RSA512 = RSA768 = RSA1024 = RSA2048 = RSA3072 = RSA4096 = RSA8192 = RSA15360 = None
 
 
 def _create_rsa_subclass(key_size: Literal[512, 768, 1024, 2048, 3072, 4096, 8192, 15360]):
-    """Helper method to create a subclass with a specific key size."""
     """Helper method to create a subclass with a specific key size."""
     subclass_name = f"RSA{key_size}"
 
     class SubClass(_RSA):
         @classmethod
-        def key(cls, private_key: Optional[bytes | str | rsa.RSAPrivateKey] = None):
+        def key(cls, private_key: Optional[bytes | str | rsa.RSAPrivateKey] = None) -> _RSA_KEYPAIR:
             return _RSA.key(key_size, private_key)
 
     SubClass.__name__ = subclass_name
@@ -241,6 +271,50 @@ _RSA.RSA8192 = _create_rsa_subclass(8192)
 _RSA.RSA15360 = _create_rsa_subclass(15360)
 
 
+class _DSA_KEYPAIR(_BASIC_KEYPAIR):
+    def __init__(self, key_size: Literal[1024, 2048, 3072],
+                 private_key: Optional[bytes | str | dsa.DSAPrivateKey] = None):
+        _private_key = self._load_pem_private_key(private_key) \
+            if private_key is not None else dsa.generate_private_key(key_size=key_size)
+        
+        if _private_key.key_size != key_size:
+            raise ValueError(f"Key size of given private key ({_private_key.key_size}) "
+                             f"doesn't match the specified key size ({key_size})")
+        _public_key = _private_key.public_key()
+        super().__init__(_private_key, _public_key)
+
+
+class _DSA:
+    @staticmethod
+    def key(key_size: Literal[1024, 2048, 3072], private_key: Optional[bytes | str | dsa.DSAPrivateKey] = None
+            ) -> _DSA_KEYPAIR:
+        return _DSA_KEYPAIR(key_size, private_key)
+
+    DSA1024 = DSA2048 = DSA3072 = None
+
+
+def _create_dsa_subclass(key_size: Literal[1024, 2048, 3072]):
+    """Helper method to create a subclass with a specific key size."""
+    subclass_name = f"DSA{key_size}"
+
+    class SubClass(_DSA):
+        @classmethod
+        def key(cls, private_key: Optional[bytes | str | dsa.DSAPrivateKey] = None) -> _DSA_KEYPAIR:
+            return _DSA.key(key_size, private_key)
+
+    SubClass.__name__ = subclass_name
+    return SubClass
+
+
+_DSA.DSA1024 = _create_dsa_subclass(1024)
+_DSA.DSA2048 = _create_dsa_subclass(2048)
+_DSA.DSA3072 = _create_dsa_subclass(3072)
+
+
+class ECC_KEY_TYPE:
+    SECP256R1 = enum_auto()
+
+
 class _ECC:  # Elliptic Curve Cryptography
     ECDSA = enum_auto()  # Elliptic Curve Digital Signature Algorithm
     ECDH = enum_auto()  # Elliptic Curve Diffie-Hellman
@@ -251,7 +325,7 @@ class _ECC:  # Elliptic Curve Cryptography
 class ASymCipher:
     """Asymmetric Encryption"""
     RSA = _RSA
-    DSA = enum_auto()  # Digital Signature Algorithm
+    DSA = _DSA  # Digital Signature Algorithm
     ECC = _ECC
     KYBER = enum_auto()
 
@@ -276,6 +350,14 @@ class AuthCodes:
     """Authentication Codes"""
     HMAC = 0  # Hash-based Message Authentication Code
     CMAC = 1  # Cipher-based Message Authentication Cod
+
+
+class _ECCKEYPAIR:
+
+
+class DiffieHellmanAlgorithm:
+    ECDH = enum_auto()
+    DH = enum_auto()
 
 
 class AdvancedCryptography:
@@ -322,6 +404,8 @@ class AdvancedCryptography:
                 result = bcrypt.hashpw(to_hash, bcrypt.gensalt())
                 return algo.to_bytes(1, "big") + result if self._easy_hash else result
             case HashAlgorithm.ARGON2:
+                warnings.warn("Argon2 is still not perfectly supported, expect bugs or other mishaps.",
+                              category=UserWarning, stacklevel=2)
                 return Argon2.Hash(to_hash).public_hash
             case _:
                 digest = self._create_digest(algo, 64)
@@ -342,6 +426,8 @@ class AdvancedCryptography:
             case HashAlgorithm.BCRYPT:
                 return bcrypt.checkpw(to_verify, original_hash)
             case HashAlgorithm.ARGON2:
+                warnings.warn("Argon2 is still not perfectly supported, expect bugs or other mishaps.",
+                              category=UserWarning, stacklevel=2)
                 try:
                     Argon2.Hash(to_verify, original_hash)
                     return True
@@ -373,17 +459,18 @@ class AdvancedCryptography:
         digest.update(to_verify)
         return digest.finalize() == original_hash
 
-    def encrypt(self, plain_bytes: bytes, cipher: SymCipher | ASymCipher, mode: Optional[SymOperation],
-                padding: SymPadding | ASymPadding):
+    def encrypt(self, plain_bytes: bytes, cipher: SymCipher | ASymCipher, cipher_key: _AES_KEY | _RSA_KEYPAIR | _ECCKEYPAIR,
+                padding: SymPadding | ASymPadding, mode: Optional[SymOperation] = None) -> bytes | tuple[Any]:
         match cipher:
             case ASymCipher.RSA.RSA512:
                 return
 
-    def decrypt(self, cipher_bytes: bytes, cipher: SymCipher | ASymCipher, mode: Optional[SymOperation],
+    def decrypt(self, cipher_bytes: bytes | tuple[Any], cipher: SymCipher | ASymCipher, mode: Optional[SymOperation],
                 padding: SymPadding | ASymPadding):
         pass
 
-    def KDF(self, password: bytes, length: int, salt: bytes = None, key_dev_type: KeyDevivation = KeyDevivation.PBKDF2HMAC,
+    def KDF(self, password: bytes, length: int, salt: bytes = None,
+            key_dev_type: KeyDevivation = KeyDevivation.PBKDF2HMAC,
             strength: Literal["weak", "average", "strong"] = "strong"):
         """
 
@@ -464,6 +551,16 @@ class AdvancedCryptography:
             return c.finalize()
         else:
             raise ValueError("Unsupported Authentication Code")
+
+    @staticmethod
+    def key_exchange(private_key, peer_public_key, algorithm: DiffieHellmanAlgorithm):
+        if algorithm == DiffieHellmanAlgorithm.ECDH:
+            return private_key.exchange(ec.ECDH(), peer_public_key)
+        elif algorithm == DiffieHellmanAlgorithm.DH:
+            return private_key.exchange(peer_public_key)
+        else:
+            raise ValueError(f"Key exchange is not supported for the algorithm index '{algorithm}'")
+
 
 
 # AC = AdvancedCryptography()
