@@ -8,10 +8,10 @@ show_menu() {
     echo "                      AplusTools Main Menu"
     echo "=============================================================="
     echo "1.             Install pytest and run tests"
-    echo "2.                 Build the project"
-    echo "3.           Clear dist directory and build"
+    echo "2.                 Clear dist directory"
+    echo "3.                  Build the project"
     echo "4.           Install the newly built package"
-    echo "5. Run all steps in order (1, 2 & 4)"
+    echo "5. Run all steps in order (1, 2, 3 & 4)"
     echo "0. Exit"
     echo "=============================================================="
     echo
@@ -26,8 +26,8 @@ process_choice() {
         local opt=${choice:i:1}
         case $opt in
             1) run_tests ;;
-            2) build_project ;;
-            3) clear_and_build ;;
+            2) clear ;;
+            3) build_project ;;
             4) install_package ;;
             5) run_all ;;
             0) end ;;
@@ -45,8 +45,8 @@ process_choice_no_pause() {
         local opt=${choice:i:1}
         case $opt in
             1) run_tests ;;
-            2) build_project ;;
-            3) clear_and_build ;;
+            2) clear ;;
+            3) build_project ;;
             4) install_package ;;
             5) run_all ;;
             0) end ;;
@@ -89,10 +89,9 @@ build_project() {
 }
 
 # Function to clear dist directory and build
-clear_and_build() {
+clear() {
     echo "Clearing dist directory..."
     rm -rf dist/*
-    build_project
 }
 
 # Function to install the newly built package

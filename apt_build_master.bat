@@ -15,10 +15,10 @@ echo ==============================================================
 echo                      AplusTools Main Menu
 echo ==============================================================
 echo 1.             Install pytest and run tests
-echo 2.                 Build the project
-echo 3.           Clear dist directory and build
+echo 2.                 Clear dist directory
+echo 3.                  Build the project
 echo 4.           Install the newly built package
-echo 5. Run all steps in order (1, 2 ^& 4)
+echo 5. Run all steps in order (1, 2, 3 ^& 4)
 echo 0. Exit
 echo ==============================================================
 echo.
@@ -32,8 +32,8 @@ setlocal enabledelayedexpansion
 for /l %%i in (0,1,31) do (
     set "opt=!choice:~%%i,1!"
     if "!opt!" == "1" call :run_tests
-    if "!opt!" == "2" call :build_project
-    if "!opt!" == "3" call :clear_and_build
+    if "!opt!" == "2" call :clear
+    if "!opt!" == "3" call :build_project
     if "!opt!" == "4" call :install_package
     if "!opt!" == "5" call :run_all
     if "!opt!" == "0" goto end
@@ -47,8 +47,8 @@ setlocal enabledelayedexpansion
 for /l %%i in (0,1,31) do (
     set "opt=!choice:~%%i,1!"
     if "!opt!" == "1" call :run_tests
-    if "!opt!" == "2" call :build_project
-    if "!opt!" == "3" call :clear_and_build
+    if "!opt!" == "2" call :clear
+    if "!opt!" == "3" call :build_project
     if "!opt!" == "4" call :install_package
     if "!opt!" == "5" call :run_all
     if "!opt!" == "0" goto end
@@ -85,11 +85,10 @@ echo Build completed.
 exit /b
 
 REM Function to clear dist directory and build
-:clear_and_build
+:clear
 @echo off
 echo Clearing dist directory...
 del /Q ".\dist\*.*"
-call :build_project
 exit /b
 
 REM Function to install the newly built package

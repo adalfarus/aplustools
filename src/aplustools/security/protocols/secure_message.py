@@ -15,6 +15,9 @@ import os
 import re
 
 
+# ADD HMAC
+
+
 @strict
 class MessageEncoder:
     def __init__(self, protocol, public_key_bytes, chunk_size=1024):

@@ -403,6 +403,16 @@ def update_dict_if_absent(original_dict, new_data):
         original_dict.setdefault(key, value)
 
 
+_global_enum_auto = -1
+
+
+def enum_auto():
+    """As enums don't allow nesting, I devised this:"""
+    global _global_enum_auto
+    _global_enum_auto += 1
+    return _global_enum_auto
+
+
 if __name__ == "__main__":
     bit = nice_bits(encode("Hello you world!"), True, 6, True, True)
     bitss = bits(encode_float(0.3))

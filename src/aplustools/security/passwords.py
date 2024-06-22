@@ -11,7 +11,6 @@ from zxcvbn import zxcvbn as _zxcvbn
 from aplustools.security.rand import WeightedRandom as _WeightedRandom
 from aplustools.data import beautify_json as _beautify_json
 from aplustools.io.environment import strict as _strict
-from aplustools.security.crypto import CryptUtils
 
 from typing import Union as _Union, Literal as _Literal, Optional as _Optional, Callable as _Callable
 from aplustools.data import nice_number as _nice_number
@@ -1311,6 +1310,7 @@ class PasswordReGenerator:
     @classmethod
     def load_from_file(cls, file_path: str) -> "PasswordReGenerator":
         """Use a default file as the seed (hashed)."""
+        from aplustools.security.crypto import CryptUtils
         try:
             with open(file_path, "r") as f:
                 contents = f.read()
@@ -1411,9 +1411,9 @@ class PasswordReGenerator:
                 raise ValueError(f"Unsupported charset: {charset}")
 
 
-generator = PasswordReGenerator.load_from_file(r"C:\Users\till_\OneDrive\Desktop\generate_password.bat")
-print(generator.generate_password("Hello WOrld", "MyPass"))
-input()
+# generator = PasswordReGenerator.load_from_file(r"C:\Users\till_\OneDrive\Desktop\generate_password.bat")
+# print(generator.generate_password("Hello WOrld", "MyPass"))
+# input()
 
 
 @_strict(mark_class_as_cover=False)  # For security purposes

@@ -256,6 +256,8 @@ def strict(mark_class_as_cover: bool = True) -> _Callable:
             '__init__': _new_init,
             '__class__': cls,
             '__setattr__': _setattr_overwrite,
+            '__repr__': cls.__repr__,
+            '__str__': cls.__str__
         }
         for attr_name in dir(cls):
             if callable(getattr(cls, attr_name)) and not attr_name.startswith('_'):
