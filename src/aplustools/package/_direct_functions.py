@@ -1,6 +1,6 @@
 import subprocess as _subprocess
 import sys as _sys
-from typing import Optional as _Optional
+from typing import Optional as _Optional, Any as _Any
 
 
 class LazyModuleLoader:
@@ -67,3 +67,54 @@ class AttributeObject:
         if name not in self.__dict__:
             raise AttributeError(f"'{type(self).__name__}' object has no attribute '{name}'")
         return self.__dict__[name]
+
+
+class EasyProperty:
+    def __init__(self, initial_value=None, gets=True, sets=True):
+        self._value = initial_value
+        self._gets = gets
+        self._sets = sets
+
+    def __get__(self, instance, owner):
+        if not self._gets:
+            raise AttributeError("This attribute is not readable")
+        return self._value
+
+    def __set__(self, instance, value):
+        if not self._sets:
+            raise AttributeError("This attribute is not writable")
+        self._value = value
+
+    def __str__(self):
+        return str(self._value)
+
+    def __repr__(self):
+        return self.__str__()
+
+
+class EasyAttribute:
+    def __init__(self, name: str, gets=True, sets=True):
+        self._name = name
+        self._gets = gets
+        self._sets = sets
+
+    def __get__(self, instance, owner):
+        if hasattr(instance, "_" + self._name):
+            if not self._gets:
+                raise AttributeError("This attribute is not readable")
+            return getattr(instance, "_" + self._name)
+
+    def __set__(self, instance, value):
+        if hasattr(instance, "_counter_" + self._name):
+            if not self._sets:
+                raise AttributeError("This attribute is not writable")
+            setattr(instance, "_" + self._name, value)
+        else:
+            setattr(instance, "_counter_" + self._name, 1)
+            setattr(instance, "_" + self._name, value)
+
+    def __str__(self):
+        return str(self)
+
+    def __repr__(self):
+        return self.__str__()
