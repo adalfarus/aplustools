@@ -8,10 +8,12 @@ aplustools is a simple, user-friendly Python library for performing amazing task
 
 ## Compatibility
 [🟢 (Works perfectly); 🟡 (Untested); 🔴 (Incompatible)]
-| OS | Installation & UX | Tests |
-| Windows | 🟢 | 🟢 |
-| MacOS | 🟡 | 🟢 |
-| Linux [Ubuntu 22.04 LTS] | 🟢 | 🟢 |
+
+| OS                       | Installation & UX | Tests |
+|--------------------------|-------------------|-------|
+| Windows                  | 🟢                | 🟢    |
+| MacOS                    | 🟡                | 🟢    |
+| Linux (Ubuntu 22.04 LTS) | 🟢                | 🟢    |
 
 ## Features
 
