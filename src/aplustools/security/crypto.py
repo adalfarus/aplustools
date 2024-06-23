@@ -311,13 +311,31 @@ _DSA.DSA2048 = _create_dsa_subclass(2048)
 _DSA.DSA3072 = _create_dsa_subclass(3072)
 
 
-class ECC_KEY_TYPE:
-    SECP256R1 = enum_auto()
+class ECC_KEY_FUNC:
+    """Elliptic key functions"""
+    SECP192R1 = enum_auto()
+    SECP244R1 = enum_auto()
+    SECP256K1 = enum_auto()
+    SECP256R1 = enum_auto()  # Default
+    SECP384R1 = enum_auto()
+    SECP521R1 = enum_auto()
+    SECP163K1 = enum_auto()
+    SECP163R2 = enum_auto()
+    SECP233K1 = enum_auto()
+    SECP233R1 = enum_auto()
+    SECP283K1 = enum_auto()
+    SECP283R1 = enum_auto()
+    SECP409K1 = enum_auto()
+    SECP409R1 = enum_auto()
+    SECP571K1 = enum_auto()
+    SECP571R1 = enum_auto()
+
+
+class _ECC_KEYPAIR(_BASIC_KEYPAIR):
+    pass
 
 
 class _ECC:  # Elliptic Curve Cryptography
-    ECDSA = enum_auto()  # Elliptic Curve Digital Signature Algorithm
-    ECDH = enum_auto()  # Elliptic Curve Diffie-Hellman
     Ed25519 = enum_auto()
     Ed448 = enum_auto()
 
@@ -352,11 +370,8 @@ class AuthCodes:
     CMAC = 1  # Cipher-based Message Authentication Cod
 
 
-class _ECCKEYPAIR:
-
-
 class DiffieHellmanAlgorithm:
-    ECDH = enum_auto()
+    ECDH = enum_auto()  # Elliptic Curve Diffie-Hellman
     DH = enum_auto()
 
 
@@ -459,13 +474,14 @@ class AdvancedCryptography:
         digest.update(to_verify)
         return digest.finalize() == original_hash
 
-    def encrypt(self, plain_bytes: bytes, cipher: SymCipher | ASymCipher, cipher_key: _AES_KEY | _RSA_KEYPAIR | _ECCKEYPAIR,
+    def encrypt(self, plain_bytes: bytes, cipher: SymCipher | ASymCipher, cipher_key: type[_BASIC_KEY | _BASIC_KEYPAIR],
                 padding: SymPadding | ASymPadding, mode: Optional[SymOperation] = None) -> bytes | tuple[Any]:
         match cipher:
             case ASymCipher.RSA.RSA512:
                 return
 
-    def decrypt(self, cipher_bytes: bytes | tuple[Any], cipher: SymCipher | ASymCipher, mode: Optional[SymOperation],
+    def decrypt(self, cipher_bytes: bytes | tuple[Any], cipher: SymCipher | ASymCipher,
+                cipher_key: type[_BASIC_KEY | _BASIC_KEYPAIR], mode: Optional[SymOperation],
                 padding: SymPadding | ASymPadding):
         pass
 
@@ -560,6 +576,14 @@ class AdvancedCryptography:
             return private_key.exchange(peer_public_key)
         else:
             raise ValueError(f"Key exchange is not supported for the algorithm index '{algorithm}'")
+
+    @staticmethod
+    def sign():
+        pass  # Elliptic Curve Digital Signature Algorithm
+
+    @staticmethod
+    def sign_verify():
+        pass
 
 
 
