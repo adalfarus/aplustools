@@ -1,5 +1,5 @@
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-from cryptography.hazmat.primitives.asymmetric import rsa, padding as _padding, ec, dsa
+from cryptography.hazmat.primitives.asymmetric import rsa, padding as _padding, ec, dsa, ed25519, ed448, x25519, x448
 from cryptography.hazmat.primitives import serialization, hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.backends import default_backend
@@ -313,31 +313,44 @@ _DSA.DSA3072 = _create_dsa_subclass(3072)
 
 class ECC_KEY_FUNC:
     """Elliptic key functions"""
-    SECP192R1 = enum_auto()
-    SECP244R1 = enum_auto()
-    SECP256K1 = enum_auto()
-    SECP256R1 = enum_auto()  # Default
-    SECP384R1 = enum_auto()
-    SECP521R1 = enum_auto()
-    SECP163K1 = enum_auto()
-    SECP163R2 = enum_auto()
-    SECP233K1 = enum_auto()
-    SECP233R1 = enum_auto()
-    SECP283K1 = enum_auto()
-    SECP283R1 = enum_auto()
-    SECP409K1 = enum_auto()
-    SECP409R1 = enum_auto()
-    SECP571K1 = enum_auto()
-    SECP571R1 = enum_auto()
+    SECP192R1 = ec.SECP192R1
+    SECP224R1 = ec.SECP224R1
+    SECP256K1 = ec.SECP256K1
+    SECP256R1 = ec.SECP256R1  # Default
+    SECP384R1 = ec.SECP384R1
+    SECP521R1 = ec.SECP521R1
+    SECT163K1 = ec.SECT163K1
+    SECT163R2 = ec.SECT163R2
+    SECT233K1 = ec.SECT233K1
+    SECT233R1 = ec.SECT233R1
+    SECT283K1 = ec.SECT283K1
+    SECT283R1 = ec.SECT283R1
+    SECT409K1 = ec.SECT409K1
+    SECT409R1 = ec.SECT409R1
+    SECT571K1 = ec.SECT571K1
+    SECT571R1 = ec.SECT571R1
+
+
+class ECC_SIGN_TYPE:
+    """How the signing is done, heavily affects the performance, key generation and what you can do with it"""
+    ECDSA = enum_auto()  # Elliptic Curve Digital Signature Algorithm
+    Ed25519 = ed25519.Ed25519PrivateKey
+    Ed448 = ed448.Ed448PrivateKey
+    X25519 = x25519.X25519PrivateKey
+    X448 = x448.X448PrivateKey
 
 
 class _ECC_KEYPAIR(_BASIC_KEYPAIR):
-    pass
+    def __init__(self, key_config: tuple[ECC_SIGN_TYPE.ECDSA, ECC_KEY_FUNC] | ECC_SIGN_TYPE,
+                 private_key: Optional[bytes] = None):
+        pass
 
 
-class _ECC:  # Elliptic Curve Cryptography
-    Ed25519 = enum_auto()
-    Ed448 = enum_auto()
+class _ECC:
+    """Elliptic Curve Cryptography"""
+    @staticmethod
+    def key(ecc_type):
+        pass
 
 
 class ASymCipher:
@@ -579,7 +592,7 @@ class AdvancedCryptography:
 
     @staticmethod
     def sign():
-        pass  # Elliptic Curve Digital Signature Algorithm
+        pass
 
     @staticmethod
     def sign_verify():

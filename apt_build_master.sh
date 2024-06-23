@@ -77,12 +77,14 @@ run_tests() {
 
     # Run tests
     echo "Running tests..."
-    pytest src/aplustools/tests
+    python3 -m pytest src/aplustools/tests
     echo "Tests completed."
 }
 
 # Function to build the project
 build_project() {
+    # Install build
+    python3 -m pip install build
     echo "Building the project..."
     python3 -m build
     echo "Build completed."
@@ -97,7 +99,7 @@ clear() {
 # Function to install the newly built package
 install_package() {
     for file in dist/*.whl; do
-        python3 -m pip install "$file" --force-reinstall
+        python3 -m pip install "$file"[all] --force-reinstall
     done
     echo "Package installation completed."
 }

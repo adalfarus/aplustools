@@ -6,6 +6,13 @@
 
 aplustools is a simple, user-friendly Python library for performing amazing tasks. It simplifies complex processes, allowing you to achieve more with less code. Developed with a focus on ease of use and efficiency, aplustools is the go-to solution for Python developers looking to enhance their projects.
 
+## Compatibility
+[🟢 (Works perfectly); 🟡 (Untested); 🔴 (Incompatible)]
+| OS | Installation & UX | Tests |
+| Windows | 🟢 | 🟢 |
+| MacOS | 🟡 | 🟢 |
+| Linux [Ubuntu 22.04 LTS] | 🟢 | 🟢 |
+
 ## Features
 
 - Easy to use
@@ -239,12 +246,14 @@ It supports running tests, installing, building and much more as well as chain t
 
 This example runs test, build the project and then installs it
 ````commandline
-call .\apt_build_master.bat 134
+call .\apt_build_master.bat 234
 ````
 
 ````shell
+sudo apt install python3-pip
+sudo apt install python3-venv
 chmod +x ./apt_build_master.sh
-./apt_build_master.sh 134
+./apt_build_master.sh 234
 ````
 
 ## License
