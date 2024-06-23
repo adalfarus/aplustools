@@ -1,4 +1,5 @@
 # environment.py
+import os
 from types import FrameType as _FrameType
 from pathlib import Path as _Path
 import subprocess as _subprocess
@@ -477,6 +478,15 @@ class _BaseSystem:
         """Get the user's home directory."""
         return _os.path.expanduser("~")
 
+    def get_appdata_directory(self, app_dir: str, scope: _Literal["user", "global"] = "global"):
+        """
+        Gets you the right appdata directory for your scope.
+
+        :param app_dir: The name of the folder you want your app to have.
+        :param scope: If the data should be accessible to all users or just the current one.
+        """
+        raise NotImplementedError("get_appdata_directory is not implemented")
+
     def get_running_processes(self):
         """Get a list of running processes."""
         processes = []
@@ -573,18 +583,44 @@ class _WindowsSystem(_BaseSystem):
         return [line.strip() for line in output.split('\n') if line.strip()][1:]
 
     def get_system_theme(self) -> SystemTheme:
-        if not winreg:
+        key = r'SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize'
+        light_theme_value = 'AppsUseLightTheme'
+        system_theme_value = 'SystemUsesLightTheme'
+
+        try:
+            # Try to open the registry key
+            reg_key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, key)
+        except FileNotFoundError:
+            # Key does not exist
+            return SystemTheme.UNKNOWN
+        except Exception as e:
+            # Some other error occurred
+            print(f"Exception occurred while opening registry key: {e}")
             return SystemTheme.UNKNOWN
 
-        key = r'SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize'
-        value = 'AppsUseLightTheme'
         try:
-            reg_key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, key)
-            theme_value, _ = winreg.QueryValueEx(reg_key, value)
+            # Try to read the AppsUseLightTheme value
+            theme_value, _ = winreg.QueryValueEx(reg_key, light_theme_value)
             winreg.CloseKey(reg_key)
             return SystemTheme.DARK if theme_value == 0 else SystemTheme.LIGHT
+        except FileNotFoundError:
+            # If the AppsUseLightTheme value does not exist, try the SystemUsesLightTheme value
+            try:
+                reg_key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, key)
+                theme_value, _ = winreg.QueryValueEx(reg_key, system_theme_value)
+                winreg.CloseKey(reg_key)
+                return SystemTheme.DARK if theme_value == 0 else SystemTheme.LIGHT
+            except FileNotFoundError:
+                # Neither value exists, return UNKNOWN
+                winreg.CloseKey(reg_key)
+                return SystemTheme.UNKNOWN
+            except Exception as e:
+                print(f"Exception occurred while reading SystemUsesLightTheme: {e}")
+                winreg.CloseKey(reg_key)
+                return SystemTheme.UNKNOWN
         except Exception as e:
-            print(f"Exception occurred: {e}")
+            print(f"Exception occurred while reading AppsUseLightTheme: {e}")
+            winreg.CloseKey(reg_key)
             return SystemTheme.UNKNOWN
 
     def schedule_event(self, name: str, script_path: str, event_time: _Literal["startup", "login"]):
@@ -657,6 +693,11 @@ class _WindowsSystem(_BaseSystem):
         battery = _psutil.sensors_battery()
         if battery:
             return {'percent': battery.percent, 'secsleft': battery.secsleft, 'power_plugged': battery.power_plugged}
+
+    def get_appdata_directory(self, app_dir: str, scope: _Literal["user", "global"] = "global"):
+        if scope == "user":
+            return os.path.join(os.environ.get("APPDATA"), app_dir)  # App data for the current user
+        return os.path.join(os.environ.get("PROGRAMDATA"), app_dir)  # App data for all users
 
     def get_clipboard(self):
         win32clipboard.OpenClipboard()
@@ -732,6 +773,11 @@ class _DarwinSystem(_BaseSystem):
             return output
         except _subprocess.CalledProcessError:
             return "Battery status not available."
+
+    def get_appdata_directory(self, app_dir: str, scope: _Literal["user", "global"] = "global"):
+        if scope == "user":
+            return os.path.join(os.path.expanduser("~"), "Library", "Application Support", app_dir)  # App data for the current user
+        return os.path.join("/Library/Application Support", app_dir)  # App data for all users
 
     def get_clipboard(self):
         command = "pbpaste"
@@ -833,6 +879,11 @@ class _LinuxSystem(_BaseSystem):
             return output
         except _subprocess.CalledProcessError:
             return "Battery status not available."
+
+    def get_appdata_directory(self, app_dir: str, scope: _Literal["user", "global"] = "global"):
+        if scope == "user":
+            return os.path.join(os.path.expanduser("~"), ".local", "share", app_dir)  # App data for the current user
+        return os.path.join("/usr/local/share", app_dir)  # App data for all users
 
     def get_clipboard(self):
         command = "xclip -selection clipboard -o"
