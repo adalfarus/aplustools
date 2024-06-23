@@ -1,6 +1,6 @@
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-from cryptography.hazmat.primitives.asymmetric import rsa, padding as _padding, ec, dsa, ed25519, ed448, x25519, x448
-from cryptography.hazmat.primitives import serialization, hashes
+from cryptography.hazmat.primitives.asymmetric import rsa, padding as asym_padding, ec, dsa, ed25519, ed448, x25519, x448
+from cryptography.hazmat.primitives import serialization, hashes, padding as sym_padding
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
@@ -8,13 +8,12 @@ from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 from cryptography.hazmat.primitives.kdf.concatkdf import ConcatKDFHash
 from cryptography.hazmat.primitives.kdf.x963kdf import X963KDF
 from cryptography.hazmat.primitives import hmac, cmac
-from typing import Literal, Tuple, Optional, IO, Union, Any
+from typing import Literal, Tuple, Optional, IO, Union, Any, NewType
 from pathlib import Path
 import warnings
 import secrets
 import bcrypt
 import os
-
 
 from aplustools.security.passwords import SpecificPasswordGenerator, PasswordFilter
 from aplustools.io.environment import safe_remove, strict
@@ -22,6 +21,7 @@ from aplustools.data import enum_auto
 from aplustools.security import Security
 from tempfile import mkdtemp
 
+from traits.trait_types import self
 
 try:
     from quantcrypt.kem import Kyber
@@ -32,6 +32,9 @@ except ImportError:
 
 
 class _BASIC_KEY:
+    cipher_type = "SymCipher"
+    cipher = "Unknown"
+
     def __init__(self, key: bytes, original_key):
         self._key = key
         self._original_key = original_key
@@ -55,6 +58,9 @@ class _BASIC_KEY:
 
 
 class _BASIC_KEYPAIR:
+    cipher_type = "ASymCipher"
+    cipher = "Unknown"
+
     def __init__(self, private_key, public_key):
         self._private_key = private_key
         self._public_key = public_key
@@ -78,17 +84,17 @@ class _BASIC_KEYPAIR:
     def get_private_bytes(self) -> bytes:
         """Returns the private key in a byte format"""
         return self._private_key.private_bytes(
-                encoding=serialization.Encoding.PEM,
-                format=serialization.PrivateFormat.PKCS8,
-                encryption_algorithm=serialization.NoEncryption()
-            )
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PrivateFormat.PKCS8,
+            encryption_algorithm=serialization.NoEncryption()
+        )
 
     def get_public_bytes(self) -> bytes:
         """Returns the public key in a byte format"""
         return self._public_key.public_bytes(
-                encoding=serialization.Encoding.PEM,
-                format=serialization.PublicFormat.SubjectPublicKeyInfo
-            )
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PublicFormat.SubjectPublicKeyInfo
+        )
 
     def __bytes__(self):
         return self.get_public_bytes()
@@ -140,6 +146,8 @@ class HashAlgorithm:
 
 
 class _AES_KEY(_BASIC_KEY):
+    cipher = "AES"
+
     def __init__(self, key_size: Literal[128, 192, 256], key: Optional[bytes | str]):
         _original_key = key if key is not None else secrets.token_hex(key_size // 8)
         if isinstance(_original_key, bytes):
@@ -149,7 +157,7 @@ class _AES_KEY(_BASIC_KEY):
             _key = _original_key
         else:
             _key = PBKDF2HMAC(algorithm=hashes.SHA3_512(), length=32, salt=os.urandom(64), iterations=800_000,
-                                   backend=default_backend()).derive(_original_key.encode())
+                              backend=default_backend()).derive(_original_key.encode())
         super().__init__(_key, _original_key)
 
     def get_key(self) -> bytes:
@@ -207,25 +215,26 @@ class SymCipher:
 
 class SymOperation:
     """Different modes of operation"""
-    ECB = enum_auto()  # Electronic Codebook
-    CBC = enum_auto()  # Cipher Block Chaining
-    CFB = enum_auto()  # Cipher Feedback
-    OFB = enum_auto()  # Output Feedback
-    CTR = enum_auto()  # Counter
-    GCM = enum_auto()  # Galois/Counter Mode
-    OCB = enum_auto()  # Offset Codebook Mode
+    ECB = modes.ECB  # Electronic Codebook
+    CBC = modes.CBC  # Cipher Block Chaining
+    CFB = modes.CFB  # Cipher Feedback
+    OFB = modes.OFB  # Output Feedback
+    CTR = modes.CTR  # Counter
+    GCM = modes.GCM  # Galois/Counter Mode
+#    OCB = modes.OCB  # Offset Codebook Mode
 
 
 class SymPadding:
     """Padding Schemes"""
-    PKCS7 = enum_auto()
-    ANSIX923 = enum_auto()
-    ISO7816 = enum_auto()
+    PKCS7 = sym_padding.PKCS7
+    ANSIX923 = sym_padding.ANSIX923
+#    ISO7816 = sym_padding.ISO7816
 
 
 class _RSA_KEYPAIR(_BASIC_KEYPAIR):
     """You need to give a pem private key if it's in bytes"""
     public_exponent = 65537
+    cipher = "RSA"
 
     def __init__(self, key_size: Literal[512, 768, 1024, 2048, 3072, 4096, 8192, 15360],
                  private_key: Optional[bytes | str | rsa.RSAPrivateKey] = None):
@@ -272,11 +281,13 @@ _RSA.RSA15360 = _create_rsa_subclass(15360)
 
 
 class _DSA_KEYPAIR(_BASIC_KEYPAIR):
+    cipher = "DSA"
+
     def __init__(self, key_size: Literal[1024, 2048, 3072],
                  private_key: Optional[bytes | str | dsa.DSAPrivateKey] = None):
         _private_key = self._load_pem_private_key(private_key) \
             if private_key is not None else dsa.generate_private_key(key_size=key_size)
-        
+
         if _private_key.key_size != key_size:
             raise ValueError(f"Key size of given private key ({_private_key.key_size}) "
                              f"doesn't match the specified key size ({key_size})")
@@ -311,7 +322,7 @@ _DSA.DSA2048 = _create_dsa_subclass(2048)
 _DSA.DSA3072 = _create_dsa_subclass(3072)
 
 
-class ECC_KEY_FUNC:
+class ECC_CURVE:
     """Elliptic key functions"""
     SECP192R1 = ec.SECP192R1
     SECP224R1 = ec.SECP224R1
@@ -331,7 +342,7 @@ class ECC_KEY_FUNC:
     SECT571R1 = ec.SECT571R1
 
 
-class ECC_SIGN_TYPE:
+class ECC_TYPE:
     """How the signing is done, heavily affects the performance, key generation and what you can do with it"""
     ECDSA = enum_auto()  # Elliptic Curve Digital Signature Algorithm
     Ed25519 = ed25519.Ed25519PrivateKey
@@ -341,16 +352,138 @@ class ECC_SIGN_TYPE:
 
 
 class _ECC_KEYPAIR(_BASIC_KEYPAIR):
-    def __init__(self, key_config: tuple[ECC_SIGN_TYPE.ECDSA, ECC_KEY_FUNC] | ECC_SIGN_TYPE,
-                 private_key: Optional[bytes] = None):
-        pass
+    cipher = "ECC"
+
+    def __init__(self, ecc_type: Union[ECC_TYPE.ECDSA, ECC_TYPE.Ed25519] | ECC_TYPE.Ed448 | ECC_TYPE.X25519 | ECC_TYPE.X448 = ECC_TYPE.ECDSA,
+                 ecc_curve: Optional[ec.SECP192R1 | ec.SECP224R1 | ec.SECP256K1 | ec.SECP256R1 |
+                                     ec.SECP384R1 | ec.SECP521R1 | ec.SECT163K1 | ec.SECT163R2 |
+                                     ec.SECT233K1 | ec.SECT233R1 | ec.SECT283K1 | ec.SECT283R1 |
+                                     ec.SECT409K1 | ec.SECT409R1 | ec.SECT571K1 | ec.SECT571R1] = ECC_CURVE.SECP256R1,
+                 private_key: Optional[bytes | str] = None):
+        if private_key is None:
+            if ecc_type == ECC_TYPE.ECDSA:
+                _private_key = ec.generate_private_key(ecc_curve())
+            else:
+                if ecc_curve is not None:
+                    raise ValueError("You can't use an ECC curve when you aren't using the ECC Type ECDSA. "
+                                     "Please set it to None instead.")
+                _private_key = ecc_type.generate()
+        else:
+            _private_key = self._load_pem_private_key(private_key)
+
+        _public_key = _private_key.public_key()
+        super().__init__(_private_key, _public_key)
 
 
 class _ECC:
     """Elliptic Curve Cryptography"""
     @staticmethod
-    def key(ecc_type):
-        pass
+    def key(ecc_type: Union[ECC_TYPE.ECDSA, ECC_TYPE.Ed25519] | ECC_TYPE.Ed448 | ECC_TYPE.X25519 | ECC_TYPE.X448 = ECC_TYPE.ECDSA,
+            ecc_curve: Optional[ec.SECP192R1 | ec.SECP224R1 | ec.SECP256K1 | ec.SECP256R1 |
+                                ec.SECP384R1 | ec.SECP521R1 | ec.SECT163K1 | ec.SECT163R2 |
+                                ec.SECT233K1 | ec.SECT233R1 | ec.SECT283K1 | ec.SECT283R1 |
+                                ec.SECT409K1 | ec.SECT409R1 | ec.SECT571K1 | ec.SECT571R1] = ECC_CURVE.SECP256R1,
+            private_key: Optional[bytes | str] = None):
+        return _ECC_KEYPAIR(ecc_type, ecc_curve, private_key)
+
+
+class _KYBER_KEYPAIR(_BASIC_KEYPAIR):
+    cipher = "KYBER"
+
+    def __init__(self):
+        if Kyber is None:
+            raise EnvironmentError("Module QuantCrypt is not installed.")
+        _public_key, _private_key = Kyber().keygen()
+        super().__init__(_private_key, _public_key)
+
+    def get_private_bytes(self) -> bytes:
+        """Returns the private key in a byte format"""
+        return self._private_key
+
+    def get_public_bytes(self) -> bytes:
+        """Returns the public key in a byte format"""
+        return self._public_key
+
+    def encrypt(self, plaintext_path_or_file: Union[bytes, IO, Path],
+                      get: Literal["content", "path", "file"] = "content") -> Union[bytes, Path, IO]:
+        """
+        Encrypts a file using the Kyber public key.
+        """
+        if Kyber is None:
+            raise EnvironmentError("Module QuantCrypt is not installed.")
+        krypton = KryptonKEM(Kyber)
+        temp_dir = mkdtemp()
+        if isinstance(plaintext_path_or_file, (bytes, IO)):
+            plaintext_file = Path(os.path.join(temp_dir, "kyper_inp"))
+
+            if isinstance(plaintext_path_or_file, IO):
+                with plaintext_path_or_file as f:
+                    plaintext_path_or_file = f.read()
+
+            with open(plaintext_file, "wb") as f:
+                f.write(plaintext_path_or_file)
+        elif isinstance(plaintext_path_or_file, Path):
+            plaintext_file = plaintext_path_or_file
+        else:
+            raise ValueError("Please only input accepted types as plaintext.")
+        ciphertext_file = Path(os.path.join(temp_dir, "kyper_out"))
+        krypton.encrypt(self._public_key, plaintext_file, ciphertext_file)
+
+        if not isinstance(plaintext_path_or_file, Path):
+            safe_remove(plaintext_file)
+        if get == "path":
+            return ciphertext_file
+        elif get == "file":
+            return open(ciphertext_file, "rb")
+        with open(ciphertext_file, "rb") as f:
+            content = f.read()
+        safe_remove(temp_dir)
+        return content
+
+    def decrypt(self, ciphertext_path_or_file: Union[bytes, IO, Path],
+                      get: Literal["content", "path", "file"] = "content") -> Union[bytes, Path, IO]:
+        """
+        Decrypts a file to memory using the Kyber secret key.
+        """
+        if Kyber is None:
+            raise EnvironmentError("Module QuantCrypt is not installed.")
+        krypton = KryptonKEM(Kyber)
+        temp_dir = mkdtemp()
+        if isinstance(ciphertext_path_or_file, (bytes, IO)):
+            ciphertext_file = Path(os.path.join(temp_dir, "kyper_inp"))
+
+            if isinstance(ciphertext_path_or_file, IO):
+                with ciphertext_path_or_file as f:
+                    ciphertext_path_or_file = f.read()
+
+            with open(ciphertext_file, "wb") as f:
+                f.write(ciphertext_path_or_file)
+        elif isinstance(ciphertext_path_or_file, Path):
+            ciphertext_file = ciphertext_path_or_file
+        else:
+            raise ValueError("Please only input accepted types as ciphertext.")
+        plaintext_file = Path(os.path.join(temp_dir, "kyper_out"))
+        krypton.decrypt_to_file(self._secret_key, ciphertext_file, plaintext_file)
+
+        if not isinstance(ciphertext_path_or_file, Path):
+            safe_remove(ciphertext_file)
+        if get == "path":
+            return plaintext_file
+        elif get == "file":
+            return open(plaintext_file, "rb")
+        with open(plaintext_file, "rb") as f:
+            content = f.read()
+        safe_remove(temp_dir)
+        return content
+
+    def __str__(self):
+        return self.get_public_bytes().hex()
+
+
+class _KYBER:
+    @staticmethod
+    def key():
+        return _KYBER_KEYPAIR()
 
 
 class ASymCipher:
@@ -358,17 +491,17 @@ class ASymCipher:
     RSA = _RSA
     DSA = _DSA  # Digital Signature Algorithm
     ECC = _ECC
-    KYBER = enum_auto()
+    KYBER = _KYBER
 
 
 class ASymPadding:
     """Asymmetric Encryption Padding Schemes"""
-    PKCShash1v1dot5 = enum_auto()  # Older padding scheme for RSA
-    OAEP = enum_auto()  # Optimal Asymmetric Encryption Padding
-    PSS = enum_auto()  # Probabilistic Signature Scheme
+    PKCShash1v15 = asym_padding.PKCS1v15  # Older padding scheme for RSA
+    OAEP = asym_padding.OAEP  # Optimal Asymmetric Encryption Padding
+    PSS = asym_padding.PSS  # Probabilistic Signature Scheme
 
 
-class KeyDevivation:
+class KeyDerivation:
     """Key Derivation Functions (KDFs)"""
     PBKDF2HMAC = enum_auto()  # Password-Based Key Derivation Function 2
     Scrypt = enum_auto()
@@ -386,6 +519,10 @@ class AuthCodes:
 class DiffieHellmanAlgorithm:
     ECDH = enum_auto()  # Elliptic Curve Diffie-Hellman
     DH = enum_auto()
+
+
+_BASIC_KEY_TYPE = NewType("_BASIC_KEY_TYPE", _BASIC_KEY)
+_BASIC_KEYPAIR_TYPE = NewType("_BASIC_KEYPAIR_TYPE", _BASIC_KEYPAIR)
 
 
 class AdvancedCryptography:
@@ -412,9 +549,12 @@ class AdvancedCryptography:
         HashAlgorithm.SM3: hashes.SM3
     }
 
-    def __init__(self, auto_pack: bool = True, easy_hash: bool = True):
+    def __init__(self, auto_pack: bool = True, easy_hash: bool = True, backend: Literal["OpenSSL"] = "OpenSSL"):
         self._auto_pack = auto_pack
         self._easy_hash = easy_hash
+
+        if backend != "OpenSSL":
+            raise ValueError("Cryptography only supports the OpenSSL backend")
 
     # Function to create a hash object with special handling for SHAKE algorithms
     def _create_digest(self, algo, digest_size=None):
@@ -434,6 +574,8 @@ class AdvancedCryptography:
             case HashAlgorithm.ARGON2:
                 warnings.warn("Argon2 is still not perfectly supported, expect bugs or other mishaps.",
                               category=UserWarning, stacklevel=2)
+                if Kyber is None:
+                    raise EnvironmentError("Module QuantCrypt is not installed.")
                 return Argon2.Hash(to_hash).public_hash
             case _:
                 digest = self._create_digest(algo, 64)
@@ -456,6 +598,8 @@ class AdvancedCryptography:
             case HashAlgorithm.ARGON2:
                 warnings.warn("Argon2 is still not perfectly supported, expect bugs or other mishaps.",
                               category=UserWarning, stacklevel=2)
+                if Kyber is None:
+                    raise EnvironmentError("Module QuantCrypt is not installed.")
                 try:
                     Argon2.Hash(to_verify, original_hash)
                     return True
@@ -487,11 +631,87 @@ class AdvancedCryptography:
         digest.update(to_verify)
         return digest.finalize() == original_hash
 
-    def encrypt(self, plain_bytes: bytes, cipher: SymCipher | ASymCipher, cipher_key: type[_BASIC_KEY | _BASIC_KEYPAIR],
-                padding: SymPadding | ASymPadding, mode: Optional[SymOperation] = None) -> bytes | tuple[Any]:
-        match cipher:
-            case ASymCipher.RSA.RSA512:
-                return
+    def encrypt(self, plain_bytes: bytes, cipher_key: _BASIC_KEY_TYPE | _BASIC_KEYPAIR,
+                padding: Optional[SymPadding | ASymPadding] = None, mode_or_strength: Optional[SymOperation] | Literal["weak", "average", "strong"] = None) -> bytes | tuple[Any]:
+        parts = {}
+
+        if cipher_key.cipher_type == "SymCipher":
+            if mode_or_strength == modes.CBC:
+                iv = os.urandom(16)
+                mode_instance = mode_or_strength(iv)
+                parts['iv'] = iv
+            elif mode_or_strength == modes.GCM:
+                nonce = os.urandom(12)
+                mode_instance = mode_or_strength(nonce)
+                parts['nonce'] = nonce
+            elif mode_or_strength == modes.CTR:
+                nonce = os.urandom(16)
+                mode_instance = mode_or_strength(nonce)
+                parts['nonce'] = nonce
+            else:
+                mode_instance = mode_or_strength()
+
+            match cipher_key.cipher:
+                case "AES":
+                    cipher = Cipher(algorithms.AES(cipher_key.get_key()), mode_instance)
+                    algorithm = algorithms.AES
+                case "ChaCha20":
+                    pass
+                case "TripleDES":
+                    pass
+                case "Blowfish":
+                    pass
+                case "CASTS":
+                    pass
+
+            if mode_or_strength in (modes.CBC, modes.ECB):
+                padder = padding(algorithm.block_size).padder()
+                padded_data = padder.update(plain_bytes) + padder.finalize()
+            else:
+                padded_data = plain_bytes
+
+            encryptor = cipher.encryptor()
+            ciphertext = encryptor.update(padded_data) + encryptor.finalize()
+            parts['ciphertext'] = ciphertext
+        elif cipher_key.cipher_type == "ASymCipher":
+            if cipher_key.cipher == "RSA":
+                hash_type = {"weak": hashes.SHA256, "average": hashes.SHA384,  # Shared across too many
+                                         "strong": hashes.SHA512}[mode_or_strength]
+
+                if padding == asym_padding.OAEP:
+                    padding_obj = padding(
+                            asym_padding.MGF1(algorithm=hash_type()),
+                            algorithm=hash_type(),
+                            label = None
+                        )
+                elif padding == asym_padding.PKCS1v15:
+                    padding_obj = padding()
+                elif padding == asym_padding.PSS:
+                    raise ValueError("PSS is only supported for signing")
+
+                try:
+                    ciphertext = cipher_key.get_public_key().encrypt(
+                        plain_bytes,
+                        padding_obj
+                    )
+                except ValueError as e:
+                    raise ValueError(f"An error occurred, the data may be too big for the key [{e}]")
+                parts['ciphertext'] = ciphertext
+            elif cipher_key.cipher == "KYBER":
+                warnings.warn("Kyber is still not perfectly supported, expect bugs or other mishaps.",
+                              category=UserWarning, stacklevel=2)
+                if Kyber is None:
+                    raise EnvironmentError("Module QuantCrypt is not installed.")
+                parts["ciphertext"] = cipher_key.encrypt(plain_bytes)
+            else:
+                raise ValueError("DSA and ECC cannot be used for encryption")
+
+        if self._auto_pack:
+            outputs = b''.join(v for k, v in parts.items())
+        else:
+            outputs = parts
+
+        return outputs
 
     def decrypt(self, cipher_bytes: bytes | tuple[Any], cipher: SymCipher | ASymCipher,
                 cipher_key: type[_BASIC_KEY | _BASIC_KEYPAIR], mode: Optional[SymOperation],
@@ -499,7 +719,7 @@ class AdvancedCryptography:
         pass
 
     def KDF(self, password: bytes, length: int, salt: bytes = None,
-            key_dev_type: KeyDevivation = KeyDevivation.PBKDF2HMAC,
+            key_dev_type: KeyDerivation = KeyDerivation.PBKDF2HMAC,
             strength: Literal["weak", "average", "strong"] = "strong"):
         """
 
@@ -515,7 +735,7 @@ class AdvancedCryptography:
         hash_type = hash_type = {"weak": hashes.SHA3_256, "average": hashes.SHA3_384,  # Shared across too many
                                  "strong": hashes.SHA3_512}[strength]  # algorithms, so I made it select at the start.
         match key_dev_type:
-            case key_dev_type.PBKDF2HMAC:
+            case KeyDerivation.PBKDF2HMAC:
                 iter_mult = {"weak": 1, "average": 4, "strong": 8}[strength]
                 kdf = PBKDF2HMAC(
                     algorithm=hash_type(),
@@ -524,11 +744,11 @@ class AdvancedCryptography:
                     iterations=100_000 * iter_mult,
                     backend=default_backend()
                 )
-            case KeyDevivation.Scrypt:
+            case KeyDerivation.Scrypt:
                 n, r, p = {
                     "weak": (2 ** 14, 8, 1),
-                    "average": (2**16, 8, 2),
-                    "strong": (2**18, 8, 4)
+                    "average": (2 ** 16, 8, 2),
+                    "strong": (2 ** 18, 8, 4)
                 }[strength]
                 kdf = Scrypt(
                     salt=salt,
@@ -538,7 +758,7 @@ class AdvancedCryptography:
                     p=p,
                     backend=default_backend()
                 )
-            case KeyDevivation.HKDF:
+            case KeyDerivation.HKDF:
                 kdf = HKDF(
                     algorithm=hash_type(),
                     length=length,
@@ -546,14 +766,14 @@ class AdvancedCryptography:
                     info=b"",
                     backend=default_backend()
                 )
-            case KeyDevivation.X963:
+            case KeyDerivation.X963:
                 kdf = X963KDF(
                     algorithm=hash_type(),
                     length=length,
                     sharedinfo=None,
                     backend=default_backend()
                 )
-            case KeyDevivation.ConcatKDF:
+            case KeyDerivation.ConcatKDF:
                 kdf = ConcatKDFHash(
                     algorithm=hash_type(),
                     length=length,
@@ -569,7 +789,7 @@ class AdvancedCryptography:
     def generate_auth_code(auth_type: AuthCodes, key: bytes, data: bytes,
                            strength: Literal["weak", "average", "strong"] = "strong") -> bytes:
         hash_type = {"weak": hashes.SHA3_256, "average": hashes.SHA3_384,  # Shared across too many
-                                 "strong": hashes.SHA3_512}[strength]
+                     "strong": hashes.SHA3_512}[strength]
         if auth_type == AuthCodes.HMAC:
             h = hmac.HMAC(key, hash_type(), backend=default_backend())
             h.update(data)
@@ -599,7 +819,6 @@ class AdvancedCryptography:
         pass
 
 
-
 # AC = AdvancedCryptography()
 # HA = HashAlgorithm
 # print(AC.hash("HelloWorld".encode(), HA.SHA3.SHAKE128))
@@ -607,6 +826,16 @@ class AdvancedCryptography:
 # print(AC.hash_verify("Hello World".encode(), AC.hash("Hello World".encode(), HA.SHA3.SHA224), HA.SHA3.SHA224))
 # print(AC.hash_verify("Hello World".encode(), AC.hash("Hello World".encode(), HA.BCRYPT), HA.BCRYPT))
 # print(AC.hash_verify("Zel".encode(), AC.hash("Zel".encode(), HA.ARGON2), HA.ARGON2))
+key = SymCipher.AES.AES128.key()
+ac = AdvancedCryptography()
+cipher = ac.encrypt("Hello World".encode(),
+                    key, SymPadding.PKCS7,
+                    SymOperation.CBC)
+print(cipher)
+
+rsa_key = ASymCipher.KYBER.key()
+cipher2 = ac.encrypt("HELL".encode(), rsa_key)
+print(cipher2)
 input()
 
 
@@ -646,8 +875,8 @@ class CryptUtils:
         iv_end = iv_start + iv_len
         iv = data[iv_start:iv_end]
 
-        tag_len = int.from_bytes(data[iv_end:iv_end+1])
-        tag_start = iv_end+1
+        tag_len = int.from_bytes(data[iv_end:iv_end + 1])
+        tag_start = iv_end + 1
         tag_end = tag_start + tag_len
         tag = data[tag_start:tag_end]
 
@@ -725,8 +954,8 @@ class CryptUtils:
         try:
             return public_key.encrypt(
                 data,
-                _padding.OAEP(
-                    mgf=_padding.MGF1(algorithm=hashes.SHA256()),
+                asym_padding.OAEP(
+                    mgf=asym_padding.MGF1(algorithm=hashes.SHA256()),
                     algorithm=hashes.SHA256(),
                     label=None
                 )
@@ -739,8 +968,8 @@ class CryptUtils:
     def rsa_decrypt(encrypted_data: bytes, private_key: rsa.RSAPrivateKey) -> bytes:
         return private_key.decrypt(
             encrypted_data,
-            _padding.OAEP(
-                mgf=_padding.MGF1(algorithm=hashes.SHA256()),
+            asym_padding.OAEP(
+                mgf=asym_padding.MGF1(algorithm=hashes.SHA256()),
                 algorithm=hashes.SHA256(),
                 label=None
             )
@@ -768,104 +997,12 @@ class ModernCryptUtils:  # QuantumCryptography
             raise EnvironmentError("Module QuantCrypt is not installed.")
         return Kyber().keygen()
 
-    @staticmethod
-    def kyber_encrypt(public_key: bytes, plaintext_path_or_file: Union[bytes, IO, Path],
-                      get: Literal["content", "path", "file"] = "content") -> Union[bytes, Path, IO]:
-        """
-        Encrypts a file using the Kyber public key.
-        """
-        if Kyber is None:
-            raise EnvironmentError("Module QuantCrypt is not installed.")
-        krypton = KryptonKEM(Kyber)
-        temp_dir = mkdtemp()
-        if isinstance(plaintext_path_or_file, (bytes, IO)):
-            plaintext_file = Path(os.path.join(temp_dir, "kyper_inp"))
 
-            if isinstance(plaintext_path_or_file, IO):
-                with plaintext_path_or_file as f:
-                    plaintext_path_or_file = f.read()
-
-            with open(plaintext_file, "wb") as f:
-                f.write(plaintext_path_or_file)
-        elif isinstance(plaintext_path_or_file, Path):
-            plaintext_file = plaintext_path_or_file
-        else:
-            raise ValueError("Please only input accepted types as plaintext.")
-        ciphertext_file = Path(os.path.join(temp_dir, "kyper_out"))
-        krypton.encrypt(public_key, plaintext_file, ciphertext_file)
-
-        if not isinstance(plaintext_path_or_file, Path):
-            safe_remove(plaintext_file)
-        if get == "path":
-            return ciphertext_file
-        elif get == "file":
-            return open(ciphertext_file, "rb")
-        with open(ciphertext_file, "rb") as f:
-            content = f.read()
-        safe_remove(temp_dir)
-        return content
-
-    @staticmethod
-    def kyber_decrypt(secret_key: bytes, ciphertext_path_or_file: Union[bytes, IO, Path],
-                      get: Literal["content", "path", "file"] = "content") -> Union[bytes, Path, IO]:
-        """
-        Decrypts a file to memory using the Kyber secret key.
-        """
-        if Kyber is None:
-            raise EnvironmentError("Module QuantCrypt is not installed.")
-        krypton = KryptonKEM(Kyber)
-        temp_dir = mkdtemp()
-        if isinstance(ciphertext_path_or_file, (bytes, IO)):
-            ciphertext_file = Path(os.path.join(temp_dir, "kyper_inp"))
-
-            if isinstance(ciphertext_path_or_file, IO):
-                with ciphertext_path_or_file as f:
-                    ciphertext_path_or_file = f.read()
-
-            with open(ciphertext_file, "wb") as f:
-                f.write(ciphertext_path_or_file)
-        elif isinstance(ciphertext_path_or_file, Path):
-            ciphertext_file = ciphertext_path_or_file
-        else:
-            raise ValueError("Please only input accepted types as ciphertext.")
-        plaintext_file = Path(os.path.join(temp_dir, "kyper_out"))
-        krypton.decrypt_to_file(secret_key, ciphertext_file, plaintext_file)
-
-        if not isinstance(ciphertext_path_or_file, Path):
-            safe_remove(ciphertext_file)
-        if get == "path":
-            return plaintext_file
-        elif get == "file":
-            return open(plaintext_file, "rb")
-        with open(plaintext_file, "rb") as f:
-            content = f.read()
-        safe_remove(temp_dir)
-        return content
 
     @staticmethod
     def generate_secure_password(length: int = 24):
-        return SpecificPasswordGenerator().generate_ratio_based_password_v3(length, filter_=PasswordFilter(exclude_similar=True))
-
-    @staticmethod
-    def hash(password: str, hash_type: Literal["argon2"] = "argon2") -> str:
-        """
-        Hashes a password using Argon2.
-        """
-        return Argon2.Hash(password).public_hash
-
-    @staticmethod
-    def hash_verify(password: str, hash: str, hash_type: Literal["argon2"] = "argon2") -> bool:
-        """
-        Verifies a password against an Argon2 hash.
-        """
-        if Kyber is None:
-            raise EnvironmentError("Module QuantCrypt is not installed.")
-        try:
-            Argon2.Hash(password, hash)
-            return True
-        except Exception as e:
-            print(f"Exception occurred: {e}")
-            return False
+        return SpecificPasswordGenerator().generate_ratio_based_password_v3(length, filter_=PasswordFilter(
+            exclude_similar=True))
 
 
 # Example usage
