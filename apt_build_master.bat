@@ -72,13 +72,15 @@ mkdir "%DIR%"
 
 REM Run tests
 echo Running tests...
-pytest src/aplustools/tests
+py -m pytest src/aplustools/tests
 echo Tests completed.
 exit /b
 
 REM Function to build the project
 :build_project
 @echo off
+REM Install pytest
+py -m pip install build
 echo Building the project...
 py -m build
 echo Build completed.
@@ -95,7 +97,7 @@ REM Function to install the newly built package
 :install_package
 @echo off
 for %%F in (dist\*.whl) do (
-    py -m pip install "%%F" --force-reinstall
+    py -m pip install "%%F"[all] --force-reinstall
 )
 echo Package installation completed.
 exit /b
