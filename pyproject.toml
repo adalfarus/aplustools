@@ -129,4 +129,4 @@ Documentation = "https://github.com/adalfarus/aplustools/wiki"
 #addopts = "your pytest options"
 
 [project.scripts]
-apt = "aplustools.cli:apt_cli"
+aps = "aplustools.cli:aps_cli"

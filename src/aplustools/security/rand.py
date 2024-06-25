@@ -1,9 +1,11 @@
-from typing import Callable, Type, Protocol, Union, Any, List, Literal
+from typing import Callable, Type, Protocol, Union, Any, List, Literal, Optional
 from numpy import random as _np_random, ndarray as _ndarray
 import secrets
 import random
 import math
 import os
+
+from aplustools.data import minmax
 
 
 class _SupportsLenAndGetItem(Protocol):
@@ -205,8 +207,36 @@ class CustomRandomGenerator:
 
     @classmethod
     def weibullvariate(cls, alpha: float, beta: float) -> float:
+        """
+        Generate a random number based on the Weibull distribution with specified shape (alpha) and scale (beta).
+
+        :param alpha: Shape parameter of the Weibull distribution.
+        :param beta: Scale parameter of the Weibull distribution.
+        :return: Random number from the Weibull distribution.
+        """
         u = cls.random()
         return alpha * (-math.log(1 - u)) ** (1 / beta)
+
+    @classmethod
+    def cauchyvariate(cls, median: float, scale: float) -> float:
+        """
+        Generate a random number based on the Cauchy distribution with specified median and scale.
+
+        :param median: Median of the Cauchy distribution.
+        :param scale: Scale parameter of the Cauchy distribution.
+        :return: Random number from the Cauchy distribution.
+        """
+        u = cls.random()
+        return median + scale * math.tan(math.pi * (u - 0.5))
+
+    @classmethod
+    def standard_cauchy(cls) -> float:
+        """
+        Generate a random number based on the standard Cauchy distribution (median=0, scale=1).
+
+        :return: Random number from the standard Cauchy distribution.
+        """
+        return cls.cauchyvariate(0, 1)
 
 
 def os_random() -> float:
@@ -330,6 +360,11 @@ class WeightedRandom:
                            "sys_random": secrets.SystemRandom(), "secrets": SecretsRandomGenerator}[generator]
 
     def random(self) -> float:
+        """
+        Returns the generators default random functions result.
+
+        :return:
+        """
         return self._generator.random()
 
     def uniform(self, lower_bound: Union[float, int] = 0.0, upper_bound: Union[float, int] = 1.0) -> float:
@@ -380,12 +415,18 @@ class WeightedRandom:
         """
         return self._generator.shuffle(seq)
 
-    def sample(self, s: Union[str, list, range], k: int):
+    def sample(self, s: Union[str, list, range], k: int = 1):
+        """
+        Samples k unique elements from s.
+
+        :param s: A datatype that supports len and get item.
+        :param k: The number of unique items to get.
+        :return:
+        """
         return self._generator.sample(s, k)
 
-    @staticmethod
-    def _transform_and_scale(x: float, transform_func: Callable[[float], float], lower_bound: Union[float, int],
-                             upper_bound: Union[float, int]) -> float:
+    def _transform_and_scale(self, x: float, transform_func: Callable[[float], float], lower_bound: Union[float, int],
+                             upper_bound: Union[float, int]) -> Optional[float]:
         """
         Apply the transformation function to the random value and scale it within the given bounds.
 
@@ -395,12 +436,95 @@ class WeightedRandom:
         :param upper_bound: The upper bound of the output range.
         :return: Transformed and scaled value.
         """
-        transformed_value = transform_func(x)
+        try:
+            transformed_value = max(min(transform_func(x), 1), 0)
+        except Exception:
+            print(f"Your chosen generator '{self._generator}' doesn't support this method.")
+            return
         scaled_value = lower_bound + (upper_bound - lower_bound) * transformed_value
         return scaled_value
 
+    def linear(self, lower_bound: Union[float, int] = 0, upper_bound: Union[float, int] = 1, slope: float = 1.0,
+               intercept: float = 1.0, invert: bool = False
+               ) -> float:
+        """
+        Generate a random number based on a linear transformation and scale it within the specified bounds.
+
+        :param lower_bound: Lower bound of the scaled range.
+        :param upper_bound: Upper bound of the scaled range.
+        :param slope: Slope of the linear transformation.
+        :param intercept: Intercept of the linear transformation.
+        :param invert: Whether the results should be inverted to result in a falling curve instead.
+        :return: Scaled random number from the linear transformation.
+        """
+
+        if invert:
+            return self._transform_and_scale(self._generator.random(), lambda x: 1 - (slope * x + intercept), lower_bound, upper_bound)
+        return self._transform_and_scale(self._generator.random(), lambda x: slope * x + intercept, lower_bound, upper_bound)
+
+    def quadratic(self, lower_bound: Union[float, int] = 0, upper_bound: Union[float, int] = 1, transform: float = 1.0,
+                  invert: bool = False) -> float:
+        """
+        Generate a random number based on a quadratic distribution and scale it within the specified bounds.
+
+        :param lower_bound: Lower bound of the scaled range.
+        :param upper_bound: Upper bound of the scaled range.
+        :param transform: Lower means less high vales and more means more high values.
+        :param invert: Whether the results should be inverted to result in a falling curve instead.
+        :return: Scaled random number from the quadratic distribution.
+        """
+
+        if invert:
+            return self._transform_and_scale(self._generator.random(), lambda x: 1 - (transform * x ** 2), lower_bound, upper_bound)
+        return self._transform_and_scale(self._generator.random(), lambda x: transform * x ** 2, lower_bound, upper_bound)
+
+    def cubic(self, lower_bound: Union[float, int] = 0, upper_bound: Union[float, int] = 1, transform: float = 1.0,
+              invert: bool = False) -> float:
+        """
+        Generate a random number based on a cubic distribution and scale it within the specified bounds.
+
+        :param lower_bound: Lower bound of the scaled range.
+        :param upper_bound: Upper bound of the scaled range.
+        :param transform: Lower means less high vales and more means more high values.
+        :param invert: Whether the results should be inverted to result in a falling curve instead.
+        :return: Scaled random number from the cubic distribution.
+        """
+
+        if invert:
+            return self._transform_and_scale(self._generator.random(), lambda x: 1 - (transform * x ** 3), lower_bound, upper_bound)
+        return self._transform_and_scale(self._generator.random(), lambda x: transform * x ** 3, lower_bound, upper_bound)
+
+    def quartic(self, lower_bound: Union[float, int] = 0, upper_bound: Union[float, int] = 1, transform: float = 1.0,
+                invert: bool = False) -> float:
+        """
+
+        :param lower_bound:
+        :param upper_bound:
+        :param transform: Lower means less high vales and more means more high values.
+        :param invert:
+        """
+
+        if invert:
+            return self._transform_and_scale(self._generator.random(), lambda x: 1 - (transform * x ** 4), lower_bound, upper_bound)
+        return self._transform_and_scale(self._generator.random(), lambda x: transform * x ** 4, lower_bound, upper_bound)
+
+    def exponent(self, lower_bound: Union[float, int] = 0, upper_bound: Union[float, int] = 1, exponent: float = 1.0,
+                 transform: float = 1.0, invert: bool = False):
+        """
+
+        :param lower_bound:
+        :param upper_bound:
+        :param exponent:
+        :param transform:
+        :param invert:
+        """
+
+        if invert:
+            return self._transform_and_scale(self._generator.random(), lambda x: 1 - (transform * x ** exponent), lower_bound, upper_bound)
+        return self._transform_and_scale(self._generator.random(), lambda x: transform * x ** exponent, lower_bound, upper_bound)
+
     def gaussian(self, lower_bound: Union[float, int] = 0, upper_bound: Union[float, int] = 1,
-                 mu: Union[float, int] = 0, sigma: Union[float, int] = 1) -> float:
+                 mu: Union[float, int] = 0, sigma: Union[float, int] = 1, invert: bool = False) -> float:
         """
         Generate a random number based on the normal (Gaussian) distribution and scale it within the specified bounds.
 
@@ -408,78 +532,67 @@ class WeightedRandom:
         :param upper_bound: Upper bound of the scaled range.
         :param mu: Mean of the distribution.
         :param sigma: Standard deviation of the distribution.
+        :param invert: Whether the results should be inverted to result in a falling curve instead.
         :return: Scaled random number from the normal distribution.
         """
+
+        if invert:
+            return self._transform_and_scale(self._generator.random(), lambda x: 1 - self._generator.gauss(mu, sigma),
+                                             lower_bound, upper_bound)
         return self._transform_and_scale(self._generator.random(), lambda x: self._generator.gauss(mu, sigma),
                                          lower_bound, upper_bound)
 
-    def quadratic(self, lower_bound: Union[float, int] = 0, upper_bound: Union[float, int] = 1) -> float:
-        """
-        Generate a random number based on a quadratic distribution and scale it within the specified bounds.
-
-        :param lower_bound: Lower bound of the scaled range.
-        :param upper_bound: Upper bound of the scaled range.
-        :return: Scaled random number from the quadratic distribution.
-        """
-        return self._transform_and_scale(self._generator.random(), lambda x: x ** 2, lower_bound, upper_bound)
-
-    def cubic(self, lower_bound: Union[float, int] = 0, upper_bound: Union[float, int] = 1) -> float:
-        """
-        Generate a random number based on a cubic distribution and scale it within the specified bounds.
-
-        :param lower_bound: Lower bound of the scaled range.
-        :param upper_bound: Upper bound of the scaled range.
-        :return: Scaled random number from the cubic distribution.
-        """
-        return self._transform_and_scale(self._generator.random(), lambda x: x ** 3, lower_bound, upper_bound)
-
-    def exponential(self, lower_bound: Union[float, int] = 0, upper_bound: Union[float, int] = 1, lambd: float = 1.0
-                    ) -> float:
+    def exponential(self, lower_bound: Union[float, int] = 0, upper_bound: Union[float, int] = 1,
+                    multiplier: float = 1.0, invert: bool = False) -> float:
         """
         Generate a random number based on the exponential distribution and scale it within the specified bounds.
 
         :param lower_bound: Lower bound of the scaled range.
         :param upper_bound: Upper bound of the scaled range.
-        :param lambd: Lambda parameter (1/mean) of the distribution.
+        :param multiplier: Multiplier parameter x**mult e of the distribution.
+        :param invert: Whether the results should be inverted to result in a falling curve instead.
         :return: Scaled random number from the exponential distribution.
         """
-        return self._transform_and_scale(self._generator.random(), lambda x: self._generator.expovariate(lambd),
-                                         lower_bound, upper_bound)
 
-    def falling(self, lower_bound: Union[float, int] = 0, upper_bound: Union[float, int] = 1) -> float:
-        """
-        Generate a random number based on a falling distribution and scale it within the specified bounds.
-        """
-        return self._transform_and_scale(self._generator.random(), lambda x: 1 - x, lower_bound, upper_bound)
+        if invert:
+            return self._transform_and_scale(self._generator.random(), lambda x: 1 - (x ** (multiplier * math.e)),
+                                             lower_bound, upper_bound)
+        return self._transform_and_scale(self._generator.random(), lambda x: x ** (multiplier * math.e), lower_bound,
+                                         upper_bound)
 
-    def sloping(self, lower_bound: Union[float, int] = 0, upper_bound: Union[float, int] = 1) -> float:
+    def bias(self, lower_bound: Union[float, int] = 0, upper_bound: Union[float, int] = 1, bias: float = 1.0,
+                   invert: bool = False) -> float:
         """
-        Generate a random number based on a sloping distribution and scale it within the specified bounds.
-        """
-        return self._transform_and_scale(self._generator.random(), lambda x: x ** 2, lower_bound, upper_bound)
-
-    def exponential_falling(self, lower_bound: Union[float, int] = 0, upper_bound: Union[float, int] = 1,
-                            lambd: float = 1.0) -> float:
-        """
-        Generate a random number based on a falling exponential distribution and scale it within the specified bounds.
-        """
-        return self._transform_and_scale(self._generator.random(), lambda x: 1 - self._generator.expovariate(lambd), lower_bound, upper_bound)
-
-    def quadratic_falling(self, lower_bound: Union[float, int] = 0, upper_bound: Union[float, int] = 1) -> float:
-        """
-        Generate a random number based on a quadratic distribution and scale it within the specified bounds.
+        Generate a random number based on a biased distribution and scale it within the specified bounds.
 
         :param lower_bound: Lower bound of the scaled range.
         :param upper_bound: Upper bound of the scaled range.
-        :return: Scaled random number from the quadratic distribution.
+        :param bias: The bias of the distribution.
+        :param invert: Whether the results should be inverted to result in a falling curve instead.
+        :return: Scaled random number from the exponential distribution.
         """
-        return self._transform_and_scale(self._generator.random(), lambda x: 1 - x ** 2, lower_bound, upper_bound)
 
-    def cubic_falling(self, lower_bound: Union[float, int] = 0, upper_bound: Union[float, int] = 1) -> float:
+        if invert:
+            return self._transform_and_scale(self._generator.random(), lambda x: 1 - ((x * (x - bias) ** 3) / (x * (x - bias) ** 3 - x + 1)),
+                                             lower_bound, upper_bound)
+        return self._transform_and_scale(self._generator.random(), lambda x: (x * (x - bias) ** 3) / (x * (x - bias) ** 3 - x + 1),
+                                         lower_bound, upper_bound)
+
+    def sinusoidal(self, lower_bound: Union[float, int] = 0, upper_bound: Union[float, int] = 1,
+                   divisor: float = 1.0, invert: bool = False) -> float:
         """
-        Generate a random number based on a falling cubic distribution and scale it within the specified bounds.
+        Generate a random number based on a sinusoidal distribution and scale it within the specified bounds.
+
+        :param lower_bound: Lower bound of the scaled range.
+        :param upper_bound: Upper bound of the scaled range.
+        :param divisor: How much the distribution should be scaled by.
+        :param invert: Whether the results should be inverted to result in a falling curve instead.
+        :return: Scaled random number from the sinusoidal distribution.
         """
-        return self._transform_and_scale(self._generator.random(), lambda x: 1 - x ** 3, lower_bound, upper_bound)
+
+        if invert:
+            return self._transform_and_scale(self._generator.random(), lambda x: 1 - (0.5 * ((1 + math.sin(2 * math.pi * x - math.pi / 2)) / divisor)), lower_bound, upper_bound)
+        return self._transform_and_scale(self._generator.random(), lambda x: 0.5 * ((1 + math.sin(2 * math.pi * x - math.pi / 2)) / divisor), lower_bound, upper_bound)
 
     def functional(self, math_func: Callable, lower_bound: Union[float, int] = 0, upper_bound: Union[float, int] = 1
                    ) -> float:
@@ -493,33 +606,47 @@ class WeightedRandom:
         """
         return self._transform_and_scale(self._generator.random(), math_func, lower_bound, upper_bound)
 
-    def linear_transform(self, slope: float, intercept: float, lower_bound: Union[float, int] = 0,
-                         upper_bound: Union[float, int] = 1) -> float:
+    def expo_var(self, lower_bound: Union[float, int] = 0, upper_bound: Union[float, int] = 1, lambd: float = 1.0,
+                 invert: bool = False) -> float:
         """
-        Generate a random number based on a linear transformation and scale it within the specified bounds.
+        Generate a random number based on the exponential distribution and scale it within the specified bounds.
 
-        :param slope: Slope of the linear transformation.
-        :param intercept: Intercept of the linear transformation.
         :param lower_bound: Lower bound of the scaled range.
         :param upper_bound: Upper bound of the scaled range.
-        :return: Scaled random number from the linear transformation.
+        :param lambd: Lambda parameter (1/mean) of the distribution.
+        :param invert: Whether the results should be inverted to result in a falling curve instead.
+        :return: Scaled random number from the exponential distribution.
         """
-        return self._transform_and_scale(self._generator.random(), lambda x: slope * x + intercept, lower_bound, upper_bound)
 
-    def triangular(self, lower_bound: Union[float, int] = 0, upper_bound: Union[float, int] = 1, mode: float = 0.5
-                   ) -> float:
+        if invert:
+            return self._transform_and_scale(self._generator.random(),
+                                             lambda x: 1 - self._generator.expovariate(lambd), lower_bound, upper_bound)
+        return self._transform_and_scale(self._generator.random(),
+                                         lambda x: self._generator.expovariate(lambd), lower_bound, upper_bound)
+
+    def triangular(self, lower_bound: Union[float, int] = 0, upper_bound: Union[float, int] = 1, mode: float = 0.5,
+                   invert: bool = False) -> float:
         """
         Generate a random number based on a triangular distribution and scale it within the specified bounds.
 
         :param lower_bound: Lower bound of the scaled range.
         :param upper_bound: Upper bound of the scaled range.
         :param mode: The value where the peak of the distribution occurs.
+        :param invert: Whether the results should be inverted to result in a falling curve instead.
         :return: Scaled random number from the triangular distribution.
         """
-        return self._transform_and_scale(self._generator.random(), lambda x: self._generator.uniform(lower_bound, mode) if x < 0.5 else self._generator.uniform(mode, upper_bound), lower_bound, upper_bound)
 
-    def beta(self, alpha: float, beta: float, lower_bound: Union[float, int] = 0, upper_bound: Union[float, int] = 1
-             ) -> float:
+        if invert:
+            return self._transform_and_scale(self._generator.random(),
+                                             lambda x: 1 - (self._generator.uniform(lower_bound, mode) if x < 0.5 else
+                                                            self._generator.uniform(mode, upper_bound)), lower_bound,
+                                             upper_bound)
+        return self._transform_and_scale(self._generator.random(),
+                                         lambda x: self._generator.uniform(lower_bound, mode) if x < 0.5 else
+                                         self._generator.uniform(mode, upper_bound), lower_bound, upper_bound)
+
+    def beta(self, alpha: float, beta: float, lower_bound: Union[float, int] = 0, upper_bound: Union[float, int] = 1,
+             invert: bool = False) -> float:
         """
         Generate a random number based on a beta distribution and scale it within the specified bounds.
 
@@ -527,12 +654,21 @@ class WeightedRandom:
         :param beta: Beta parameter of the beta distribution.
         :param lower_bound: Lower bound of the scaled range.
         :param upper_bound: Upper bound of the scaled range.
+        :param invert: Whether the results should be inverted to result in a falling curve instead.
         :return: Scaled random number from the beta distribution.
         """
-        return self._transform_and_scale(self._generator.random(), lambda x: self._generator.betavariate(alpha, beta), lower_bound, upper_bound)
+
+        if invert:
+            return self._transform_and_scale(self._generator.random(),
+                                             lambda x: 1 - self._generator.betavariate(alpha, beta),
+                                             lower_bound, upper_bound)
+        return self._transform_and_scale(self._generator.random(),
+                                         lambda x: self._generator.betavariate(alpha, beta),
+                                         lower_bound, upper_bound)
 
     def log_normal(self, mean: float, sigma: float, lower_bound: Union[float, int] = 0,
-                   upper_bound: Union[float, int] = 1) -> float:
+                   upper_bound: Union[float, int] = 1,
+                   invert: bool = False) -> float:
         """
         Generate a random number based on a log-normal distribution and scale it within the specified bounds.
 
@@ -540,22 +676,20 @@ class WeightedRandom:
         :param sigma: Standard deviation of the underlying normal distribution.
         :param lower_bound: Lower bound of the scaled range.
         :param upper_bound: Upper bound of the scaled range.
+        :param invert: Whether the results should be inverted to result in a falling curve instead.
         :return: Scaled random number from the log-normal distribution.
         """
-        return self._transform_and_scale(self._generator.random(), lambda x: self._generator.lognormvariate(mean, sigma), lower_bound, upper_bound)
 
-    def sinusoidal(self, lower_bound: Union[float, int] = 0, upper_bound: Union[float, int] = 1) -> float:
-        """
-        Generate a random number based on a sinusoidal distribution and scale it within the specified bounds.
-
-        :param lower_bound: Lower bound of the scaled range.
-        :param upper_bound: Upper bound of the scaled range.
-        :return: Scaled random number from the sinusoidal distribution.
-        """
-        return self._transform_and_scale(self._generator.random(), lambda x: 0.5 * (1 + math.sin(2 * math.pi * x - math.pi / 2)), lower_bound, upper_bound)
+        if invert:
+            return self._transform_and_scale(self._generator.random(),
+                                             lambda x: 1 - self._generator.lognormvariate(mean, sigma),
+                                             lower_bound, upper_bound)
+        return self._transform_and_scale(self._generator.random(),
+                                         lambda x: self._generator.lognormvariate(mean, sigma),
+                                         lower_bound, upper_bound)
 
     def piecewise_linear(self, breakpoints: List[float], slopes: List[float], lower_bound: Union[float, int] = 0,
-                         upper_bound: Union[float, int] = 1) -> float:
+                         upper_bound: Union[float, int] = 1, invert: bool = False) -> float:
         """
         Generate a random number based on a piecewise linear function and scale it within the specified bounds.
 
@@ -563,15 +697,134 @@ class WeightedRandom:
         :param slopes: List of slopes for each segment of the piecewise linear function.
         :param lower_bound: Lower bound of the scaled range.
         :param upper_bound: Upper bound of the scaled range.
+        :param invert: Whether the results should be inverted to result in a falling curve instead.
         :return: Scaled random number from the piecewise linear function.
         """
-        def piecewise(x):
+
+        def _piecewise(x):
             for i, breakpoint in enumerate(breakpoints):
                 if x < breakpoint:
-                    return slopes[i] * (x - (breakpoints[i-1] if i > 0 else 0))
+                    return slopes[i] * (x - (breakpoints[i - 1] if i > 0 else 0))
             return slopes[-1] * (x - breakpoints[-1])
 
-        return self._transform_and_scale(self._generator.random(), piecewise, lower_bound, upper_bound)
+        if invert:
+            return self._transform_and_scale(self._generator.random(), lambda x: 1 - _piecewise(x), lower_bound,
+                                             upper_bound)
+        return self._transform_and_scale(self._generator.random(), lambda x: _piecewise(x), lower_bound,
+                                         upper_bound)
+
+    def exponential_e(self, lower_bound: Union[float, int] = 0, upper_bound: Union[float, int] = 1,
+                      exponent: float = -1.0, invert: bool = False) -> float:
+        """
+        Generate a random number based on the e^x exponential distribution and scale it within the specified bounds.
+
+        :param lower_bound: Lower bound of the scaled range.
+        :param upper_bound: Upper bound of the scaled range.
+        :param exponent: Exponent parameter for the e^x distribution.
+        :param invert: Whether the results should be inverted to result in a falling curve instead.
+        :return: Scaled random number from the e^x exponential distribution.
+        """
+
+        if invert:
+            return self._transform_and_scale(self._generator.random(), lambda x: 1 - (math.exp(exponent * x) - 1),
+                                             lower_bound, upper_bound)
+        return self._transform_and_scale(self._generator.random(), lambda x: math.exp(exponent * x) - 1,
+                                         lower_bound, upper_bound)
+
+    def weibull(self, lower_bound: Union[float, int] = 0, upper_bound: Union[float, int] = 1, alpha: float = 1.0, beta: float = 1.0,
+                invert: bool = False) -> float:
+        """
+        Generate a random number based on a Weibull distribution and scale it within the specified bounds.
+
+        :param lower_bound: Lower bound of the scaled range.
+        :param upper_bound: Upper bound of the scaled range.
+        :param alpha: Shape parameter of the Weibull distribution.
+        :param beta: Scale parameter of the Weibull distribution.
+        :param invert: Whether the results should be inverted to result in a falling curve instead.
+        :return: Scaled random number from the Weibull distribution.
+        """
+
+        if invert:
+            return self._transform_and_scale(self._generator.random(), lambda x: 1 - (self._generator.weibullvariate(alpha, beta)),
+                                             lower_bound, upper_bound)
+        return self._transform_and_scale(self._generator.random(), lambda x: self._generator.weibullvariate(alpha, beta),
+                                         lower_bound, upper_bound)
+
+    def gamma(self, lower_bound: Union[float, int] = 0, upper_bound: Union[float, int] = 1, alpha: float = 1.0, beta: float = 1.0,
+              invert: bool = False) -> float:
+        """
+        Generate a random number based on a Gamma distribution and scale it within the specified bounds.
+
+        :param lower_bound: Lower bound of the scaled range.
+        :param upper_bound: Upper bound of the scaled range.
+        :param alpha: Shape parameter of the Gamma distribution.
+        :param beta: Scale parameter of the Gamma distribution.
+        :param invert: Whether the results should be inverted to result in a falling curve instead.
+        :return: Scaled random number from the Gamma distribution.
+        """
+
+        if invert:
+            return self._transform_and_scale(self._generator.random(), lambda x: 1 - (self._generator.gammavariate(alpha, beta)),
+                                             lower_bound, upper_bound)
+        return self._transform_and_scale(self._generator.random(), lambda x: self._generator.gammavariate(alpha, beta),
+                                         lower_bound, upper_bound)
+
+    def cauchy(self, lower_bound: Union[float, int] = 0, upper_bound: Union[float, int] = 1, median: float = 0.0, scale: float = 1.0,
+               invert: bool = False) -> float:
+        """
+        Generate a random number based on a Cauchy distribution and scale it within the specified bounds.
+
+        :param lower_bound: Lower bound of the scaled range.
+        :param upper_bound: Upper bound of the scaled range.
+        :param median: Median of the distribution.
+        :param scale: Scale parameter of the distribution.
+        :param invert: Whether the results should be inverted to result in a falling curve instead.
+        :return: Scaled random number from the Cauchy distribution.
+        """
+
+        if invert:
+            return self._transform_and_scale(self._generator.random(), lambda x: 1 - (self._generator.standard_cauchy() * scale + median),
+                                             lower_bound, upper_bound)
+        return self._transform_and_scale(self._generator.random(), lambda x: self._generator.standard_cauchy() * scale + median,
+                                         lower_bound, upper_bound)
+
+    def pareto(self, lower_bound: Union[float, int] = 0, upper_bound: Union[float, int] = 1, alpha: float = 1.0,
+               invert: bool = False) -> float:
+        """
+        Generate a random number based on a Pareto distribution and scale it within the specified bounds.
+
+        :param lower_bound: Lower bound of the scaled range.
+        :param upper_bound: Upper bound of the scaled range.
+        :param alpha: Shape parameter of the Pareto distribution.
+        :param invert: Whether the results should be inverted to result in a falling curve instead.
+        :return: Scaled random number from the Pareto distribution.
+        """
+
+        if invert:
+            return self._transform_and_scale(self._generator.random(), lambda x: 1 - (self._generator.paretovariate(alpha)),
+                                             lower_bound, upper_bound)
+        return self._transform_and_scale(self._generator.random(), lambda x: self._generator.paretovariate(alpha),
+                                         lower_bound, upper_bound)
+
+    def polynomial(self, lower_bound: Union[float, int] = 0, upper_bound: Union[float, int] = 1, coefficients: List[float] = [1],
+                   invert: bool = False) -> float:
+        """
+        Generate a random number based on a custom polynomial distribution and scale it within the specified bounds.
+
+        :param lower_bound: Lower bound of the scaled range.
+        :param upper_bound: Upper bound of the scaled range.
+        :param coefficients: Coefficients of the polynomial, ordered from the highest degree to the constant term.
+        :param invert: Whether the results should be inverted to result in a falling curve instead.
+        :return: Scaled random number from the polynomial distribution.
+        """
+        def polynomial_func(x):
+            return sum(coeff * (x ** i) for i, coeff in enumerate(reversed(coefficients)))
+
+        if invert:
+            return self._transform_and_scale(self._generator.random(), lambda x: 1 - polynomial_func(x),
+                                             lower_bound, upper_bound)
+        return self._transform_and_scale(self._generator.random(), lambda x: polynomial_func(x), lower_bound,
+                                         upper_bound)
 
 
 if __name__ == "__main__":
@@ -579,22 +832,29 @@ if __name__ == "__main__":
         # Test generator
         print(f"Testing with {generator} generator:")
         rng = WeightedRandom(generator)
+
+        # Existing tests
         print("Gaussian:", rng.gaussian(0, 1, 0, 1))
         print("Cubic:", rng.cubic(0, 1))
         print("Exponential:", rng.exponential(0, 1, 1.0))
-        print("Falling:", rng.falling(0, 1))
-        print("Sloping:", rng.sloping(0, 1))
-        print("Exponential Falling:", rng.exponential_falling(0, 1, 1.0))
-        print("Cubic Falling:", rng.cubic_falling(0, 1))
         print("Functional (x^2):", rng.functional(lambda x: x ** 2, 0, 1))
         print("Uniform:", rng.uniform(1, 10))
         print("RandInt:", rng.randint(1, 10))
         print("Choice:", rng.choice([1, 2, 3, 4, 5]))
-        print("Linear Transform:", rng.linear_transform(2, 1, 0, 1))
+        print("Linear Transform:", rng.linear(0, 1, 2, 1))
         print("Triangular:", rng.triangular(0, 1, 0.5))
         print("Beta:", rng.beta(2, 5, 0, 1))
         print("Log Normal:", rng.log_normal(0, 1, 0, 1))
         print("Sinusoidal:", rng.sinusoidal(0, 1))
         print("Piecewise Linear:", rng.piecewise_linear([0.3, 0.7], [1, -1], 0, 1))
+
+        # New tests
+        print("Expo Var:", rng.expo_var(0, 1, 1.0))
+        print("Weibull:", rng.weibull(0, 1, 1.0, 1.0))
+        print("Gamma:", rng.gamma(0, 1, 1.0, 1.0))
+        print("Cauchy:", rng.cauchy(0, 1, 0.0, 1.0))
+        print("Pareto:", rng.pareto(0, 1, 1.0))
+        print("Polynomial (x^3 + 2x + 1):", rng.polynomial(0, 1, [1, 2, 0, 1]))
+        print("Exponential e^x:", rng.exponential_e(0, 1, 1.0))
 
     print("\nCustom exponent: ", round(rng.exponential(0.1, 10, 5.0), 1))

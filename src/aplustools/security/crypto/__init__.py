@@ -1,10 +1,11 @@
 from cryptography.hazmat.primitives import hashes
-
-from .hash_algorithms import HashAlgorithm, _SHA2, _SHA3, _BLAKE2
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms
+from .hash import HashAlgorithm, _SHA2, _SHA3, _BLAKE2
 from .keys import _BASIC_KEY_TYPE, _BASIC_KEYPAIR_TYPE, Kyber, Argon2
 from .algorithms import *
 from .. import Security
 
+from typing import Any
 import warnings
 import os
 
@@ -166,6 +167,8 @@ class AdvancedCryptography:
             parts['ciphertext'] = ciphertext
         elif cipher_key.cipher_type == "ASymCipher":
             if cipher_key.cipher == "RSA":
+                warnings.warn(f"RSA is insecure and should be migrated away from, consider using other encryption "
+                              f"algorithms or using ECC/DSA for Hybrid encryption and key exchange.")
                 hash_type = {"weak": hashes.SHA256, "average": hashes.SHA384,  # Shared across too many
                                          "strong": hashes.SHA512}[mode_or_strength]
 
@@ -205,9 +208,11 @@ class AdvancedCryptography:
         return outputs
 
     def decrypt(self, cipher_bytes: bytes | tuple[Any], cipher: SymCipher | ASymCipher,
-                cipher_key: type[_BASIC_KEY | _BASIC_KEYPAIR], mode: Optional[SymOperation],
+                cipher_key: type[_BASIC_KEY_TYPE | _BASIC_KEYPAIR_TYPE], mode: Optional[SymOperation],
                 padding: SymPadding | ASymPadding):
-        pass
+        if cipher_key.cipher == "RSA":
+            warnings.warn(f"RSA is insecure and should be migrated away from, consider using other encryption "
+                          f"algorithms or using ECC/DSA for Hybrid encryption and key exchange.")
 
     def KDF(self, password: bytes, length: int, salt: bytes = None,
             key_dev_type: KeyDerivation = KeyDerivation.PBKDF2HMAC,
@@ -294,6 +299,7 @@ class AdvancedCryptography:
 
     @staticmethod
     def key_exchange(private_key, peer_public_key, algorithm: DiffieHellmanAlgorithm):
+        """Diffie Hellman key exchange"""
         if algorithm == DiffieHellmanAlgorithm.ECDH:
             return private_key.exchange(ec.ECDH(), peer_public_key)
         elif algorithm == DiffieHellmanAlgorithm.DH:
@@ -303,11 +309,15 @@ class AdvancedCryptography:
 
     @staticmethod
     def sign():
-        pass
+        if cipher_key.cipher == "RSA":
+            warnings.warn(f"RSA is insecure and should be migrated away from, consider using other encryption "
+                          f"algorithms or using ECC/DSA for Hybrid encryption and key exchange.")
 
     @staticmethod
     def sign_verify():
-        pass
+        if cipher_key.cipher == "RSA":
+            warnings.warn(f"RSA is insecure and should be migrated away from, consider using other encryption "
+                          f"algorithms or using ECC/DSA for Hybrid encryption and key exchange.")
 
 
 if __name__ == "__main__":
