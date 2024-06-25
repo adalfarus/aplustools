@@ -6,8 +6,12 @@
 
 aplustools is a simple, user-friendly Python library for performing amazing tasks. It simplifies complex processes, allowing you to achieve more with less code. Developed with a focus on ease of use and efficiency, aplustools is the go-to solution for Python developers looking to enhance their projects.
 
+All the newest updates can be found on the aplustools/dev branch, currently I'll be taking a break. This is my fault because you quickly get tired of something if you never see any real progress and I tried to do too much with aplustools 1.5.
+
+I'll be looking into C a bit more and maybe pick this back up in 1 week?
+
 ## Compatibility
-[🟩 (Works perfectly); 🟨 (Untested); 🟧 (Some Issues); 🟥 (Unusable)]
+🟩 (Works perfectly); 🟨 (Untested); 🟧 (Some Issues); 🟥 (Unusable)
 
 | OS                       | UX & README instructions | Tests | More Complex Functionalities |
 |--------------------------|--------------------------|-------|------------------------------|
