@@ -92,8 +92,9 @@ def nice_bits(bytes_like: _typing.Union[bytes, bytearray], spaced: bool = False,
     return binary_str  # ("00000000" + binary)[7 + (len(binary) // 8):]
 
 
-def minmax(min_val, max_val, to_reduce):
-    return max(max_val, min(min_val, to_reduce))
+def minmax(to_reduce, min_val, max_val):
+    """Gets the minmax of min_val and max_val."""
+    return max(min_val, min(max_val, to_reduce))
 
 
 def isEven(x: _Union[int, float, str]) -> bool:
@@ -404,13 +405,21 @@ def update_dict_if_absent(original_dict, new_data):
 
 
 _global_enum_auto = -1
+_global_enum_auto_reserves = [0, 1, 2, 3]
 
 
 def enum_auto():
     """As enums don't allow nesting, I devised this:"""
     global _global_enum_auto
     _global_enum_auto += 1
+    while _global_enum_auto in _global_enum_auto_reserves:
+        _global_enum_auto += 1
     return _global_enum_auto
+
+
+def reserve_enum_auto(*numbers: int):
+    global _global_enum_auto_reserves
+    _global_enum_auto_reserves.extend(numbers)
 
 
 if __name__ == "__main__":

@@ -1101,12 +1101,12 @@ class SecurePasswordGenerator:
             case "strong":
                 self._gen.load_def_dict()
                 self._gen.load_google_10000_dict()
-                self._gen.load_scowl_dict(size=70)
+                self._gen.load_scowl_dict(size="70")
                 self._gen.load_12_dicts()
             case "super_strong":
                 self._gen.load_def_dict()
                 self._gen.load_google_10000_dict()
-                self._gen.load_scowl_dict(size=80)
+                self._gen.load_scowl_dict(size="80")
                 self._gen.load_12_dicts()
         print(f"Loaded {_nice_number(len(self._gen.words))} unique words")
 
@@ -1125,7 +1125,7 @@ class SecurePasswordGenerator:
         :param predetermined: Choose which type of password you want to generate, this will make it 8 times easier to crack your password.
         :return:
         """
-        rnd = round(self._rng.functional(lambda x: x if x <= 4 else 4 + (x - 4) / 4, 0, 8), 0) if predetermined is None else \
+        rnd = int(self._rng.exponential(0, 8, 0.9)) if predetermined is None else \
             {
                 "mnemonic": 0,
                 "passphrase": 1,
@@ -1174,6 +1174,8 @@ class SecurePasswordGenerator:
             case 8:
                 pw = self._gen.generate_ratio_based_password_v3()
                 result = {"extra_info": "Entirely random, a ratio based password.", "password": pw}
+            case _:
+                raise ValueError()
 
         if return_worst_case:
             result["worst_case"] = _zxcvbn(result["password"])["crack_times_display"]["offline_fast_hashing_1e10_per_second"]
