@@ -1,5 +1,6 @@
 # environment.py
-import os
+from typing import (Callable as _Callable, cast as _cast, Any as _Any, Union as _Union, Optional as _Optional,
+                    Literal as _Literal)
 from types import FrameType as _FrameType
 from pathlib import Path as _Path
 import subprocess as _subprocess
@@ -7,8 +8,6 @@ import warnings as _warnings
 import platform as _platform
 import inspect as _inspect
 import shutil as _shutil
-from typing import (Callable as _Callable, cast as _cast, Any as _Any, Union as _Union, Optional as _Optional,
-                    Literal as _Literal)
 import sys as _sys
 import os as _os
 import psutil as _psutil
@@ -16,12 +15,13 @@ import time as _time
 import tempfile as _tempfile
 from enum import Enum as _Enum
 import ctypes as _ctypes
+import locale as _locale
 
 from PIL import Image as _Image
 import speedtest as _speedtest
 
-from aplustools.data import bytes_to_human_readable_binary_iec as _bytes_to_human_readable_binary_iec
-from aplustools.data import bits_to_human_readable as _bits_to_human_readable
+from ..data import bytes_to_human_readable_binary_iec as _bytes_to_human_readable_binary_iec
+from ..data import bits_to_human_readable as _bits_to_human_readable
 
 
 try:
@@ -34,97 +34,8 @@ except ImportError:
     ToastActivatedEventArgs = ToastButton = ToastInputSelectionBox = ToastSelection = None
 
 
-def set_working_dir_to_main_script_location():
-    """
-    Set the current working directory to the location of the main script
-    or executable. It considers whether the script is frozen using PyInstaller
-    or is running as a normal Python script.
-    """
-    import __main__
-    try:
-        # Get the directory where the main script (or frozen exe) is located
-        if getattr(_sys, 'frozen', False):
-            # If the script is running as a bundled executable created by PyInstaller
-            main_dir = _os.path.dirname(_sys.executable)
-        else:
-            # If the script is running as a normal Python script
-            if hasattr(__main__, '__file__'):
-                main_dir = _os.path.dirname(_os.path.abspath(__main__.__file__))
-            else:
-                main_dir = _os.path.dirname(_os.getcwd())
-                _warnings.warn(
-                    "Could not set the current working directory to the location of the main script or executable.",
-                    RuntimeWarning,
-                    stacklevel=2
-                    )
-
-        # Change the current working directory to the main script directory
-        _os.chdir(main_dir)
-        print(f"Working directory set to {main_dir}")
-
-    except Exception as e:
-        print(f"An error occurred while changing the working directory: {e}")
-        raise  # Re-raise the error
-
-
-def change_working_dir_to_script_location():
-    try:
-        if getattr(_sys, 'frozen', False):
-            # If the script is running as a bundled executable created by PyInstaller
-            script_dir = _os.path.dirname(_sys.executable)
-        else:
-            # Get the path of the caller of this function
-            frame = _inspect.currentframe()
-            caller_frame = frame.f_back
-            caller_file = caller_frame.f_globals["__file__"]
-            script_dir = _os.path.dirname(_os.path.abspath(caller_file))
-
-        # Change the current working directory to the script directory
-        _os.chdir(script_dir)
-        print(f"Working directory changed to {script_dir}")
-    except Exception as e:
-        print(f"An error occurred while changing the working directory: {e}")
-        raise
-
-
-def change_working_dir_to_temp_folder():
-    try:
-        temp_dir = _tempfile.gettempdir()
-        _os.chdir(temp_dir)
-        print(f"Working directory changed to {temp_dir}")
-
-    except Exception as e:
-        print(f"An error occurred while changing the working directory: {e}")
-        raise
-
-
-def change_working_dir_to_new_temp_folder():
-    try:
-        folder = _tempfile.mkdtemp()
-        _os.chdir(folder)
-        return folder
-    except Exception as e:
-        print(f"An error occurred while changing the working directory: {e}")
-        raise
-
-
-def change_working_dir_to_userprofile_folder(folder: str):
-    try:
-        if _os.name == 'posix':
-            home_dir = _os.path.join(_os.path.join(_os.path.expanduser('~')), folder)  # os.path.expanduser("~/Desktop")
-        elif _os.name == 'nt':
-            home_dir = _os.path.join(_os.path.join(_os.environ['USERPROFILE']), folder)
-        else:
-            raise OSError(f"System {_os.name} isn't supported by this function.")
-        _os.chdir(home_dir)
-        print(f"Working directory changed to {home_dir}")
-    except Exception as e:
-        print(f"An error occurred while changing the working directory: {e}")
-        raise
-
-
 def inject_current_file_path(func: _Callable):
-    def wrapper(relative_path: str):
+    def _wrapper(relative_path: str):
         frame = _inspect.currentframe().f_back
         module = _inspect.getmodule(frame)
         if module is not None:
@@ -132,13 +43,7 @@ def inject_current_file_path(func: _Callable):
         else:
             file_path = __file__  # Fallback to the current script
         return func(relative_path, file_path)
-    return wrapper
-
-
-@inject_current_file_path
-def absolute_path(relative_path: str, file_path: str) -> str:
-    base_dir = _os.path.dirname(_os.path.abspath(file_path))
-    return _os.path.join(base_dir, relative_path)
+    return _wrapper
 
 
 def remove(paths: _Union[str, _Path, tuple[_Union[str, _Path]], list[_Union[str, _Path]]]):
@@ -295,7 +200,7 @@ def privatize(cls: type) -> type:
     return cls
 
 
-def auto_repr(cls):
+def auto_repr(cls: type):
     """
     Decorator that automatically generates a __repr__ method for a class.
     """
@@ -309,7 +214,7 @@ def auto_repr(cls):
     return cls
 
 
-def auto_repr_with_privates(cls):
+def auto_repr_with_privates(cls: type):
     """
     Decorator that automatically generates a __repr__ method for a class, including all private attributes.
     """
@@ -320,6 +225,27 @@ def auto_repr_with_privates(cls):
 
         cls.__repr__ = __repr__
     return cls
+
+
+def static_class(message: str | type = "This is a static class that can't be instantiated"):
+    """
+    Decorator that makes a class static, like a module, just for storing functions.
+    """
+    cls = None
+    if not isinstance(message, str):
+        cls = message
+        message = "This is a static class that can't be instantiated"
+
+    def _decorator(cls: type):
+        if cls.__init__ is object.__init__:
+            def __init__(self):
+                raise NotImplementedError(message)
+
+            cls.__init__ = __init__
+        return cls
+    if cls is None:
+        return _decorator
+    return _decorator(cls)
 
 
 class Window:
@@ -422,9 +348,183 @@ class Window:
 
 
 class SystemTheme(_Enum):
+    """Used to make system theme information standardized"""
     LIGHT = "Light"
     DARK = "Dark"
     UNKNOWN = "Unknown"
+
+
+@static_class
+class BasicSystem:
+    """Encapsulates system information that isn't tied to a specific os."""
+    @staticmethod
+    def get_home_directory():
+        """Get the user's home directory."""
+        return _os.path.expanduser("~")
+
+    @staticmethod
+    def get_running_processes():
+        """Get a list of running processes."""
+        processes = []
+        for proc in _psutil.process_iter(['pid', 'name']):
+            try:
+                processes.append(proc.as_dict(attrs=['pid', 'name']))
+            except _psutil.NoSuchProcess:
+                pass
+        return processes
+
+    @classmethod
+    def get_disk_usage(cls, path: _Optional[str] = None):
+        """Get disk usage statistics."""
+        if path is None:
+            path = cls.get_home_directory()
+        usage = _shutil.disk_usage(path)
+        return {
+            'total': _bytes_to_human_readable_binary_iec(usage.total),
+            'used': _bytes_to_human_readable_binary_iec(usage.used),
+            'free': _bytes_to_human_readable_binary_iec(usage.free)
+        }
+
+    @staticmethod
+    def get_memory_info():
+        """Get memory usage statistics."""
+        memory = _psutil.virtual_memory()
+        return {
+            'total': _bytes_to_human_readable_binary_iec(memory.total),
+            'available': _bytes_to_human_readable_binary_iec(memory.available),
+            'percent': f"{memory.percent}%",
+            'used': _bytes_to_human_readable_binary_iec(memory.used),
+            'free': _bytes_to_human_readable_binary_iec(memory.free)
+        }
+
+    @staticmethod
+    def get_network_info():
+        """Get network interface information."""
+        addrs = _psutil.net_if_addrs()
+        stats = _psutil.net_if_stats()
+        network_info = {}
+        for interface, addr_info in addrs.items():
+            network_info[interface] = {
+                'addresses': [{'address': addr.address, 'family': str(addr.family), 'netmask': addr.netmask,
+                               'broadcast': addr.broadcast} for addr in addr_info],
+                'isup': stats[interface].isup
+            }
+        return network_info
+
+    @staticmethod
+    def set_environment_variable(key: str, value: str):
+        """Set an environment variable using os.environ."""
+        _os.environ[key] = value
+
+    @staticmethod
+    def get_environment_variable(key: str):
+        """Get an environment variable using os.environ."""
+        return _os.environ.get(key)
+
+    @staticmethod
+    def get_uptime():
+        """Get system uptime in minutes."""
+        return (_time.time() - _psutil.boot_time()) / 60
+
+    @staticmethod
+    def measure_network_speed():
+        """Measure network speed using speedtest-cli."""
+        st = _speedtest.Speedtest()
+        download_speed = st.download()
+        upload_speed = st.upload()
+        results = st.results.dict()
+        results['download'] = _bits_to_human_readable(download_speed)
+        results['upload'] = _bits_to_human_readable(upload_speed)
+        return results
+
+    @staticmethod
+    def set_working_dir_to_main_script_location():
+        """
+        Set the current working directory to the location of the main script
+        or executable. It considers whether the script is frozen using PyInstaller
+        or is running as a normal Python script.
+        """
+        import __main__
+        try:
+            # Get the directory where the main script (or frozen exe) is located
+            if getattr(_sys, 'frozen', False):
+                # If the script is running as a bundled executable created by PyInstaller
+                main_dir = _os.path.dirname(_sys.executable)
+            else:
+                # If the script is running as a normal Python script
+                if hasattr(__main__, '__file__'):
+                    main_dir = _os.path.dirname(_os.path.abspath(__main__.__file__))
+                else:
+                    main_dir = _os.path.dirname(_os.getcwd())
+                    _warnings.warn(
+                        "Could not set the current working directory to the location of the main script or executable.",
+                        RuntimeWarning,
+                        stacklevel=2
+                        )
+
+            # Change the current working directory to the main script directory
+            _os.chdir(main_dir)
+            print(f"Working directory set to {main_dir}")
+
+        except Exception as e:
+            print(f"An error occurred while changing the working directory: {e}")
+            raise  # Re-raise the error
+
+    @staticmethod
+    def change_working_dir_to_script_location():
+        try:
+            if getattr(_sys, 'frozen', False):
+                # If the script is running as a bundled executable created by PyInstaller
+                script_dir = _os.path.dirname(_sys.executable)
+            else:
+                # Get the path of the caller of this function
+                frame = _inspect.currentframe()
+                caller_frame = frame.f_back
+                caller_file = caller_frame.f_globals["__file__"]
+                script_dir = _os.path.dirname(_os.path.abspath(caller_file))
+
+            # Change the current working directory to the script directory
+            _os.chdir(script_dir)
+            print(f"Working directory changed to {script_dir}")
+        except Exception as e:
+            print(f"An error occurred while changing the working directory: {e}")
+            raise
+
+    @staticmethod
+    def change_working_dir_to_temp_folder():
+        try:
+            temp_dir = _tempfile.gettempdir()
+            _os.chdir(temp_dir)
+            print(f"Working directory changed to {temp_dir}")
+
+        except Exception as e:
+            print(f"An error occurred while changing the working directory: {e}")
+            raise
+
+    @staticmethod
+    def change_working_dir_to_new_temp_folder():
+        try:
+            folder = _tempfile.mkdtemp()
+            _os.chdir(folder)
+            return folder
+        except Exception as e:
+            print(f"An error occurred while changing the working directory: {e}")
+            raise
+
+    @staticmethod
+    def change_working_dir_to_userprofile_folder(folder: str):
+        try:
+            if _os.name == 'posix':
+                home_dir = _os.path.join(_os.path.join(_os.path.expanduser('~')), folder)  # os.path.expanduser("~/Desktop")
+            elif _os.name == 'nt':
+                home_dir = _os.path.join(_os.path.join(_os.environ['USERPROFILE']), folder)
+            else:
+                raise OSError(f"System {_os.name} isn't supported by this function.")
+            _os.chdir(home_dir)
+            print(f"Working directory changed to {home_dir}")
+        except Exception as e:
+            print(f"An error occurred while changing the working directory: {e}")
+            raise
 
 
 class _BaseSystem:
@@ -433,9 +533,8 @@ class _BaseSystem:
         self.os_version = _platform.version()
         self.major_os_version = _platform.release()
         self.cpu_arch = _platform.machine()
-        self.cpu_brand = None
-        self.gpu_info = None
-        self.theme = None
+        self.cpu_brand = self.get_cpu_brand()
+        self.gpu_info = self.get_gpu_info()
 
     def get_cpu_brand(self):
         """Get the brand and model of the CPU."""
@@ -446,14 +545,25 @@ class _BaseSystem:
             return _subprocess.check_output(command, shell=True).decode().split(': ')[1].strip()
         return "Unknown"
 
+    def get_gpu_info(self):
+        """Gets the gpu info in a standardized format"""
+        raise NotImplementedError("get_gpu_info is not implemented for this os")
+
+    def get_system_theme(self) -> SystemTheme:
+        """Gets tne current OS theme"""
+        raise NotImplementedError("get_system_theme is not implemented for this os")
+
     def schedule_event(self, name: str, script_path: str, event_time: _Literal["startup", "login"]):
-        raise NotImplementedError("schedule_event is not implemented")
+        """Schedules an event"""
+        raise NotImplementedError("schedule_event is not implemented for this os")
 
     def send_notification(self, title: str, message: str,
                           input_fields: tuple[tuple[str, str, str], ...] = (("input_arg", "Input", "Hint"),),
                           selections: tuple[tuple[str, str, list[tuple], int], ...] = (("selection_arg", "Sel Display Name", ["selection_name", "Selection Display Name"], 0),),
                           buttons: tuple[tuple[str, _Callable], ...] = (("Accept", lambda: None), ("Cancel", lambda: None),),
                           click_callback: _Callable = lambda: None):
+        """Sends a complex notification using a cross platform notification or a system specific one if it supports all
+        the features"""
         from aplustools.io.gui.balloon_tip import NotificationManager  # To prevent a circular import
 
         icon_path = Window.get_app_icon_path()
@@ -469,14 +579,8 @@ class _BaseSystem:
         )
 
     def send_native_notification(self, title: str, message: str):
-        raise NotImplementedError("send_native_notification is not implemented")
-
-    def get_gpu_info(self):
-        raise NotImplementedError("get_gpu_info is not implemented")
-
-    def get_home_directory(self):
-        """Get the user's home directory."""
-        return _os.path.expanduser("~")
+        """Sends a simple notification using the os's native notification system."""
+        raise NotImplementedError("send_native_notification is not implemented for this os")
 
     def get_appdata_directory(self, app_dir: str, scope: _Literal["user", "global"] = "global"):
         """
@@ -485,95 +589,27 @@ class _BaseSystem:
         :param app_dir: The name of the folder you want your app to have.
         :param scope: If the data should be accessible to all users or just the current one.
         """
-        raise NotImplementedError("get_appdata_directory is not implemented")
-
-    def get_running_processes(self):
-        """Get a list of running processes."""
-        processes = []
-        for proc in _psutil.process_iter(['pid', 'name']):
-            try:
-                processes.append(proc.as_dict(attrs=['pid', 'name']))
-            except _psutil.NoSuchProcess:
-                pass
-        return processes
-
-    def get_disk_usage(self, path: _Optional[str] = None):
-        """Get disk usage statistics."""
-        if path is None:
-            path = self.get_home_directory()
-        usage = _shutil.disk_usage(path)
-        return {
-            'total': _bytes_to_human_readable_binary_iec(usage.total),
-            'used': _bytes_to_human_readable_binary_iec(usage.used),
-            'free': _bytes_to_human_readable_binary_iec(usage.free)
-        }
-
-    def get_memory_info(self):
-        """Get memory usage statistics."""
-        memory = _psutil.virtual_memory()
-        return {
-            'total': _bytes_to_human_readable_binary_iec(memory.total),
-            'available': _bytes_to_human_readable_binary_iec(memory.available),
-            'percent': f"{memory.percent}%",
-            'used': _bytes_to_human_readable_binary_iec(memory.used),
-            'free': _bytes_to_human_readable_binary_iec(memory.free)
-        }
-
-    def get_network_info(self):
-        """Get network interface information."""
-        addrs = _psutil.net_if_addrs()
-        stats = _psutil.net_if_stats()
-        network_info = {}
-        for interface, addr_info in addrs.items():
-            network_info[interface] = {
-                'addresses': [{'address': addr.address, 'family': str(addr.family), 'netmask': addr.netmask,
-                               'broadcast': addr.broadcast} for addr in addr_info],
-                'isup': stats[interface].isup
-            }
-        return network_info
-
-    def set_environment_variable(self, key: str, value: str):
-        """Set an environment variable."""
-        _os.environ[key] = value
-
-    def get_environment_variable(self, key: str):
-        """Get an environment variable."""
-        return _os.environ.get(key)
+        raise NotImplementedError("get_appdata_directory is not implemented for this os")
 
     def get_battery_status(self):
         """Get battery status information."""
-        raise NotImplementedError("get_battery_status is not implemented")
+        raise NotImplementedError("get_battery_status is not implemented for this os")
 
     def get_clipboard(self):
         """Get the content of the clipboard."""
-        raise NotImplementedError("get_clipboard is not implemented")
+        raise NotImplementedError("get_clipboard is not implemented for this os")
 
     def set_clipboard(self, data: str):
         """Set the content of the clipboard."""
-        raise NotImplementedError("set_clipboard is not implemented")
+        raise NotImplementedError("set_clipboard is not implemented for this os")
 
-    def get_uptime(self):
-        """Get system uptime in minutes."""
-        return (_time.time() - _psutil.boot_time()) / 60
-
-    def measure_network_speed(self):
-        """Measure network speed using speedtest-cli."""
-        st = _speedtest.Speedtest()
-        download_speed = st.download()
-        upload_speed = st.upload()
-        results = st.results.dict()
-        results['download'] = _bits_to_human_readable(download_speed)
-        results['upload'] = _bits_to_human_readable(upload_speed)
-        return results
+    def get_system_language(self) -> tuple[str | str | None, str | str | None]:
+        """Gets the current system language and encoding"""
+        language_code, encoding = _locale.getdefaultlocale()
+        return language_code, encoding
 
 
 class _WindowsSystem(_BaseSystem):
-    def __init__(self):
-        super().__init__()
-        self.cpu_brand = self.get_cpu_brand()
-        self.gpu_info = self.get_gpu_info()
-        self.theme = self.get_system_theme()
-
     def get_cpu_brand(self):
         return _platform.processor()
 
@@ -696,8 +732,8 @@ class _WindowsSystem(_BaseSystem):
 
     def get_appdata_directory(self, app_dir: str, scope: _Literal["user", "global"] = "global"):
         if scope == "user":
-            return os.path.join(os.environ.get("APPDATA"), app_dir)  # App data for the current user
-        return os.path.join(os.environ.get("PROGRAMDATA"), app_dir)  # App data for all users
+            return _os.path.join(_os.environ.get("APPDATA"), app_dir)  # App data for the current user
+        return _os.path.join(_os.environ.get("PROGRAMDATA"), app_dir)  # App data for all users
 
     def get_clipboard(self):
         win32clipboard.OpenClipboard()
@@ -714,14 +750,17 @@ class _WindowsSystem(_BaseSystem):
         win32clipboard.SetClipboardText(data)
         win32clipboard.CloseClipboard()
 
+    def get_system_language(self) -> tuple[str | str | None, str | str | None]:
+        language_code, encoding = super().get_system_language()
+        if language_code:
+            return language_code, encoding
+        else:
+            GetUserDefaultUILanguage = _ctypes.windll.kernel32.GetUserDefaultUILanguage
+            lang_id = GetUserDefaultUILanguage()
+            return _locale.windows_locale[lang_id], None
+
 
 class _DarwinSystem(_BaseSystem):
-    def __init__(self):
-        super().__init__()
-        self.cpu_brand = self.get_cpu_brand()
-        self.gpu_info = self.get_gpu_info()
-        self.theme = self.get_system_theme()
-
     def get_cpu_brand(self):
         command = "sysctl -n machdep.cpu.brand_string"
         return _subprocess.check_output(command.split(" ")).decode().strip()
@@ -776,8 +815,8 @@ class _DarwinSystem(_BaseSystem):
 
     def get_appdata_directory(self, app_dir: str, scope: _Literal["user", "global"] = "global"):
         if scope == "user":
-            return os.path.join(os.path.expanduser("~"), "Library", "Application Support", app_dir)  # App data for the current user
-        return os.path.join("/Library/Application Support", app_dir)  # App data for all users
+            return _os.path.join(_os.path.expanduser("~"), "Library", "Application Support", app_dir)  # App data for the current user
+        return _os.path.join("/Library/Application Support", app_dir)  # App data for all users
 
     def get_clipboard(self):
         command = "pbpaste"
@@ -787,14 +826,16 @@ class _DarwinSystem(_BaseSystem):
         command = f'echo "{data}" | pbcopy'
         _subprocess.run(command.split(" "), check=True)
 
+    def get_system_language(self) -> tuple[str | str | None, str | str | None]:
+        language_code, encoding = super().get_system_language()
+        if language_code:
+            return language_code, encoding
+        else:
+            result = _subprocess.run(['defaults', 'read', '-g', 'AppleLocale'], stdout=_subprocess.PIPE)
+            return result.stdout.decode().strip(), None
+
 
 class _LinuxSystem(_BaseSystem):
-    def __init__(self):
-        super().__init__()
-        self.cpu_brand = self.get_cpu_brand()
-        self.gpu_info = self.get_gpu_info()
-        self.theme = self.get_system_theme()
-
     def get_cpu_brand(self):
         try:
             with open('/proc/cpuinfo') as f:
@@ -882,8 +923,8 @@ class _LinuxSystem(_BaseSystem):
 
     def get_appdata_directory(self, app_dir: str, scope: _Literal["user", "global"] = "global"):
         if scope == "user":
-            return os.path.join(os.path.expanduser("~"), ".local", "share", app_dir)  # App data for the current user
-        return os.path.join("/usr/local/share", app_dir)  # App data for all users
+            return _os.path.join(_os.path.expanduser("~"), ".local", "share", app_dir)  # App data for the current user
+        return _os.path.join("/usr/local/share", app_dir)  # App data for all users
 
     def get_clipboard(self):
         command = "xclip -selection clipboard -o"
@@ -896,8 +937,16 @@ class _LinuxSystem(_BaseSystem):
         command = f'echo "{data}" | xclip -selection clipboard'
         _subprocess.run(command.split(" "))
 
+    def get_system_language(self) -> tuple[str | str | None, str | str | None]:
+        language_code, encoding = super().get_system_language()
+        if language_code:
+            return language_code, encoding
+        else:
+            return _os.environ.get('LANG', 'en_US'), None
+
 
 def get_system() -> _Union[_WindowsSystem, _DarwinSystem, _LinuxSystem, _BaseSystem]:
+    """Gets the right system for your os."""
     os_name = _platform.system()
     if os_name == 'Windows':
         return _WindowsSystem()
@@ -908,15 +957,6 @@ def get_system() -> _Union[_WindowsSystem, _DarwinSystem, _LinuxSystem, _BaseSys
     else:
         _warnings.warn("Unsupported Operating System, returning _BaseSystem instance.", RuntimeWarning, 2)
         return _BaseSystem()
-
-
-def print_system_info():
-    sys_info = get_system()
-    print(f"Operating System: {sys_info.os}")
-    print(f"OS Version: {sys_info.major_os_version}")
-    print(f"CPU Architecture: {sys_info.cpu_arch}")
-    print(f"CPU Brand: {sys_info.cpu_brand}")
-    print(f"System Theme: {sys_info.theme}")
 
 
 def safe_os_command_execution(command: str) -> str:
@@ -935,32 +975,3 @@ def safe_exec(command: str) -> str:
         return result.stdout
     except _subprocess.CalledProcessError as e:
         return f"An error occurred: {e}"
-
-
-def local_test():
-    try:
-        print_system_info()
-        system = get_system()
-        # _BaseSystem.send_notification(None, "Zenra", "Hello, how are you?", (), (), ())
-        system.send_native_notification("Zenra,", "NOWAYY")
-        print("System RAM", system.get_memory_info())
-        print(f"Pc has been turned on since {int(system.get_uptime(),)} minutes")
-        # print("Network test", System.system().measure_network_speed())
-
-        @strict()
-        class MyCls:
-            _attr = ""
-        var = MyCls()._attr
-    except AttributeError:
-        print("Test completed successfully.")
-        return True
-    except Exception as e:
-        print(f"Exception occurred {e}.")
-        return False
-    print("Strict decorator not working.")
-    return False
-
-
-if __name__ == "__main__":
-    local_test()
-    _time.sleep(100)

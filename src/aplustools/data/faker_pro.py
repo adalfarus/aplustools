@@ -2,7 +2,7 @@ from faker import Faker
 import random
 from typing import Literal as _Literal
 
-from aplustools.security.passwords import SpecificPasswordGenerator, big_reducer_3
+from ..security.passwords import SpecificPasswordGenerator, big_reducer_3
 
 # Extra functionalities derived from the faker module
 # This is also a wrapper for the default faker.Faker

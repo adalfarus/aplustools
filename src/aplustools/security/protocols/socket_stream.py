@@ -1,5 +1,5 @@
-from aplustools.security.crypto import CryptUtils
-from aplustools.utils import PortUtils
+from ..crypto2 import CryptUtils
+from ...utils import PortUtils
 from typing import Optional, Literal
 import socket
 
@@ -9,7 +9,7 @@ class ServerStream:
         self._host = host
         self._port = port or PortUtils.find_available_port()
         self._key_length = key_length
-        private_key_bytes, public_key_bytes = CryptUtils.generate_rsa_key(key_length)
+        private_key_bytes, public_key_bytes = CryptUtils.generate_rsa_key_pair(key_length)
         self.public_key_bytes = public_key_bytes
         self._private_key = CryptUtils.load_private_key(private_key_bytes)
         self._public_key = CryptUtils.load_public_key(public_key_bytes)

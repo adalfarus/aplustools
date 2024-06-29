@@ -5,7 +5,7 @@ import random
 import math
 import os
 
-from aplustools.data import minmax
+from ..data import minmax
 
 
 class _SupportsLenAndGetItem(Protocol):

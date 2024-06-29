@@ -1,7 +1,7 @@
 from PySide6.QtWidgets import QApplication, QWidget, QVBoxLayout, QPushButton, QLabel, QLineEdit, QTextEdit
-from aplustools.io.environment import get_temp
+from tempfile import gettempdir
 from PySide6.QtCore import Signal, QThread
-from aplustools.data import updaters
+from ..data import updaters
 import sys
 import os
 
@@ -21,7 +21,7 @@ class UpdateThread(QThread):
     def run(self):
         try:
             updater = updaters.GithubUpdater(self.author, self.repo_name, "py")
-            tmpdir = os.path.join(get_temp(), f"update_{self.repo_name}")
+            tmpdir = os.path.join(gettempdir(), f"update_{self.repo_name}")
 
             os.makedirs(self.path, exist_ok=True)
             os.makedirs(tmpdir, exist_ok=True)

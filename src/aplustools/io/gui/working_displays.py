@@ -3,8 +3,8 @@ from PySide6.QtWidgets import (QGraphicsView, QGraphicsScene, QGraphicsPixmapIte
 from PySide6.QtGui import QPixmap, QPainter, QWheelEvent, QKeyEvent, QPen, QFont, QTextOption
 from PySide6.QtCore import Qt, QTimer, QPropertyAnimation, QEasingCurve, Slot, QRectF, QByteArray, QObject, Signal
 from typing import Literal, List, Optional
-from aplustools.web.utils import url_validator
-from aplustools.io.gui import QNoSpacingHBoxLayout, QNoSpacingVBoxLayout
+from ...web.utils import url_validator
+from . import QNoSpacingHBoxLayout, QNoSpacingVBoxLayout
 import httpx
 from concurrent.futures import ThreadPoolExecutor
 import time

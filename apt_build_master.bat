@@ -1,5 +1,6 @@
 @echo off
 setlocal enabledelayedexpansion
+py -m pip install --upgrade pip
 
 REM Command line arguments processing
 if not "%~1"=="" (
@@ -97,7 +98,9 @@ REM Function to install the newly built package
 :install_package
 @echo off
 for %%F in (dist\*.whl) do (
-    py -m pip install "%%F"[all] --force-reinstall
+    py -m pip install "%%F" --force-reinstall
+    REM Prevents force reinstall of all dependencies
+    py -m pip install "%%F"[all]
 )
 echo Package installation completed.
 exit /b

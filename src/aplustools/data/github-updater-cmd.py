@@ -1,5 +1,5 @@
-from aplustools.io.environment import get_temp
-from aplustools.data import updaters
+from tempfile import gettempdir
+from ..data import updaters
 from typing import List, Any
 import sys
 import os
@@ -8,7 +8,7 @@ import os
 def main(path, repo_version, author, repo_name, host, port):
     # Initialize the updater
     updater = updaters.GithubUpdater(author, repo_name, "py")
-    tmpdir = os.path.join(get_temp(), f"update_{repo_name}")
+    tmpdir = os.path.join(gettempdir(), f"update_{repo_name}")
 
     os.makedirs(path, exist_ok=True)
     os.makedirs(tmpdir, exist_ok=True)

@@ -1,4 +1,5 @@
 #!/bin/bash
+python3 -m pip install --upgrade pip
 
 # Function to display the menu
 show_menu() {
@@ -99,7 +100,8 @@ clear() {
 # Function to install the newly built package
 install_package() {
     for file in dist/*.whl; do
-        python3 -m pip install "$file"[all] --force-reinstall
+        python3 -m pip install "$file" --force-reinstall
+        python3 -m pip install "$file"[all]  # Prevents force reinstall of all dependencies
     done
     echo "Package installation completed."
 }

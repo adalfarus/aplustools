@@ -1,53 +1,304 @@
-from cryptography.hazmat.primitives.asymmetric import rsa, dsa, ec, padding as asym_padding
-from cryptography.hazmat.primitives import padding as sym_padding
-from cryptography.hazmat.primitives.ciphers import modes
-
-from .keys import _AES_KEY, _RSA_KEYPAIR, _DSA_KEYPAIR, _ECC_KEYPAIR, ECC_TYPE, ECC_CURVE, _KYBER_KEYPAIR
 from typing import Literal, Optional
-
 from aplustools.data import enum_auto
+from .exceptions import NotSupportedError
 
 
 class _AES:  # Advanced Encryption Standard
-    @staticmethod
-    def key(key_size_or_key: Literal[128, 192, 256] | bytes | str) -> _AES_KEY:
-        if isinstance(key_size_or_key, (bytes, str)):
-            key_size = len(key_size_or_key) * 8
-            key = key_size_or_key
-        else:
-            key_size = key_size_or_key
-            key = None
-        return _AES_KEY(key_size, key)
+    _AES_KEY = None
+
+    @classmethod
+    def key(cls, key_size_or_key: Literal[128, 192, 256] | bytes | str) -> _AES_KEY:
+        if cls._AES_KEY is not None:
+            if isinstance(key_size_or_key, (bytes, str)):
+                key_size = len(key_size_or_key) * 8
+                key = key_size_or_key
+            else:
+                key_size = key_size_or_key
+                key = None
+            return cls._AES_KEY(key_size, key)
+        raise NotSupportedError(f"The {cls()} cipher is not supported by this backend")
+
+    def __str__(self):
+        return "AES"
+
+    def __repr__(self):
+        return str(self)
 
 
-class SymCipher:
+class _ChaCha20:  # Advanced Encryption Standard
+    _ChaCha20_KEY = None
+
+    @classmethod
+    def key(cls, key: Optional[bytes | str] = None) -> _ChaCha20_KEY:
+        if cls._ChaCha20_KEY is not None:
+            return cls._ChaCha20_KEY(key)
+        raise NotSupportedError(f"The {cls()} cipher is not supported by this backend")
+
+    def __str__(self):
+        return "ChaCha20"
+
+    def __repr__(self):
+        return str(self)
+
+
+class _TripleDES:  # Advanced Encryption Standard
+    _TripleDES_KEY = None
+
+    @classmethod
+    def key(cls, key: Optional[bytes | str] = None) -> _TripleDES_KEY:
+        if cls._TripleDES_KEY is not None:
+            return cls._TripleDES_KEY(192, key)
+        raise NotSupportedError(f"The {cls()} cipher is not supported by this backend")
+
+    def __str__(self):
+        return "TripleDES"
+
+    def __repr__(self):
+        return str(self)
+
+
+class _Blowfish:  # Advanced Encryption Standard
+    _Blowfish_KEY = None
+
+    @classmethod
+    def key(cls, key_size_or_key: Literal[128, 256] | bytes | str) -> _Blowfish_KEY:
+        if cls._Blowfish_KEY is not None:
+            if isinstance(key_size_or_key, (bytes, str)):
+                key_size = len(key_size_or_key) * 8
+                key = key_size_or_key
+            else:
+                key_size = key_size_or_key
+                key = None
+            return cls._Blowfish_KEY(key_size, key)
+        raise NotSupportedError(f"The {cls()} cipher is not supported by this backend")
+
+    def __str__(self):
+        return "Blowfish"
+
+    def __repr__(self):
+        return str(self)
+
+
+class _CAST5:  # Advanced Encryption Standard
+    _CAST5_KEY = None
+
+    @classmethod
+    def key(cls, key_size_or_key: Literal[40, 128] | bytes | str) -> _CAST5_KEY:
+        if cls._CAST5_KEY is not None:
+            if isinstance(key_size_or_key, (bytes, str)):
+                key_size = len(key_size_or_key) * 8
+                key = key_size_or_key
+            else:
+                key_size = key_size_or_key
+                key = None
+            return cls._CAST5_KEY(key_size, key)
+        raise NotSupportedError(f"The {cls()} cipher is not supported by this backend")
+
+    def __str__(self):
+        return "CAST5"
+
+    def __repr__(self):
+        return str(self)
+
+
+class _ARC4:
+    _ARC4_KEY = None
+
+    @classmethod
+    def key(cls, key: Optional[bytes | str] = None) -> _ARC4_KEY:
+        if cls._ARC4_KEY is not None:
+            return cls._ARC4_KEY(key)
+        raise NotSupportedError(f"The {cls()} cipher is not supported by this backend")
+
+    def __str__(self):
+        return "ARC4"
+
+    def __repr__(self):
+        return str(self)
+
+
+class _Camellia:
+    _Camellia_KEY = None
+
+    @classmethod
+    def key(cls, key_size_or_key: Literal[128, 192, 256] | bytes | str) -> _Camellia_KEY:
+        if cls._Camellia_KEY is not None:
+            if isinstance(key_size_or_key, (bytes, str)):
+                key_size = len(key_size_or_key) * 8
+                key = key_size_or_key
+            else:
+                key_size = key_size_or_key
+                key = None
+            return cls._Camellia_KEY(key_size, key)
+        raise NotSupportedError(f"The {cls()} cipher is not supported by this backend")
+
+    def __str__(self):
+        return "Camellia"
+
+    def __repr__(self):
+        return str(self)
+
+
+class _IDEA:
+    _IDEA_KEY = None
+
+    @classmethod
+    def key(cls, key: Optional[bytes | str] = None) -> _IDEA_KEY:
+        if cls._IDEA_KEY is not None:
+            return cls._IDEA_KEY(key)
+        raise NotSupportedError(f"The {cls()} cipher is not supported by this backend")
+
+    def __str__(self):
+        return "IDEA"
+
+    def __repr__(self):
+        return str(self)
+
+
+class _SEED:
+    _SEED_KEY = None
+
+    @classmethod
+    def key(cls, key: Optional[bytes | str] = None) -> _SEED_KEY:
+        if cls._SEED_KEY is not None:
+            return cls._SEED_KEY(key)
+        raise NotSupportedError(f"The {cls()} cipher is not supported by this backend")
+
+    def __str__(self):
+        return "SEED"
+
+    def __repr__(self):
+        return str(self)
+
+
+class _SM4:
+    _SM4_KEY = None
+
+    @classmethod
+    def key(cls, key: Optional[bytes | str] = None) -> _SM4_KEY:
+        if cls._SM4_KEY is not None:
+            return cls._SM4_KEY(key)
+        raise NotSupportedError(f"The {cls()} cipher is not supported by this backend")
+
+    def __str__(self):
+        return "SM4"
+
+    def __repr__(self):
+        return str(self)
+
+
+class _DES:
+    _DES_KEY = None
+
+    @classmethod
+    def key(cls, key: Optional[bytes | str] = None) -> _DES_KEY:
+        if cls._DES_KEY is not None:
+            if isinstance(key, (bytes, str)):
+                if len(key) * 8 != 64:
+                    raise ValueError("DES key size must be 64 bits")
+            return cls._DES_KEY(key)
+        raise NotSupportedError(f"The {cls()} cipher is not supported by this backend")
+
+    def __str__(self):
+        return "DES"
+
+    def __repr__(self):
+        return str(self)
+
+
+class _ARC2:
+    _ARC2_KEY = None
+
+    @classmethod
+    def key(cls, key_size_or_key: Literal[40, 64, 128] | bytes | str) -> _ARC2_KEY:
+        if cls._ARC2_KEY is not None:
+            if isinstance(key_size_or_key, (bytes, str)):
+                key_size = len(key_size_or_key) * 8
+                key = key_size_or_key
+                if key_size not in (40, 64, 128):
+                    raise ValueError("ARC2 key size must be one of 40, 64, or 128 bits")
+            else:
+                key_size = key_size_or_key
+                key = None
+            return cls._ARC2_KEY(key_size, key)
+        raise NotSupportedError(f"The {cls()} cipher is not supported by this backend")
+
+    def __str__(self):
+        return "ARC2"
+
+    def __repr__(self):
+        return str(self)
+
+
+class _Salsa20:
+    _Salsa20_KEY = None
+
+    @classmethod
+    def key(cls, key_size_or_key: Literal[128, 256] | bytes | str) -> _Salsa20_KEY:
+        if cls._Salsa20_KEY is not None:
+            if isinstance(key_size_or_key, (bytes, str)):
+                key_size = len(key_size_or_key) * 8
+                key = key_size_or_key
+                if key_size not in (128, 256):
+                    raise ValueError("Salsa20 key size must be one of 128 or 256 bits")
+            else:
+                key_size = key_size_or_key
+                key = None
+            return cls._Salsa20_KEY(key_size, key)
+        raise NotSupportedError(f"The {cls()} cipher is not supported by this backend")
+
+    def __str__(self):
+        return "Salsa20"
+
+    def __repr__(self):
+        return str(self)
+
+
+class _SymCipher:
     """Symmetric Encryption"""
     AES = _AES
-    ChaCha20 = enum_auto()
-    TripleDES = enum_auto()
-    Blowfish = enum_auto()
-    CASTS = enum_auto()
+    ChaCha20 = _ChaCha20
+    TripleDES = _TripleDES
+    Blowfish = _Blowfish
+    CAST5 = _CAST5
+    ARC4 = _ARC4
+    Camellia = _Camellia
+    IDEA = _IDEA
+    SEED = _SEED
+    SM4 = _SM4
+    DES = _DES
+    ARC2 = _ARC2
+    Salsa20 = _Salsa20
 
 
-class SymOperation:
+class _SymOperation:
     """Different modes of operation"""
-    ECB = modes.ECB  # Electronic Codebook
-    CBC = modes.CBC  # Cipher Block Chaining
-    CFB = modes.CFB  # Cipher Feedback
-    OFB = modes.OFB  # Output Feedback
-    CTR = modes.CTR  # Counter
-    GCM = modes.GCM  # Galois/Counter Mode
+    ECB = enum_auto()  # Electronic Codebook
+    CBC = enum_auto()  # Cipher Block Chaining
+    CFB = enum_auto()  # Cipher Feedback
+    OFB = enum_auto()  # Output Feedback
+    CTR = enum_auto()  # Counter
+    GCM = enum_auto()  # Galois/Counter Mode
 
 
-class SymPadding:
+class _SymPadding:
     """Padding Schemes"""
-    PKCS7 = sym_padding.PKCS7
-    ANSIX923 = sym_padding.ANSIX923
+    PKCS7 = enum_auto()
+    ANSIX923 = enum_auto()
+
+
+class Sym:
+    """Provides all enums for symmetric cryptography operations"""
+    Cipher = _SymCipher
+    Operation = _SymOperation
+    Padding = _SymPadding
 
 
 class _RSA:  # Rivest-Shamir-Adleman
-    @staticmethod
-    def key(key_size_or_private_key: Literal[512, 768, 1024, 2048, 3072, 4096, 8192, 15360] | bytes | str | rsa.RSAPrivateKey) -> _RSA_KEYPAIR:
+    _RSA_KEYPAIR = None
+
+    @classmethod
+    def key(cls, key_size_or_private_key: Literal[512, 768, 1024, 2048, 3072, 4096, 8192, 15360] | bytes | str) -> _RSA_KEYPAIR:
         """
         Generate an RSA key pair object.
 
@@ -60,21 +311,23 @@ class _RSA:  # Rivest-Shamir-Adleman
         if isinstance(key_size_or_private_key, (str, bytes)):
             key_size = len(key_size_or_private_key) * 8
             private_key = key_size_or_private_key
-        elif isinstance(key_size_or_private_key, rsa.RSAPrivateKey):
-            key_size = key_size_or_private_key.key_size
-            private_key = key_size_or_private_key
         elif isinstance(key_size_or_private_key, int) and key_size_or_private_key in {512, 768, 1024, 2048, 3072, 4096, 8192, 15360}:
             key_size = key_size_or_private_key
             private_key = None
         else:
             raise ValueError("Invalid key size or private key provided.")
 
-        return _RSA_KEYPAIR(key_size, private_key)
+        return cls._RSA_KEYPAIR(key_size, private_key)
+
+    def __str__(self):
+        return "RSA"
 
 
 class _DSA:
-    @staticmethod
-    def key(key_size_or_private_key: Literal[1024, 2048, 3072] | bytes | str | dsa.DSAPrivateKey) -> _DSA_KEYPAIR:
+    _DSA_KEYPAIR = None
+
+    @classmethod
+    def key(cls, key_size_or_private_key: Literal[1024, 2048, 3072] | bytes | str) -> _DSA_KEYPAIR:
         """
         Generate an DSA key pair object.
 
@@ -87,9 +340,6 @@ class _DSA:
         if isinstance(key_size_or_private_key, (str, bytes)):
             key_size = len(key_size_or_private_key) * 8
             private_key = key_size_or_private_key
-        elif isinstance(key_size_or_private_key, dsa.DSAPrivateKey):
-            key_size = key_size_or_private_key.key_size
-            private_key = key_size_or_private_key
         elif isinstance(key_size_or_private_key, int) and key_size_or_private_key in {512, 768, 1024, 2048, 3072, 4096,
                                                                                       8192, 15360}:
             key_size = key_size_or_private_key
@@ -97,46 +347,106 @@ class _DSA:
         else:
             raise ValueError("Invalid key size or private key provided.")
 
-        return _DSA_KEYPAIR(key_size, private_key)
+        return cls._DSA_KEYPAIR(key_size, private_key)
+
+    def __str__(self):
+        return "DSA"
+
+
+class _ECCCurve:
+    """Elliptic key functions"""
+    SECP192R1 = enum_auto()
+    SECP224R1 = enum_auto()
+    SECP256K1 = enum_auto()
+    SECP256R1 = enum_auto()  # Default
+    SECP384R1 = enum_auto()
+    SECP521R1 = enum_auto()
+    SECT163K1 = enum_auto()
+    SECT163R2 = enum_auto()
+    SECT233K1 = enum_auto()
+    SECT233R1 = enum_auto()
+    SECT283K1 = enum_auto()
+    SECT283R1 = enum_auto()
+    SECT409K1 = enum_auto()
+    SECT409R1 = enum_auto()
+    SECT571K1 = enum_auto()
+    SECT571R1 = enum_auto()
+
+
+class _ECCType:
+    """How the signing is done, heavily affects the performance, key generation and what you can do with it"""
+    ECDSA = enum_auto()  # Elliptic Curve Digital Signature Algorithm
+    Ed25519 = enum_auto()
+    Ed448 = enum_auto()
+    X25519 = enum_auto()
+    X448 = enum_auto()
 
 
 class _ECC:
     """Elliptic Curve Cryptography"""
-    @staticmethod
-    def ecdsa_key(ecc_curve: ec.SECP192R1 | ec.SECP224R1 | ec.SECP256K1 | ec.SECP256R1 | ec.SECP384R1 | ec.SECP521R1 |
-                             ec.SECT163K1 | ec.SECT163R2 | ec.SECT233K1 | ec.SECT233R1 | ec.SECT283K1 | ec.SECT283R1 |
-                             ec.SECT409K1 | ec.SECT409R1 | ec.SECT571K1 | ec.SECT571R1 = ECC_CURVE.SECP256R1,
+    _ECC_KEYPAIR = None
+    ECCCurve = _ECCCurve
+    ECCType = _ECCType
+
+    @classmethod
+    def ecdsa_key(cls, ecc_curve: _ECCCurve = _ECCCurve.SECP256R1,
                   private_key: Optional[bytes | str] = None):
         """Elliptic Curve Digital Signature Algorithm"""
-        return _ECC_KEYPAIR(ECC_TYPE.ECDSA, ecc_curve, private_key)
+        return cls._ECC_KEYPAIR(_ECCType.ECDSA, ecc_curve, private_key)
 
-    @staticmethod
-    def optimized_key(ecc_type: ECC_TYPE.Ed25519 | ECC_TYPE.Ed448 | ECC_TYPE.X25519 | ECC_TYPE.X448 = ECC_TYPE.Ed25519,
+    @classmethod
+    def optimized_key(cls, ecc_type: _ECCType.Ed25519 | _ECCType.Ed448 | _ECCType.X25519 | _ECCType.X448 = _ECCType.Ed25519,
                       private_key: Optional[bytes | str] = None):
-        if ecc_type == ECC_TYPE.ECDSA:
+        if ecc_type == _ECCType.ECDSA:
             raise ValueError("Please use ECC.ecdsa_key to generate ECDSA keys")
-        return _ECC_KEYPAIR(ecc_type, None, private_key)
+        return cls._ECC_KEYPAIR(ecc_type, None, private_key)
+
+    def __str__(self):
+        return "ECC"
 
 
 class _KYBER:
-    @staticmethod
-    def key():
-        return _KYBER_KEYPAIR()
+    _KYBER_KEYPAIR = None
+
+    @classmethod
+    def key(cls):
+        return cls._KYBER_KEYPAIR()
+
+    def __str__(self):
+        return "KYBER"
 
 
-class ASymCipher:
+class _DILITHIUM:
+    _DILITHIUM_KEYPAIR = None
+
+    @classmethod
+    def key(cls):
+        return cls._DILITHIUM_KEYPAIR()
+
+    def __str__(self):
+        return "DILITHIUM"
+
+
+class _ASymCipher:
     """Asymmetric Encryption"""
     RSA = _RSA
     DSA = _DSA  # Digital Signature Algorithm
     ECC = _ECC
     KYBER = _KYBER
+    DILITHIUM = _DILITHIUM
 
 
-class ASymPadding:
+class _ASymPadding:
     """Asymmetric Encryption Padding Schemes"""
-    PKCShash1v15 = asym_padding.PKCS1v15  # Older padding scheme for RSA
-    OAEP = asym_padding.OAEP  # Optimal Asymmetric Encryption Padding
-    PSS = asym_padding.PSS  # Probabilistic Signature Scheme
+    PKCShash1v15 = enum_auto()
+    OAEP = enum_auto()
+    PSS = enum_auto()
+
+
+class ASym:
+    """Provides all enums for asymmetric cryptography operations"""
+    Cipher = _ASymCipher
+    Padding = _ASymPadding
 
 
 class KeyDerivation:
@@ -146,15 +456,18 @@ class KeyDerivation:
     HKDF = enum_auto()  # HMAC-based Extract-and-Expand Key Derivation Function
     X963 = enum_auto()
     ConcatKDF = enum_auto()
+    PBKDF1 = enum_auto()
+    KMAC128 = enum_auto()
+    KMAC256 = enum_auto()
+    ARGON2 = enum_auto()
+    KKDF = enum_auto()
+    BCRYPT = enum_auto()
 
 
-class AuthCodes:
+class MessageAuthenticationCode:
     """Authentication Codes"""
-    HMAC = 0  # Hash-based Message Authentication Code
-    CMAC = 1  # Cipher-based Message Authentication Cod
-
-
-# UNDER CONSTRUCTION
-class DiffieHellmanAlgorithm:
-    ECDH = enum_auto()  # Elliptic Curve Diffie-Hellman
-    DH = enum_auto()
+    HMAC = enum_auto()  # Hash-based Message Authentication Code
+    CMAC = enum_auto()  # Cipher-based Message Authentication Cod
+    KMAC128 = enum_auto()
+    KMAC256 = enum_auto()
+    Poly1305 = enum_auto()

@@ -1,12 +1,12 @@
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-from aplustools.security.protocols.control_code_protocol import _ControlCode
+from .control_code_protocol import _ControlCode
 from cryptography.hazmat.primitives.asymmetric import rsa, padding
 from cryptography.hazmat.primitives import padding as sym_padding
 from cryptography.hazmat.primitives import serialization, hashes
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
-from aplustools.security.protocols import ControlCodeProtocol
+from . import ControlCodeProtocol
 from cryptography.hazmat.backends import default_backend
-from aplustools.io.environment import strict
+from ...io.environment import strict
 from typing import List, Union
 import datetime
 import struct

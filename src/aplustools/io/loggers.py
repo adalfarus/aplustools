@@ -1,4 +1,5 @@
 # Todo: create a lock to prevent the terminal from writing concurrently and messing up the order & general rewrite
+# Todo: replace internal logging system with pythons logging module for greater compatibility
 import sys
 import time
 from typing import TextIO, Union, Optional, Type, Callable, Tuple, Any

@@ -3,8 +3,8 @@ import os.path
 from PySide6.QtWidgets import (QApplication, QSystemTrayIcon, QMenu, QWidget, QVBoxLayout, QLabel, QPushButton,
                                QLineEdit, QComboBox, QSizePolicy, QScrollArea)
 from PySide6.QtCore import QTimer, QEasingCurve, QPropertyAnimation, Qt, QRect, QCoreApplication
-from aplustools.io.gui import QNoSpacingHBoxLayout, UserActivityTracker
-from aplustools.io.environment import System, Theme
+from ...io.gui import QNoSpacingHBoxLayout, QUserActivityTracker
+from ...io.environment import get_system, SystemTheme
 from PySide6.QtGui import QIcon, QGuiApplication
 import threading
 import time
@@ -98,6 +98,38 @@ class BTButton(BtItem):
     pass
 
 
+class BTSound(BtItem):
+    pass
+
+
+class BTToolTip(BtItem):
+    pass
+
+
+class BTLink(BtItem):
+    pass
+
+class BTWebLink(BtItem):
+    pass
+
+class BtFileLink(BtItem):
+    pass
+
+
+class BtPallet(BtItem):
+    pass  # Color pallet for dark & light mode
+
+
+class BtPriority:
+    LOW = 0
+    MEDIUM = 1
+    HIGH = 2
+
+
+# System get language
+# How to get accessibility features?
+
+
 from PySide6.QtCore import Signal
 from typing import Optional
 class BtProgressBar(BtItem):
@@ -128,14 +160,14 @@ class BalloonTip(QWidget):
         self.mouse_press_pos = None
         self.mouse_move_threshold = 3  # pixels
 
-        self.theme = System.system().theme
+        self.theme = get_system().theme
 
         # Background widget
         self.background = QWidget(self)
         self.background.setObjectName("background")
         self.background.setStyleSheet(f"""
             QWidget#background {{
-                background-color: {"white" if self.theme == Theme.LIGHT else "#222222"};
+                background-color: {"white" if self.theme == SystemTheme.LIGHT else "#222222"};
                 border: 2px solid black;
                 border-radius: 10px;
             }}
@@ -161,7 +193,7 @@ class BalloonTip(QWidget):
             title_layout.addStretch()
         self.title_label = QLabel(title)
         self.title_label.setStyleSheet(
-            f"font-weight: bold; font-size: 16px; color: {"black" if self.theme == Theme.LIGHT else "white"};")
+            f"font-weight: bold; font-size: 16px; color: {"black" if self.theme == SystemTheme.LIGHT else "white"};")
         title_layout.addWidget(self.title_label)
         title_layout.addStretch(2)
 
@@ -171,7 +203,7 @@ class BalloonTip(QWidget):
         self.close_button.setStyleSheet(f"""
             QPushButton {{
                 background-color: transparent; 
-                color: {"black" if self.theme == Theme.LIGHT else "white"}; 
+                color: {"black" if self.theme == SystemTheme.LIGHT else "white"}; 
                 border: none; 
                 font-size: 16px;
             }}
@@ -194,7 +226,7 @@ class BalloonTip(QWidget):
             message_layout.addStretch()
         self.message_label = QLabel(message)
         self.message_label.setStyleSheet(
-            f"font-size: 14px; color: {"black" if self.theme == Theme.LIGHT else "white"};")
+            f"font-size: 14px; color: {"black" if self.theme == SystemTheme.LIGHT else "white"};")
         message_layout.addWidget(self.message_label)
         message_layout.addStretch(2)
         self.layout.addLayout(message_layout)
@@ -203,7 +235,7 @@ class BalloonTip(QWidget):
         self.selections = {}
 
         # Initialize user activity tracker and attach it to relevant widgets
-        self.activity_tracker = UserActivityTracker(self)
+        self.activity_tracker = QUserActivityTracker(self)
         self.activity_tracker.attach(self)
 
         # Connect activity signal to a slot
@@ -236,7 +268,7 @@ class BalloonTip(QWidget):
                     input_field = QLineEdit(self.background)
                     input_field.setPlaceholderText(input_hint)
                     input_field.setStyleSheet(
-                        f"font-size: 14px; color: {"black" if self.theme == Theme.LIGHT else "white"}; height: 30px;")
+                        f"font-size: 14px; color: {"black" if self.theme == SystemTheme.LIGHT else "white"}; height: 30px;")
                     self.scroll_layout.addWidget(QLabel(input_display, self.scroll_content))
                     self.scroll_layout.addWidget(input_field)
                     self.inputs[input_name] = input_field
@@ -249,7 +281,7 @@ class BalloonTip(QWidget):
                     selection_box.setStyleSheet(f"""
                         QComboBox {{
                             font-size: 14px;
-                            color: {"black" if self.theme == Theme.LIGHT else "white"};
+                            color: {"black" if self.theme == SystemTheme.LIGHT else "white"};
                             height: 30px;
                         }}
                         QComboBox QAbstractItemView {{
@@ -274,13 +306,13 @@ class BalloonTip(QWidget):
                     button.setStyleSheet(f"""
                         QPushButton {{
                             font-size: 14px;
-                            color: {"black" if self.theme == Theme.LIGHT else "white"};
+                            color: {"black" if self.theme == SystemTheme.LIGHT else "white"};
                             height: 40px;
-                            background-color: {'#3c3c3c' if self.theme == Theme.DARK else '#f0f0f0'};
+                            background-color: {'#3c3c3c' if self.theme == SystemTheme.DARK else '#f0f0f0'};
                             border-radius: 5px;
                         }}
                         QPushButton:hover {{
-                            background-color: {'#333333' if self.theme == Theme.DARK else '#e0e0e0'};
+                            background-color: {'#333333' if self.theme == SystemTheme.DARK else '#e0e0e0'};
                         }}""")
                     self.scroll_layout.addWidget(button)
                     button.clicked.connect(self.create_button_callback(callback))
@@ -356,7 +388,7 @@ class BalloonTip(QWidget):
 
         self.background.setStyleSheet(f"""
             QWidget#background {{
-                background-color: {"#1c1c1c" if self.theme == Theme.DARK else "#d3d3d3"};
+                background-color: {"#1c1c1c" if self.theme == SystemTheme.DARK else "#d3d3d3"};
                 border: 2px solid black;
                 border-radius: 10px;
             }}
@@ -391,7 +423,7 @@ class BalloonTip(QWidget):
 
         self.background.setStyleSheet(f"""
             QWidget#background {{
-                background-color: {"white" if self.theme == Theme.LIGHT else "#222222"};
+                background-color: {"white" if self.theme == SystemTheme.LIGHT else "#222222"};
                 border: 2px solid black;
                 border-radius: 10px;
             }}

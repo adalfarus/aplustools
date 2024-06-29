@@ -42,7 +42,7 @@ security = _LazyModuleLoader('aplustools.security')
 __all__ = ['io', 'data', 'utils', 'web', 'package', 'security']
 
 # Dynamically add exports from _direct_functions
-from aplustools._direct_functions import *
+from ._direct_functions import *
 
 # Update __all__ with the public members from _direct_functions and clean up globals
 for name in list(globals()):

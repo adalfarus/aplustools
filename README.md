@@ -6,10 +6,6 @@
 
 aplustools is a simple, user-friendly Python library for performing amazing tasks. It simplifies complex processes, allowing you to achieve more with less code. Developed with a focus on ease of use and efficiency, aplustools is the go-to solution for Python developers looking to enhance their projects.
 
-All the newest updates can be found on the aplustools/dev branch, currently I'll be taking a break. This is my fault because you quickly get tired of something if you never see any real progress and I tried to do too much with aplustools 1.5.
-
-I'll be looking into C a bit more and maybe pick this back up in 1 week?
-
 ## Compatibility
 🟩 (Works perfectly); 🟨 (Untested); 🟧 (Some Issues); 🟥 (Unusable)
 
@@ -200,7 +196,7 @@ pause
 (Correct shortform for aplustools is apt, so please use ```import aplustools as apt``` for consistency)
 
 ### apt cli
-Can currently run tests with ```apt tests run``` and show a basic help using ```apt help```.
+Can currently run tests with ```aps tests run tests/ -minimal``` and show a basic help using ```aps help```.
 
 For more detailed usage and examples, check out our [documentation](https://github.com/adalfarus/aplustools/wiki).
 
@@ -209,7 +205,7 @@ For more detailed usage and examples, check out our [documentation](https://gith
 
 For modules I use 'lowercase', classes are 'CapitalizedWords' and functions and methods are 'lower_case_with_underscores'.
 
-Dependencies (except for the standard libraries) are: 
+Dependencies (except for the standard libraries) are [outdated]: 
 - [`none`]
   - data.database
   - io.loggers

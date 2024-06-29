@@ -1,4 +1,4 @@
-from aplustools.web.utils import get_user_agent
+from .utils import get_user_agent
 import random
 import requests
 from typing import List, Union, Optional, Generator, Dict, Tuple
