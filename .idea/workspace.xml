@@ -5,65 +5,7 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="33f35887-23a8-4cf4-b5f3-ff4f648cb401" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/src/aplustools/_cli.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/aplustools/io/gui/data/arrow-down.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/aplustools/io/gui/themes" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/aplustools/security/crypto/_crypto/hashes.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/aplustools/security/crypto/_crypto/keys.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/aplustools/security/crypto/_pycrypto/hashes.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/aplustools/security/crypto/_pycrypto/keys.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/aplustools/security/crypto/exceptions.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/aplustools/security/crypto/hashes.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/aplustools/tests/test_security.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/apt_build_master.bat" beforeDir="false" afterPath="$PROJECT_DIR$/apt_build_master.bat" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/apt_build_master.sh" beforeDir="false" afterPath="$PROJECT_DIR$/apt_build_master.sh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/pyproject.toml" beforeDir="false" afterPath="$PROJECT_DIR$/pyproject.toml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/aplustools/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/aplustools/__init__.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/aplustools/_direct_functions.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/aplustools/_direct_functions.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/aplustools/cli.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/aplustools/data/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/aplustools/data/__init__.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/aplustools/data/_direct_functions.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/aplustools/data/_direct_functions.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/aplustools/data/compressor_n.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/aplustools/data/compressor_n.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/aplustools/data/database_new.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/aplustools/data/database_new.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/aplustools/data/faker_pro.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/aplustools/data/faker_pro.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/aplustools/data/github-updater-cmd.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/aplustools/data/github-updater-cmd.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/aplustools/data/github-updater-gui.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/aplustools/data/github-updater-gui.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/aplustools/data/imagetools.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/aplustools/data/imagetools.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/aplustools/data/small_test.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/aplustools/data/small_test.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/aplustools/data/test.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/aplustools/data/test.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/aplustools/data/unien.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/aplustools/data/unien.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/aplustools/io/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/aplustools/io/__init__.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/aplustools/io/environment.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/aplustools/io/environment.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/aplustools/io/gui/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/aplustools/io/gui/__init__.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/aplustools/io/gui/_direct_functions.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/aplustools/io/gui/_direct_functions.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/aplustools/io/gui/balloon_tip.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/aplustools/io/gui/balloon_tip.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/aplustools/io/gui/button_displays.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/aplustools/io/gui/button_displays.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/aplustools/io/gui/displays.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/aplustools/io/gui/displays.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/aplustools/io/gui/working_displays.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/aplustools/io/gui/working_displays.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/aplustools/io/loggers.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/aplustools/io/loggers.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/aplustools/package/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/aplustools/package/__init__.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/aplustools/security/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/aplustools/security/__init__.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/aplustools/security/crypto.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/aplustools/security/crypto2.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/aplustools/security/crypto/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/aplustools/security/crypto/__init__.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/aplustools/security/crypto/_crypto/_hash.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/__init__.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/aplustools/security/crypto/_pycrypto/_hash.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/aplustools/io/gui/tesla.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/aplustools/security/crypto/algorithms.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/aplustools/security/crypto/algorithms.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/aplustools/security/crypto/hash.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/aplustools/security/crypto/keys.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/aplustools/security/crypto/keys.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/aplustools/security/database.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/aplustools/security/database.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/aplustools/security/passwords.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/aplustools/security/passwords.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/aplustools/security/protocols/control_code_protocol.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/aplustools/security/protocols/control_code_protocol.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/aplustools/security/protocols/message_handler.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/aplustools/security/protocols/message_handler.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/aplustools/security/protocols/secure_message.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/aplustools/security/protocols/secure_message.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/aplustools/security/protocols/secure_socket.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/aplustools/security/protocols/secure_socket.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/aplustools/security/protocols/socket_stream.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/aplustools/security/protocols/socket_stream.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/aplustools/security/rand.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/aplustools/security/rand.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/aplustools/tests/test_io.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/aplustools/tests/test_io.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/aplustools/utils/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/aplustools/utils/__init__.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/aplustools/web/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/aplustools/web/__init__.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/aplustools/web/search.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/aplustools/web/search.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -107,63 +49,63 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "ASKED_ADD_EXTERNAL_FILES": "true",
-    "Batch.Build & Install package.executor": "Run",
-    "Batch.apt_build_master.executor": "Run",
-    "Batch.install3.executor": "Run",
-    "Batch.run_tests.executor": "Run",
-    "Batch.test.executor": "Run",
-    "Python tests.Python tests in 0.py.executor": "Run",
-    "Python tests.Python tests in passwords.py.executor": "Run",
-    "Python tests.Python tests in temptest.py.executor": "Run",
-    "Python tests.Python tests in test.py.executor": "Run",
-    "Python.0.executor": "Run",
-    "Python.Run io.executor": "Run",
-    "Python.Run security.executor": "Run",
-    "Python.Unicode.executor": "Run",
-    "Python.UnicodeV2.executor": "Run",
-    "Python.__init__.executor": "Run",
-    "Python._direct_functions.executor": "Run",
-    "Python.algorithms.executor": "Run",
-    "Python.balloon_tip.executor": "Run",
-    "Python.cli.executor": "Run",
-    "Python.control_code_protocol.executor": "Run",
-    "Python.crypto.executor": "Run",
-    "Python.database.executor": "Run",
-    "Python.dd.executor": "Run",
-    "Python.encrypt.executor": "Run",
-    "Python.environment.executor": "Run",
-    "Python.faker_pro.executor": "Run",
-    "Python.genpass.executor": "Run",
-    "Python.hash.executor": "Run",
-    "Python.hashes.executor": "Run",
-    "Python.keys.executor": "Run",
-    "Python.passwords.executor": "Run",
-    "Python.rand.executor": "Run",
-    "Python.reducer_test.executor": "Run",
-    "Python.search.executor": "Run",
-    "Python.secure_message.executor": "Run",
-    "Python.secure_socket.executor": "Run",
-    "Python.small_test.executor": "Run",
-    "Python.teast.executor": "Run",
-    "Python.temptest.executor": "Run",
-    "Python.tes.executor": "Run",
-    "Python.tesla.executor": "Run",
-    "Python.tesss.executor": "Run",
-    "Python.test.executor": "Run",
-    "Python.timid.executor": "Run",
-    "Python.unsafe.executor": "Run",
-    "RunOnceActivity.OpenProjectViewOnStart": "true",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "Shell Script.Build & Install package.executor": "Run",
-    "deletionFromPopupRequiresConfirmation": "false",
-    "git-widget-placeholder": "dev",
-    "last_opened_file_path": "C:/Windows/System32/wsl.exe",
-    "settings.editor.selected.configurable": "preferences.pluginManager"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;ASKED_ADD_EXTERNAL_FILES&quot;: &quot;true&quot;,
+    &quot;Batch.Build &amp; Install package.executor&quot;: &quot;Run&quot;,
+    &quot;Batch.apt_build_master.executor&quot;: &quot;Run&quot;,
+    &quot;Batch.install3.executor&quot;: &quot;Run&quot;,
+    &quot;Batch.run_tests.executor&quot;: &quot;Run&quot;,
+    &quot;Batch.test.executor&quot;: &quot;Run&quot;,
+    &quot;Python tests.Python tests in 0.py.executor&quot;: &quot;Run&quot;,
+    &quot;Python tests.Python tests in passwords.py.executor&quot;: &quot;Run&quot;,
+    &quot;Python tests.Python tests in temptest.py.executor&quot;: &quot;Run&quot;,
+    &quot;Python tests.Python tests in test.py.executor&quot;: &quot;Run&quot;,
+    &quot;Python.0.executor&quot;: &quot;Run&quot;,
+    &quot;Python.Run io.executor&quot;: &quot;Run&quot;,
+    &quot;Python.Run security.executor&quot;: &quot;Run&quot;,
+    &quot;Python.Unicode.executor&quot;: &quot;Run&quot;,
+    &quot;Python.UnicodeV2.executor&quot;: &quot;Run&quot;,
+    &quot;Python.__init__.executor&quot;: &quot;Run&quot;,
+    &quot;Python._direct_functions.executor&quot;: &quot;Run&quot;,
+    &quot;Python.algorithms.executor&quot;: &quot;Run&quot;,
+    &quot;Python.balloon_tip.executor&quot;: &quot;Run&quot;,
+    &quot;Python.cli.executor&quot;: &quot;Run&quot;,
+    &quot;Python.control_code_protocol.executor&quot;: &quot;Run&quot;,
+    &quot;Python.crypto.executor&quot;: &quot;Run&quot;,
+    &quot;Python.database.executor&quot;: &quot;Run&quot;,
+    &quot;Python.dd.executor&quot;: &quot;Run&quot;,
+    &quot;Python.encrypt.executor&quot;: &quot;Run&quot;,
+    &quot;Python.environment.executor&quot;: &quot;Run&quot;,
+    &quot;Python.faker_pro.executor&quot;: &quot;Run&quot;,
+    &quot;Python.genpass.executor&quot;: &quot;Run&quot;,
+    &quot;Python.hash.executor&quot;: &quot;Run&quot;,
+    &quot;Python.hashes.executor&quot;: &quot;Run&quot;,
+    &quot;Python.keys.executor&quot;: &quot;Run&quot;,
+    &quot;Python.passwords.executor&quot;: &quot;Run&quot;,
+    &quot;Python.rand.executor&quot;: &quot;Run&quot;,
+    &quot;Python.reducer_test.executor&quot;: &quot;Run&quot;,
+    &quot;Python.search.executor&quot;: &quot;Run&quot;,
+    &quot;Python.secure_message.executor&quot;: &quot;Run&quot;,
+    &quot;Python.secure_socket.executor&quot;: &quot;Run&quot;,
+    &quot;Python.small_test.executor&quot;: &quot;Run&quot;,
+    &quot;Python.teast.executor&quot;: &quot;Run&quot;,
+    &quot;Python.temptest.executor&quot;: &quot;Run&quot;,
+    &quot;Python.tes.executor&quot;: &quot;Run&quot;,
+    &quot;Python.tesla.executor&quot;: &quot;Run&quot;,
+    &quot;Python.tesss.executor&quot;: &quot;Run&quot;,
+    &quot;Python.test.executor&quot;: &quot;Run&quot;,
+    &quot;Python.timid.executor&quot;: &quot;Run&quot;,
+    &quot;Python.unsafe.executor&quot;: &quot;Run&quot;,
+    &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;Shell Script.Build &amp; Install package.executor&quot;: &quot;Run&quot;,
+    &quot;deletionFromPopupRequiresConfirmation&quot;: &quot;false&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;dev&quot;,
+    &quot;last_opened_file_path&quot;: &quot;C:/Windows/System32/wsl.exe&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;preferences.pluginManager&quot;
   }
-}]]></component>
+}</component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
       <recent name="C:\Users\till_\OneDrive\Documents\GitHub\aplustools\src\aplustools\io\gui\data" />
@@ -254,6 +196,28 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
+    <configuration default="true" type="PythonConfigurationType" factoryName="Python">
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="" />
+      <option name="IS_MODULE_SDK" value="false" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <module name="" />
+      <option name="SCRIPT_NAME" value="" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
     <configuration name="Build &amp; Install package" type="ShConfigurationType">
       <option name="SCRIPT_TEXT" value="" />
       <option name="INDEPENDENT_SCRIPT_PATH" value="true" />
@@ -267,6 +231,51 @@
       <option name="EXECUTE_IN_TERMINAL" value="true" />
       <option name="EXECUTE_SCRIPT_FILE" value="true" />
       <envs />
+      <method v="2" />
+    </configuration>
+    <configuration default="true" type="Tox" factoryName="Tox">
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="" />
+      <option name="IS_MODULE_SDK" value="false" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <method v="2" />
+    </configuration>
+    <configuration default="true" type="docs" factoryName="Docutils task">
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="" />
+      <option name="IS_MODULE_SDK" value="false" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <module name="" />
+      <option name="docutils_input_file" value="" />
+      <option name="docutils_output_file" value="" />
+      <option name="docutils_params" value="" />
+      <option name="docutils_task" value="" />
+      <option name="docutils_open_in_browser" value="false" />
+      <method v="2" />
+    </configuration>
+    <configuration default="true" type="docs" factoryName="Sphinx task">
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="" />
+      <option name="IS_MODULE_SDK" value="false" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <module name="" />
+      <option name="docutils_input_file" value="" />
+      <option name="docutils_output_file" value="" />
+      <option name="docutils_params" value="" />
+      <option name="docutils_task" value="" />
+      <option name="docutils_open_in_browser" value="false" />
       <method v="2" />
     </configuration>
     <list>
