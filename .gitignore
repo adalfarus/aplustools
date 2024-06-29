@@ -1,6 +1,6 @@
 # Editor folders
-.vs/
-.idea/
+# .vs/
+# .idea/
 
 # test_data folder
 test_data/

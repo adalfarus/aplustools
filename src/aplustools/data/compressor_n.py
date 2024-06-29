@@ -6,8 +6,8 @@ import zstandard as zstd
 import py7zr
 import io
 from typing import Union, Tuple, List, Optional
-from aplustools.security.crypto import CryptUtils
-from aplustools.data import encode_int, decode_int
+from ..security.crypto2 import CryptUtils
+from ..data import encode_int, decode_int
 
 
 class EmptyChunkProcessor:
@@ -106,7 +106,7 @@ class DESChunkEncryptor(EmptyChunkProcessor):
 
 class RSAChunkEncryptor(EmptyChunkProcessor):
     def __init__(self, private_key_bytes: bytes = None):
-        self.key = CryptUtils.load_private_key(private_key_bytes if private_key_bytes is not None else CryptUtils.generate_rsa_key(1024)[0])
+        self.key = CryptUtils.load_private_key(private_key_bytes if private_key_bytes is not None else CryptUtils.generate_rsa_key_pair(1024)[0])
         self._public_key = self.key.public_key()
 
     def process(self, data_chunk: bytes) -> bytes:

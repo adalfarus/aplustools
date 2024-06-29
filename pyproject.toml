@@ -14,7 +14,8 @@ packages = [
   "aplustools.io.gui",
   "aplustools.security",
   "aplustools.security.protocols",
-  "aplustools.security.dicts"
+  "aplustools.security.dicts",
+  "aplustools.security.crypto"
 ]
 include-package-data = true
 package-dir = {"" = "src"}
@@ -129,4 +130,4 @@ Documentation = "https://github.com/adalfarus/aplustools/wiki"
 #addopts = "your pytest options"
 
 [project.scripts]
-aps = "aplustools.cli:aps_cli"
+aps = "aplustools._cli:_cli"

@@ -1,6 +1,6 @@
 # data __init__
 
-from aplustools.package import LazyModuleLoader as _LazyModuleLoader
+from ..package import LazyModuleLoader as _LazyModuleLoader
 
 # Lazy loading modules
 database = _LazyModuleLoader('aplustools.data.database')
@@ -15,7 +15,7 @@ faker_pro = _LazyModuleLoader('aplustools.data.faker_pro')
 __all__ = ['database', 'updaters', 'imagetools', 'advanced_imagetools', 'compressor', 'unien', 'faker_pro']
 
 # Dynamically add exports from _direct_functions
-from aplustools.data._direct_functions import *
+from ._direct_functions import *
 
 # Update __all__ with the public members from _direct_functions and clean up globals
 for name in list(globals()):

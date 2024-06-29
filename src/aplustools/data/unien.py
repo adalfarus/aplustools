@@ -27,8 +27,8 @@
 # ^^ ^ ^
 # Size & in-relation & end of a bundle
 
-from aplustools.data import (encode_possible_negative_int, encode_positive_int, nice_bits, bits, nice_number,
-                             decode_possible_negative_int, set_bits, decode_positive_int, bit_length)
+from ..data import (encode_possible_negative_int, encode_positive_int, nice_bits, bits, nice_number,
+                    decode_possible_negative_int, set_bits, decode_positive_int, bit_length)
 import math
 
 

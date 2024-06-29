@@ -619,3 +619,326 @@ class QDocumentViewer(QBaseDocumentViewerControls):
                         background: none;
                     }}
                 """)
+
+
+class StdTheme:  # Light then dark
+    DEFAULT_MODERN_LIGHT = (("#ffffff", "#f0f0f0", "#e0e0e0", "#d6d6d6", "#c0c0c0"),
+                     ("#7f7f7f", ""))
+    DEFAULT_MODERN_DARK = ("", "")
+    CHERRY_BLOSSOM = ("", "")
+    MIDNIGHT = ("", "")
+
+
+std_stylesheet = None
+
+
+class StdStylesheet:
+    _default_modern_base_stylesheet = """
+    QWidget {{
+        color: {opposite_color};
+        background-color: {general_background_color};
+    }}
+    QWidget:disabled {{
+        color: {disabled_color};
+        border: none;
+        background-color: {disabled_background_color};
+    }}
+    QComboBox {{
+        border-radius: 5px;
+        padding: 5px;
+        background-color: {background_color};
+        selection-background-color: {selection_background_color};
+        selection-color: {opposite_color};
+    }}
+    QComboBox::drop-down {{
+        border: none;
+        background: transparent;
+    }}
+    QComboBox::down-arrow {{
+        image: url(data/arrow-down.png);
+    }}
+    QComboBox QAbstractItemView {{
+        background-color: {background_color};
+        border: 1px solid {general_background_color};
+        border-radius: 5px;
+        margin-top: -5px;
+    }}
+    QCheckBox, QRadioButton {{
+        background-color: {background_color};
+        border-radius: 5px;           
+    }}
+    QLabel {{
+        border-radius: 5px;
+        padding: 5px;
+        background-color: {background_color};
+    }}
+    QPushButton, QToolButton {{
+        border: 2px solid {color};
+        border-radius: 5px;
+        padding: 5px;
+        background-color: {background_color};
+    }}
+    QPushButton:hover, QToolButton:hover {{
+        border: 1px solid {background_color};
+        background-color: {selection_background_color};
+    }}
+    QListWidget {{
+        border-radius: 10px;
+        background-color: {general_background_color};
+    }}
+    QScrollBar:vertical {{
+        border: none;
+        background: {selection_background_color};
+        width: 15px;
+        border-radius: 7px;
+    }}
+    QScrollBar::handle:vertical {{
+        background: {disabled_background_color};
+        min-height: 20px;
+        border-radius: 7px;
+    }}
+    QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
+        border: none;
+        background: none;
+    }}
+    QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {{
+        background: none;
+    }}
+    QScrollBar:horizontal {{
+        border: none;
+        background: {selection_background_color};
+        height: 15px;
+        border-radius: 7px;
+    }}
+    QScrollBar::handle:horizontal {{
+        background: {disabled_background_color};
+        min-width: 20px;
+        border-radius: 7px;
+    }}
+    QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {{
+        border: none;
+        background: none;
+    }}
+    QScrollBar::add-page:horizontal, QScrollBar::sub-page:horizontal {{
+        background: none;
+    }}
+    QScrollBar::corner {{
+        background: {background_color};
+        border: none;
+    }}
+    QTextEdit, QListWidget {{
+        border-radius: 8px;
+        background-color: {background_color};
+    }}
+    """
+    _default_base_stylesheet = """
+QPushButton {{
+    font-size: 14px;
+    color: {color};
+    height: 40px;
+    background-color: {general_background_color};
+    border-radius: 5px;
+}}
+QPushButton:hover {{
+    background-color: {selection_background_color};
+}}
+QComboBox {{
+    font-size: 14px;
+    color: {color};
+    height: 30px;
+}}
+QComboBox QAbstractItemView {{
+    border: 1px solid {border_color};
+    background-color: {general_background_color};
+    border-radius: 5px;
+    margin-top: -5px;
+}}
+QLineEdit {{
+    font-size: 14px;
+    color: {color};
+    height: 30px;
+}}
+QLabel {{
+    font-size: 14px;
+    color: {color};
+}}
+QWidget#background {{
+    background-color: {background_color};
+    border: 2px solid {border_color};
+    border-radius: 10px;
+}}
+"""
+
+    def __init__(self, light_light_color: str,
+                 dark_light_color: str,
+                 light_dark_color: str,
+                 dark_dark_color: str):
+        self._light_light_color = light_light_color
+        self._dark_light_color = dark_light_color
+        self._light_dark_color = light_dark_color
+        self._dark_dark_color = dark_dark_color
+
+        self._current_style_sheet = self._default_base_stylesheet.format(
+            color="#ffffff",
+            background_color="#fbfbfb",
+            selection_background_color="#f2f2f2",
+            border_color="#808080",
+            general_background_color="#f3f3f3",
+            disabled_color="#7f7f7f",
+            disabled_background_color="#e0e0e0",
+            opposite_color="#000000"
+        )
+        self._current_style_sheet = self._default_base_stylesheet.format(
+            color="#000000",
+            background_color="#fbfbfb",
+            selection_background_color="#f2f2f2",
+            border_color="#808080",
+            general_background_color="#f3f3f3",
+            disabled_color="#7f7f7f",
+            disabled_background_color="#e0e0e0",
+            opposite_color="#ffffff"
+        )
+
+        self.current_os_theme = "light"
+
+    @classmethod
+    def get_std(cls) -> "StdStylesheet":
+        global std_stylesheet
+        if std_stylesheet is None:
+            std_stylesheet = cls.from_theme(StdTheme.DEFAULT_LIGHT, StdTheme.DEFAULT_DARK)
+        return std_stylesheet
+
+    @classmethod
+    def from_theme(cls, light_theme: StdTheme, dark_theme: StdTheme):
+        pass
+
+    def change_light_theme(self, new_light_theme: StdTheme):
+        pass
+
+    def change_dark_theme(self, new_dark_theme: StdTheme):
+        pass
+
+    def __str__(self):
+        return self._current_style_sheet
+
+
+from PySide6.QtWidgets import (
+    QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
+    QPushButton, QLabel, QLineEdit, QComboBox, QCheckBox, QRadioButton,
+    QSlider, QTextEdit, QListWidget, QScrollArea, QSpinBox, QProgressBar
+)
+from PySide6.QtCore import Qt
+
+
+class StyleSheetTester(QMainWindow):
+    def __init__(self):
+        super().__init__()
+
+        self.setWindowTitle("PySide6 Stylesheet Tester")
+        self.setGeometry(100, 100, 800, 600)
+
+        main_widget = QWidget()
+        main_layout = QVBoxLayout(main_widget)
+
+        # Create a horizontal layout for enabled widgets
+        enabled_layout = QHBoxLayout()
+        enabled_layout.addWidget(QLabel("Enabled Widgets:"))
+        enabled_layout.addWidget(self.create_widgets(enabled=True))
+
+        # Create a horizontal layout for disabled widgets
+        disabled_layout = QHBoxLayout()
+        disabled_layout.addWidget(QLabel("Disabled Widgets:"))
+        disabled_layout.addWidget(self.create_widgets(enabled=False))
+
+        main_layout.addLayout(enabled_layout)
+        main_layout.addLayout(disabled_layout)
+
+        self.setCentralWidget(main_widget)
+
+    def create_widgets(self, enabled=True):
+        widget = QWidget()
+        layout = QVBoxLayout(widget)
+
+        # QPushButton
+        button = QPushButton("QPushButton")
+        button.setEnabled(enabled)
+        layout.addWidget(button)
+
+        # QLabel
+        label = QLabel("QLabel")
+        label.setEnabled(enabled)
+        layout.addWidget(label)
+
+        # QLineEdit
+        line_edit = QLineEdit("QLineEdit")
+        line_edit.setEnabled(enabled)
+        layout.addWidget(line_edit)
+
+        # QComboBox
+        combo_box = QComboBox()
+        combo_box.addItems(["Item 1", "Item 2", "Item 3", "Item 4", "Item 5", "Item 6"])
+        combo_box.setEnabled(enabled)
+        layout.addWidget(combo_box)
+
+        # QCheckBox
+        check_box = QCheckBox("QCheckBox")
+        check_box.setEnabled(enabled)
+        layout.addWidget(check_box)
+
+        # QRadioButton
+        radio_button = QRadioButton("QRadioButton")
+        radio_button.setEnabled(enabled)
+        layout.addWidget(radio_button)
+
+        # QSlider
+        slider = QSlider(Qt.Horizontal)
+        slider.setEnabled(enabled)
+        layout.addWidget(slider)
+
+        # QTextEdit
+        text_edit = QTextEdit("QTextEdit")
+        text_edit.setEnabled(enabled)
+        layout.addWidget(text_edit)
+
+        # QListWidget
+        list_widget = QListWidget()
+        list_widget.addItems(["Item 1", "Item 2", "Item 3", "Item 4", "Item 5", "Item 6"])
+        list_widget.setEnabled(enabled)
+        layout.addWidget(list_widget)
+
+        # QScrollArea
+        scroll_area = QScrollArea()
+        scroll_content = QLabel("QScrollArea Content")
+        scroll_content.setFixedSize(300, 300)
+        scroll_area.setWidget(scroll_content)
+        scroll_area.setEnabled(enabled)
+        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
+        layout.addWidget(scroll_area)
+
+        # QSpinBox
+        spin_box = QSpinBox()
+        spin_box.setEnabled(enabled)
+        layout.addWidget(spin_box)
+
+        # QProgressBar
+        progress_bar = QProgressBar()
+        progress_bar.setValue(50)
+        progress_bar.setEnabled(enabled)
+        layout.addWidget(progress_bar)
+
+        return widget
+
+
+if __name__ == "__main__":
+    app = QApplication([])
+
+    # Set the stylesheet here for testing
+    ss = StdStylesheet("2", "", "", "")
+    stylesheet = str(ss)
+    app.setStyleSheet(stylesheet)
+
+    window = StyleSheetTester()
+    window.show()
+
+    app.exec()

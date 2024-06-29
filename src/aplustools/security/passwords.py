@@ -1,19 +1,15 @@
-import os.path
-
 from cryptography.hazmat.primitives.ciphers import Cipher as _Cipher, algorithms as _algorithms, modes as _modes
 from cryptography.hazmat.backends import default_backend as _default_backend
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC as _PBKDF2HMAC
 from cryptography.hazmat.primitives import hashes as _hashes
 from cryptography.hazmat.primitives import padding as _padding
-from sympy import arg
 from zxcvbn import zxcvbn as _zxcvbn
 
-from aplustools.security.rand import WeightedRandom as _WeightedRandom
-from aplustools.data import beautify_json as _beautify_json
-from aplustools.io.environment import strict as _strict
+from ..data import beautify_json as _beautify_json, nice_number as _nice_number
+from .rand import WeightedRandom as _WeightedRandom
+from ..io.environment import strict as _strict
 
 from typing import Union as _Union, Literal as _Literal, Optional as _Optional, Callable as _Callable
-from aplustools.data import nice_number as _nice_number
 from importlib.resources import files as _files
 from threading import Timer as _Timer
 import unicodedata as _unicodedata
@@ -1320,7 +1316,7 @@ class PasswordReGenerator:
             with open(file_path, "rb") as f:
                 contents = f.read()
         seed = CryptUtils.pbkdf2(contents, CryptUtils.generate_hash(file_path, "strong").encode(), 32, 1_000_000)
-        return cls(CryptUtils.generate_hash(os.path.basename(file_path), "strong").encode(), seed, False, True)
+        return cls(CryptUtils.generate_hash(_os.path.basename(file_path), "strong").encode(), seed, False, True)
 
     @staticmethod
     def generate_suitable_password() -> bytes:
@@ -1393,7 +1389,7 @@ class PasswordReGenerator:
             backend=_default_backend()
         )
         password = kdf.derive(self._key)
-        return self._format_password(password, length, charset)
+        return self._format_password(password, length, charset.lower())
 
     def _format_password(self, password: bytes, length: int, charset: _Literal["hex", "base64", "alphanumeric", "ascii"]
                          ) -> str:

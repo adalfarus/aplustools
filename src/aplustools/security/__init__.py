@@ -1,6 +1,6 @@
 # security __init__
 
-from aplustools.package._direct_functions import LazyModuleLoader as _LazyModuleLoader
+from ..package._direct_functions import LazyModuleLoader as _LazyModuleLoader
 
 # Lazy loading modules
 protocols = _LazyModuleLoader('aplustools.security.protocols')
@@ -13,7 +13,7 @@ rand = _LazyModuleLoader('aplustools.security.rand')
 __all__ = ['protocols', 'crypto', 'database', 'passwords', 'rand']
 
 # Dynamically add exports from _direct_functions
-from aplustools.security._direct_functions import *
+from ._direct_functions import *
 
 # Update __all__ with the public members from _direct_functions and clean up globals
 for name in list(globals()):

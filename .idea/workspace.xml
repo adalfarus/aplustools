@@ -1,0 +1,312 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="33f35887-23a8-4cf4-b5f3-ff4f648cb401" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/src/aplustools/_cli.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/aplustools/io/gui/data/arrow-down.png" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/aplustools/io/gui/themes" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/aplustools/security/crypto/_crypto/hashes.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/aplustools/security/crypto/_crypto/keys.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/aplustools/security/crypto/_pycrypto/hashes.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/aplustools/security/crypto/_pycrypto/keys.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/aplustools/security/crypto/exceptions.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/aplustools/security/crypto/hashes.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/aplustools/tests/test_security.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/apt_build_master.bat" beforeDir="false" afterPath="$PROJECT_DIR$/apt_build_master.bat" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/apt_build_master.sh" beforeDir="false" afterPath="$PROJECT_DIR$/apt_build_master.sh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/pyproject.toml" beforeDir="false" afterPath="$PROJECT_DIR$/pyproject.toml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/aplustools/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/aplustools/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/aplustools/_direct_functions.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/aplustools/_direct_functions.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/aplustools/cli.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/aplustools/data/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/aplustools/data/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/aplustools/data/_direct_functions.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/aplustools/data/_direct_functions.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/aplustools/data/compressor_n.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/aplustools/data/compressor_n.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/aplustools/data/database_new.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/aplustools/data/database_new.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/aplustools/data/faker_pro.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/aplustools/data/faker_pro.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/aplustools/data/github-updater-cmd.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/aplustools/data/github-updater-cmd.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/aplustools/data/github-updater-gui.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/aplustools/data/github-updater-gui.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/aplustools/data/imagetools.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/aplustools/data/imagetools.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/aplustools/data/small_test.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/aplustools/data/small_test.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/aplustools/data/test.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/aplustools/data/test.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/aplustools/data/unien.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/aplustools/data/unien.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/aplustools/io/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/aplustools/io/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/aplustools/io/environment.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/aplustools/io/environment.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/aplustools/io/gui/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/aplustools/io/gui/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/aplustools/io/gui/_direct_functions.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/aplustools/io/gui/_direct_functions.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/aplustools/io/gui/balloon_tip.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/aplustools/io/gui/balloon_tip.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/aplustools/io/gui/button_displays.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/aplustools/io/gui/button_displays.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/aplustools/io/gui/displays.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/aplustools/io/gui/displays.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/aplustools/io/gui/working_displays.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/aplustools/io/gui/working_displays.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/aplustools/io/loggers.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/aplustools/io/loggers.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/aplustools/package/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/aplustools/package/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/aplustools/security/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/aplustools/security/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/aplustools/security/crypto.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/aplustools/security/crypto2.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/aplustools/security/crypto/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/aplustools/security/crypto/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/aplustools/security/crypto/_crypto/_hash.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/aplustools/security/crypto/_pycrypto/_hash.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/aplustools/io/gui/tesla.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/aplustools/security/crypto/algorithms.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/aplustools/security/crypto/algorithms.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/aplustools/security/crypto/hash.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/aplustools/security/crypto/keys.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/aplustools/security/crypto/keys.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/aplustools/security/database.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/aplustools/security/database.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/aplustools/security/passwords.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/aplustools/security/passwords.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/aplustools/security/protocols/control_code_protocol.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/aplustools/security/protocols/control_code_protocol.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/aplustools/security/protocols/message_handler.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/aplustools/security/protocols/message_handler.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/aplustools/security/protocols/secure_message.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/aplustools/security/protocols/secure_message.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/aplustools/security/protocols/secure_socket.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/aplustools/security/protocols/secure_socket.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/aplustools/security/protocols/socket_stream.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/aplustools/security/protocols/socket_stream.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/aplustools/security/rand.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/aplustools/security/rand.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/aplustools/tests/test_io.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/aplustools/tests/test_io.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/aplustools/utils/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/aplustools/utils/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/aplustools/web/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/aplustools/web/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/aplustools/web/search.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/aplustools/web/search.py" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Python Script" />
+      </list>
+    </option>
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="GitHubPullRequestSearchHistory">{
+  &quot;lastFilter&quot;: {
+    &quot;state&quot;: &quot;OPEN&quot;,
+    &quot;assignee&quot;: &quot;adalfarus&quot;
+  }
+}</component>
+  <component name="GithubPullRequestsUISettings">{
+  &quot;selectedUrlAndAccountId&quot;: {
+    &quot;url&quot;: &quot;https://github.com/adalfarus/aplustools.git&quot;,
+    &quot;accountId&quot;: &quot;d73bf74d-40b5-4dfb-a8cc-18aa25309055&quot;
+  }
+}</component>
+  <component name="MarkdownSettingsMigration">
+    <option name="stateVersion" value="1" />
+  </component>
+  <component name="ProjectColorInfo">{
+  &quot;customColor&quot;: &quot;&quot;,
+  &quot;associatedIndex&quot;: 1
+}</component>
+  <component name="ProjectId" id="2hMxeIEuouIGeL4aOhlOwJwycxo" />
+  <component name="ProjectLevelVcsManager">
+    <ConfirmationsSetting value="2" id="Add" />
+  </component>
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ASKED_ADD_EXTERNAL_FILES": "true",
+    "Batch.Build & Install package.executor": "Run",
+    "Batch.apt_build_master.executor": "Run",
+    "Batch.install3.executor": "Run",
+    "Batch.run_tests.executor": "Run",
+    "Batch.test.executor": "Run",
+    "Python tests.Python tests in 0.py.executor": "Run",
+    "Python tests.Python tests in passwords.py.executor": "Run",
+    "Python tests.Python tests in temptest.py.executor": "Run",
+    "Python tests.Python tests in test.py.executor": "Run",
+    "Python.0.executor": "Run",
+    "Python.Run io.executor": "Run",
+    "Python.Run security.executor": "Run",
+    "Python.Unicode.executor": "Run",
+    "Python.UnicodeV2.executor": "Run",
+    "Python.__init__.executor": "Run",
+    "Python._direct_functions.executor": "Run",
+    "Python.algorithms.executor": "Run",
+    "Python.balloon_tip.executor": "Run",
+    "Python.cli.executor": "Run",
+    "Python.control_code_protocol.executor": "Run",
+    "Python.crypto.executor": "Run",
+    "Python.database.executor": "Run",
+    "Python.dd.executor": "Run",
+    "Python.encrypt.executor": "Run",
+    "Python.environment.executor": "Run",
+    "Python.faker_pro.executor": "Run",
+    "Python.genpass.executor": "Run",
+    "Python.hash.executor": "Run",
+    "Python.hashes.executor": "Run",
+    "Python.keys.executor": "Run",
+    "Python.passwords.executor": "Run",
+    "Python.rand.executor": "Run",
+    "Python.reducer_test.executor": "Run",
+    "Python.search.executor": "Run",
+    "Python.secure_message.executor": "Run",
+    "Python.secure_socket.executor": "Run",
+    "Python.small_test.executor": "Run",
+    "Python.teast.executor": "Run",
+    "Python.temptest.executor": "Run",
+    "Python.tes.executor": "Run",
+    "Python.tesla.executor": "Run",
+    "Python.tesss.executor": "Run",
+    "Python.test.executor": "Run",
+    "Python.timid.executor": "Run",
+    "Python.unsafe.executor": "Run",
+    "RunOnceActivity.OpenProjectViewOnStart": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "Shell Script.Build & Install package.executor": "Run",
+    "deletionFromPopupRequiresConfirmation": "false",
+    "git-widget-placeholder": "dev",
+    "last_opened_file_path": "C:/Windows/System32/wsl.exe",
+    "settings.editor.selected.configurable": "preferences.pluginManager"
+  }
+}]]></component>
+  <component name="RecentsManager">
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="C:\Users\till_\OneDrive\Documents\GitHub\aplustools\src\aplustools\io\gui\data" />
+    </key>
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="C:\Users\till_\OneDrive\Documents\GitHub\aplustools" />
+      <recent name="C:\Users\till_\OneDrive\Documents\GitHub\aplustools\src\aplustools" />
+      <recent name="C:\Users\till_\OneDrive\Documents\GitHub\aplustools\src" />
+      <recent name="C:\Users\till_\OneDrive\Documents\GitHub\aplustools\aplustools\security\dicts" />
+    </key>
+  </component>
+  <component name="RunManager" selected="Batch.Build &amp; Install package">
+    <configuration name="Build &amp; Install package" type="BatchConfigurationType" factoryName="Batch">
+      <module name="aplustools" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="PARENT_ENVS" value="true" />
+      <option name="SCRIPT_NAME" value="./apt_build_master.bat" />
+      <option name="PARAMETERS" value="234" />
+      <method v="2" />
+    </configuration>
+    <configuration name="Run data" type="PythonConfigurationType" factoryName="Python">
+      <module name="aplustools" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="SDK_NAME" value="Python 3.12" />
+      <option name="WORKING_DIRECTORY" value="" />
+      <option name="IS_MODULE_SDK" value="false" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/aplustools/_cli.py" />
+      <option name="PARAMETERS" value="tests run tests/test_data.py" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="Run io" type="PythonConfigurationType" factoryName="Python">
+      <module name="aplustools" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="SDK_NAME" value="Python 3.12" />
+      <option name="WORKING_DIRECTORY" value="" />
+      <option name="IS_MODULE_SDK" value="false" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="C:\Users\till_\OneDrive\Documents\GitHub\aplustools\src\aplustools\_cli.py" />
+      <option name="PARAMETERS" value="tests run tests/test_io.py::TestEnvironment::test_system" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="Run security" type="PythonConfigurationType" factoryName="Python">
+      <module name="aplustools" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="SDK_NAME" value="Python 3.12" />
+      <option name="WORKING_DIRECTORY" value="" />
+      <option name="IS_MODULE_SDK" value="false" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/aplustools/_cli.py" />
+      <option name="PARAMETERS" value="tests run tests/test_security.py -minimal" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="Build &amp; Install package" type="ShConfigurationType">
+      <option name="SCRIPT_TEXT" value="" />
+      <option name="INDEPENDENT_SCRIPT_PATH" value="true" />
+      <option name="SCRIPT_PATH" value="$PROJECT_DIR$/apt_build_master.sh" />
+      <option name="SCRIPT_OPTIONS" value="234" />
+      <option name="INDEPENDENT_SCRIPT_WORKING_DIRECTORY" value="true" />
+      <option name="SCRIPT_WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="INDEPENDENT_INTERPRETER_PATH" value="false" />
+      <option name="INTERPRETER_PATH" value="$PROJECT_DIR$/../../../../../../Windows/System32/wsl.exe" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="EXECUTE_IN_TERMINAL" value="true" />
+      <option name="EXECUTE_SCRIPT_FILE" value="true" />
+      <envs />
+      <method v="2" />
+    </configuration>
+    <list>
+      <item itemvalue="Batch.Build &amp; Install package" />
+      <item itemvalue="Python.Run data" />
+      <item itemvalue="Python.Run security" />
+      <item itemvalue="Python.Run io" />
+      <item itemvalue="Shell Script.Build &amp; Install package" />
+    </list>
+  </component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-python-sdk-48aec45f0201-746f403e7f0c-com.jetbrains.pycharm.community.sharedIndexes.bundled-PC-241.17011.127" />
+      </set>
+    </attachedChunks>
+  </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="33f35887-23a8-4cf4-b5f3-ff4f648cb401" name="Changes" comment="" />
+      <created>1717417842220</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1717417842220</updated>
+    </task>
+    <servers />
+  </component>
+  <component name="VcsManagerConfiguration">
+    <option name="ADD_EXTERNAL_FILES_SILENTLY" value="true" />
+  </component>
+  <component name="XDebuggerManager">
+    <breakpoint-manager>
+      <breakpoints>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/../../../Desktop/curly-sniffle-public/common/common_gui.py</url>
+          <line>310</line>
+          <option name="timeStamp" value="4" />
+        </line-breakpoint>
+      </breakpoints>
+    </breakpoint-manager>
+  </component>
+</project>

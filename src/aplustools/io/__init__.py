@@ -1,6 +1,6 @@
 # io __init__
 
-from aplustools.package import LazyModuleLoader as _LazyModuleLoader
+from ..package import LazyModuleLoader as _LazyModuleLoader
 
 # Lazy loading modules
 environment = _LazyModuleLoader('aplustools.io.environment')
@@ -11,7 +11,7 @@ gui = _LazyModuleLoader('aplustools.io.gui')
 __all__ = ['environment', 'loggers', 'gui']
 
 # Dynamically add exports from _direct_functions
-from aplustools.io._direct_functions import *
+from ._direct_functions import *
 
 # Update __all__ with the public members from _direct_functions and clean up globals
 for name in list(globals()):

@@ -1,7 +1,7 @@
 import os
 import json
 from typing import Union, Tuple, List, Literal, Optional, Any
-from aplustools.security.crypto import CryptUtils
+from ..security.crypto2 import CryptUtils
 import brotli
 
 

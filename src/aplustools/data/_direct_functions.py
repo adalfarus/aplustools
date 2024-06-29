@@ -1,7 +1,7 @@
 from typing import Union as _Union
 import ctypes as _ctypes
 import typing as _typing
-from aplustools.package.argumint import EndPoint as _EndPoint
+from ..package.argumint import EndPoint as _EndPoint
 import json as _json
 import locale as _locale
 _locale.setlocale(_locale.LC_ALL, '')
@@ -405,7 +405,14 @@ def update_dict_if_absent(original_dict, new_data):
 
 
 _global_enum_auto = -1
-_global_enum_auto_reserves = [0, 1, 2, 3]
+_global_enum_auto_reserves = {0, 1, 2, 3,   # For the security settings
+                              4, 5, 6, 7,  # For the hash algos
+                              8, 9, 10, 11,
+                              12, 13, 14, 15,
+                              16, 17, 18, 19,
+                              20, 21, 22, 23,
+                              24, 25, 26, 27,
+                              28, 29, 30, 31}
 
 
 def enum_auto():
@@ -419,7 +426,11 @@ def enum_auto():
 
 def reserve_enum_auto(*numbers: int):
     global _global_enum_auto_reserves
-    _global_enum_auto_reserves.extend(numbers)
+    for number in numbers:
+        if number not in _global_enum_auto_reserves:
+            _global_enum_auto_reserves.add(number)
+        else:
+            raise ValueError(f"{number} is already reserved.")
 
 
 if __name__ == "__main__":

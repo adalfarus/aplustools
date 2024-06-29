@@ -4,7 +4,6 @@ from cryptography.hazmat.primitives.kdf.concatkdf import ConcatKDFHash
 from cryptography.hazmat.primitives.kdf.x963kdf import X963KDF
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
-from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 from cryptography.hazmat.primitives import serialization, hashes, padding as sym_padding, hmac, cmac
 from cryptography.hazmat.backends import default_backend
 from typing import Literal, Tuple, Optional
@@ -13,9 +12,9 @@ import secrets
 import bcrypt
 import os
 
-from aplustools.security.passwords import SpecificPasswordGenerator, PasswordFilter
-from aplustools.io.environment import safe_remove
-from aplustools.security import Security
+from .passwords import SpecificPasswordGenerator, PasswordFilter
+from ..io.environment import safe_remove
+from . import Security
 
 
 

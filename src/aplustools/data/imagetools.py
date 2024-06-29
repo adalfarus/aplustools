@@ -1,5 +1,5 @@
 from typing import Type, Union, Tuple, Optional, List, Callable
-from aplustools.web.utils import get_user_agent
+from ..web.utils import get_user_agent
 from concurrent.futures import ThreadPoolExecutor
 from urllib.parse import urlparse
 from PIL import Image, ImageFilter

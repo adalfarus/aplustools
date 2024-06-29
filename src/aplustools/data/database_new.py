@@ -3,7 +3,7 @@ import sqlite3
 from typing import Union
 from datetime import datetime
 import os
-from aplustools.package import AttributeObject
+from ..package import AttributeObject
 
 
 class _TableColumn:
