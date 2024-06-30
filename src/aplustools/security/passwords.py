@@ -1289,7 +1289,7 @@ def quick_big_reducer_3(input_str: str, ord_ranges: list[range]):
     return ''.join(chars[ord(b) % len(chars)] for b in input_str)
 
 
-@_strict(mark_class_as_cover=False)  # For security purposes
+@_strict(mark_class_as_cover_or_cls=False)  # For security purposes
 class PasswordReGenerator:
     """Create a secure password from a weak one plus an identifier like a website name. This is made possible by used
     an encrypted seed file in combination with the PBKDF2HMAC algorithm (using 100_000 iterations and sha 256)."""
@@ -1414,7 +1414,7 @@ class PasswordReGenerator:
 # input()
 
 
-@_strict(mark_class_as_cover=False)  # For security purposes
+@_strict(mark_class_as_cover_or_cls=False)  # For security purposes
 class SecurePasswordManager:
     """Securely stores passwords and gives various options to generate them too."""
     def __init__(self, key: bytes, buffer_timeout: int = 30, debug: bool = False):

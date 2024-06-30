@@ -110,8 +110,12 @@ def safe_rename(org_nam: str, new_nam: str) -> bool:
         return False
 
 
-def strict(mark_class_as_cover: bool = True) -> _Callable:
+def strict(mark_class_as_cover_or_cls: bool | type = True) -> _Callable:
     """The strict decorator is used to prevent hackers from easily getting passwords/private keys stored in instances"""
+    mark_class_as_cover = True
+    if isinstance(mark_class_as_cover_or_cls, bool):
+        mark_class_as_cover = mark_class_as_cover_or_cls
+
     def _decorator(cls: type) -> type:
         class_name = cls.__name__ + ("Cover" if mark_class_as_cover else "")
         original_setattr = cls.__setattr__
@@ -171,7 +175,7 @@ def strict(mark_class_as_cover: bool = True) -> _Callable:
 
         CoverClass = type(class_name, (object,), cover_class_attrs)
         return CoverClass
-    return _decorator
+    return _decorator if not isinstance(mark_class_as_cover_or_cls, type) else _decorator(mark_class_as_cover_or_cls)
 
 
 def privatize(cls: type) -> type:

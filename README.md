@@ -62,8 +62,132 @@ if web_page.crawlable:
     print(web_page.page.content)
 ```
 
-### Timer usage
+### Security usage
+````python
+from aplustools.security.crypto.algorithms import Sym, ASym, MessageAuthenticationCode, KeyDerivation, HashAlgorithm
+from aplustools.security.crypto import AdvancedCryptography, DigitalSigner, DataEncryptor, PasswordManager
+from aplustools.security.crypto.backends import Backend
+from aplustools.security import Security
 
+ac = AdvancedCryptography(Backend.pycryptodomex)  # This backend is not yet fully supported
+
+h = ac.hash(b"Hello World", HashAlgorithm.ARGON2, force_text_ids=True)
+print(f"The hash is {h} and it is {'verified' if ac.hash_verify(b'Hello World', h, forced_text_ids=True) else 'unverified'}")
+
+dp = ac.key_derivation(b"MySuperStrongPassword", 24, b"\x00\x01\x91\xfa", KeyDerivation.Scrypt, Security.STRONG)
+print(f"Your derived password is {dp}")
+
+aes_128 = Sym.Cipher.AES.key(128)
+cipher_128 = ac.encrypt(b"ToEncrypt", aes_128, Sym.Padding.PKCS7, Sym.Operation.GCM)
+print(aes_128, cipher_128, ac.decrypt(cipher_128, aes_128, Sym.Padding.PKCS7, Sym.Operation.GCM))
+
+code = ac.generate_auth_code(MessageAuthenticationCode.HMAC, aes_128, b"MyData", Security.STRONG)
+print(code == ac.generate_auth_code(MessageAuthenticationCode.HMAC, aes_128, b"MyData", Security.STRONG))
+
+ecc_key = ASym.Cipher.ECC.ecdsa_key(ASym.Cipher.ECC.Curve.SECP256R1)
+signature = ac.sign(b"DATA", ecc_key, strength=Security.STRONG)
+print(ecc_key, signature, ac.sign_verify(b"DATA", signature, ecc_key, strength=Security.STRONG))
+
+# Clean up sensitive data
+del aes_128, dp, h, cipher_128, code, ecc_key, signature
+
+# There are also easy utility classes for specific cryptographic use cases
+encryptor = DataEncryptor(256)  # Encryption and Decryption with Generated Key
+encrypted_data = encryptor.encrypt_data(b"Hello World")
+decrypted_data = encryptor.decrypt_data(encrypted_data)
+print(f"Decrypted Data: {decrypted_data}")
+assert decrypted_data == b"Hello World"
+
+key = Sym.Cipher.AES.key(256).get_key()  # Encryption and Decryption with Existing Key
+encryptor_with_key = DataEncryptor(key)
+encrypted_data_with_key = encryptor_with_key.encrypt_data(b"Hello World")
+decrypted_data_with_key = encryptor_with_key.decrypt_data(encrypted_data_with_key)
+print(f"Decrypted Data with Key: {decrypted_data_with_key}")
+assert decrypted_data_with_key == b"Hello World"
+
+retrieved_key = encryptor_with_key.get_key()  # Retrieve Key
+print(f"Retrieved Key: {retrieved_key}")
+assert key == retrieved_key
+
+signer = DigitalSigner()  # Digital Signing and Verification with Generated Key Pair
+signature = signer.sign_data(b"Hello World")
+verification = signer.verify_signature(b"Hello World", signature)
+print(f"Signature Verification: {verification}")
+assert verification
+
+retrieved_key_pair = signer.get_private_key()  # Retrieve Key Pair
+print(f"Retrieved Key Pair: {retrieved_key_pair}")
+
+signer_with_key_pair = DigitalSigner(retrieved_key_pair)  # Digital Signing and Verification with Existing Key Pair
+signature_with_key_pair = signer_with_key_pair.sign_data(b"Hello World")
+verification_with_key_pair = signer_with_key_pair.verify_signature(b"Hello World", signature_with_key_pair)
+print(f"Signature Verification with Key Pair: {verification_with_key_pair}")
+assert verification_with_key_pair
+assert retrieved_key_pair == signer_with_key_pair.get_private_key()
+
+pm = PasswordManager(backend=Backend.pycryptodomex)  # Password Hashing and Verification
+hashed_pw = pm.hash_password("MySecretPassword", strength=Security.BASIC)
+pw_verification = pm.verify_password("MySecretPassword", hashed_pw, strength=Security.BASIC)
+print("Hashed Password:", hashed_pw)
+print("Verification:", pw_verification)
+assert pw_verification
+
+# Clean up sensitive data
+del (encryptor, encrypted_data, key, encryptor_with_key, encrypted_data_with_key, retrieved_key, signer, signature, 
+     retrieved_key_pair, signer_with_key_pair, signature_with_key_pair, pm, hashed_pw)
+
+# For strong and secure Message encryption, you can check out security.protocols.secure_message
+from aplustools.security.protocols.control_code_protocol import ControlCodeProtocol, is_control_code
+from aplustools.security.protocols.secure_message import MessageDecoder, MessageEncoder
+from aplustools.security.rand import SecretsRandomGenerator
+from aplustools.package.timid import TimidTimer
+
+timer = TimidTimer()
+protocol = ControlCodeProtocol()
+
+decoder = MessageDecoder(protocol=protocol)
+encoder = MessageEncoder(protocol=protocol, public_key_bytes=decoder.get_public_key_bytes())
+
+while True:
+    try:
+        # Generate and add random messages
+        random_messages = [SecretsRandomGenerator.generate_random_string(length=50) for _ in range(5)]
+
+        for msg in random_messages:
+            encoder.add_message(msg)
+
+        message = encoder.flush()
+
+        for chunk in message:
+            decoder.add_chunk(chunk)
+
+        decoded_messages = decoder.get_complete()
+
+        # Verify the results
+        correct = True
+        for msg in random_messages:
+            if msg not in decoded_messages:
+                print(f"Missing message: {msg}")
+                correct = False
+
+        control_codes_correct = all(
+            is_control_code(part) or isinstance(part, str) for part in decoded_messages
+        )
+
+        if correct and control_codes_correct:
+            print("All messages and control codes are correct.")
+        else:
+            print("There was an error in the encoding/decoding process.")
+            raise KeyboardInterrupt
+
+        end = timer.tock()
+        print("Decoded messages:", decoded_messages)
+        print("Time taken:", end)
+    except KeyboardInterrupt:
+        print("Ending")
+````
+
+### Timer usage
 ````python
 from aplustools.package.timid import TimidTimer
 from datetime import timedelta
