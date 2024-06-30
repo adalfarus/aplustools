@@ -11,7 +11,7 @@ import secrets
 
 
 from ..algorithms import Sym, ASym, _ECCCurve, KeyDerivation, MessageAuthenticationCode, _ECCType
-from ..keys import _BASIC_KEY, _BASIC_KEYPAIR
+from .._keys import _BASIC_KEY, _BASIC_KEYPAIR
 from ..backends import Backend
 from ..exceptions import NotSupportedError
 

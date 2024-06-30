@@ -1,5 +1,5 @@
 # io.gui __init__
-
+raise DeprecationWarning("This package is deprecated and will be refactored in the future")
 from ...package import LazyModuleLoader as _LazyModuleLoader
 
 # Lazy loading modules

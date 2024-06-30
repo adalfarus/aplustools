@@ -73,8 +73,10 @@ class RES:
 
 if __name__ == "__main__":
     res = RES()
+    cipher = res.simple_encrypt("HEllo", res.key())
     print(res.key())
-    print(res.simple_encrypt("HEllo", res.key()).hex())
+    print(cipher.hex())
+    print(res.simple_decrypt(cipher, res.key()))
 
 
 class UM:

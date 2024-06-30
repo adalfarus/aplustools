@@ -433,6 +433,17 @@ def reserve_enum_auto(*numbers: int):
             raise ValueError(f"{number} is already reserved.")
 
 
+class ListGets(list):
+    """Makes it easy to define a default when accessing a list, e.g. lst[999, default]"""
+    def __getitem__(self, key: int | tuple[int, ...] | tuple[slice, ...]):
+        if isinstance(key, tuple):
+            idx, default = key
+            if idx < len(self):
+                return super().__getitem__(idx)
+            return default
+        return super().__getitem__(key)
+
+
 if __name__ == "__main__":
     bit = nice_bits(encode("Hello you world!"), True, 6, True, True)
     bitss = bits(encode_float(0.3))

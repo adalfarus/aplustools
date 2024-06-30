@@ -1,18 +1,91 @@
-# Todo: create a lock to prevent the terminal from writing concurrently and messing up the order & general rewrite
-# Todo: replace internal logging system with pythons logging module for greater compatibility
+import logging
 import sys
-import time
-from typing import TextIO, Union, Optional, Type, Callable, Tuple, Any
-from enum import Enum
+import threading
+from typing import Any, Optional, Callable
 
 
-class LogType(Enum):
-    NONE = ""
-    INFO = "[INFO] "
-    DEBUG = "[DEBUG] "
-    WARN = "[WARN] "
-    ERR = "[ERR] "
-    ANY = None
+raise DeprecationWarning("This module is currently deprecated and will be refactored in the future")
+
+
+class PrintCaptureLogger:
+    def __init__(self,
+                 logger_name: str = __name__,
+                 log_filename: str = "Default.log",
+                 file_log_level=logging.INFO,
+                 logging_format: Optional[str] = None,
+                 capture_stdout: bool = True,
+                 overwrite_stdout: bool = True,
+                 stdout_passthrough: bool = True,
+                 keyword_filter: Optional[Callable[[str], bool]] = None):
+        self.capture_stdout = capture_stdout
+        self.stdout_passthrough = stdout_passthrough
+        self.keyword_filter = keyword_filter or (lambda msg: False)
+
+        self.logger = logging.getLogger(logger_name)
+        self.logger.setLevel(logging.DEBUG)
+
+        self.log_file_handler = logging.FileHandler(log_filename, encoding='utf-8')
+        self.log_file_handler.setLevel(file_log_level)
+
+        # Set custom logging format if provided
+        if logging_format:
+            formatter = logging.Formatter(logging_format)
+        else:
+            formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+
+        self.log_file_handler.setFormatter(formatter)
+        self.logger.addHandler(self.log_file_handler)
+
+        self.lock = threading.Lock()
+
+        if overwrite_stdout:
+            sys.stdout = self
+            self.terminal = sys.__stdout__
+            self.buffer = ''
+        else:
+            self.terminal = None
+
+    def write(self, message: str):
+        """Captures stdout messages."""
+        self.buffer += message
+        if message.endswith('\n'):
+            content = self.buffer.strip()
+            self.buffer = ''
+            self._log_content(content)
+
+    def _log_content(self, content: str):
+        """Logs the content from stdout."""
+        with self.lock:
+            if self.stdout_passthrough:
+                self.terminal.write(content + '\n')
+            if self.capture_stdout and not self.keyword_filter(content):
+                self.logger.info(content)
+
+    def flush(self):
+        """Flush method needed for Python 3 compatibility."""
+        pass
+
+    def close(self):
+        """Closes the log file and restores the original stdout, if overwritten."""
+        with self.lock:
+            for handler in self.logger.handlers:
+                handler.close()
+                self.logger.removeHandler(handler)
+            if self.terminal:
+                sys.stdout = self.terminal
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+
+
+# Example usage of the PrintCaptureLogger class
+def keyword_filter(message: str) -> bool:
+    # Define your keywords
+    keywords = ['ERROR', 'CRITICAL']
+    return any(keyword in message for keyword in keywords)
 
 
 def classify_type_stan(message: str) -> Tuple[LogType, str]:
@@ -28,250 +101,35 @@ def classify_type_stan(message: str) -> Tuple[LogType, str]:
     return log_type, ""
 
 
-class Logger(object):
-    def __init__(self, log_filename: str = "Default.log",
-                 include_timestamp: bool = True,
-                 print_log_to_stdout: bool = True, *_, **__):
-        self.include_timestamp = include_timestamp
-        self.print_log_to_stdout = print_log_to_stdout
-        self.log_file = open(log_filename, "a", encoding='utf-8')
-        
-    def _add_timestamp(self, message: str) -> str:
-        """Adds a timestamp to the message if include_timestamp is True."""
-        if self.include_timestamp and message.strip():
-            timestamp = f"[{time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime())}] " if self.include_timestamp else ''
-            return timestamp + message if message != '\n' else message
-        return message
-    
-    def log(self, *message: Union[str, Any]):
-        """Logs a message to the file and optionally to stdout."""
-        joined_message = ''.join([str(part) for part in list(message)])
-        message_with_timestamp = self._add_timestamp(joined_message) + "\n"
-        self.log_file.write(message_with_timestamp)
-        self.log_file.flush()
-        if self.print_log_to_stdout:
-            self._write_to_stdout(message_with_timestamp)
-            
-    def _write_to_stdout(self, message: str):
-        """Writes message to stdout."""
-        print(message)
-        
-    def close(self):
-        """Closes the log file."""
-        self.log_file.close()
-        
-    def __enter__(self):
-        return self
-    
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.close()
 
-    def __del__(self):
-        """Destructor to ensure the log file is closed properly."""
-        self.close()
+# Creating an instance of PrintCaptureLogger
+logger_name = "my_logger"
+log_filename = "app.log"
+logging_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 
+print_logger = PrintCaptureLogger(
+    logger_name=logger_name,
+    log_filename=log_filename,
+    file_log_level=logging.INFO,
+    logging_format=logging_format,
+    capture_stdout=True,
+    overwrite_stdout=True,
+    stdout_passthrough=False,
+    keyword_filter=keyword_filter
+)
 
-class PrintLogger(Logger):
-    def __init__(self, log_filename: str = "Default.log", include_timestamp: bool = True,
-                 capture_stdout: bool = True, overwrite_stdout: bool = True,
-                 stdout_passthrough: bool = True, print_log_to_stdout: bool = True, *_, **__):
-        super().__init__(log_filename, include_timestamp, print_log_to_stdout)
-        self.capture_stdout = capture_stdout
-        self.terminal = sys.stdout if overwrite_stdout else None
-        self.stdout_passthrough = stdout_passthrough
-        self.buffer = ''
-            
-    def _check_content(self, content: str):
-        """Check the content from stdout traffic."""
-        if self.capture_stdout:
-            message_with_timestamp = self._add_timestamp(content)
-            self.log_file.write(message_with_timestamp)
-            self.log_file.flush()
-        if self.stdout_passthrough:
-            message_with_timestamp = self._add_timestamp(content)
-            self._write_to_stdout(message_with_timestamp)
+# Setting up an existing logger with the same name
+logger = logging.getLogger(logger_name)
+console_handler = logging.StreamHandler(sys.stdout)
+console_handler.setLevel(logging.ERROR)
+console_formatter = logging.Formatter(logging_format)
+console_handler.setFormatter(console_formatter)
+logger.addHandler(console_handler)
 
-    def _write_to_stdout(self, message: str):  # Overwrite this with the new one
-        """Writes message to stdout."""
-        if self.terminal is not None:
-            self.terminal.write(message)
-            self.terminal.flush()
-
-    def write(self, message: str):
-        """Original write, here to catch any stdout traffic."""
-        self.buffer += message
-        if message.endswith('\n'):
-            content = self.buffer
-            self.buffer = ''
-            self._check_content(content)
-
-    def flush(self):
-        # this flush method is needed for python 3 compatibility.
-        # this handles the flush command by doing nothing.
-        # Flush behaviour is already handled elsewhere.
-        pass
-        
-    def close(self): # Overwrite this too
-        """Closes the log file and restores the original stdout, if overwritten."""
-        self.log_file.close()
-        if self.terminal:
-            sys.stdout = self.terminal
-
-
-class TypeLogger(PrintLogger):  # The , *_, **__ need to be added as direct init calls lead to errors
-    def __init__(self, log_filename: str = "Default.log", include_timestamp: bool = True, capture_stdout: bool = True,
-                 overwrite_stdout: bool = True, stdout_passthrough: bool = True, print_log_to_stdout: bool = True,
-                 display_message_type: bool = True, message_type_classifier: Callable = classify_type_stan,
-                 classify_message_type: bool = True, enable_type_system: bool = True, write_type: bool = True,
-                 current_display_type: LogType = LogType.ANY, current_logging_type: LogType = LogType.ANY, *_, **__):
-        super().__init__(log_filename, include_timestamp, capture_stdout,
-                         overwrite_stdout, stdout_passthrough, print_log_to_stdout)
-        self.display_message_type = display_message_type
-        self.message_type_classifier = message_type_classifier
-        self.classify_message_type = classify_message_type
-        self.enable_type_system = enable_type_system
-        self.write_type = write_type
-        self.current_display_type = current_display_type
-        self.current_logging_type = current_logging_type
-        self.log_switch = False  # If the program is currently logging
-
-    def _add_type(self, message: str, log_type: Optional[LogType] = None) -> str:
-        """Adds the type to the message if an depending on the switches."""
-        if self.enable_type_system and message.strip():
-            if self.display_message_type and not self.log_switch:
-                if not log_type and self.classify_message_type:
-                    message_type, remove_str = self.message_type_classifier(message)
-                elif log_type:
-                    message_type, remove_str = log_type, ""
-                else:
-                    message_type, remove_str = LogType.NONE, ""
-                message = message.replace(remove_str, "")
-                if self.current_display_type == message_type or self.current_display_type == LogType.ANY:
-                    message = message_type.value + message if message != '\n' else message
-            elif (self.display_message_type and self.write_type) and self.log_switch:
-                if not log_type and self.classify_message_type:
-                    message_type, remove_str = self.message_type_classifier(message)
-                elif log_type:
-                    message_type, remove_str = log_type, ""
-                else:
-                    message_type, remove_str = LogType.NONE, ""
-                message = message.replace(remove_str, "")
-                if self.current_logging_type == message_type or self.current_logging_type == LogType.ANY:
-                    message = message_type.value + message if message != '\n' else message
-        return message
-
-    def log(self, *message: Union[str, LogType, Any], log_type: Optional[LogType] = None):
-        """Logs a message to the file and optionally to stdout."""
-        prepared_message = list(message)
-        logT, pop_lst = LogType.NONE, []
-        for i, item in enumerate(message):
-            if isinstance(item, LogType):
-                logT = item
-                pop_lst.append(i)
-        [prepared_message.pop(x - i) for i, x in enumerate(pop_lst)]
-        joined_message = ' '.join([str(x) for x in prepared_message])
-        log_type = log_type or logT
-        message_with_timestamp = self._add_timestamp(joined_message) + "\n"
-        self.log_switch = True
-        self.log_file.write(self._add_type(message_with_timestamp, log_type))
-        self.log_file.flush()
-        if self.print_log_to_stdout:
-            message_with_timestamp = self._add_timestamp(joined_message) + "\n"
-            self.log_switch = False
-            self._write_to_stdout(self._add_type(message_with_timestamp, log_type))
-            
-    def _check_content(self, content: str):
-        """Check the content from stdout traffic."""
-        if self.capture_stdout:
-            message_with_timestamp = self._add_timestamp(content)
-            self.log_switch = True
-            self.log_file.write(self._add_type(message_with_timestamp))
-            self.log_file.flush()
-        if self.stdout_passthrough:
-            message_with_timestamp = self._add_timestamp(content)
-            self.log_switch = False
-            self._write_to_stdout(self._add_type(message_with_timestamp))
-
-
-"""
-class FullTypeLogger:
-    "This class is here to implement a full type system on top of the print system
-    Please do not use it however, as it's quite complex - Use it as an inspiration for your
-    own logger subclass instead. This doesn't inherit from anything, to focus on making a good
-    logger instead on compatibility. The aim is to be better than the default logger. This also
-    acts as an inspiration for the normal TypeLogger.
-    "
-    def __init__(self, log_filename: str = "Default.log", include_timestamp: bool = True,
-                 print_logger: PrintLogger = PrintLogger, display_message_type: bool = True,
-                 message_type_classifier: Callable = lambda: None, classify_message_type: bool = True,
-                 enable_type_system: bool = True, current_display_type: LogType = LogType.ANY,
-                 current_logging_type: Optional[LogType] = LogType.ANY):
-        raise NotImplementedError("This class is not implemented yet. Please use with caution")
-
-        if print_logger and isinstance(print_logger, PrintLogger):
-            self.print_logger = PrintLogger(log_filename, include_timestamp)
-        else: raise TypeError("print_logger needs to be a (sub-)class of PrintLogger")
-        self.display_message_type = display_message_type
-        self.message_type_classifier = message_type_classifier
-        self.classify_message_type = classify_message_type
-        self.enable_type_system = enable_type_system
-        self.current_display_type = current_display_type
-        self.current_logging_type = current_logging_type
-    
-    def log(self, message: str, type: Type[LogType]=LogType.NONE):
-        message = str(message)
-        pass
-"""
-
-
-def monitor_stdout(log_file: Optional[str] = None,
-                   logger: Optional[Type[Logger]] = None
-                   ) -> Union[TextIO, Type[Logger]]:
-    """Monitors and logs stdout messages based on given parameters.
-
-    Args:
-        log_file: The name of the log file.
-        logger: An instance of the Logger class.
-
-    Returns:
-        An instance of the Logger class with stdout being monitored and logged.
-    """
-    if logger is None:
-        if log_file is None:
-            raise ValueError("Either log_file or logger must be provided")
-        logger = PrintLogger(log_file)
-    elif type(logger) is Logger:
-        raise ValueError("The default Logger class wasn't built to be used\
-like this, please use PrintLogger or TypeLogger instead.")
-    
-    sys.stdout = logger
-    return sys.stdout
-
-
-def local_test():
-    try:
-        logger = Logger("./test_data/cu.txt")
-        logger.log("Hello Worlds")
-        logger2 = PrintLogger("./test_data/cu.txt")
-        print("Hellow worldddsssss")
-        monitor_stdout(logger=logger2)
-        print("Logging this")
-        logger2.log("Logging that")
-        logger2.close()
-        print("Just print lol")
-        ref = monitor_stdout(logger=TypeLogger("./test_data/cu.txt"))
-        print("[Debug] No ref, so just print xd")
-        print("[Warn] No ref, so just print xd")
-        print("Do not do this, you need a ref to close it")
-        ref.log("Hello World [Warn]", LogType.WARN, LogType.WARN)
-        ref.close()
-        print("DONE")
-    except Exception as e:
-        print(f"Exception occurred {e}.")
-        return False
-    print("Test completed successfully.")
-    return True
-
-
-if __name__ == "__main__":
-    local_test()
+# Using the logger
+with print_logger:
+    logger.debug("This is a debug message from logger")
+    logger.info("This is an info message from logger")
+    logger.error("This is an error message from logger")
+    print("This is a print statement containing ERROR")
+    print("This is a regular print statement")

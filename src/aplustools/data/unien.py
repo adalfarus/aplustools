@@ -38,6 +38,14 @@ import math
 # 0, 1, 2,  3,  4,  5,  6,  7
 # 4, 6, 8, 10, 12, 16, 20, 24
 #       ^      ^^          ^^
+import warnings
+
+
+warnings.warn(
+    "This module is not yet finished and shouldn't be used yet",
+    RuntimeWarning,
+    stacklevel=2
+)
 
 
 def encode_length_svf(max_bit_length, length, pack_at_start: bool = True):
