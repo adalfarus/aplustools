@@ -18,7 +18,7 @@ import re
 # ADD HMAC
 
 
-@strict
+@strict(mark_class_as_cover_or_cls=False)
 class MessageEncoder:
     def __init__(self, protocol, public_key_bytes, chunk_size=1024):
         self._public_key = serialization.load_pem_public_key(public_key_bytes, backend=default_backend())
@@ -103,7 +103,7 @@ class MessageEncoder:
         self._buffer += control_code
 
 
-@strict
+@strict(mark_class_as_cover_or_cls=False)
 class MessageDecoder:
     def __init__(self, protocol: ControlCodeProtocol, chunk_size=1024, private_key_bytes_overwrite=None):
         # Generate RSA key pair

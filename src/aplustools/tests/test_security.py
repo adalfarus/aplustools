@@ -1,5 +1,6 @@
-from aplustools.security.crypto.algorithms import _ECCCurve, MessageAuthenticationCode, KeyDerivation
-from aplustools.security.crypto import AdvancedCryptography, Sym, ASym, algorithm_names
+from aplustools.security.crypto.algorithms import _ECCCurve, MessageAuthenticationCode, KeyDerivation, Sym, ASym
+from aplustools.security.crypto._hashes import algorithm_names
+from aplustools.security.crypto import AdvancedCryptography
 from aplustools.security.crypto.backends import Backend
 from aplustools.security.crypto.exceptions import NotSupportedError
 from aplustools.security import Security

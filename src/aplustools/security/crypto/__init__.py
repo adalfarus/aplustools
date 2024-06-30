@@ -261,7 +261,7 @@ class PasswordManager:
         return derived_key == hashed_password
 
 
-@_strict(mark_class_as_cover=False)
+@_strict(mark_class_as_cover_or_cls=False)
 class DataEncryptor:
     """
     Uses AES X-bit encryption which is very secure if used with a sufficient key size like 256.
@@ -281,7 +281,7 @@ class DataEncryptor:
         return self._ac.decrypt(encrypted_data, self._key, padding, mode)
 
 
-@_strict(mark_class_as_cover=False)
+@_strict(mark_class_as_cover_or_cls=False)
 class DigitalSigner:
     """
     Uses ECC signatures with the SECP256R1 curve, as it provides strong security against potential future threats
