@@ -1,7 +1,7 @@
-from ...data import enum_auto
+from ...data import enum_auto as _enum_auto
 
 
 class Backend:
     """One of the cryptography backends"""
-    cryptography = enum_auto()
-    pycryptodomex = enum_auto()
+    cryptography = _enum_auto()
+    pycryptodomex = _enum_auto()

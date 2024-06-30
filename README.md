@@ -17,9 +17,9 @@ aplustools is a simple, user-friendly Python library for performing amazing task
 
 ## Features
 
-- Easy to use
-- Highly efficient
-- Supports multiple platforms
+- Easy to use for beginners, but not lacking for experts
+- Pretty efficient
+- Supports the three main platforms
 - Regular updates and support
 - Comprehensive documentation
 
@@ -37,6 +37,7 @@ Or clone the repository and install manually:
 git clone https://github.com/Adalfarus/aplustools.git
 cd aplustools
 python -m build
+```
 
 ## Usage
 
@@ -68,101 +69,91 @@ from aplustools.package.timid import TimidTimer
 from datetime import timedelta
 import time
 
-
-# Setup your own timer class easily
+# Setting up your own timer
+# Here we use the TimidTimer with the current time and a nanosecond multiplier
 mySpecialTimer = TimidTimer.setup_timer_func(time.time, to_nanosecond_multiplier=1e9)
 
-my_timer = mySpecialTimer(start_at=2.3)  # Seconds
+# Initialize the timer starting at 2.3 seconds
+my_timer = mySpecialTimer(start_at=2.3)
 
-# Do something
+# Perform some task
 time.sleep(3.2)
 
-print("This took:", my_timer.end())  # This will result in an output of 1 second as we started at 2.3 seconds
-
+# Print the elapsed time
+print("This took:", my_timer.end())  # Expected output is approximately 1 second as we started at 2.3 seconds
 
 # Advanced timer usage
 timer = TimidTimer()
 
-# Measure the average elapsed time over different iterations
+# Measure the average elapsed time over multiple iterations
 for _ in range(4):
-  timer.wait_ms_static(1000)
-  timer.tock()
-print("Average 1 second sleep extra delay: ", timer.average() - timedelta(seconds=1))
+  timer.wait_ms_static(1000)  # Wait for 1 second
+  timer.tock()  # Record the time
+print("Average 1 second sleep extra delay:", timer.average() - timedelta(seconds=1))
 
-# Use multiple timers in one timer object using the index
+# Using multiple timers within one timer object
 with timer.enter(index=1):
   time.sleep(1)
 
-# Use it for timed function execution
-timer.start(index=1)  # The context manager automatically ends the timer, so we can reuse index 1 here
+# Using the timer for timed function execution
+timer.start(index=1)  # Start the timer at index 1
 timer.shoot(interval=1, function=lambda: print("Shooting", timer.tock(index=1, return_datetime=True)), iterations=3)
-print(timer.end())  # End the timer at index 0 that starts when the timer object gets created
+print(timer.end())  # End the timer at index 0 which started when the timer object was created
 
-
+# Defining a function with linear time complexity
 def linear_time(n):
-  # O(N) - Simple loop with linear complexity
   for _ in range(n):
     pass
 
-
+# Create an input generator for the linear time function
 def create_simple_input_generator():
   return ((tuple([n]), {}) for n in range(1, 100_001, 100))
 
-
-# Measure the average time complexity of a function e.g. O(N)
+# Measure the average time complexity of the function
 print(timer.complexity(linear_time, create_simple_input_generator()))
 
-# You can also show the curve
+# Plotting the time complexity curve
 from matplotlib import pyplot
-
 print(timer.complexity(linear_time, create_simple_input_generator(), matplotlib_pyplt=pyplot))
 
-
+# Define a more complex function
 def complex_func(n, m, power=2):
-  sum(i ** power for i in range(n)) + sum(j ** power for j in range(m))
+  return sum(i ** power for i in range(n)) + sum(j ** power for j in range(m))
 
-
+# Define a varying function
 def varying_func(n, multiplier=1):
   return sum(i * multiplier for i in range(n))
 
+# Create input generators for the complex functions
+complex_input_generator = ((tuple([n, n // 2]), {'power': 2}) for n in range(1, 101))
+varying_input_generator = ((tuple([n]), {'multiplier': (n % 3 + 1)}) for n in range(1, 101))
 
-# Complex input generator with multiple arguments and keyword arguments
-complex_input_generator = (
-  (tuple([n, n // 2]), {'power': 2}) for n in range(1, 101)
-)
-
-# Complex input generator with varying keyword arguments
-varying_input_generator = (
-  (tuple([n]), {'multiplier': (n % 3 + 1)}) for n in range(1, 101)
-)
-
-print(
-  f"Estimated Time Complexity for complex_func: {timer.complexity(complex_func, complex_input_generator, matplotlib_pyplt=pyplot)}")
-print(
-  f"Estimated Time Complexity for varying_func: {timer.complexity(varying_func, varying_input_generator, matplotlib_pyplt=pyplot)}")
+# Measure and print the estimated time complexity for the complex functions
+print(f"Estimated Time Complexity for complex_func: {timer.complexity(complex_func, complex_input_generator, matplotlib_pyplt=pyplot)}")
+print(f"Estimated Time Complexity for varying_func: {timer.complexity(varying_func, varying_input_generator, matplotlib_pyplt=pyplot)}")
 ````
 
 ### System
 ````python
-from aplustools.io.environment import System
+from aplustools.io.environment import get_system, BasicSystem
 
 
-local_system = System.system()
+local_system = get_system()
 print(type(local_system))  # This will output a specialized class
 
-system_theme = local_system.theme
+system_theme = local_system.get_system_theme()
 clipboard = local_system.get_clipboard()
 local_system.send_notification("Title", "Message", (), ())
 local_system.schedule_event("My event", script_path="./my_script.exe", event_time="startup")
 
-print(f"{round(local_system.get_uptime(), 2)} minutes")
-print(local_system.measure_network_speed())
+print(f"{round(BasicSystem.get_uptime(), 2)} minutes")
+print(BasicSystem.measure_network_speed())
 
-for process in local_system.get_running_processes():
+for process in BasicSystem.get_running_processes():
     print(process)
 ````
 
-### Security
+### PasswordGenerators
 ````python
 from aplustools.security.passwords import QuickGeneratePasswords
 
@@ -205,29 +196,7 @@ For more detailed usage and examples, check out our [documentation](https://gith
 
 For modules I use 'lowercase', classes are 'CapitalizedWords' and functions and methods are 'lower_case_with_underscores'.
 
-Dependencies (except for the standard libraries) are [outdated]: 
-- [`none`]
-  - data.database
-  - io.loggers
-  - utils.dummy
-  - package.lazy_loader
-- [`requests`]
-  - data.github-updater-none
-  - data.updaters
-  - data.github-updater-cmd
-- data.github-updater-gui - [`requests`, `PySide6`]
-- data.imagetools - [`Pillow`, `aiohttp`, `requests`, `wand`]
-- data.advanced_imagetools - [`opencv-python`, `aiohttp`, `wand`, `pillow_heif`]
-- web.search, web.utils - [`requests`, `BeautifulSoup4`]
-- security - [`cryptography`, `quantcrypt`]
-- web.request - [`requests`, `aiohttp`]
-- data.compressor - [`brotli`, `zstandard`, `py7zr`, `aplustools.security.crypto`]
-- io.gui - [`PySide6`]
-- io.environment - [`speedtest-cli`, `windows-toasts`]
-- package.timid - [`numpy`]
-
-Sub-Modules that may be removed in future updates due to being hard to support or simply unneeded.
-
+Sub-Modules that may be removed in future updates due to being hard to support or simply unneeded:
 - database (maybe unneeded and hard to support if more dbs are added -> new_database is being developed)
 - loggers (maybe unneeded, default logging module is just really good)
 

@@ -10,7 +10,7 @@ import warnings
 import secrets
 import os
 
-from ..keys import _BASIC_KEY, _BASIC_KEYPAIR
+from .._keys import _BASIC_KEY, _BASIC_KEYPAIR
 from ..algorithms import Sym, ASym, _ECCCurve, _ECCType, KeyDerivation, MessageAuthenticationCode
 from ..backends import Backend
 from ..exceptions import NotSupportedError

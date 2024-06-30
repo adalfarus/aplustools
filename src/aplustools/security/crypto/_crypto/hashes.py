@@ -1,6 +1,6 @@
 from cryptography.hazmat.primitives import hashes
 
-from ..hashes import HashAlgorithm, algorithm_names
+from .._hashes import HashAlgorithm, algorithm_names
 from ..exceptions import NotSupportedError
 
 from typing import Optional

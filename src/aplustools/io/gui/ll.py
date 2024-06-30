@@ -280,8 +280,8 @@ if __name__ == '__main__':
     window.setGeometry(100, 100, 300, 200)
 
     # Add some example content
-    for item in os.listdir("./test_images"):
-        test_image = QPixmap(os.path.join("./test_images", item))
+    for item in os.listdir("_test_images"):
+        test_image = QPixmap(os.path.join("_test_images", item))
         label = QLabel()
         label.setPixmap(test_image)
         window.content_layout.addWidget(label)

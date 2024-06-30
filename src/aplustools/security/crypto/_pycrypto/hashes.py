@@ -12,7 +12,7 @@ from Cryptodome.Hash import keccak
 from Cryptodome.Protocol.KDF import bcrypt, bcrypt_check
 
 
-from ..hashes import HashAlgorithm, algorithm_names
+from .._hashes import HashAlgorithm, algorithm_names
 from ..exceptions import NotSupportedError
 
 from typing import Optional

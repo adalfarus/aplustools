@@ -1,100 +1,22 @@
-from cryptography.hazmat.primitives.asymmetric import rsa, padding as asym_padding, ec
+from cryptography.hazmat.primitives.asymmetric import rsa, padding as asym_padding
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-from cryptography.hazmat.primitives.kdf.concatkdf import ConcatKDFHash
-from cryptography.hazmat.primitives.kdf.x963kdf import X963KDF
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
-from cryptography.hazmat.primitives import serialization, hashes, padding as sym_padding, hmac, cmac
+from cryptography.hazmat.primitives import serialization, hashes
 from cryptography.hazmat.backends import default_backend
 from typing import Literal, Tuple, Optional
 import warnings
 import secrets
-import bcrypt
 import os
 
-from .passwords import SpecificPasswordGenerator, PasswordFilter
-from ..io.environment import safe_remove
-from . import Security
 
+warnings.warn(
+    "This module is deprecated, please switch to aplustools.security.crypto",
+    PendingDeprecationWarning,
+    stacklevel=2
+)
 
 
-
-
-
-# Bunch of enums to make it easier for the user
-
-
-
-
-
-
-
-
-
-
-
-
-
-#    OCB = modes.OCB  # Offset Codebook Mode
-
-
-
-#    ISO7816 = sym_padding.ISO7816
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# AC = AdvancedCryptography()
-# HA = HashAlgorithm
-# print(AC.hash("HelloWorld".encode(), HA.SHA3.SHAKE128))
-# input(AC.hash_verify("HELL".encode(), AC.hash("HELL".encode(), HA.SHA3.SHA224)))
-# print(AC.hash_verify("Hello World".encode(), AC.hash("Hello World".encode(), HA.SHA3.SHA224), HA.SHA3.SHA224))
-# print(AC.hash_verify("Hello World".encode(), AC.hash("Hello World".encode(), HA.BCRYPT), HA.BCRYPT))
-# print(AC.hash_verify("Zel".encode(), AC.hash("Zel".encode(), HA.ARGON2), HA.ARGON2))
-
-
-
-class CryptUtils:
+class CryptUtils:  # To ensure compatibility for now
     @staticmethod
     def pbkdf2(password: str, salt: bytes, length: int, cycles: int) -> bytes:
         kdf = PBKDF2HMAC(
@@ -236,52 +158,3 @@ class CryptUtils:
         digest = hashes.Hash(hash_algo, backend=default_backend())
         digest.update(message.encode())
         return digest.finalize().hex()
-
-
-class ModernCryptUtils:  # QuantumCryptography
-    def __init__(self):
-        warnings.warn("This module is experimental as the exact specifications for Quantum Cryptography haven't been "
-                      "decided on yet and will likely change in the future.", category=RuntimeWarning, stacklevel=2)
-
-    @staticmethod
-    def generate_kyber_keypair() -> Tuple[bytes, bytes]:
-        """
-        Generates a Kyber public and private key pair.
-        """
-        if Kyber is None:
-            raise EnvironmentError("Module QuantCrypt is not installed.")
-        return Kyber().keygen()
-
-
-
-    @staticmethod
-    def generate_secure_password(length: int = 24):
-        return SpecificPasswordGenerator().generate_ratio_based_password_v3(length, filter_=PasswordFilter(
-            exclude_similar=True))
-
-
-# Example usage
-if __name__ == "___main__":
-    # Using ModernCryptUtils for Argon2
-    password = ModernCryptUtils.generate_secure_password()
-    argon2_hash = ModernCryptUtils.hash(password)
-    argon2_hash2 = ModernCryptUtils.hash(password)
-    print(f"Argon2 Hash: {argon2_hash == argon2_hash2}")
-    assert ModernCryptUtils.hash_verify(password, argon2_hash)
-    from pathlib import Path
-
-    # Using ModernCryptUtils for Kyber
-    public_key, secret_key = ModernCryptUtils.generate_kyber_keypair()
-
-    # Encrypt the plaintext file
-    encrypted = ModernCryptUtils.kyber_encrypt(public_key, "Hello World".encode())
-
-    # Decrypt the ciphertext file to a new file
-    decrypted = ModernCryptUtils.kyber_decrypt(secret_key, encrypted).decode()
-
-    print(encrypted, decrypted)
-
-    path = ModernCryptUtils.kyber_encrypt(public_key, "HELLO".encode(), get="path")
-    decrypted = ModernCryptUtils.kyber_decrypt(secret_key, path, get="content")
-    safe_remove(path)
-    print(decrypted.decode())

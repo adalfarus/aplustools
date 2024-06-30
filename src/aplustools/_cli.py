@@ -1,5 +1,5 @@
 """The cli implementation of aplustools"""
-from .package.argumint import ArguMint, ArgStruct
+from aplustools.package.argumint import ArguMint, ArgStruct
 import subprocess
 import inspect
 import shutil

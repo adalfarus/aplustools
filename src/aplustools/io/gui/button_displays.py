@@ -1465,8 +1465,8 @@ if __name__ == '__main__':
     window.scrollBarsBackgroundRedraw(True)
     window.lol = 1
 
-    for item in os.listdir("./test_images"):
-        test_image = QScalingGraphicPixmapItem(os.path.join("./test_images", item))
+    for item in os.listdir("_test_images"):
+        test_image = QScalingGraphicPixmapItem(os.path.join("_test_images", item))
         window.addImageToScene(test_image)
 
     # window.setManagement(VerticalManagement)
@@ -1486,8 +1486,8 @@ if __name__ == '__main___':
     # window.scrollBarsBackgroundRedraw(True)
 
     total_height = 0
-    for item in os.listdir("./test_images"):
-        test_image = QScalingGraphicPixmapItem(os.path.join("./test_images", item))
+    for item in os.listdir("_test_images"):
+        test_image = QScalingGraphicPixmapItem(os.path.join("_test_images", item))
         #window.addImageToScene(test_image)
         window.scene().addItem(test_image)
         test_image.scaledToWidth(1000)
