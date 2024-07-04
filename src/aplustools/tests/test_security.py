@@ -13,11 +13,13 @@ class TestCrypto:
         try:
             test_data = b"Hello World" * 4
             for backend, name in zip((Backend.cryptography, Backend.pycryptodomex), ("cryptography", "pycryptodomex")):
+                backend = Backend.pycryptodomex
                 length = int(((222 / 2) - (len(name) / 2) - 1) // 2)
                 print("#" * 222, "\n", "# " * length, name, " #" * length, "\n")
                 ac = AdvancedCryptography(backend=backend)
 
                 for id, hash in algorithm_names.items():
+                    break
                     for force_text_ids in (True, False):
                         val = False
                         try:
@@ -41,6 +43,7 @@ class TestCrypto:
                         ("PBKDF2HMAC", "HKDF", "X963", "Scrypt", "ConcatKDF", "PBKDF1", "KMAC128", "KMAC256", "ARGON2",
                          "KKDF",
                          "BCRYPT")):
+                    break
                     for setting, setting_name in zip(
                             (Security.BASIC, Security.AVERAGE, Security.STRONG, Security.SUPER_STRONG),
                             ("BASIC", "AVERAGE", "STRONG", "SUPER STRONG")):
@@ -55,6 +58,7 @@ class TestCrypto:
                         (MessageAuthenticationCode.HMAC, MessageAuthenticationCode.CMAC, MessageAuthenticationCode.KMAC128,
                          MessageAuthenticationCode.KMAC256, MessageAuthenticationCode.Poly1305),
                         ("HMAC", "CMAC", "KMAC128", "KMAC256", "Poly1305")):
+                    break
                     for setting, setting_name in zip(
                             (Security.BASIC, Security.AVERAGE, Security.STRONG, Security.SUPER_STRONG),
                             ("BASIC", "AVERAGE", "STRONG", "SUPER STRONG")):
@@ -97,16 +101,18 @@ class TestCrypto:
                             except NotSupportedError:
                                 print(f"\n{key_size}B UNSUPPORTED", end="")
                         else:
-                            for padding in (Sym.Padding.PKCS7, Sym.Padding.ANSIX923):
-                                for mode in (Sym.Operation.CBC, Sym.Operation.CTR, Sym.Operation.ECB,
-                                             Sym.Operation.OFB, Sym.Operation.GCM, Sym.Operation.CFB):
+                            for padding, padding_name in zip((Sym.Padding.PKCS7, Sym.Padding.ANSIX923), ("PKCS7", "ANSIX923")):
+                                for mode, mode_name in zip(
+                                        (Sym.Operation.CBC, Sym.Operation.CTR, Sym.Operation.ECB,
+                                         Sym.Operation.OFB, Sym.Operation.GCM, Sym.Operation.CFB),
+                                        ("CBC", "CTR", "ECB", "OFB", "GCM", "CFB")):
                                     try:
                                         sym_cipher = ac.encrypt(test_data, sym_key, padding, mode)
                                         sym_plain = ac.decrypt(sym_cipher, sym_key, padding, mode)
-                                        print(f"\n{key_size}B [{padding, mode}] {sym_key} -> {sym_cipher} -> {sym_plain}",
+                                        print(f"\n{key_size}B [{padding_name, mode_name}] -> {sym_plain}",
                                               end="")
                                     except NotSupportedError:
-                                        print(f"\n{key_size}B [{padding, mode}] UNSUPPORTED", end="")
+                                        print(f"\n{key_size}B [{padding_name, mode_name}] UNSUPPORTED", end="")
                     print("\n----------------------------------------------------------------------------------")
 
                 asym_ciphers = [

@@ -1,3 +1,5 @@
+import warnings
+
 from ._keys import (_BASIC_KEY_TYPE, _BASIC_KEYPAIR_TYPE, Kyber, Argon2, _KYBER_KEYPAIR, _DILITHIUM_KEYPAIR,
                     KKDF as _KKDF)
 from ._hashes import (HashAlgorithm as _HashAlgorithm, algorithm_names as _algorithm_names,
@@ -5,15 +7,108 @@ from ._hashes import (HashAlgorithm as _HashAlgorithm, algorithm_names as _algor
 from .algorithms import (Sym as _Sym, ASym as _ASym, KeyDerivation as _KeyDerivation,
                          MessageAuthenticationCode as _MessageAuthenticationCode)
 from .backends import Backend as _Backend
-from .. import Security as _Security
+from .. import Security as _Security, RiskLevel as _RiskLevel
 from .exceptions import NotSupportedError as _NotSupportedError
-from ...io.environment import strict as _strict
+from ...io.environment import strict as _strict, suppress_warnings as _suppress_warnings
+from ...data import adv_check_types as _adv_check_types
 
 from typing import Optional as _Optional
 import warnings as _warnings
 import os as _os
 
 import bcrypt as _bcrypt
+
+
+unsafe: dict[int, tuple[str, str]] = {
+    # Symmetric Ciphers Ratings
+    _Sym.Cipher.AES: (_RiskLevel.HARMLESS, "AES is strong even against quantum threats with sufficient key length"),
+    _Sym.Cipher.ChaCha20: (_RiskLevel.HARMLESS, "ChaCha20 is a strong alternative to AES"),
+    _Sym.Cipher.TripleDES: (_RiskLevel.KNOWN_UNSAFE_NOT_RECOMMENDED, "TripleDES is vulnerable to meet-in-the-middle attacks"),
+    _Sym.Cipher.Blowfish: (_RiskLevel.NOT_RECOMMENDED, "Blowfish is outdated and slow"),
+    _Sym.Cipher.CAST5: (_RiskLevel.NOT_RECOMMENDED, "CAST5 has limited key size and is outdated"),
+    _Sym.Cipher.ARC4: (_RiskLevel.HIGHLY_DANGEROUS, "ARC4 has multiple vulnerabilities"),
+    _Sym.Cipher.Camellia: (_RiskLevel.HARMLESS, "Camellia is comparable to AES"),
+    _Sym.Cipher.IDEA: (_RiskLevel.NOT_RECOMMENDED, "IDEA has patent issues and is outdated"),
+    _Sym.Cipher.SEED: (_RiskLevel.NOT_RECOMMENDED, "SEED has limited adoption and is outdated"),
+    _Sym.Cipher.SM4: (_RiskLevel.HARMLESS, "SM4 is a modern cipher and is strong"),
+    _Sym.Cipher.DES: (_RiskLevel.HIGHLY_DANGEROUS, "DES is easily broken"),
+    _Sym.Cipher.ARC2: (_RiskLevel.HIGHLY_DANGEROUS, "ARC2 is weak and outdated"),
+    _Sym.Cipher.Salsa20: (_RiskLevel.NOT_RECOMMENDED, "Prefer ChaCha20 over Salsa20"),
+
+    # Symmetric Modes Ratings
+    _Sym.Operation.ECB: (_RiskLevel.HIGHLY_DANGEROUS, "ECB mode does not hide patterns"),
+    _Sym.Operation.CBC: (_RiskLevel.KNOWN_UNSAFE, "CBC mode is susceptible to padding oracle attacks without proper care"),
+    _Sym.Operation.CFB: (_RiskLevel.NOT_RECOMMENDED, "CFB mode is not as secure as newer modes"),
+    _Sym.Operation.OFB: (_RiskLevel.NOT_RECOMMENDED, "OFB mode is vulnerable to bit-flipping attacks"),
+    _Sym.Operation.CTR: (_RiskLevel.NOT_RECOMMENDED, "CTR mode must handle nonce correctly"),
+    _Sym.Operation.GCM: (_RiskLevel.HARMLESS, "GCM mode is strong and provides integrity"),
+
+    # Symmetric Padding Ratings
+    _Sym.Padding.PKCS7: (_RiskLevel.HARMLESS, "PKCS7 padding is widely used and safe when implemented correctly"),
+    _Sym.Padding.ANSIX923: (_RiskLevel.NOT_RECOMMENDED, "ANSIX923 padding is less common, prefer PKCS7"),
+
+    # Asymmetric Cipher Ratings
+    _ASym.Cipher.RSA: (_RiskLevel.NOT_RECOMMENDED, "RSA is vulnerable to quantum attacks"),
+    _ASym.Cipher.DSA: (_RiskLevel.NOT_RECOMMENDED, "DSA is outdated, replaced by ECDSA"),
+    _ASym.Cipher.ECC: (_RiskLevel.HARMLESS, "ECC is strong, with smaller keys, considering quantum threats in the future"),
+    _ASym.Cipher.KYBER: (_RiskLevel.HARMLESS, "KYBER is post-quantum secure"),
+    _ASym.Cipher.DILITHIUM: (_RiskLevel.HARMLESS, "DILITHIUM is post-quantum secure"),
+
+    # Asymmetric Paddings Ratings
+    _ASym.Padding.PKCShash1v15: (_RiskLevel.KNOWN_UNSAFE, "PKCShash1v15 is deprecated and susceptible to certain attacks"),
+    _ASym.Padding.OAEP: (_RiskLevel.HARMLESS, "OAEP is a secure padding scheme for RSA"),
+    _ASym.Padding.PSS: (_RiskLevel.HARMLESS, "PSS is a secure padding for RSA signatures"),
+
+    # Key Derivation Functions Ratings
+    _KeyDerivation.PBKDF2HMAC: (_RiskLevel.NOT_RECOMMENDED, "PBKDF2HMAC is secure, but better alternatives are available (e.g., Argon2)"),
+    _KeyDerivation.Scrypt: (_RiskLevel.HARMLESS, "Scrypt is stronger than PBKDF2"),
+    _KeyDerivation.HKDF: (_RiskLevel.HARMLESS, "HKDF is secure for key derivation"),
+    _KeyDerivation.X963: (_RiskLevel.NOT_RECOMMENDED, "X963 is outdated"),
+    _KeyDerivation.ConcatKDF: (_RiskLevel.NOT_RECOMMENDED, "ConcatKDF is less commonly used"),
+    _KeyDerivation.PBKDF1: (_RiskLevel.HIGHLY_DANGEROUS, "PBKDF1 is outdated and insecure"),
+    _KeyDerivation.KMAC128: (_RiskLevel.HARMLESS, "KMAC128 is secure"),
+    _KeyDerivation.KMAC256: (_RiskLevel.HARMLESS, "KMAC256 is secure"),
+    _KeyDerivation.ARGON2: (_RiskLevel.HARMLESS, "Argon2 is the best practice for password hashing"),
+    _KeyDerivation.KKDF: (_RiskLevel.NOT_RECOMMENDED, "KKDF is less commonly used"),
+    _KeyDerivation.BCRYPT: (_RiskLevel.NOT_RECOMMENDED, "BCRYPT is secure for password hashing, but better alternatives (e.g., Argon2) exist"),
+
+    # Message Authentication Codes Ratings
+    _MessageAuthenticationCode.HMAC: (_RiskLevel.HARMLESS, "HMAC is secure and widely used"),
+    _MessageAuthenticationCode.CMAC: (_RiskLevel.HARMLESS, "CMAC is secure and widely used"),
+    _MessageAuthenticationCode.KMAC128: (_RiskLevel.HARMLESS, "KMAC128 is secure"),
+    _MessageAuthenticationCode.KMAC256: (_RiskLevel.HARMLESS, "KMAC256 is secure"),
+    _MessageAuthenticationCode.Poly1305: (_RiskLevel.HARMLESS, "Poly1305 is secure"),
+
+    # Hash Ratings
+    _HashAlgorithm.SHA1: (_RiskLevel.KNOWN_UNSAFE, "SHA1 is vulnerable to collision attacks"),
+    _HashAlgorithm.SHA2.SHA224: (_RiskLevel.HARMLESS, "SHA224 is secure, but less common than SHA256"),
+    _HashAlgorithm.SHA2.SHA256: (_RiskLevel.HARMLESS, "SHA256 is secure and widely used"),
+    _HashAlgorithm.SHA2.SHA384: (_RiskLevel.HARMLESS, "SHA384 is secure and widely used"),
+    _HashAlgorithm.SHA2.SHA512: (_RiskLevel.HARMLESS, "SHA512 is secure and widely used"),
+    _HashAlgorithm.SHA2.SHA512_244: (_RiskLevel.HARMLESS, "SHA512_244 is secure, but a lesser-known variant"),
+    _HashAlgorithm.SHA2.SHA512_256: (_RiskLevel.HARMLESS, "SHA512_256 is secure, but a lesser-known variant"),
+    _HashAlgorithm.SHA3.SHA224: (_RiskLevel.HARMLESS, "SHA3-224 is secure"),
+    _HashAlgorithm.SHA3.SHA256: (_RiskLevel.HARMLESS, "SHA3-256 is secure"),
+    _HashAlgorithm.SHA3.SHA384: (_RiskLevel.HARMLESS, "SHA3-384 is secure"),
+    _HashAlgorithm.SHA3.SHA512: (_RiskLevel.HARMLESS, "SHA3-512 is secure"),
+    _HashAlgorithm.SHA3.SHAKE128: (_RiskLevel.HARMLESS, "SHAKE128 is secure with variable output length"),
+    _HashAlgorithm.SHA3.SHAKE256: (_RiskLevel.HARMLESS, "SHAKE256 is secure with variable output length"),
+    _HashAlgorithm.SHA3.TurboSHAKE128: (_RiskLevel.HARMLESS, "TurboSHAKE128 is secure with variable output length"),
+    _HashAlgorithm.SHA3.TurboSHAKE256: (_RiskLevel.HARMLESS, "TurboSHAKE256 is secure with variable output length"),
+    _HashAlgorithm.SHA3.KangarooTwelve: (_RiskLevel.HARMLESS, "KangarooTwelve is secure and more efficient than SHA3"),
+    _HashAlgorithm.SHA3.TupleHash128: (_RiskLevel.HARMLESS, "TupleHash128 is secure and used for hashing tuples"),
+    _HashAlgorithm.SHA3.TupleHash256: (_RiskLevel.HARMLESS, "TupleHash256 is secure and used for hashing tuples"),
+    _HashAlgorithm.SHA3.keccak: (_RiskLevel.HARMLESS, "Keccak is secure and the original SHA3 winner"),
+    _HashAlgorithm.BLAKE2.BLAKE2b: (_RiskLevel.HARMLESS, "BLAKE2b is secure and faster than SHA2"),
+    _HashAlgorithm.BLAKE2.BLAKE2s: (_RiskLevel.HARMLESS, "BLAKE2s is secure and faster than SHA2"),
+    _HashAlgorithm.MD2: (_RiskLevel.HIGHLY_DANGEROUS, "MD2 is obsolete and easily broken"),
+    _HashAlgorithm.MD4: (_RiskLevel.HIGHLY_DANGEROUS, "MD4 is obsolete and easily broken"),
+    _HashAlgorithm.MD5: (_RiskLevel.HIGHLY_DANGEROUS, "MD5 is vulnerable to collision attacks"),
+    _HashAlgorithm.SM3: (_RiskLevel.NOT_RECOMMENDED, "SM3 is secure but less studied outside of China"),
+    _HashAlgorithm.RIPEMD160: (_RiskLevel.NOT_RECOMMENDED, "RIPEMD160 is secure but less common"),
+    _HashAlgorithm.BCRYPT: (_RiskLevel.NOT_RECOMMENDED, "BCRYPT is secure for password hashing, but better alternatives (e.g., Argon2) exist"),
+    _HashAlgorithm.ARGON2: (_RiskLevel.HARMLESS, "Argon2 is the best practice for password hashing"),
+}
 
 
 class AdvancedCryptography:
@@ -37,40 +132,78 @@ class AdvancedCryptography:
 
     def set_backend(self, backend: _Backend):
         """Resets the backend to a new one"""
-        self._backend = backend
-        if backend == _Backend.cryptography:
-            from ._crypto import hashes, keys
-        else:
-            from ._pycrypto import hashes, keys
-        self._real_backend = (hashes, keys)
-        _Sym.Cipher.AES._AES_KEY = keys._AES_KEY
-        _Sym.Cipher.ChaCha20._ChaCha20_KEY = keys._ChaCha20_KEY
-        _Sym.Cipher.TripleDES._TripleDES_KEY = keys._TripleDES_KEY
-        _Sym.Cipher.Blowfish._Blowfish_KEY = keys._Blowfish_KEY
-        _Sym.Cipher.CAST5._CAST5_KEY = keys._CAST5_KEY
-        _Sym.Cipher.ARC4._ARC4_KEY = keys._ARC4_KEY
-        _Sym.Cipher.Camellia._Camellia_KEY = keys._Camellia_KEY
-        _Sym.Cipher.IDEA._IDEA_KEY = keys._IDEA_KEY
-        _Sym.Cipher.SEED._SEED_KEY = keys._SEED_KEY
-        _Sym.Cipher.SM4._SM4_KEY = keys._SM4_KEY
-        _Sym.Cipher.DES._DES_KEY = keys._DES_KEY
-        _Sym.Cipher.ARC2._ARC2_KEY = keys._ARC2_KEY
-        _Sym.Cipher.Salsa20._Salsa20_KEY = keys._Salsa20_KEY
-        _ASym.Cipher.RSA._RSA_KEYPAIR = keys._RSA_KEYPAIR
-        _ASym.Cipher.DSA._DSA_KEYPAIR = keys._DSA_KEYPAIR
-        _ASym.Cipher.ECC._ECC_KEYPAIR = keys._ECC_KEYPAIR
-        _ASym.Cipher.KYBER._KYBER_KEYPAIR = _KYBER_KEYPAIR
-        _ASym.Cipher.DILITHIUM._DILITHIUM_KEYPAIR = _DILITHIUM_KEYPAIR
+        with _suppress_warnings():
+            self._backend = backend
+            if backend == _Backend.cryptography:
+                from ._crypto import hashes, keys
+            else:
+                from ._pycrypto import hashes, keys
+            self._real_backend = (hashes, keys)
+            _Sym.Cipher.AES._AES_KEY = keys._AES_KEY
+            _Sym.Cipher.ChaCha20._ChaCha20_KEY = keys._ChaCha20_KEY
+            _Sym.Cipher.TripleDES._TripleDES_KEY = keys._TripleDES_KEY
+            _Sym.Cipher.Blowfish._Blowfish_KEY = keys._Blowfish_KEY
+            _Sym.Cipher.CAST5._CAST5_KEY = keys._CAST5_KEY
+            _Sym.Cipher.ARC4._ARC4_KEY = keys._ARC4_KEY
+            _Sym.Cipher.Camellia._Camellia_KEY = keys._Camellia_KEY
+            _Sym.Cipher.IDEA._IDEA_KEY = keys._IDEA_KEY
+            _Sym.Cipher.SEED._SEED_KEY = keys._SEED_KEY
+            _Sym.Cipher.SM4._SM4_KEY = keys._SM4_KEY
+            _Sym.Cipher.DES._DES_KEY = keys._DES_KEY
+            _Sym.Cipher.ARC2._ARC2_KEY = keys._ARC2_KEY
+            _Sym.Cipher.Salsa20._Salsa20_KEY = keys._Salsa20_KEY
+            _ASym.Cipher.RSA._RSA_KEYPAIR = keys._RSA_KEYPAIR
+            _ASym.Cipher.DSA._DSA_KEYPAIR = keys._DSA_KEYPAIR
+            _ASym.Cipher.ECC._ECC_KEYPAIR = keys._ECC_KEYPAIR
+            _ASym.Cipher.KYBER._KYBER_KEYPAIR = _KYBER_KEYPAIR
+            _ASym.Cipher.DILITHIUM._DILITHIUM_KEYPAIR = _DILITHIUM_KEYPAIR
 
-    def hash(self, to_hash: bytes, algo: int, force_text_ids: bool = False) -> bytes:
+    @staticmethod
+    def check_unsafe(*to_check, max_unsafe_rating: _RiskLevel = _RiskLevel.HARMLESS, force_hand: bool = True
+                     ) -> _Optional[list[Exception | Warning]]:
+        """Checks the rating of multiple items and returns appropriate Exceptions/Warnings"""
+        returns = []
+        checker = {
+            _RiskLevel.HARMLESS: 0,
+            _RiskLevel.NOT_RECOMMENDED: 1,
+            _RiskLevel.KNOWN_UNSAFE: 2,
+            _RiskLevel.KNOWN_UNSAFE_NOT_RECOMMENDED: 3,
+            _RiskLevel.HIGHLY_DANGEROUS: 4
+        }
+
+        for check in to_check:
+            rating, expl = unsafe.get(check, (None, None))
+            if rating is not None:
+                if checker[rating] > checker[max_unsafe_rating]:
+                    returns.append(
+                        {_RiskLevel.NOT_RECOMMENDED: Warning,
+                         _RiskLevel.KNOWN_UNSAFE: Warning,
+                         _RiskLevel.KNOWN_UNSAFE_NOT_RECOMMENDED: Exception,
+                         _RiskLevel.HIGHLY_DANGEROUS: Exception}[rating](expl)
+                    )
+
+        if force_hand:
+            for ret in returns:
+                if isinstance(ret, Exception) and not isinstance(ret, Warning):
+                    raise ret
+                warnings.warn(ret)
+            return
+
+        return returns
+
+    @_adv_check_types(strict_args={'to_hash': True, 'algo': True, 'force_text_ids': False, 'maximum_risk_level': True})
+    def hash(self, to_hash: bytes, algo: int, force_text_ids: bool = False,
+             maximum_risk_level: _RiskLevel = _RiskLevel.HARMLESS) -> bytes:
         """
         Hashes to_hash using the provided algorithm and returns it.
 
         :param to_hash:
         :param algo:
         :param force_text_ids:
+        :param maximum_risk_level:
         :return:
         """
+        self.check_unsafe(algo, maximum_risk_level)
         match algo:
             case _HashAlgorithm.BCRYPT:
                 try:
@@ -93,6 +226,7 @@ class AdvancedCryptography:
                 final_hash_id = algo.to_bytes(1, "big")
         return final_hash_id + result
 
+    @_adv_check_types(strict_args={'to_verify': True, 'original_hash': True, 'algo': True, 'forced_text_ids': True})
     def hash_verify(self, to_verify: bytes, original_hash: bytes, algo: _Optional[int] = None,
                     forced_text_ids: bool = False):
         """
@@ -132,6 +266,7 @@ class AdvancedCryptography:
                 result = self._real_backend[0].hash(to_verify, algo)
         return result == original_hash
 
+    @_adv_check_types(strict_args={'plain_bytes': True, 'cipher_key': False, 'padding': True, 'mode_or_strength': True})
     def encrypt(self, plain_bytes: bytes, cipher_key: _BASIC_KEY_TYPE | _BASIC_KEYPAIR_TYPE,
                 padding: _Optional[_Sym.Padding | _ASym.Padding] = None,
                 mode_or_strength: _Optional[_Sym.Operation] | _Security = None) -> bytes | dict:
@@ -147,7 +282,10 @@ class AdvancedCryptography:
         parts = {}
 
         if cipher_key.cipher_type == _Sym:
-            parts = self._real_backend[1].encrypt_sym(plain_bytes, cipher_key, padding, mode_or_strength)
+            if padding and isinstance(mode_or_strength, _Sym.Operation):
+                parts = self._real_backend[1].encrypt_sym(plain_bytes, cipher_key, padding, mode_or_strength)
+            else:
+                raise ValueError("Please pass a correct padding and mode to use Symmetric encryption.")
         elif cipher_key.cipher_type == _ASym:
             if cipher_key.cipher == _ASym.Cipher.RSA:
                 parts = self._real_backend[1].encrypt_asym(plain_bytes, cipher_key, padding, mode_or_strength)

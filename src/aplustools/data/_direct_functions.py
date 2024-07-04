@@ -1,4 +1,4 @@
-from typing import Union as _Union
+from typing import Union as _Union, get_origin as _get_origin, get_args as _get_args
 import ctypes as _ctypes
 import typing as _typing
 from ..package.argumint import EndPoint as _EndPoint
@@ -442,6 +442,83 @@ class ListGets(list):
                 return super().__getitem__(idx)
             return default
         return super().__getitem__(key)
+
+
+def check_types(strict_or_func: bool = False):
+    """Checks passed typed of a function from type hints"""
+    strict = strict_or_func
+    if callable(strict_or_func):
+        strict = None
+    check_func = lambda var, type_: type(var) is type_ if strict else lambda var, type_: isinstance(var, type_)
+
+    def _decorator(func):
+        def _wrapper(*args, **kwargs):
+            # Retrieve type hints from the function
+            type_hints = func.__annotations__
+            arg_names = func.__code__.co_varnames[:func.__code__.co_argcount]
+
+            # Combine args and kwargs into a single dictionary
+            arguments = {**dict(zip(arg_names, args)), **kwargs}
+
+            # Check types for each argument
+            for name, value in arguments.items():
+                if name in type_hints:
+                    expected_type = type_hints[name]
+                    if not check_func(value, expected_type):
+                        raise TypeError(f"Argument '{name}' should be of type {expected_type}, but got {type(value).__name__}")
+            return func(*args, **kwargs)
+        return _wrapper
+    return _decorator if strict is not None else _decorator(strict_or_func)
+
+
+def adv_check_types(strict_args=None):
+    """Decorator to check types of arguments based on type hints."""
+    if strict_args is None:
+        strict_args = {}
+
+    def _is_new_type(type_):
+        return hasattr(type_, '__supertype__')
+
+    def _check_value_type(value, expected_type, is_strict):
+        # Handle NewType
+        if _is_new_type(expected_type):
+            expected_type = expected_type.__supertype__
+
+        # Handle Union types
+        if _get_origin(expected_type) is _Union:
+            if any(_check_value_type(value, arg, is_strict) for arg in _get_args(expected_type)):
+                return True
+            raise TypeError(f"Value '{value}' does not match any type in {expected_type}")
+
+        if is_strict:
+            return type(value) is expected_type
+        else:
+            return isinstance(value, expected_type)
+
+    def _decorator(func):
+        def _wrapper(*args, **kwargs):
+            # Retrieve type hints from the function
+            type_hints = func.__annotations__
+            arg_names = func.__code__.co_varnames[:func.__code__.co_argcount]
+
+            # Combine args and kwargs into a single dictionary
+            arguments = {**dict(zip(arg_names, args)), **kwargs}
+
+            # Check types for each argument
+            for name, value in arguments.items():
+                if name in type_hints:
+                    expected_type = type_hints[name]
+                    is_strict = strict_args.get(name, False)
+                    if not _check_value_type(value, expected_type, is_strict):
+                        raise TypeError(
+                            f"Argument '{name}' should be of type {expected_type}, but got {type(value).__name__}")
+
+            return func(*args, **kwargs)
+
+        return _wrapper
+
+    return _decorator
+
 
 
 if __name__ == "__main__":

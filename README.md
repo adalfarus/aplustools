@@ -62,6 +62,76 @@ if web_page.crawlable:
     print(web_page.page.content)
 ```
 
+### Timer usage
+````python
+from aplustools.package.timid import TimidTimer
+from datetime import timedelta
+import time
+
+# Setting up your own timer
+# Here we use the TimidTimer with the current time and a nanosecond multiplier
+mySpecialTimer = TimidTimer.setup_timer_func(time.time, to_nanosecond_multiplier=1e9)
+
+# Initialize the timer starting at 2.3 seconds
+my_timer = mySpecialTimer(start_at=2.3)
+
+# Perform some task
+time.sleep(3.2)
+
+# Print the elapsed time
+print("This took:", my_timer.end())  # Expected output is approximately 1 second as we started at 2.3 seconds
+
+# Advanced timer usage
+timer = TimidTimer()
+
+# Measure the average elapsed time over multiple iterations
+for _ in range(4):
+  timer.wait_ms_static(1000)  # Wait for 1 second
+  timer.tock()  # Record the time
+print("Average 1 second sleep extra delay:", timer.average() - timedelta(seconds=1))
+
+# Using multiple timers within one timer object
+with timer.enter(index=1):
+  time.sleep(1)
+
+# Using the timer for timed function execution
+timer.start(1)  # Start the timer at index 1
+timer.shoot(interval=1, function=lambda: print("Shooting", timer.tock(1, return_type="timedelta")), iterations=3)
+print(timer.end())  # End the timer at index 0 which started when the timer object was created
+
+# Defining a function with linear time complexity
+def linear_time(n):
+  for _ in range(n):
+    pass
+
+# Create an input generator for the linear time function
+def create_simple_input_generator():
+  return ((tuple([n]), {}) for n in range(1, 100_001, 100))
+
+# Measure the average time complexity of the function
+print(timer.complexity(linear_time, create_simple_input_generator()))
+
+# Plotting the time complexity curve
+from matplotlib import pyplot
+print(timer.complexity(linear_time, create_simple_input_generator(), matplotlib_pyplt=pyplot))
+
+# Define a more complex function
+def complex_func(n, m, power=2):
+  return sum(i ** power for i in range(n)) + sum(j ** power for j in range(m))
+
+# Define a varying function
+def varying_func(n, multiplier=1):
+  return sum(i * multiplier for i in range(n))
+
+# Create input generators for the complex functions
+complex_input_generator = ((tuple([n, n // 2]), {'power': 2}) for n in range(1, 101))
+varying_input_generator = ((tuple([n]), {'multiplier': (n % 3 + 1)}) for n in range(1, 101))
+
+# Measure and print the estimated time complexity for the complex functions
+print(f"Estimated Time Complexity for complex_func: {timer.complexity(complex_func, complex_input_generator, matplotlib_pyplt=pyplot)}")
+print(f"Estimated Time Complexity for varying_func: {timer.complexity(varying_func, varying_input_generator, matplotlib_pyplt=pyplot)}")
+````
+
 ### Security usage
 ````python
 from aplustools.security.crypto.algorithms import Sym, ASym, MessageAuthenticationCode, KeyDerivation, HashAlgorithm
@@ -187,76 +257,6 @@ while True:
         print("Ending")
 ````
 
-### Timer usage
-````python
-from aplustools.package.timid import TimidTimer
-from datetime import timedelta
-import time
-
-# Setting up your own timer
-# Here we use the TimidTimer with the current time and a nanosecond multiplier
-mySpecialTimer = TimidTimer.setup_timer_func(time.time, to_nanosecond_multiplier=1e9)
-
-# Initialize the timer starting at 2.3 seconds
-my_timer = mySpecialTimer(start_at=2.3)
-
-# Perform some task
-time.sleep(3.2)
-
-# Print the elapsed time
-print("This took:", my_timer.end())  # Expected output is approximately 1 second as we started at 2.3 seconds
-
-# Advanced timer usage
-timer = TimidTimer()
-
-# Measure the average elapsed time over multiple iterations
-for _ in range(4):
-  timer.wait_ms_static(1000)  # Wait for 1 second
-  timer.tock()  # Record the time
-print("Average 1 second sleep extra delay:", timer.average() - timedelta(seconds=1))
-
-# Using multiple timers within one timer object
-with timer.enter(index=1):
-  time.sleep(1)
-
-# Using the timer for timed function execution
-timer.start(index=1)  # Start the timer at index 1
-timer.shoot(interval=1, function=lambda: print("Shooting", timer.tock(index=1, return_datetime=True)), iterations=3)
-print(timer.end())  # End the timer at index 0 which started when the timer object was created
-
-# Defining a function with linear time complexity
-def linear_time(n):
-  for _ in range(n):
-    pass
-
-# Create an input generator for the linear time function
-def create_simple_input_generator():
-  return ((tuple([n]), {}) for n in range(1, 100_001, 100))
-
-# Measure the average time complexity of the function
-print(timer.complexity(linear_time, create_simple_input_generator()))
-
-# Plotting the time complexity curve
-from matplotlib import pyplot
-print(timer.complexity(linear_time, create_simple_input_generator(), matplotlib_pyplt=pyplot))
-
-# Define a more complex function
-def complex_func(n, m, power=2):
-  return sum(i ** power for i in range(n)) + sum(j ** power for j in range(m))
-
-# Define a varying function
-def varying_func(n, multiplier=1):
-  return sum(i * multiplier for i in range(n))
-
-# Create input generators for the complex functions
-complex_input_generator = ((tuple([n, n // 2]), {'power': 2}) for n in range(1, 101))
-varying_input_generator = ((tuple([n]), {'multiplier': (n % 3 + 1)}) for n in range(1, 101))
-
-# Measure and print the estimated time complexity for the complex functions
-print(f"Estimated Time Complexity for complex_func: {timer.complexity(complex_func, complex_input_generator, matplotlib_pyplt=pyplot)}")
-print(f"Estimated Time Complexity for varying_func: {timer.complexity(varying_func, varying_input_generator, matplotlib_pyplt=pyplot)}")
-````
-
 ### System
 ````python
 from aplustools.io.environment import get_system, BasicSystem
@@ -282,7 +282,7 @@ for process in BasicSystem.get_running_processes():
 from aplustools.security.passwords import QuickGeneratePasswords
 
 
-input_sentence = input("Please input a sentence of your choosing: ")
+input_sentence = input("Please input a sentence structure (Ww!): ")
 password = QuickGeneratePasswords.generate_sentence_based_password(input_sentence)
 print(f"Your password is {password}")
 

@@ -16,9 +16,9 @@ import tempfile as _tempfile
 from enum import Enum as _Enum
 import ctypes as _ctypes
 import locale as _locale
+from contextlib import contextmanager as _contextmanager
 
 from PIL import Image as _Image
-import speedtest as _speedtest
 
 from ..data import bytes_to_human_readable_binary_iec as _bytes_to_human_readable_binary_iec
 from ..data import bits_to_human_readable as _bits_to_human_readable
@@ -252,6 +252,16 @@ def static_class(message: str | type = "This is a static class that can't be ins
     return _decorator(cls)
 
 
+@_contextmanager
+def suppress_warnings():
+    """Context manager to suppress warnings."""
+    _warnings.filterwarnings("ignore")
+    try:
+        yield
+    finally:
+        _warnings.filterwarnings("default")
+
+
 class Window:
     @staticmethod
     def extract_icon_from_executable(exe_path: str, save_path: str) -> str:
@@ -433,6 +443,7 @@ class BasicSystem:
     @staticmethod
     def measure_network_speed():
         """Measure network speed using speedtest-cli."""
+        import speedtest as _speedtest
         st = _speedtest.Speedtest()
         download_speed = st.download()
         upload_speed = st.upload()

@@ -1,9 +1,11 @@
-from Crypto.PublicKey import RSA, DSA, ECC
-from Crypto.Cipher import AES, ChaCha20, DES3, Blowfish, CAST, PKCS1_OAEP, PKCS1_v1_5, ARC4, DES, ARC2, Salsa20
-from Crypto.Hash import SHA256, SHA384, SHA512, HMAC, CMAC, SHA3_512, KMAC128, KMAC256, Poly1305, SHA3_224, SHA3_256, SHA3_384
-from Crypto.Signature import pkcs1_15, DSS
-from Crypto.Protocol.KDF import PBKDF2, scrypt, HKDF, PBKDF1
-from Crypto.Random import get_random_bytes
+from Cryptodome.PublicKey import RSA, DSA, ECC
+from Cryptodome.Cipher import AES, ChaCha20, DES3, Blowfish, CAST, PKCS1_OAEP, PKCS1_v1_5, ARC4, DES, ARC2, Salsa20
+from Cryptodome.Hash import SHA256, SHA384, SHA512, HMAC, CMAC, SHA3_512, KMAC128, KMAC256, Poly1305, SHA3_224, SHA3_256, SHA3_384
+from Cryptodome.Signature import pkcs1_15, DSS
+from Cryptodome.Protocol.KDF import PBKDF2, scrypt, HKDF, PBKDF1
+from Cryptodome.Signature.pss import PSS_SigScheme
+from Cryptodome.Cipher.PKCS1_OAEP import PKCS1OAEP_Cipher
+from Cryptodome.Random import get_random_bytes
 from typing import Union, Literal, Optional
 import os
 import warnings
@@ -44,8 +46,19 @@ _SYM_PADDING_CONVERSION = {
 }
 _ASYM_PADDING_CONVERSION = {
     ASym.Padding.PKCShash1v15: pkcs1_15.new,
-    ASym.Padding.OAEP: lambda hash_algo: asym_padding.OAEP(mgf=asym_padding.MGF1(hash_algo), algorithm=hash_algo, label=None),
-    ASym.Padding.PSS: lambda hash_algo: asym_padding.PSS(mgf=asym_padding.MGF1(hash_algo), salt_length=asym_padding.PSS.MAX_LENGTH)
+    ASym.Padding.OAEP: lambda hash_algo: PKCS1OAEP_Cipher.new(hashAlgo=hash_algo),
+    ASym.Padding.PSS: lambda hash_algo: PSS_SigScheme(mgf=asym_padding.MGF1(hash_algo), salt_length=asym_padding.PSS.MAX_LENGTH)
+}
+_CIPHER_MODULE_MAPPING = {
+    Sym.Cipher.AES: AES,
+    Sym.Cipher.ChaCha20: ChaCha20,
+    Sym.Cipher.ARC4: ARC4,
+    Sym.Cipher.ARC2: ARC2,
+    Sym.Cipher.CAST5: CAST,
+    Sym.Cipher.TripleDES: DES3,
+    Sym.Cipher.DES: DES,
+    Sym.Cipher.Blowfish: Blowfish,
+    Sym.Cipher.Salsa20: Salsa20
 }
 
 
@@ -239,28 +252,41 @@ class _ECC_KEYPAIR(_BASIC_PYCRYPTO_KEYPAIR):
 
 def encrypt_sym(plain_bytes: bytes, cipher_key, padding=None, mode_id=None):
     parts = {}
+    cipher_module = _CIPHER_MODULE_MAPPING[cipher_key.cipher]
 
-    mode = _SYM_OPERATION_CONVERSION[mode_id] if cipher_key.cipher != Sym.Cipher.ChaCha20 else AES.MODE_CBC
-    if mode == AES.MODE_ECB:
-        cipher = AES.new(cipher_key.get_key(), mode)
-        iv_or_nonce = None
-    elif mode == AES.MODE_CBC:
-        iv_or_nonce = get_random_bytes(16)
-        cipher = AES.new(cipher_key.get_key(), mode, iv=iv_or_nonce)
-        parts['iv'] = iv_or_nonce
-    elif mode == AES.MODE_CTR:
-        iv_or_nonce = get_random_bytes(8)
-        cipher = AES.new(cipher_key.get_key(), mode, nonce=iv_or_nonce)
-        parts['nonce'] = iv_or_nonce
-    elif mode == AES.MODE_GCM:
-        iv_or_nonce = get_random_bytes(12)
-        cipher = AES.new(cipher_key.get_key(), mode, nonce=iv_or_nonce)
-        parts['nonce'] = iv_or_nonce
+    if cipher_key.cipher in [Sym.Cipher.ChaCha20, Sym.Cipher.ARC4]:
+        nonce = get_random_bytes(12)
+        cipher = cipher_module.new(key=cipher_key.get_key(), nonce=nonce)
+        parts['nonce'] = nonce
+    elif cipher_key.cipher == Sym.Cipher.ARC2:
+        iv = get_random_bytes(8)
+        cipher = cipher_module.new(cipher_key.get_key(), mode=ARC2.MODE_CFB, iv=iv)
+        parts['iv'] = iv
     else:
-        raise NotSupportedError(f"Unsupported mode '{mode_id}' for encryption")
+        mode = _SYM_OPERATION_CONVERSION.get(mode_id)
+        if mode is None:
+            raise ValueError("Invalid mode")
+        if mode == AES.MODE_ECB:
+            cipher = cipher_module.new(cipher_key.get_key(), mode)
+        elif mode in [AES.MODE_CBC, AES.MODE_CFB, AES.MODE_OFB]:
+            iv_or_nonce = get_random_bytes(16)
+            cipher = cipher_module.new(cipher_key.get_key(), mode, iv=iv_or_nonce)
+            parts['iv'] = iv_or_nonce
+        elif mode == AES.MODE_CTR:
+            iv_or_nonce = get_random_bytes(8)
+            cipher = cipher_module.new(cipher_key.get_key(), mode, nonce=iv_or_nonce)
+            parts['nonce'] = iv_or_nonce
+        elif mode == AES.MODE_GCM:
+            iv_or_nonce = get_random_bytes(12)
+            cipher = cipher_module.new(cipher_key.get_key(), mode, nonce=iv_or_nonce)
+            parts['nonce'] = iv_or_nonce
+        else:
+            raise NotSupportedError(f"Unsupported mode '{mode_id}' for encryption")
 
-    if padding:
-        plain_bytes = _SYM_PADDING_CONVERSION[padding](plain_bytes)
+        if padding and mode != AES.MODE_CTR:
+            plain_bytes = _SYM_PADDING_CONVERSION[padding](plain_bytes)
+        elif mode == AES.MODE_CBC and len(plain_bytes) % 16 != 0:
+            raise ValueError("Data must be padded to 16 byte boundary in CBC mode")
 
     ciphertext = cipher.encrypt(plain_bytes)
     parts['ciphertext'] = ciphertext
@@ -269,26 +295,32 @@ def encrypt_sym(plain_bytes: bytes, cipher_key, padding=None, mode_id=None):
 
 def decrypt_sym(ciphertext: Union[bytes, dict[str, bytes]], cipher_key, padding=None, mode_id=None) -> bytes:
     if isinstance(ciphertext, dict):
-        ciphertext = ciphertext['ciphertext']
+        ciphertext_bytes = ciphertext['ciphertext']
         iv_or_nonce = ciphertext.get('iv') or ciphertext.get('nonce')
     else:
+        ciphertext_bytes = ciphertext
         iv_or_nonce = None
 
-    mode = _SYM_OPERATION_CONVERSION[mode_id] if cipher_key.cipher != Sym.Cipher.ChaCha20 else AES.MODE_CBC
-    if mode == AES.MODE_ECB:
-        cipher = AES.new(cipher_key.get_key(), mode)
-    elif mode == AES.MODE_CBC:
-        cipher = AES.new(cipher_key.get_key(), mode, iv=iv_or_nonce)
-    elif mode == AES.MODE_CTR:
-        cipher = AES.new(cipher_key.get_key(), mode, nonce=iv_or_nonce)
-    elif mode == AES.MODE_GCM:
-        cipher = AES.new(cipher_key.get_key(), mode, nonce=iv_or_nonce)
+    cipher_module = _CIPHER_MODULE_MAPPING[cipher_key.cipher]
+
+    if cipher_key.cipher in [Sym.Cipher.ChaCha20, Sym.Cipher.ARC4]:
+        cipher = cipher_module.new(key=cipher_key.get_key(), nonce=iv_or_nonce)
+    elif cipher_key.cipher == Sym.Cipher.ARC2:
+        cipher = cipher_module.new(cipher_key.get_key(), mode=ARC2.MODE_CFB, iv=iv_or_nonce)
     else:
-        raise NotSupportedError(f"Unsupported mode '{mode_id}' for decryption")
+        mode = _SYM_OPERATION_CONVERSION.get(mode_id)
+        if mode is None:
+            raise ValueError("Invalid mode")
+        if mode == AES.MODE_ECB:
+            cipher = cipher_module.new(cipher_key.get_key(), mode)
+        elif mode == AES.MODE_CTR:
+            cipher = cipher_module.new(cipher_key.get_key(), mode, nonce=iv_or_nonce)
+        else:
+            cipher = cipher_module.new(cipher_key.get_key(), mode, iv=iv_or_nonce)
 
-    plain_bytes = cipher.decrypt(ciphertext)
+    plain_bytes = cipher.decrypt(ciphertext_bytes)
 
-    if padding:
+    if padding and cipher_key.cipher not in [Sym.Cipher.ChaCha20, Sym.Cipher.ARC4, Sym.Cipher.ARC2]:
         if padding == Sym.Padding.PKCS7:
             pad_len = plain_bytes[-1]
             plain_bytes = plain_bytes[:-pad_len]
