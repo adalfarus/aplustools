@@ -1,7 +1,7 @@
-from ...data import enum_auto as _enum_auto
+from ...data import EANEnum as _EANEnum
 
 
-class Backend:
+class Backend(_EANEnum):
     """One of the cryptography backends"""
-    cryptography = _enum_auto()
-    pycryptodomex = _enum_auto()
+    cryptography = "Cryptography backend"
+    pycryptodomex = "PyCryptodomeX backend"

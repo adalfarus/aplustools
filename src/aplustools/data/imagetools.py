@@ -1,4 +1,7 @@
 from typing import Type, Union, Tuple, Optional, List, Callable
+
+import wand.color
+
 from ..web.utils import get_user_agent
 from concurrent.futures import ThreadPoolExecutor
 from urllib.parse import urlparse
@@ -466,11 +469,12 @@ class SVGCompatibleImage(OfflineImage):
     def _convert_svg_to_raster(self, svg_file, return_as_bytes=False):
         from wand.image import Image as WandImage
 
-        with WandImage(filename=svg_file, format='png') as img:
+        with WandImage(filename=svg_file, format='png', background=wand.color.Color('transparent')) as img:
             if self.resolution:
                 img.density = self.resolution
             if self.output_size:
                 img.resize(*self.output_size)
+            img.alpha_channel = 'activate'
             png_blob = img.make_blob()
         if return_as_bytes:
             return png_blob

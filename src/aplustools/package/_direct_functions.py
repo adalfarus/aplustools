@@ -11,14 +11,29 @@ class LazyModuleLoader:
     def _load_module(self):
         if self.module is None:
             try:
-                self.module = __import__(self.module_name, globals(), locals(), ['*'])
-            except ImportError:
-                raise ImportError("Optional module not installed. Please install it to use this feature.")
+                # Handle relative imports correctly
+                if self.module_name.startswith('.'):
+                    # Calculate the full module name based on the current package
+                    caller_package = __name__.rsplit('.', 2)[0]
+                    full_module_name = caller_package + self.module_name
+                else:
+                    full_module_name = self.module_name
+
+                # Import the module
+                self.module = __import__(full_module_name, globals(), locals(), ['*'])
+
+                # Process nested imports for deeper relative paths
+                for part in self.module_name.split('.')[1:]:
+                    self.module = getattr(self.module, part)
+
+            except ImportError as e:
+                raise ImportError(
+                    f"Optional module '{self.module_name}' not installed. Please install it to use this feature.") from e
         return self.module
 
     def __repr__(self):
         if self.module is None:
-            return f"<LazyModuleLoader for '{self.module_name}'>"
+            return f"<_LazyModuleLoader for '{self.module_name}'>"
         else:
             return repr(self.module)
 

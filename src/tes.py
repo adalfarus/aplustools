@@ -1,4 +1,13 @@
 from aplustools.security.crypto._pycrypto.keys import _ChaCha20_KEY, encrypt_sym, decrypt_sym, Sym, ASym
+from aplustools.security import Security, RiskLevel
+from aplustools.security.crypto.algorithms import HashAlgorithm
+
+
+print(f"{str(Sym.Padding.ANSIX923)}")
+print(Security.BASIC)
+print(RiskLevel.KNOWN_UNSAFE_NOT_RECOMMENDED.desc)
+print(HashAlgorithm.SHA2.SHA512)
+print(type(HashAlgorithm.ARGON2))
 
 
 def tes_advanced_cryptography():

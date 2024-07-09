@@ -1,5 +1,9 @@
 """The cli implementation of aplustools"""
-from aplustools.package.argumint import ArguMint, ArgStruct
+try:
+    from .package.argumint import ArguMint, ArgStruct
+except ImportError:
+    from package.argumint import ArguMint, ArgStruct
+
 import subprocess
 import inspect
 import shutil

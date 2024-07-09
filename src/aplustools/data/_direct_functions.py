@@ -1,4 +1,5 @@
-from typing import Union as _Union, get_origin as _get_origin, get_args as _get_args
+from typing import (Union as _Union, get_origin as _get_origin, get_args as _get_args, Any as _Any, Literal as _Literal,
+                    Iterator as _Iterator, TypeVar as _TypeVar, Type as _Type)
 import ctypes as _ctypes
 import typing as _typing
 from ..package.argumint import EndPoint as _EndPoint
@@ -404,33 +405,114 @@ def update_dict_if_absent(original_dict, new_data):
         original_dict.setdefault(key, value)
 
 
-_global_enum_auto = -1
-_global_enum_auto_reserves = {0, 1, 2, 3,   # For the security settings
-                              4, 5, 6, 7,  # For the hash algos
-                              8, 9, 10, 11,
-                              12, 13, 14, 15,
-                              16, 17, 18, 19,
-                              20, 21, 22, 23,
-                              24, 25, 26, 27,
-                              28, 29, 30, 31}
+class _EAN:
+    _global_enum_auto = -1
+    _global_enum_auto_reserves = {0, 1, 2, 3,  # For the security settings
+                                  4, 5, 6, 7,  # For the hash algos
+                                  8, 9, 10, 11,
+                                  12, 13, 14, 15,
+                                  16, 17, 18, 19,
+                                  20, 21, 22, 23,
+                                  24, 25, 26, 27,
+                                  28, 29, 30, 31}
 
+    def __init__(self, name: str, predetermined_value_s: int | tuple | None = None, desc: str = ""):
+        self.value = None
+        if isinstance(predetermined_value_s, str):
+            desc = predetermined_value_s
+            predetermined_value_s = None
+        if predetermined_value_s is not None:
+            if isinstance(predetermined_value_s, int):
+                predetermined_value_s = (predetermined_value_s,)
 
-def enum_auto():
-    """As enums don't allow nesting, I devised this:"""
-    global _global_enum_auto
-    _global_enum_auto += 1
-    while _global_enum_auto in _global_enum_auto_reserves:
-        _global_enum_auto += 1
-    return _global_enum_auto
+            for value in predetermined_value_s:
+                try:
+                    self._reserve(value)
+                except ValueError:
+                    pass
+                else:
+                    self.value = value
 
+        if self.value is None:
+            self.value = self._auto()
+        self._desc = desc
+        self._name = name
 
-def reserve_enum_auto(*numbers: int):
-    global _global_enum_auto_reserves
-    for number in numbers:
-        if number not in _global_enum_auto_reserves:
-            _global_enum_auto_reserves.add(number)
+    @classmethod
+    def _auto(cls):
+        cls._global_enum_auto += 1
+        while cls._global_enum_auto in cls._global_enum_auto_reserves:
+            cls._global_enum_auto += 1
+        return cls._global_enum_auto
+
+    @classmethod
+    def _reserve(cls, what: int):
+        if what not in cls._global_enum_auto_reserves:
+            cls._global_enum_auto_reserves.add(what)
         else:
-            raise ValueError(f"{number} is already reserved.")
+            raise ValueError(f"{what} is already reserved.")
+
+    @property
+    def name(self) -> str:
+        """Get the name of the EAN instance"""
+        return self._name
+
+    @property
+    def desc(self) -> str:
+        """Get the description of the EAN instance"""
+        return self._desc
+
+    def __get__(self, instance, owner):
+        if isinstance(self.value, int):
+            return self
+        return self.value
+
+    def __set__(self, instance, value):
+        raise ValueError("An EAN instance cannot be reassigned")
+        # self.value = value
+
+    def __hash__(self):
+        return self.value
+
+    def to_bytes(self, length: int = 1, byteorder: _Literal["little", "big"] = "big", *, signed: bool = False):
+        return self.value.to_bytes(length, byteorder, signed=signed)
+
+    def __index__(self):
+        return self.value
+
+    def __str__(self):
+        return f"{self._name}: {self._desc}"
+
+    def __repr__(self):
+        return f"EAN(name={self._name!r}, desc={self._desc!r}, value={self.value!r})"
+
+
+class _EANEnumMeta(type):
+    def __new__(cls: type['_EANEnumMeta'], name: str, bases: tuple, class_dict: dict[str, _Any]) -> _Type:
+        _enum_members: dict[str, _EAN] = {}
+        for key, value in class_dict.items():
+            if not key.startswith('_'):
+                if not isinstance(value, (int, str, tuple)):
+                    # Handle nested EANEnum classes
+                    _enum_members[key] = value
+                else:
+                    _members = (key,) + (value if isinstance(value, tuple) else (value,))
+                    _enum_members[key] = _EAN(*_members)
+        class_dict.update(_enum_members)
+        _enum_class = super().__new__(cls, name, bases, class_dict)
+        return _enum_class
+
+    def __iter__(cls: _Type['_EANEnumMeta']) -> _Iterator[_EAN]:
+        return (value for key, value in cls.__dict__.items() if isinstance(value, _EAN))
+
+    def __getitem__(cls: _Type['_EANEnumMeta'], item: str) -> _EAN:
+        return getattr(cls, item)
+
+
+class EANEnum(metaclass=_EANEnumMeta):
+    """As enums don't allow nesting, I devised this:\n
+    (Please only use inside the library, any outside use could disrupt normal function)"""
+    pass
 
 
 class ListGets(list):
@@ -441,6 +523,17 @@ class ListGets(list):
             if idx < len(self):
                 return super().__getitem__(idx)
             return default
+        return super().__getitem__(key)
+
+
+class TupleList(list):
+    """Makes it easy to define a default when accessing a list, e.g. lst[999, default]"""
+    def __getitem__(self, key: int | tuple[int, ...] | tuple[slice, ...]) -> tuple | _Any:
+        if isinstance(key, tuple):
+            ret = []
+            for idx in key:
+                ret.append(super().__getitem__(idx))
+            return tuple(ret)
         return super().__getitem__(key)
 
 
@@ -519,6 +612,27 @@ def adv_check_types(strict_args=None):
 
     return _decorator
 
+
+def singleton(cls):
+    """A singleton """
+    instances = {}
+
+    def _get_instance(*args, **kwargs):
+        if cls not in instances:
+            instances[cls] = cls(*args, **kwargs)
+        return instances[cls]
+
+    return _get_instance
+
+
+class Singleton:
+    """A singleton base class"""
+    _instances = {}
+
+    def __new__(cls, *args, **kwargs):
+        if cls not in cls._instances:
+            cls._instances[cls] = super(Singleton, cls).__new__(cls, *args, **kwargs)
+        return cls._instances[cls]
 
 
 if __name__ == "__main__":

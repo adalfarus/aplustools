@@ -1,5 +1,5 @@
 from typing import Literal as _Literal, Optional as _Optional
-from aplustools.data import enum_auto as _enum_auto
+from ...data import EANEnum as _EANEnum
 from .exceptions import NotSupportedError as _NotSupportedError
 from ._hashes import HashAlgorithm
 
@@ -272,20 +272,29 @@ class _SymCipher:
     Salsa20 = _Salsa20
 
 
-class _SymOperation:
+class _SymOperation(_EANEnum):
     """Different modes of operation"""
-    ECB = _enum_auto()  # Electronic Codebook
-    CBC = _enum_auto()  # Cipher Block Chaining
-    CFB = _enum_auto()  # Cipher Feedback
-    OFB = _enum_auto()  # Output Feedback
-    CTR = _enum_auto()  # Counter
-    GCM = _enum_auto()  # Galois/Counter Mode
+    ECB = "Electronic Codebook"
+    CBC = "Cipher Block Chaining"
+    CFB = "Cipher Feedback"
+    OFB = "Output Feedback"
+    CTR = "Counter"
+    GCM = "Galois/Counter Mode"
 
 
-class _SymPadding:
+class _SymPadding(_EANEnum):
     """Padding Schemes"""
-    PKCS7 = _enum_auto()
-    ANSIX923 = _enum_auto()
+    PKCS7 = ""
+    ANSIX923 = ""
+
+
+class _SymKeyEncoding(_EANEnum):
+    HEX = ""
+    RAW = ""
+    ASCII = ""
+    BASE16 = ""
+    BASE32 = ""
+    BASE64 = ""
 
 
 class Sym:
@@ -293,6 +302,7 @@ class Sym:
     Cipher = _SymCipher
     Operation = _SymOperation
     Padding = _SymPadding
+    KeyEncoding = _SymKeyEncoding
 
 
 class _RSA:  # Rivest-Shamir-Adleman
@@ -354,33 +364,33 @@ class _DSA:
         return "DSA"
 
 
-class _ECCCurve:
+class _ECCCurve(_EANEnum):
     """Elliptic key functions"""
-    SECP192R1 = _enum_auto()
-    SECP224R1 = _enum_auto()
-    SECP256K1 = _enum_auto()
-    SECP256R1 = _enum_auto()  # Default
-    SECP384R1 = _enum_auto()
-    SECP521R1 = _enum_auto()
-    SECT163K1 = _enum_auto()
-    SECT163R2 = _enum_auto()
-    SECT233K1 = _enum_auto()
-    SECT233R1 = _enum_auto()
-    SECT283K1 = _enum_auto()
-    SECT283R1 = _enum_auto()
-    SECT409K1 = _enum_auto()
-    SECT409R1 = _enum_auto()
-    SECT571K1 = _enum_auto()
-    SECT571R1 = _enum_auto()
+    SECP192R1 = ""
+    SECP224R1 = ""
+    SECP256K1 = ""
+    SECP256R1 = ""  # Default
+    SECP384R1 = ""
+    SECP521R1 = ""
+    SECT163K1 = ""
+    SECT163R2 = ""
+    SECT233K1 = ""
+    SECT233R1 = ""
+    SECT283K1 = ""
+    SECT283R1 = ""
+    SECT409K1 = ""
+    SECT409R1 = ""
+    SECT571K1 = ""
+    SECT571R1 = ""
 
 
-class _ECCType:
+class _ECCType(_EANEnum):
     """How the signing is done, heavily affects the performance, key generation and what you can do with it"""
-    ECDSA = _enum_auto()  # Elliptic Curve Digital Signature Algorithm
-    Ed25519 = _enum_auto()
-    Ed448 = _enum_auto()
-    X25519 = _enum_auto()
-    X448 = _enum_auto()
+    ECDSA = "Elliptic Curve Digital Signature Algorithm"
+    Ed25519 = ""
+    Ed448 = ""
+    X25519 = ""
+    X448 = ""
 
 
 class _ECC:
@@ -396,7 +406,7 @@ class _ECC:
         return cls._ECC_KEYPAIR(_ECCType.ECDSA, ecc_curve, private_key)
 
     @classmethod
-    def optimized_key(cls, ecc_type: _ECCType.Ed25519 | _ECCType.Ed448 | _ECCType.X25519 | _ECCType.X448 = _ECCType.Ed25519,
+    def optimized_key(cls, ecc_type: _ECCType,
                       private_key: _Optional[bytes | str] = None):
         if ecc_type == _ECCType.ECDSA:
             raise ValueError("Please use ECC.ecdsa_key to generate ECDSA keys")
@@ -437,38 +447,46 @@ class _ASymCipher:
     DILITHIUM = _DILITHIUM
 
 
-class _ASymPadding:
+class _ASymPadding(_EANEnum):
     """Asymmetric Encryption Padding Schemes"""
-    PKCShash1v15 = _enum_auto()
-    OAEP = _enum_auto()
-    PSS = _enum_auto()
+    PKCShash1v15 = ""
+    OAEP = ""
+    PSS = ""
+
+
+class _ASymKeyEncoding(_EANEnum):
+    PEM = ""
+    PKCS8 = ""
+    ASN1_DER = ""
+    OPENSSH = ""
 
 
 class ASym:
     """Provides all enums for asymmetric cryptography operations"""
     Cipher = _ASymCipher
     Padding = _ASymPadding
+    KeyEncoding = _ASymKeyEncoding
 
 
-class KeyDerivation:
+class KeyDerivation(_EANEnum):
     """Key Derivation Functions (KDFs)"""
-    PBKDF2HMAC = _enum_auto()  # Password-Based Key Derivation Function 2
-    Scrypt = _enum_auto()
-    HKDF = _enum_auto()  # HMAC-based Extract-and-Expand Key Derivation Function
-    X963 = _enum_auto()
-    ConcatKDF = _enum_auto()
-    PBKDF1 = _enum_auto()
-    KMAC128 = _enum_auto()
-    KMAC256 = _enum_auto()
-    ARGON2 = _enum_auto()
-    KKDF = _enum_auto()
-    BCRYPT = _enum_auto()
+    PBKDF2HMAC = "Password-Based Key Derivation Function 2"
+    Scrypt = ""
+    HKDF = "HMAC-based Extract-and-Expand Key Derivation Function"
+    X963 = ""
+    ConcatKDF = ""
+    PBKDF1 = ""
+    KMAC128 = ""
+    KMAC256 = ""
+    ARGON2 = ""
+    KKDF = ""
+    BCRYPT = ""
 
 
-class MessageAuthenticationCode:
+class MessageAuthenticationCode(_EANEnum):
     """Authentication Codes"""
-    HMAC = _enum_auto()  # Hash-based Message Authentication Code
-    CMAC = _enum_auto()  # Cipher-based Message Authentication Cod
-    KMAC128 = _enum_auto()
-    KMAC256 = _enum_auto()
-    Poly1305 = _enum_auto()
+    HMAC = "Hash-based Message Authentication Code"
+    CMAC = "Cipher-based Message Authentication Code"
+    KMAC128 = ""
+    KMAC256 = ""
+    Poly1305 = ""

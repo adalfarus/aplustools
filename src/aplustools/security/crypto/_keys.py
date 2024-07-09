@@ -4,7 +4,6 @@ from tempfile import mkdtemp
 import os
 
 from ...io.environment import safe_remove
-from ...data import enum_auto
 from .algorithms import Sym, ASym
 
 
@@ -208,32 +207,3 @@ class _DILITHIUM_KEYPAIR(_BASIC_KEYPAIR):
 
     def __str__(self):
         return self.get_public_bytes().hex()
-
-
-class ECC_CURVE:
-    """Elliptic key functions"""
-    SECP192R1 = enum_auto()
-    SECP224R1 = enum_auto()
-    SECP256K1 = enum_auto()
-    SECP256R1 = enum_auto()  # Default
-    SECP384R1 = enum_auto()
-    SECP521R1 = enum_auto()
-    SECT163K1 = enum_auto()
-    SECT163R2 = enum_auto()
-    SECT233K1 = enum_auto()
-    SECT233R1 = enum_auto()
-    SECT283K1 = enum_auto()
-    SECT283R1 = enum_auto()
-    SECT409K1 = enum_auto()
-    SECT409R1 = enum_auto()
-    SECT571K1 = enum_auto()
-    SECT571R1 = enum_auto()
-
-
-class ECC_TYPE:
-    """How the signing is done, heavily affects the performance, key generation and what you can do with it"""
-    ECDSA = enum_auto()  # Elliptic Curve Digital Signature Algorithm
-    Ed25519 = enum_auto()
-    Ed448 = enum_auto()
-    X25519 = enum_auto()
-    X448 = enum_auto()

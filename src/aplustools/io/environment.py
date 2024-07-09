@@ -76,6 +76,66 @@ def safe_remove(paths: _Union[str, _Path, tuple[_Union[str, _Path]], list[_Union
         print(e)
 
 
+def safe_write(filename, content):
+    # Create a temporary file in the same directory as the target file
+    dir_name, base_name = _os.path.split(filename)
+    with _tempfile.NamedTemporaryFile('w', dir=dir_name, delete=False) as tmp_file:
+        tmp_file_name = tmp_file.name
+        tmp_file.write(content)
+
+    # Move the temporary file to the target file location
+    try:
+        _os.replace(tmp_file_name, filename)
+    except Exception as e:
+        # If any error occurs, remove the temporary file
+        _os.remove(tmp_file_name)
+        raise e
+
+
+class SafeFileWriter:
+    def __init__(self, filename, mode='w'):
+        self.filename = filename
+        self.mode = mode
+        self.temp_file = _tempfile.NamedTemporaryFile(mode=mode, dir=_os.path.dirname(filename), delete=False)
+        self.temp_filename = self.temp_file.name
+
+    def write(self, content):
+        return self.temp_file.write(content)
+
+    def writelines(self, lines):
+        return self.temp_file.writelines(lines)
+
+    def read(self, size=-1):
+        return self.temp_file.read(size)
+
+    def readline(self, size=-1):
+        return self.temp_file.readline(size)
+
+    def readlines(self, hint=-1):
+        return self.temp_file.readlines(hint)
+
+    def flush(self):
+        return self.temp_file.flush()
+
+    def close(self):
+        if not self.temp_file.closed:
+            self.temp_file.close()
+            try:
+                _os.replace(self.temp_filename, self.filename)
+            except Exception as e:
+                _os.remove(self.temp_filename)
+                raise e
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if exc_type is not None:
+            _os.remove(self.temp_filename)
+        else:
+            self.close()
+
+
 def is_accessible(path: str):
     return _os.access(path, _os.R_OK)
 
@@ -579,7 +639,7 @@ class _BaseSystem:
                           click_callback: _Callable = lambda: None):
         """Sends a complex notification using a cross platform notification or a system specific one if it supports all
         the features"""
-        from aplustools.io.gui.balloon_tip import NotificationManager  # To prevent a circular import
+        from ..io.gui.balloon_tip import (NotificationManager)  # To prevent a circular import
 
         icon_path = Window.get_app_icon_path()
         NotificationManager.show_notification(

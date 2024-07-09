@@ -119,19 +119,31 @@ class AdvancedCryptography:
 
     We do not use human-readable ids because hackers can read too, if you want to find out what hash you have
     you can simply remember your settings or look for the hard coded values in aplustools.security.crypto.hashes"""
+    _instance = None
+    _auto_pack = _easy_hash = True
+    _backend = _real_backend = None
 
-    def __init__(self, auto_pack: bool = True, easy_hash: bool = True,
-                 backend: _Backend = _Backend.cryptography):
-        self._auto_pack = auto_pack
-        self._easy_hash = easy_hash
+    def __new__(cls, *args, **kwargs):
+        if cls._instance is None:
+            cls._instance = super(AdvancedCryptography, cls).__new__(cls, *args, **kwargs)
+        return cls._instance
 
-        if backend not in {_Backend.cryptography, _Backend.pycryptodomex}:
-            raise _NotSupportedError(f"{backend} is not supported by AdvancedCryptography")
-        self._backend = self._real_backend = None
-        self.set_backend(backend)
+    def __init__(self):
+        raise ValueError("You can't instance this class, please use AdvancedCryptography.get() instead")
+
+    @classmethod
+    def get(cls):
+        """Get the singleton instance."""
+        try:
+            cls._instance = cls()
+        except ValueError:
+            return cls._instance
 
     def set_backend(self, backend: _Backend):
         """Resets the backend to a new one"""
+        if backend not in {_Backend.cryptography, _Backend.pycryptodomex}:
+            raise _NotSupportedError(f"{backend.name} is not supported by AdvancedCryptography")
+
         with _suppress_warnings():
             self._backend = backend
             if backend == _Backend.cryptography:
@@ -191,8 +203,17 @@ class AdvancedCryptography:
 
         return returns
 
+    @classmethod
+    def check_backend(cls):
+        """Checks for an empty backend"""
+        if cls._backend is _Backend.cryptography:
+            return
+        elif cls._backend is _Backend.pycryptodomex:
+            warnings.warn("PyCryptodomeX is not fully compatible yet")
+        raise ValueError("Please set a Backend before usage")
+
     @_adv_check_types(strict_args={'to_hash': True, 'algo': True, 'force_text_ids': False, 'maximum_risk_level': True})
-    def hash(self, to_hash: bytes, algo: int, force_text_ids: bool = False,
+    def hash(self, to_hash: bytes, algo: _HashAlgorithm, force_text_ids: bool = False,
              maximum_risk_level: _RiskLevel = _RiskLevel.HARMLESS) -> bytes:
         """
         Hashes to_hash using the provided algorithm and returns it.
@@ -203,6 +224,7 @@ class AdvancedCryptography:
         :param maximum_risk_level:
         :return:
         """
+        self.check_backend()
         self.check_unsafe(algo, maximum_risk_level)
         match algo:
             case _HashAlgorithm.BCRYPT:
