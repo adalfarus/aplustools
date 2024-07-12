@@ -429,7 +429,7 @@ class SystemTheme(_Enum):
 
 
 @static_class
-class BasicSystem:
+class BasicSystemFunctions:
     """Encapsulates system information that isn't tied to a specific os."""
     @staticmethod
     def get_home_directory():

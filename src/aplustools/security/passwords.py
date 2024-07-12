@@ -1,3 +1,5 @@
+import os
+
 from cryptography.hazmat.primitives.ciphers import Cipher as _Cipher, algorithms as _algorithms, modes as _modes
 from cryptography.hazmat.backends import default_backend as _default_backend
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC as _PBKDF2HMAC
@@ -8,6 +10,10 @@ from zxcvbn import zxcvbn as _zxcvbn
 from ..data import beautify_json as _beautify_json, nice_number as _nice_number
 from .rand import WeightedRandom as _WeightedRandom
 from ..io.environment import strict as _strict
+from .crypto.algorithms import (KeyDerivationFunction as _KeyDerivationFunction, HashAlgorithm as _HashAlgorithm,
+                                Sym as _Sym)
+from .crypto import AdvancedCryptography as _AdvancedCryptography
+from . import Security as _Security
 
 from typing import Union as _Union, Literal as _Literal, Optional as _Optional, Callable as _Callable
 from importlib.resources import files as _files
@@ -1293,76 +1299,59 @@ def quick_big_reducer_3(input_str: str, ord_ranges: list[range]):
 class PasswordReGenerator:
     """Create a secure password from a weak one plus an identifier like a website name. This is made possible by used
     an encrypted seed file in combination with the PBKDF2HMAC algorithm (using 100_000 iterations and sha 256)."""
-    def __init__(self, key: bytes, seed_file_or_seed: str | bytes = "seed_file.enc", debug: bool = False,
-                 _got_seed: bool = False):
-        self._key = key
-        self._seed_file = seed_file_or_seed
-        self._debug = debug
+    _ac = _AdvancedCryptography.get()
 
-        if not _got_seed:
-            self._load_or_create_seed_file()
-        else:
-            self._seed = self._seed_file
-            self._seed_file = None
+    def __init__(self, seed: bytes, debug: bool = False):
+        self._seed = seed
+        self._debug = debug
 
     @classmethod
     def load_from_file(cls, file_path: str) -> "PasswordReGenerator":
         """Use a default file as the seed (hashed)."""
-        from aplustools.security.crypto import CryptUtils
         try:
             with open(file_path, "r") as f:
                 contents = f.read()
         except IOError:
             with open(file_path, "rb") as f:
                 contents = f.read()
-        seed = CryptUtils.pbkdf2(contents, CryptUtils.generate_hash(file_path, "strong").encode(), 32, 1_000_000)
-        return cls(CryptUtils.generate_hash(_os.path.basename(file_path), "strong").encode(), seed, False, True)
+        cls._ac.easy_hash = False
+        content_parts = contents[:len(contents) // 2], contents[len(contents) // 2:]
+        seed = cls._ac.key_derivation(content_parts[0], 32, cls._ac.hash(content_parts[1], _HashAlgorithm.SHA3.SHA512),
+                                      _KeyDerivationFunction.Scrypt, _Security.STRONG)
+        return cls(seed)
 
-    @staticmethod
-    def generate_suitable_password() -> bytes:
+    @classmethod
+    def load_from_seed_file(cls, key: bytes, seed_file: str = "./seed_file.enc"):
         """
-        Generates a suitable password for encryption
-        :return: The suitable password
-        :rtype: bytes
+        Loads a seed file created using cls.create_new_seed_file.
+
+        :param key:
+        :param seed_file:
+        :return:
         """
-        return _os.urandom(32)
-
-    def _load_or_create_seed_file(self):
-        if _os.path.exists(self._seed_file):
-            self._load_seed_file()
-        else:
-            self._create_seed_file()
-
-    def _load_seed_file(self):
-        with open(self._seed_file, 'rb') as f:
+        with open(seed_file, "rb") as f:
             encrypted_seed = f.read()
+        seed = cls._ac.decrypt(encrypted_seed, _Sym.Cipher.AES.key(key), _Sym.Padding.PKCS7, _Sym.Operation.GCM)
+        return cls(seed)
 
-        # Decrypt the seed
-        iv = encrypted_seed[:16]
-        cipher = _Cipher(_algorithms.AES(self._key), _modes.CBC(iv), backend=_default_backend())
-        decryptor = cipher.decryptor()
-        padded_seed = decryptor.update(encrypted_seed[16:]) + decryptor.finalize()
+    @classmethod
+    def create_new_seed_file(cls, key: bytes | None = None, seed_length: int = 320,
+                             new_seed_path: str = "./seed_file.enc") -> bytes:
+        """
+        Creates a new encrypted seed file using the key and seed length at new_seed_path.
+        It returns the key, this is useful if you didn't pass a password.
 
-        # Unpad the seed
-        unpadder = _padding.PKCS7(_algorithms.AES.block_size).unpadder()
-        self._seed = unpadder.update(padded_seed) + unpadder.finalize()
-
-    def _create_seed_file(self):
-        self._seed = _os.urandom(32)
-
-        # Encrypt the seed
-        iv = _os.urandom(16)
-        cipher = _Cipher(_algorithms.AES(self._key), _modes.CBC(iv), backend=_default_backend())
-        encryptor = cipher.encryptor()
-
-        # Pad the seed
-        padder = _padding.PKCS7(_algorithms.AES.block_size).padder()
-        padded_seed = padder.update(self._seed) + padder.finalize()
-
-        encrypted_seed = iv + encryptor.update(padded_seed) + encryptor.finalize()
-
-        with open(self._seed_file, 'wb') as f:
+        :param key:
+        :param seed_length:
+        :param new_seed_path:
+        :return:
+        """
+        seed = os.urandom(seed_length)
+        key = _Sym.Cipher.AES.key(key)
+        encrypted_seed = cls._ac.encrypt(seed, key, _Sym.Padding.PKCS7, _Sym.Operation.GCM)
+        with open(new_seed_path, "wb") as f:
             f.write(encrypted_seed)
+        return key.get_key()
 
     def generate_password(self, identifier: str, simple_password: str, length: int = 64,
                           charset: _Literal["hex", "base64", "alphanumeric", "ascii"] = "hex") -> str:
@@ -1380,33 +1369,24 @@ class PasswordReGenerator:
         :return: The generated password
         :rtype: str
         """
-        salt = self._seed + identifier.encode() + simple_password.encode()
-        kdf = _PBKDF2HMAC(
-            algorithm=_hashes.SHA256(),
-            length=length,
-            salt=salt,
-            iterations=100000,
-            backend=_default_backend()
-        )
-        password = kdf.derive(self._key)
-        return self._format_password(password, length, charset.lower())
+        salt = identifier.encode() + simple_password.encode()
+        dk_pass = self._ac.key_derivation(self._seed, length, salt, _KeyDerivationFunction.Scrypt, _Security.STRONG)
 
-    def _format_password(self, password: bytes, length: int, charset: _Literal["hex", "base64", "alphanumeric", "ascii"]
-                         ) -> str:
         # Convert to a readable password
-        match charset:
+        match charset.lower():
             case "hex":
-                return password.hex()[:length]
+                final = dk_pass.hex()[:length]
             case "base64":
-                return _base64.urlsafe_b64encode(password).decode('utf-8')[:length]
+                return _base64.urlsafe_b64encode(dk_pass).decode('utf-8')[:length]
             case "alphanumeric":
                 chars = _string.ascii_letters + _string.digits
-                return ''.join(chars[b % len(chars)] for b in password)[:length]
+                final = ''.join(chars[b % len(chars)] for b in dk_pass)[:length]
             case "ascii":
                 chars = _string.printable[:94]  # Exclude non-printable characters
-                return ''.join(chars[b % len(chars)] for b in password)[:length]
+                final = ''.join(chars[b % len(chars)] for b in dk_pass)[:length]
             case _:
                 raise ValueError(f"Unsupported charset: {charset}")
+        return final
 
 
 @_strict(mark_class_as_cover_or_cls=False)  # For security purposes

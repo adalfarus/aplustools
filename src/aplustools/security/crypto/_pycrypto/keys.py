@@ -12,7 +12,7 @@ import warnings
 import secrets
 
 
-from ..algorithms import Sym, ASym, _ECCCurve, KeyDerivation, MessageAuthenticationCode, _ECCType
+from ..algorithms import Sym, ASym, _ECCCurve, KeyDerivationFunction, MessageAuthenticationCode, _ECCType
 from .._keys import _BASIC_KEY, _BASIC_KEYPAIR
 from ..backends import Backend
 from ..exceptions import NotSupportedError
@@ -375,16 +375,16 @@ def decrypt_asym(ciphertext: Union[bytes, dict[str, bytes]], cipher_key, padding
 
 def key_derivation(password: bytes, length: int, salt: bytes = None, type_: int = None, strength: int = 2):
     if salt is None:
-        if type_ != KeyDerivation.PBKDF1:
+        if type_ != KeyDerivationFunction.PBKDF1:
             salt = os.urandom([16, 32, 64, 128][strength])
         else:
             salt = os.urandom(8)
     hash_type = (SHA3_224, SHA3_256, SHA3_384, SHA3_512)[strength]
 
-    if type_ == KeyDerivation.PBKDF2HMAC:
+    if type_ == KeyDerivationFunction.PBKDF2HMAC:
         iter_mult = [1, 4, 8, 12][strength]
         return PBKDF2(password, salt, dkLen=length, count=100000 * iter_mult, hmac_hash_module=SHA256)
-    elif type_ == KeyDerivation.Scrypt:
+    elif type_ == KeyDerivationFunction.Scrypt:
         n, r, p = (
             (2 ** 14, 8, 1),
             (2 ** 15, 8, 1),
@@ -392,19 +392,19 @@ def key_derivation(password: bytes, length: int, salt: bytes = None, type_: int 
             (2 ** 17, 8, 2)
         )[strength]
         return scrypt(password, salt, key_len=length, N=n, r=r, p=p)
-    elif type_ == KeyDerivation.HKDF:
+    elif type_ == KeyDerivationFunction.HKDF:
         return HKDF(password, key_len=length, salt=salt, hashmod=hash_type)
-    elif type_ == KeyDerivation.X963:
+    elif type_ == KeyDerivationFunction.X963:
         return HKDF(password, key_len=length, salt=salt, hashmod=hash_type)
-    elif type_ == KeyDerivation.PBKDF1:
+    elif type_ == KeyDerivationFunction.PBKDF1:
         if length > 20:
             raise ValueError("PBKDF1 cannot derive keys longer than 20 bytes.")
         return PBKDF1(password, salt, dkLen=length, count=100000 * (strength + 1))
-    elif type_ == KeyDerivation.KMAC128:
+    elif type_ == KeyDerivationFunction.KMAC128:
         h = KMAC128.new(key=password, mac_len=length)
         h.update(salt)
         return h.digest()
-    elif type_ == KeyDerivation.KMAC256:
+    elif type_ == KeyDerivationFunction.KMAC256:
         h = KMAC256.new(key=password, mac_len=length)
         h.update(salt)
         return h.digest()

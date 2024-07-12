@@ -4,7 +4,7 @@ from ._keys import (_BASIC_KEY_TYPE, _BASIC_KEYPAIR_TYPE, Kyber, Argon2, _KYBER_
                     KKDF as _KKDF)
 from ._hashes import (HashAlgorithm as _HashAlgorithm, algorithm_names as _algorithm_names,
                       algorithm_ids as _algorithm_ids)
-from .algorithms import (Sym as _Sym, ASym as _ASym, KeyDerivation as _KeyDerivation,
+from .algorithms import (Sym as _Sym, ASym as _ASym, KeyDerivationFunction as _KeyDerivation,
                          MessageAuthenticationCode as _MessageAuthenticationCode)
 from .backends import Backend as _Backend
 from .. import Security as _Security, RiskLevel as _RiskLevel
@@ -120,7 +120,7 @@ class AdvancedCryptography:
     We do not use human-readable ids because hackers can read too, if you want to find out what hash you have
     you can simply remember your settings or look for the hard coded values in aplustools.security.crypto.hashes"""
     _instance = None
-    _auto_pack = _easy_hash = True
+    auto_pack = easy_hash = True
     _backend = _real_backend = None
 
     def __new__(cls, *args, **kwargs):
@@ -320,7 +320,7 @@ class AdvancedCryptography:
             else:
                 raise _NotSupportedError(f"The algorithm '{cipher_key.cipher_type}' cannot be used for encryption")
 
-        if self._auto_pack:
+        if self.auto_pack:
             outputs = b''.join(v for k, v in parts.items())
         else:
             outputs = parts

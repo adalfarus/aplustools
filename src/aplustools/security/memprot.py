@@ -249,7 +249,8 @@ class DynamicSecureAttrs:
 
     def _get_new_offset(self, to_what):
         if self._offsets:
-            last_offset, last_length = self._offsets[list(self._offsets.keys())[-1]]
+            last_item: tuple[str, tuple[int, int]] = sorted(self._offsets.items(), key=lambda x: x[1][0])[-1]
+            last_offset, last_length = last_item[1]
             final_offset = last_offset + last_length
             self._secure_memory.resize(final_offset + len(to_what))
             return final_offset
@@ -270,11 +271,11 @@ class DynamicSecureAttrs:
         value = bytearray(str(value).encode('utf-8'))
         if key in self._offsets:
             original_location = self._offsets[key]
-            self._secure_memory.wipe(*original_location)
+            self._secure_memory.wipe(original_location[0], sum(original_location))
 
             if len(value) <= original_location[1]:
                 offset = original_location[0]
-            elif key == list(self._offsets.keys())[-1]:
+            elif key == sorted(self._offsets.items(), key=lambda x: x[1][0])[-1]:
                 offset = original_location[0]
                 self._secure_memory.resize(offset + len(value))
             else:
@@ -318,8 +319,16 @@ if __name__ == "__main__":
     print(data)
     print(obj.read(1, 0))
 
-    attrs = DynamicSecureAttrs(key="MySuperSecretKey", cd=1)
-    print(attrs.key)
-    attrs.key = "MySuperSecretKey2"
-    print(attrs.key)
-    print(attrs._secure_memory.read())
+    attrs = DynamicSecureAttrs(key="MySuperSecretKey", cd=1, never_gonna_give_you_up=18123712737812781227838.182381823)
+
+    for _ in range(1, 100):
+        print("i" * _)
+        print(attrs.key)
+        attrs.key = "MySuperSecretKey2" * _
+        print(attrs.key)
+        print(attrs.cd)
+        attrs.never_gonna_give_you_uP = 14 * _
+        print(attrs.never_gonna_give_you_up)
+    attrs.key = "1"
+    print(attrs.key, attrs.cd, attrs.never_gonna_give_you_uP, attrs.never_gonna_give_you_up)
+    print(attrs._secure_memory.read().replace(b"\x00", b""))

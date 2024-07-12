@@ -11,7 +11,7 @@ import secrets
 import os
 
 from .._keys import _BASIC_KEY, _BASIC_KEYPAIR
-from ..algorithms import Sym, ASym, _ECCCurve, _ECCType, KeyDerivation, MessageAuthenticationCode
+from ..algorithms import Sym, ASym, _ECCCurve, _ECCType, KeyDerivationFunction, MessageAuthenticationCode
 from ..backends import Backend
 from ..exceptions import NotSupportedError
 
@@ -506,7 +506,7 @@ def key_derivation(password: bytes, length: int, salt: bytes = None, type_=None,
                  hashes.SHA3_384, hashes.SHA3_512)[strength]
 
     match type_:
-        case KeyDerivation.PBKDF2HMAC:
+        case KeyDerivationFunction.PBKDF2HMAC:
             iter_mult = [1, 4, 8, 12][strength]
             kdf = pbkdf2.PBKDF2HMAC(
                 algorithm=hash_type(),
@@ -515,7 +515,7 @@ def key_derivation(password: bytes, length: int, salt: bytes = None, type_=None,
                 iterations=100_000 * iter_mult,
                 backend=default_backend()
             )
-        case KeyDerivation.Scrypt:
+        case KeyDerivationFunction.Scrypt:
             n, r, p = (
                 (2 ** 14, 8, 1),
                 (2 ** 15, 8, 1),
@@ -530,7 +530,7 @@ def key_derivation(password: bytes, length: int, salt: bytes = None, type_=None,
                 p=p,
                 backend=default_backend()
             )
-        case KeyDerivation.HKDF:
+        case KeyDerivationFunction.HKDF:
             kdf = hkdf.HKDF(
                 algorithm=hash_type(),
                 length=length,
@@ -538,14 +538,14 @@ def key_derivation(password: bytes, length: int, salt: bytes = None, type_=None,
                 info=b"",
                 backend=default_backend()
             )
-        case KeyDerivation.X963:
+        case KeyDerivationFunction.X963:
             kdf = x963kdf.X963KDF(
                 algorithm=hash_type(),
                 length=length,
                 sharedinfo=None,
                 backend=default_backend()
             )
-        case KeyDerivation.ConcatKDF:
+        case KeyDerivationFunction.ConcatKDF:
             kdf = concatkdf.ConcatKDFHash(
                 algorithm=hash_type(),
                 length=length,

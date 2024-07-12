@@ -468,7 +468,7 @@ class ASym:
     KeyEncoding = _ASymKeyEncoding
 
 
-class KeyDerivation(_EANEnum):
+class KeyDerivationFunction(_EANEnum):
     """Key Derivation Functions (KDFs)"""
     PBKDF2HMAC = "Password-Based Key Derivation Function 2"
     Scrypt = ""
