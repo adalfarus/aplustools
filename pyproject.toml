@@ -45,7 +45,7 @@ package-dir = {"" = "src"}
 
 [project]
 name = "aplustools"
-version = "1.5.0.0a"
+version = "1.5.0.0a1"
 dependencies = []
 requires-python = ">= 3.10"
 authors = [
