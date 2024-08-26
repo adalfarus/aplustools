@@ -308,9 +308,9 @@ pause
 ````
 
 (If you have problems with the package please use `py -3.12 -m pip install aplustools[all] --upgrade --user`)
-(Correct shortform for aplustools is apt, so please use ```import aplustools as apt``` for consistency)
+(Correct shortform for aplustools is aps, so please use ```import aplustools as aps``` for consistency)
 
-### apt cli
+### aps cli
 Can currently run tests with ```aps tests run tests/ -minimal``` and show a basic help using ```aps help```.
 
 For more detailed usage and examples, check out our [documentation](https://github.com/adalfarus/aplustools/wiki).
@@ -334,21 +334,21 @@ We welcome contributions! Please see our [contributing guidelines](https://githu
 4. Push to the branch (`git push origin feature/AmazingFeature`)
 5. Open a pull request
 
-### Apt Build master
+### Aps Build master
 
-You can use the apt_build_master script for your os to make your like a lot easier.
+You can use the aps_build_master script for your os to make your like a lot easier.
 It supports running tests, installing, building and much more as well as chain together as many commands as you like.
 
 This example runs test, build the project and then installs it
 ````commandline
-call .\apt_build_master.bat 234
+call .\aps_build_master.bat 234
 ````
 
 ````shell
 sudo apt install python3-pip
 sudo apt install python3-venv
-chmod +x ./apt_build_master.sh
-./apt_build_master.sh 234
+chmod +x ./aps_build_master.sh
+./aps_build_master.sh 234
 ````
 
 ## License
