@@ -1,5 +1,5 @@
 from typing import (Union as _Union, get_origin as _get_origin, get_args as _get_args, Any as _Any, Literal as _Literal,
-                    Iterator as _Iterator, TypeVar as _TypeVar, Type as _Type)
+                    Iterator as _Iterator, Type as _Type)
 import ctypes as _ctypes
 import typing as _typing
 from ..package.argumint import EndPoint as _EndPoint
@@ -209,7 +209,7 @@ def what_class(cls: _typing.Type, type_names: bool = False, return_def: bool = F
     print(result)
 
 
-def bytes_to_human_readable_binary_iec(size: int) -> str:
+def bytes_to_human_readable_binary_iec(size: int | float) -> str:
     """Convert bytes to a human-readable string."""
     units = ['B', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB', 'EiB', 'ZiB', 'YiB']
     for unit in units:
@@ -218,7 +218,7 @@ def bytes_to_human_readable_binary_iec(size: int) -> str:
         size /= 1024
 
 
-def bytes_to_human_readable_decimal_si(size: int) -> str:
+def bytes_to_human_readable_decimal_si(size: int | float) -> str:
     """Convert bytes to a human-readable string."""
     units = ['B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB', 'RB', 'QB']
     for unit in units:
@@ -227,7 +227,7 @@ def bytes_to_human_readable_decimal_si(size: int) -> str:
         size /= 1000
 
 
-def bits_to_human_readable(size: float) -> str:
+def bits_to_human_readable(size: int | float) -> str:
     """Convert bits to a human-readable string using SI units."""
     units = ['bps', 'Kbps', 'Mbps', 'Gbps', 'Tbps']
     for unit in units:
@@ -335,30 +335,54 @@ def unnest_iterable(iterable, max_depth: int = 4):
     return _lod_helper(iterable, [], max_depth)
 
 
-def cutoff_iterable(iterable: _Union[list, tuple, dict, set], max_elements_start: int = 4, max_elements_end: int = 0,
-                    show_hidden_elements_num: bool = False, return_lst: bool = False):
-    if isinstance(iterable, tuple):
-        braces = "()"
-        iterable = list(iterable)
-    elif isinstance(iterable, list):
-        braces = "[]"
-    elif isinstance(iterable, set):
-        braces = "{}"
+def cutoff_iterable(iterable: _Union[list, tuple, dict, set], start: int = 0, max_elements_right: int = 3,
+                    max_elements_left: int = 0, show_hidden_elements_num: bool = False, return_lst: bool = False):
+    if not isinstance(iterable, (list, tuple, set, dict)):
+        return f"The class '{type(iterable).__name__}' is not a supported iterable."
+
+    braces = {"tuple": "()", "list": "[]", "set": "{}", "dict": "{}"}[type(iterable).__name__]
+
+    if isinstance(iterable, (tuple, set)):
         iterable = list(iterable)
     elif isinstance(iterable, dict):
-        braces = "{}"
         iterable = [f"{key}: {value}" for key, value in iterable.items()]
-    else:
-        return f"The class '{type(iterable).__name__}' is not a supported iterable."
-    max_elements_start, max_elements_end = abs(max_elements_start), abs(max_elements_end)
 
-    elements_lst = ((iterable[:max_elements_start]
-                    + (["..." if not show_hidden_elements_num else
-                        f"..[{len(iterable) - (max_elements_start + max_elements_end)}].."
-                        ] if len(iterable) > max_elements_start + max_elements_end else []))
-                    + (iterable[-max_elements_end:] if max_elements_end != 0 else []))
+    n = len(iterable)
+    max_elements_right, max_elements_left = abs(max_elements_right), abs(max_elements_left)
+    elements_shown = max_elements_right + max_elements_left + 1
+    elements_start = max_elements_left
+    show_lst: list[_Any | None] = [None] * elements_shown
 
-    return braces[0] + ', '.join(str(x) for x in elements_lst) + braces[1] if not return_lst else elements_lst
+    if start < max_elements_left:  # Adjusting for left overspill
+        elements_start = start
+    elif start + max_elements_right >= n:  # Adjusting for right overspill
+        elements_start = (n - start) * -1
+
+    for i in range(max_elements_right):
+        show_lst[(elements_start + i + 1) % elements_shown] = iterable[(start + i + 1) % n]
+
+    for i in range(max_elements_left + 1, 1, -1):
+        show_lst[(elements_start - i + 1) % elements_shown] = iterable[(start - i + 1) % n]
+
+    show_lst[elements_start] = iterable[start]
+
+    left_hidden, right_hidden = start - max_elements_left, (n - 1) - start - max_elements_right
+
+    if start < max_elements_left:  # Handle overflow from left to right
+        right_hidden -= max_elements_left - start  # Reduce right_hidden by the number of overflowed elements
+    if start + max_elements_right >= n:  # Handle overflow from right to left
+        left_hidden -= (start + max_elements_right) - (n - 1)  # Reduce left_hidden by the number of overflowed elements
+
+    left_hide = right_hide = "..."
+    if show_hidden_elements_num:
+        left_hide, right_hide = f"..[{left_hidden}]..", f"..[{right_hidden}].."
+
+    if right_hidden > 0:
+        show_lst.insert((elements_start + max_elements_right + 1), right_hide)
+    if left_hidden > 0:
+        show_lst.insert((elements_start - (max_elements_left + 1) + 1), left_hide)
+
+    return braces[0] + ', '.join(str(x) for x in show_lst) + braces[1] if not return_lst else show_lst
 
 
 def cutoff_string(string: str, max_chars_start: int = 4, max_chars_end: int = 0,
@@ -667,7 +691,7 @@ if __name__ == "__main__":
 
     print(cutoff_string("Hello World", max_chars_start=5, max_chars_end=5, show_hidden_chars_num=True))
     print(cutoff_iterable({1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, 2, 0, True))
-    print(cutoff_iterable({1: 2, 4: 5, 6: 6, 8: 6, 82: 12, 2: 2, 99: 2, 0: 1}, max_elements_start=4, max_elements_end=3,
+    print(cutoff_iterable({1: 2, 4: 5, 6: 6, 8: 6, 82: 12, 2: 2, 99: 2, 0: 1}, max_elements_right=4, max_elements_left=3,
                           show_hidden_elements_num=True))
 
     from aplustools.package.timid import TimidTimer
