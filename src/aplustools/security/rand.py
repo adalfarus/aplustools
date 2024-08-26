@@ -560,6 +560,20 @@ class WeightedRandom:
         return self._transform_and_scale(self._generator.random(), lambda x: x ** (multiplier * math.e), lower_bound,
                                          upper_bound)
 
+    def exponential_distribution(self, lower_bound: Union[float, int] = 0, upper_bound: Union[float, int] = 1, lambd: float = 1.0, invert: bool = False) -> float:
+        """
+        Generate a random number based on the exponential distribution and scale it within the specified bounds.
+        
+        :param lower_bound: Lower bound of the scaled range.
+        :param upper_bound: Upper bound of the scaled range.
+        :param lambd: Lambda parameter (1/mean) of the distribution.
+        :param invert: Whether the results should be inverted to result in a falling curve instead.
+        :return: Scaled random number from the exponential distribution.
+        """
+        if invert:
+            return self._transform_and_scale(self._generator.random(), lambda x: 1 - self._generator.expovariate(lambd), lower_bound, upper_bound)
+        return self._transform_and_scale(self._generator.random(), lambda x: self._generator.expovariate(lambd), lower_bound, upper_bound)
+
     def bias(self, lower_bound: Union[float, int] = 0, upper_bound: Union[float, int] = 1, bias: float = 1.0,
                    invert: bool = False) -> float:
         """
