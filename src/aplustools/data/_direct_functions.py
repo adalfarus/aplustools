@@ -659,6 +659,29 @@ class Singleton:
         return cls._instances[cls]
 
 
+class DefaultList(list):
+    def __init__(self, default_factory=None, *args):
+        super().__init__(*args)
+        self.default_factory = default_factory
+
+    def __getitem__(self, index):
+        if index >= len(self):
+            if self.default_factory is not None:
+                # Automatically extend the list with default values up to the requested index
+                self.extend(self.default_factory() for _ in range(len(self), index + 1))
+            else:
+                raise IndexError('list index out of range')
+        return super().__getitem__(index)
+
+    def __setitem__(self, index, value):
+        if index >= len(self):
+            if self.default_factory is not None:
+                self.extend(self.default_factory() for _ in range(len(self), index + 1))
+            else:
+                raise IndexError('list index out of range')
+        super().__setitem__(index, value)
+
+
 if __name__ == "__main__":
     bit = nice_bits(encode("Hello you world!"), True, 6, True, True)
     bitss = bits(encode_float(0.3))

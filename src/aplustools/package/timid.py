@@ -532,6 +532,12 @@ class TimidTimer:
             kwargs = {}
         self.single_shot_ms(milliseconds, callback, args or (f"Countdown for {milliseconds}ms is done.",), kwargs)
 
+    def long_countdown(self, seconds: _Union[float, int], callback: _Callable = print, args: tuple = (),
+                  kwargs: dict = None):
+        if kwargs is None:
+            kwargs = {}
+        self.long_single_shot(seconds, callback, args or (f"Countdown for {seconds}s is done.",), kwargs)
+
     def interval(self, interval: _Union[float, int], count: _Union[int, _Literal["inf"]] = "inf",
                  callback: _Callable = print, args: tuple = (), kwargs: dict = None):
         if kwargs is None:
@@ -550,15 +556,42 @@ class TimidTimer:
         else:
             self.shoot_ms(interval_ms, callback, args or (f"{interval_ms}s is over.",), kwargs, iterations=count)
 
-    def set_alarm(self, alarm_time, callback: _Callable = print, args: tuple = (), kwargs: dict = None):
-        alarm_time = _datetime.strptime(alarm_time, "%H:%M:%S").time()
+    def long_interval(self, interval: _Union[float, int], count: _Union[int, _Literal["inf"]] = "inf",
+                 callback: _Callable = print, args: tuple = (), kwargs: dict = None):
+        if kwargs is None:
+            kwargs = {}
+        if count == "inf":
+            self.long_fire(interval, callback, args or (f"{interval}s is over.",), kwargs)
+        else:
+            self.long_shoot(interval, callback, args or (f"{interval}s is over.",), kwargs, iterations=count)
+
+    @staticmethod
+    def schedule_task_at(time_str, callback: _Callable = print, args: tuple = (), kwargs: dict = None):
+        """Schedules a task at a time this or next day.
+        If you want the timer to repeat the task, you can restart it in the callback function.
+
+        :param time_str: Time of day to run the task in "HH:MM" format
+        :param callback: The function to run, defaults to print
+        :param args: Args for the callback, defaults to "Time for ... is over"
+        :param kwargs: Kwargs for the callback
+        """
+        if len(time_str) == 5:
+            time_format = "%H:%M"
+        elif len(time_str) == 8:
+            time_format = "%H:%M:%S"
+        else:
+            raise TypeError(f"Unsupported time format '{time_str}'")
         current_time = _datetime.now().time()
+        target_time = _datetime.strptime(time_str, time_format).time()
         current_datetime = _datetime.combine(_datetime.today(), current_time)
-        alarm_datetime = _datetime.combine(_datetime.today(), alarm_time)
-        if alarm_datetime < current_datetime:
-            alarm_datetime += _timedelta(days=1)  # Set alarm for the next day if time has already passed today
-        diff = alarm_datetime - current_datetime
-        self.single_shot(diff.total_seconds(), callback, args or (f"Timer for {alarm_time} is over.",), kwargs)
+        target_datetime = _datetime.combine(_datetime.today(), target_time)
+
+        if target_datetime < current_datetime:
+            target_datetime += _timedelta(days=1)  # Set alarm for the next day if time has already passed today
+        diff = target_datetime - current_datetime
+
+        # Schedule task
+        _threading.Timer(diff.total_seconds(), callback, args or (f"Timer for {time_str} is over.",), kwargs or {}).start()
 
     def save_state(self) -> bytes:
         """Saves the state of all timers, threads aren't possible as I can't pickle the reference to the function."""
@@ -584,65 +617,106 @@ class TimidTimer:
     @classmethod
     def _trigger(cls, interval: _Union[float, int], function, args: tuple, kwargs: dict, iterations: int,
                  stop_event: _threading.Event = _threading.Event()):
-        cls.wait_static(interval)
-        while not stop_event.is_set():
-            if iterations == 0:
-                break
-            try:
-                function(*args, **kwargs)
-            except Exception as e:
-                print(f"Error in _trigger thread: {e}")
+        try:
             cls.wait_static(interval)
-            iterations -= 1
+            while not stop_event.is_set() or iterations == 0:  # So infinite timers are possible
+                try:
+                    function(*args, **kwargs)
+                except Exception as e:
+                    print(f"Error in _trigger thread: {e}")
+                cls.wait_static(interval)
+                iterations -= 1
+        except SystemExit:
+            pass
 
     @classmethod
     def _trigger_ms(cls, interval_ms: _Union[float, int], function, args: tuple, kwargs: dict, iterations: int,
                     stop_event: _threading.Event = _threading.Event()):
-        cls.wait_ms_static(interval_ms)
-        while not stop_event.is_set():
-            if iterations == 0:
-                break
-            try:
-                function(*args, **kwargs)
-            except Exception as e:
-                print(f"Error in _trigger thread: {e}")
+        try:
             cls.wait_ms_static(interval_ms)
-            iterations -= 1
+            while not stop_event.is_set() or iterations == 0:  # So infinite timers are possible
+                try:
+                    function(*args, **kwargs)
+                except Exception as e:
+                    print(f"Error in _trigger thread: {e}")
+                cls.wait_ms_static(interval_ms)
+                iterations -= 1
+        except SystemExit:
+            pass
+
+    @classmethod
+    def _long_trigger(cls, interval: _Union[float, int], function, args: tuple, kwargs: dict, iterations: int,
+                      stop_event: _threading.Event = _threading.Event()):
+        def trigger_function():
+            try:
+                nonlocal iterations
+                if stop_event.is_set() or iterations == 0:  # So infinite timers are possible
+                    return
+
+                try:
+                    function(*args, **kwargs)
+                except Exception as e:
+                    print(f"Error in _trigger thread: {e}")
+
+                iterations -= 1
+                # Reschedule the function
+                _threading.Timer(interval, trigger_function).start()
+            except SystemExit:
+                pass
+
+        # Start the initial function call
+        _threading.Timer(interval, trigger_function).start()
 
     @classmethod
     def single_shot(cls, wait_time: _Union[float, int], function: _Callable, args: tuple = (),
-                    kwargs: _Optional[dict] = None) -> _Type["TimidTimer"]:
+                    kwargs: _Optional[dict] = None, daemon: bool = False) -> _Type["TimidTimer"]:
         if kwargs is None:
             kwargs = {}
-        _threading.Thread(target=cls._trigger, args=(wait_time, function, args, kwargs, 1)).start()
+        _threading.Thread(target=cls._trigger, args=(wait_time, function, args, kwargs, 1), daemon=daemon).start()
         return cls
 
     @classmethod
     def single_shot_ms(cls, wait_time_ms: _Union[float, int], function: _Callable, args: tuple = (),
-                       kwargs: _Optional[dict] = None) -> _Type["TimidTimer"]:
+                       kwargs: _Optional[dict] = None, daemon: bool = False) -> _Type["TimidTimer"]:
         if kwargs is None:
             kwargs = {}
-        _threading.Thread(target=cls._trigger_ms, args=(wait_time_ms, function, args, kwargs, 1)).start()
+        _threading.Thread(target=cls._trigger_ms, args=(wait_time_ms, function, args, kwargs, 1), daemon=daemon).start()
+        return cls
+
+    @classmethod
+    def long_single_shot(cls, wait_time: _Union[float, int], function: _Callable, args: tuple = (),
+                         kwargs: _Optional[dict] = None) -> _Type["TimidTimer"]:
+        if kwargs is None:
+            kwargs = {}
+        cls._long_trigger(wait_time, function, args, kwargs, 1)
         return cls
 
     @classmethod
     def shoot(cls, interval: _Union[float, int], function: _Callable, args: tuple = (), kwargs: _Optional[dict] = None,
-              iterations: int = 1) -> _Type["TimidTimer"]:
+              iterations: int = 1, daemon: bool = False) -> _Type["TimidTimer"]:
         if kwargs is None:
             kwargs = {}
-        _threading.Thread(target=cls._trigger, args=(interval, function, args, kwargs, iterations)).start()
+        _threading.Thread(target=cls._trigger, args=(interval, function, args, kwargs, iterations), daemon=daemon).start()
         return cls
 
     @classmethod
     def shoot_ms(cls, interval_ms: _Union[float, int], function: _Callable, args: tuple = (),
-                 kwargs: _Optional[dict] = None, iterations: int = 1) -> _Type["TimidTimer"]:
+                 kwargs: _Optional[dict] = None, iterations: int = 1, daemon: bool = False) -> _Type["TimidTimer"]:
         if kwargs is None:
             kwargs = {}
-        _threading.Thread(target=cls._trigger_ms, args=(interval_ms, function, args, kwargs, iterations)).start()
+        _threading.Thread(target=cls._trigger_ms, args=(interval_ms, function, args, kwargs, iterations), daemon=daemon).start()
+        return cls
+
+    @classmethod
+    def long_shoot(cls, interval: _Union[float, int], function: _Callable, args: tuple = (),
+                   kwargs: _Optional[dict] = None, iterations: int = 1) -> _Type["TimidTimer"]:
+        if kwargs is None:
+            kwargs = {}
+        cls._long_trigger(interval, function, args, kwargs, iterations)
         return cls
 
     def fire(self, interval: _Union[float, int], function: _Callable, args: tuple = (), kwargs: _Optional[dict] = None,
-             index: int = None) -> "TimidTimer":
+             index: int = None, daemon: bool = False) -> "TimidTimer":
         if kwargs is None:
             kwargs = {}
         if index is None:
@@ -651,7 +725,7 @@ class TimidTimer:
             self._fires.append((None, None))
 
         event = _threading.Event()
-        thread = _threading.Thread(target=self._trigger, args=(interval, function, args, kwargs, -1, event))
+        thread = _threading.Thread(target=self._trigger, args=(interval, function, args, kwargs, -1, event), daemon=daemon)
 
         if index < len(self._fires) and self._fires[index] == (None, None):
             self._fires[index] = (thread, event)
@@ -661,7 +735,7 @@ class TimidTimer:
         return self
 
     def fire_ms(self, interval_ms: _Union[float, int], function: _Callable, args: tuple = (),
-                kwargs: _Optional[dict] = None, index: int = None) -> "TimidTimer":
+                kwargs: _Optional[dict] = None, index: int = None, daemon: bool = False) -> "TimidTimer":
         if kwargs is None:
             kwargs = {}
         if index is None:
@@ -670,7 +744,7 @@ class TimidTimer:
             self._fires.append((None, None))
 
         event = _threading.Event()
-        thread = _threading.Thread(target=self._trigger_ms, args=(interval_ms, function, args, kwargs, -1, event))
+        thread = _threading.Thread(target=self._trigger_ms, args=(interval_ms, function, args, kwargs, -1, event), daemon=daemon)
 
         if index < len(self._fires) and self._fires[index] == (None, None):
             self._fires[index] = (thread, event)
@@ -679,13 +753,32 @@ class TimidTimer:
         thread.start()
         return self
 
+    def long_fire(self, interval: _Union[float, int], function: _Callable, args: tuple = (),
+                  kwargs: _Optional[dict] = None, index: int = None) -> "TimidTimer":
+        if kwargs is None:
+            kwargs = {}
+        if index is None:
+            index = len(self._fires)
+        while len(self._fires) < index:
+            self._fires.append((None, None))
+
+        event = _threading.Event()
+        self._long_trigger(interval, function, args, kwargs, -1, event)
+
+        if index < len(self._fires) and self._fires[index] == (None, None):
+            self._fires[index] = (None, event)
+        else:
+            self._fires.insert(index, (None, event))
+        return self
+
     def stop_fire(self, index: _Optional[int] = None, amount: _Optional[int] = None) -> "TimidTimer":
         if amount is None:
             amount = 1
-        for _ in range(amount):
-            thread, event = self._fires.pop(index or 0)
+        for i in range(amount):
+            thread, event = self._fires.pop((index + i) or 0)
             event.set()
-            thread.join()
+            if thread is not None:
+                thread.join()
         return self
 
     def warmup_fire(self, rounds: int = 300) -> "TimidTimer":
