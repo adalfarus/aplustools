@@ -775,7 +775,7 @@ class TimidTimer:
         if amount is None:
             amount = 1
         for i in range(amount):
-            thread, event = self._fires.pop((index + i) or 0)
+            thread, event = self._fires.pop((index + i) if index is not None else 0)
             event.set()
             if thread is not None:
                 thread.join()
