@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING as _TYPE_CHECKING
 
 if _TYPE_CHECKING:
     from ._direct import *
-    import bintools, storage, dummy
+    from . import bintools, storage, dummy
 
 _setup_lazy_loaders(
     globals(),

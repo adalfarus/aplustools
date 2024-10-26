@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING as _TYPE_CHECKING
 
 if _TYPE_CHECKING:
     from ._direct import *
-    import submodule1, submodule2
+    from . import submodule1, submodule2
 
 _setup_lazy_loaders(
     globals(),
@@ -47,6 +47,8 @@ _np = _optional_import("numpy")  # If the module isn't installed it gives back N
 __deps__ = ["numpy==1.26.4"]  # If the module isn't installed it raises a warning
 __hard_deps__ = ["PySide6>=6.7.0"]
 _enforce_hard_deps(__hard_deps__, __name__)
+
+import PySide6  # Only imports it if it's available
 
 # Module code
 class SomeClass:

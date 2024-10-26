@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING as _TYPE_CHECKING
 
 if _TYPE_CHECKING:
     from ._direct import *
-    import prot, rand
+    from . import prot, rand
 
 _setup_lazy_loaders(
     globals(),

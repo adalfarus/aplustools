@@ -12,7 +12,7 @@ packages = [
   "aplustools.package",
 #  "aplustools.tests",
   "aplustools.io.gui",
-#  "aplustools.security",
+  "aplustools.security",
 #  "aplustools.security.protocols",
 #  "aplustools.security.dicts",
 #  "aplustools.security.crypto",
