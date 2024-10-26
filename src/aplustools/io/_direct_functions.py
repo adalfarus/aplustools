@@ -14,7 +14,7 @@ except Exception:
     _msvcrt = None
 
 
-def diagnose_shutdown_blockers(suggestions: bool = True, return_result: bool = False):
+def diagnose_shutdown_blockers(suggestions: bool = True, return_result: bool = False) -> str | None:
     blockers = []
 
     # Check for active threads

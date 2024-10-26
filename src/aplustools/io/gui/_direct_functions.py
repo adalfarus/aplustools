@@ -15,20 +15,6 @@ import itertools
 import os
 
 
-class QNoSpacingVBoxLayout(QVBoxLayout):
-    def __init__(self, parent=None):
-        super().__init__(parent=parent)
-        self.setContentsMargins(0, 0, 0, 0)
-        self.setSpacing(0)
-
-
-class QNoSpacingHBoxLayout(QHBoxLayout):
-    def __init__(self, parent=None):
-        super().__init__(parent=parent)
-        self.setContentsMargins(0, 0, 0, 0)
-        self.setSpacing(0)
-
-
 class QUserActivityTracker(QObject):
     userActivityDetected = Signal()
 
@@ -103,40 +89,6 @@ class QCenteredLayout(QLayout):
 
     def expandingDirections(self):
         return Qt.Orientation.Horizontal | Qt.Orientation.Vertical
-
-
-class QQuickVBoxLayout(QVBoxLayout):
-    def __init__(self, spacing: int = 9, margins: Tuple[int, int, int, int] = (9, 9, 9, 9), *contents,
-                 apply_layout_to: Optional[QWidget] = None, parent=None):
-        super().__init__(parent=parent)
-        self.setSpacing(spacing)
-        self.setContentsMargins(*margins)
-
-        for content in contents:
-            if isinstance(content, QLayout):
-                self.addLayout(content)
-            elif isinstance(content, QWidget):
-                self.addWidget(content)
-                
-        if apply_layout_to is not None:
-            apply_layout_to.setLayout(self)
-
-
-class QQuickHBoxLayout(QHBoxLayout):
-    def __init__(self, spacing: int = 9, margins: Tuple[int, int, int, int] = (9, 9, 9, 9), *contents,
-                 apply_layout_to: Optional[QWidget] = None, parent=None):
-        super().__init__(parent=parent)
-        self.setSpacing(spacing)
-        self.setContentsMargins(*margins)
-
-        for content in contents:
-            if isinstance(content, QLayout):
-                self.addLayout(content)
-            elif isinstance(content, QWidget):
-                self.addWidget(content)
-
-        if apply_layout_to is not None:
-            apply_layout_to.setLayout(self)
 
 
 class QBulletPointTextEdit(QTextEdit):

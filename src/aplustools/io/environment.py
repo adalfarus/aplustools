@@ -25,12 +25,18 @@ from ..data import bits_to_human_readable as _bits_to_human_readable
 
 
 try:
-    import winreg
+    import winreg as _winreg
+except ImportError:
+    _winreg = None
+try:
+    import win32clipboard as _win32clipboard
+except ImportError:
+    _win32clipboard = None
+try:
     from windows_toasts import (Toast, WindowsToaster, InteractableWindowsToaster, ToastInputTextBox,
                                 ToastActivatedEventArgs, ToastButton, ToastInputSelectionBox, ToastSelection)
-    import win32clipboard
 except ImportError:
-    winreg = win32clipboard = Toast = WindowsToaster = InteractableWindowsToaster = ToastInputTextBox = None
+    Toast = WindowsToaster = InteractableWindowsToaster = ToastInputTextBox = None
     ToastActivatedEventArgs = ToastButton = ToastInputSelectionBox = ToastSelection = None
 
 
@@ -607,9 +613,9 @@ class _BaseSystem:
         self.os = _platform.system()
         self.os_version = _platform.version()
         self.major_os_version = _platform.release()
-        self.cpu_arch = _platform.machine()
-        self.cpu_brand = self.get_cpu_brand()
-        self.gpu_info = self.get_gpu_info()
+
+    def get_cpu_arch(self):
+        return _platform.machine()
 
     def get_cpu_brand(self):
         """Get the brand and model of the CPU."""
@@ -700,7 +706,7 @@ class _WindowsSystem(_BaseSystem):
 
         try:
             # Try to open the registry key
-            reg_key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, key)
+            reg_key = _winreg.OpenKey(_winreg.HKEY_CURRENT_USER, key)
         except FileNotFoundError:
             # Key does not exist
             return SystemTheme.UNKNOWN
@@ -711,27 +717,27 @@ class _WindowsSystem(_BaseSystem):
 
         try:
             # Try to read the AppsUseLightTheme value
-            theme_value, _ = winreg.QueryValueEx(reg_key, light_theme_value)
-            winreg.CloseKey(reg_key)
+            theme_value, _ = _winreg.QueryValueEx(reg_key, light_theme_value)
+            _winreg.CloseKey(reg_key)
             return SystemTheme.DARK if theme_value == 0 else SystemTheme.LIGHT
         except FileNotFoundError:
             # If the AppsUseLightTheme value does not exist, try the SystemUsesLightTheme value
             try:
-                reg_key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, key)
-                theme_value, _ = winreg.QueryValueEx(reg_key, system_theme_value)
-                winreg.CloseKey(reg_key)
+                reg_key = _winreg.OpenKey(_winreg.HKEY_CURRENT_USER, key)
+                theme_value, _ = _winreg.QueryValueEx(reg_key, system_theme_value)
+                _winreg.CloseKey(reg_key)
                 return SystemTheme.DARK if theme_value == 0 else SystemTheme.LIGHT
             except FileNotFoundError:
                 # Neither value exists, return UNKNOWN
-                winreg.CloseKey(reg_key)
+                _winreg.CloseKey(reg_key)
                 return SystemTheme.UNKNOWN
             except Exception as e:
                 print(f"Exception occurred while reading SystemUsesLightTheme: {e}")
-                winreg.CloseKey(reg_key)
+                _winreg.CloseKey(reg_key)
                 return SystemTheme.UNKNOWN
         except Exception as e:
             print(f"Exception occurred while reading AppsUseLightTheme: {e}")
-            winreg.CloseKey(reg_key)
+            _winreg.CloseKey(reg_key)
             return SystemTheme.UNKNOWN
 
     def schedule_event(self, name: str, script_path: str, event_time: _Literal["startup", "login"]):
@@ -811,19 +817,19 @@ class _WindowsSystem(_BaseSystem):
         return _os.path.join(_os.environ.get("PROGRAMDATA"), app_dir)  # App data for all users
 
     def get_clipboard(self):
-        win32clipboard.OpenClipboard()
+        _win32clipboard.OpenClipboard()
         try:
-            data = win32clipboard.GetClipboardData()
+            data = _win32clipboard.GetClipboardData()
         except TypeError:
             data = None
-        win32clipboard.CloseClipboard()
+        _win32clipboard.CloseClipboard()
         return data
 
     def set_clipboard(self, data: str):
-        win32clipboard.OpenClipboard()
-        win32clipboard.EmptyClipboard()
-        win32clipboard.SetClipboardText(data)
-        win32clipboard.CloseClipboard()
+        _win32clipboard.OpenClipboard()
+        _win32clipboard.EmptyClipboard()
+        _win32clipboard.SetClipboardText(data)
+        _win32clipboard.CloseClipboard()
 
     def get_system_language(self) -> tuple[str | str | None, str | str | None]:
         language_code, encoding = super().get_system_language()

@@ -446,7 +446,18 @@ def local_test():
 
         timer = timid.TimidTimer()
 
-        arg_struct = {'apt': {'build': {'file': {}, 'dir': {'main': {}, 'all': {}}}, 'help': {}}}
+        arg_struct = {
+            'apt': {  # Root key
+                'build': {  # 'build' related options
+                    'file': {},  # File-related (ensured endpoint)
+                    'dir': {  # Directory-related options
+                        'main': {},  # Main directory (ensured endpoint)
+                        'all': {}  # All directories (ensured endpoint)
+                    }
+                },
+                'help': {}  # Help options (ensured endpoint)
+            }
+        }
 
         # Example usage
         builder = ArgStruct()
