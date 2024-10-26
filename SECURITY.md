@@ -4,11 +4,17 @@
 
 All beta or alpha versions aren't supported, otherwise you can expect support for the last two major versions in most cases.
 
-| Version    | Supported          |
-| ---------  | ------------------ |
-| 1.5.x      | :white_check_mark: |
-| 1.4.x      | :white_check_mark: |
-| <= 0.1.4.2 | :x:                |
+Legend:
+- ✓ -> Fully supported
+- ~ -> Mostly supported / depends
+- ✗ -> No longer supported
+
+| Version    | Supported |
+|------------|-----------|
+| 2.x.x      | ✓         |
+| 1.5.x      | ~         |
+| 1.4.x      | ~         |
+| <= 0.1.4.2 | ✗         |
 
 ## Reporting a Vulnerability
 

@@ -1,3 +1,0 @@
-Have one single class that has more arguments like fit="width" / "height" / "both"
-or stick_buttons = "sides" / "top_bottom" / None
-Then pretend they aren't there and give the user like 4 options

@@ -1,24 +1,16 @@
-# web __init__
+"""TBA"""
 
-from ..package import LazyModuleLoader as _LazyModuleLoader
+from ..package import setup_lazy_loaders as _setup_lazy_loaders
+from . import _direct
+from typing import TYPE_CHECKING as _TYPE_CHECKING
 
-# Lazy loading modules
-utils = _LazyModuleLoader('aplustools.web.utils')
-request = _LazyModuleLoader('aplustools.web.request')
-search = _LazyModuleLoader('aplustools.web.search')
+if _TYPE_CHECKING:
+    from ._direct import *
+    import request
 
-# Define __all__ to limit what gets imported with 'from <package> import *'
-__all__ = ['utils', 'request', 'search']
-
-# Dynamically add exports from _direct_functions
-from ._direct_functions import *
-
-# Update __all__ with the public members from _direct_functions and clean up globals
-for name in list(globals()):
-    if name.startswith('_') and not (name.startswith('__') and name.endswith('__')):
-        # Remove private attributes from globals
-        del globals()[name]
-    else:
-        # Add public attributes to __all__
-        __all__.append(name)
-del name
+_setup_lazy_loaders(
+    globals(),
+    {
+        "request": ".web.request",
+        "search": ".web.search"
+    }, _direct)

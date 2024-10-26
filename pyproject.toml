@@ -7,46 +7,46 @@ packages = [
   "aplustools",
   "aplustools.data",
   "aplustools.io",
-  "aplustools.utils",
+#  "aplustools.utils",
   "aplustools.web",
   "aplustools.package",
-  "aplustools.tests",
+#  "aplustools.tests",
   "aplustools.io.gui",
-  "aplustools.security",
-  "aplustools.security.protocols",
-  "aplustools.security.dicts",
-  "aplustools.security.crypto",
-  "aplustools.security.crypto._crypto",
-  "aplustools.security.crypto._pycrypto"
+#  "aplustools.security",
+#  "aplustools.security.protocols",
+#  "aplustools.security.dicts",
+#  "aplustools.security.crypto",
+#  "aplustools.security.crypto._crypto",
+#  "aplustools.security.crypto._pycrypto"
 ]
 include-package-data = true
 package-dir = {"" = "src"}
 
-[tool.setuptools.package-data]
-"aplustools.security.dicts" = [
-  "def-dict.txt",
-  "google-10000-dict.txt",
-  "scowl-50-dict.txt",
-  "scowl-60-dict.txt",
-  "scowl-70-dict.txt",
-  "scowl-80-dict.txt",
-  "scowl-95-dict.txt",
-  "12-dicts/2of4brif.txt",
-  "12-dicts/2of5core.txt",
-  "12-dicts/2of12.txt",
-  "12-dicts/2of12inf.txt",
-  "12-dicts/3esl.txt",
-  "12-dicts/3of6all.txt",
-  "12-dicts/3of6game.txt",
-  "12-dicts/5d+2a.txt",
-  "12-dicts/6of12.txt",
-  "12-dicts/6phrase.txt"
-]
+#[tool.setuptools.package-data]
+#"aplustools.security.dicts" = [
+#  "def-dict.txt",
+#  "google-10000-dict.txt",
+#  "scowl-50-dict.txt",
+#  "scowl-60-dict.txt",
+#  "scowl-70-dict.txt",
+#  "scowl-80-dict.txt",
+#  "scowl-95-dict.txt",
+#  "12-dicts/2of4brif.txt",
+#  "12-dicts/2of5core.txt",
+#  "12-dicts/2of12.txt",
+#  "12-dicts/2of12inf.txt",
+#  "12-dicts/3esl.txt",
+#  "12-dicts/3of6all.txt",
+#  "12-dicts/3of6game.txt",
+#  "12-dicts/5d+2a.txt",
+#  "12-dicts/6of12.txt",
+#  "12-dicts/6phrase.txt"
+#]
 
 [project]
 name = "aplustools"
-version = "1.5.0.0a3"
-dependencies = []
+version = "2.0.0.0"
+dependencies = ["packaging"]
 requires-python = ">= 3.10"
 authors = [
   {name = "Cariel Becker", email = "cariel.becker@gmx.de"},
@@ -78,11 +78,14 @@ data = [
   "py7zr>=0.21.0",
   "requests>=2.32.0",
   "BeautifulSoup4>=4.12.2",
-  "Faker>=25.8.0"]
+  "Faker>=25.8.0",
+  "cachetools>=5.5.0"]
 io = [
   "speedtest-cli>=2.1.3",
   "windows-toasts>=1.1.1; os_name == 'nt'",
-  "PySide6>=6.7.0"]
+  "PySide6>=6.7.0",
+  "psutil>=6.0.0",
+  "pywin32>=306"]
 iogui = [
   "PySide6>=6.7.0",
   "brotli>=1.1.0"
@@ -90,8 +93,7 @@ iogui = [
 package = [
   "numpy>=1.26.4",
   "scipy>=1.13.0",
-  "scikit-learn>=1.4.1.post1; os_name == 'nt'",
-  "scikit-learn; os_name != 'nt'"
+  "scikit-learn>=1.5.2"
 ]
 security = ["cryptography>=42.0.5", "quantcrypt>=0.4.2; python_version == '3.12'", "zxcvbn>=4.4.28", "bcrypt>=4.1.2"]
 web = ["requests>=2.32.0", "BeautifulSoup4>=4.12.2", "aiohttp>=3.9.5"]
@@ -118,7 +120,10 @@ all = [
   "pytest",
   "Faker>=25.8.0",
   "zxcvbn>=4.4.28",
-  "bcrypt>=4.1.2"
+  "bcrypt>=4.1.2",
+  "psutil>=6.0.0",
+  "pywin32>=306",
+  "cachetools>=5.5.0"
 ]
 
 [project.urls]
