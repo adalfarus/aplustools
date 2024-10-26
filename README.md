@@ -74,7 +74,7 @@ We welcome contributions! Please see our [contributing guidelines](https://githu
 ### Aps Build master
 
 You can use the aps_build_master script for your os to make your like a lot easier.
-It supports running tests, installing, building and much more as well as chain together as many commands as you like.
+It supports running tests, installing, building and much more as well as chaining together as many commands as you like.
 
 This example runs test, build the project and then installs it
 ````commandline
