@@ -7,12 +7,12 @@ from aplustools.security.prot import BlackBox, SecureMemoryChunk
 
 
 bb = BlackBox()
-bb._attrs.d = b"\x00"
+bb._attrs.d = bytearray(b"\x00")
 
 
 class Test:
     def link(self) -> bytes:
-        return b"\x00" * 4
+        return bytearray(b"\x00" * 4)
 
 
 bb.link(Test())

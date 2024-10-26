@@ -172,12 +172,11 @@ class SecureMemoryChunk:
             data = self._mmap_obj.read(self._size)
         return bytearray(data) if return_byte_array else data
 
-    def resize(self, to: int, no_data_warn: bool = False) -> None:
+    def resize(self, to: int) -> None:
         """
         Resize the memory chunk to a new size.
 
         :param to: The new size of the memory chunk in bytes.
-        :param no_data_warn: If False, checks for non-zero data in the truncated section and warns if found.
 
         Raises a ValueError if the memory is locked or if the new size is invalid.
         """
@@ -185,11 +184,6 @@ class SecureMemoryChunk:
             raise ValueError("Cannot resize while memory is locked.")
         if to <= 0:
             raise ValueError("New size must be greater than zero.")
-        if not no_data_warn:
-            if to < self._size:
-                if not all(b == 0 for b in self.read(self._size - to, to)):
-                    raise UserWarning("There is non-null data in the section being truncated, "
-                                      "please reconsider resizing.")
         else:
             self.wipe(start=0, end=to)
         self._mmap_obj.resize(to)
@@ -311,7 +305,7 @@ class DynamicSecureAttrs:
     """
     def __init__(self, **kwargs) -> None:
         total_size = sum(len(value) for value in kwargs.values())
-        self._secure_memory = SecureMemoryChunk(total_size)
+        self._secure_memory = SecureMemoryChunk(total_size or 100)
         self._offsets = {}
         current_offset = 0
         for key, value in kwargs.items():
