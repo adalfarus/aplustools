@@ -1,5 +1,7 @@
 # Security Policy
 
+Only the most recent version will get non-security fix updates. This is to ensure optimal efficency, as older versions may implement features in unoptimal ways, which are hard to work with.
+
 ## Supported Versions
 
 All beta or alpha versions aren't supported, otherwise you can expect support for the last two major versions in most cases.
