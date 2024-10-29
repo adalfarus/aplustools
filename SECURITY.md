@@ -1,6 +1,6 @@
 # Security Policy
 
-Only the most recent version will get non-security fix updates. This is to ensure optimal efficency, as older versions may implement features in unoptimal ways, which are hard to work with.
+Only the most recent version will get non-security updates. This is to ensure optimal efficency, as older versions may implement features in unoptimal ways, which are hard to work with.
 
 ## Supported Versions
 
