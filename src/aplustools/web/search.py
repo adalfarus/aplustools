@@ -16,7 +16,7 @@ class Search:
     ...
 
 
-class SearchCore:
+class SearchCore:  # Interface
     ...
 
 

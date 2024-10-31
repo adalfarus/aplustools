@@ -5,14 +5,20 @@ from multiprocessing import current_process as _multiprocessing_process
 from pathlib import Path as _Path
 import subprocess as _subprocess
 from enum import Enum as _Enum
+import tempfile as _tempfile
 import warnings as _warnings
 import platform as _platform
+import inspect as _inspect
 import locale as _locale
 import ctypes as _ctypes
+import shutil as _shutil
 import time as _time
+import sys as _sys
 import os as _os
 
 from ..package import optional_import as _optional_import, enforce_hard_deps as _enforce_hard_deps
+from ..data import (SingletonMeta as _SingletonMeta, bits_to_human_readable as _bits_to_human_readable,
+                    bytes_to_human_readable_binary_iec as _bytes_to_human_readable_binary_iec)
 
 # Standard typing imports for aps
 import collections.abc as _a
@@ -51,7 +57,7 @@ class SystemTheme(_Enum):
     UNKNOWN = "Unknown"
 
 
-class _BaseSystem:
+class _BaseSystem(metaclass=_SingletonMeta):
     """
     A base class to represent a system's general functionalities, such as CPU and GPU information,
     OS version, system theme, and event scheduling. This class serves as a framework for handling
@@ -998,7 +1004,7 @@ class _FreeBSDSystem(_BaseSystem):
 
 
 def get_system() -> _WindowsSystem | _DarwinSystem | _LinuxSystem | _FreeBSDSystem | _BaseSystem:
-    """Gets the right system for your os."""
+    """Gets the appropriate system instance based on the operating system."""
     os_name = _platform.system()
     if os_name == "Windows":
         return _WindowsSystem()
@@ -1006,8 +1012,8 @@ def get_system() -> _WindowsSystem | _DarwinSystem | _LinuxSystem | _FreeBSDSyst
         return _DarwinSystem()
     elif os_name == "Linux":
         return _LinuxSystem()
-    elif os_name == "FreeBSD":  # How to detect
-        return _LinuxSystem()
+    elif os_name == "FreeBSD":
+        return _FreeBSDSystem()
     else:
         _warnings.warn("Unsupported Operating System, returning _BaseSystem instance.", RuntimeWarning, 2)
         return _BaseSystem()
@@ -1086,3 +1092,258 @@ def diagnose_shutdown_blockers(suggestions: bool = True, return_result: bool = F
     if return_result:
         return returns
     print(returns)
+
+
+def auto_repr(cls: type):
+    """
+    Decorator that automatically generates a __repr__ method for a class.
+    """
+    if cls.__repr__ is object.__repr__:
+        def __repr__(self):
+            attributes = ', '.join(f"{key}={getattr(self, key)}" for key in self.__dict__ if not key.startswith("_")
+                                   or (key.startswith("__") and key.endswith("__")))
+            return f"{cls.__name__}({attributes})"
+
+        cls.__repr__ = __repr__
+    return cls
+
+
+def auto_repr_with_privates(cls: type):
+    """
+    Decorator that automatically generates a __repr__ method for a class, including all private attributes.
+    """
+    if cls.__repr__ is object.__repr__:
+        def __repr__(self):
+            attributes = ', '.join(f"{key}={getattr(self, key)}" for key in self.__dict__)
+            return f"{cls.__name__}({attributes})"
+
+        cls.__repr__ = __repr__
+    return cls
+
+
+class BasicSystemFunctions:
+    """Encapsulates common system utilities and information retrieval methods."""
+
+    @staticmethod
+    def get_home_directory() -> str:
+        """Retrieve the path to the user's home directory.
+
+        Returns:
+            str: The absolute path to the user's home directory.
+        """
+        return _os.path.expanduser("~")
+
+    @staticmethod
+    def get_running_processes() -> list[dict[str, int | str]]:
+        """Retrieve a list of currently running processes, including PID and name.
+
+        Returns:
+            List[Dict[str, Union[int, str]]]: A list of dictionaries containing process information.
+        """
+        processes = []
+        for proc in _psutil.process_iter(['pid', 'name']):
+            try:
+                processes.append(proc.as_dict(attrs=['pid', 'name']))
+            except _psutil.NoSuchProcess:
+                pass  # Process has terminated between iteration and retrieval
+        return processes
+
+    @classmethod
+    def get_disk_usage(cls, path: str | None = None) -> dict[str, str]:
+        """Retrieve disk usage statistics for a specified path.
+
+        Args:
+            path (Optional[str], optional): Path to check disk usage for. Defaults to the home directory.
+
+        Returns:
+            Dict[str, str]: A dictionary containing total, used, and free space.
+        """
+        if path is None:
+            path = cls.get_home_directory()
+        usage = _shutil.disk_usage(path)
+        return {
+            'total': _bytes_to_human_readable_binary_iec(usage.total),
+            'used': _bytes_to_human_readable_binary_iec(usage.used),
+            'free': _bytes_to_human_readable_binary_iec(usage.free)
+        }
+
+    @staticmethod
+    def get_memory_info() -> dict[str, str]:
+        """Retrieve memory usage statistics for the current system.
+
+        Returns:
+            Dict[str, str]: A dictionary containing total, available, percent used, used, and free memory.
+        """
+        memory = _psutil.virtual_memory()
+        return {
+            'total': _bytes_to_human_readable_binary_iec(memory.total),
+            'available': _bytes_to_human_readable_binary_iec(memory.available),
+            'percent': f"{memory.percent}%",
+            'used': _bytes_to_human_readable_binary_iec(memory.used),
+            'free': _bytes_to_human_readable_binary_iec(memory.free)
+        }
+
+    @staticmethod
+    def get_network_info() -> dict[str, dict[str, bool | list[dict[str, str | None]]]]:
+        """Retrieve information about network interfaces.
+
+        Returns:
+            Dict[str, Dict[str, Union[bool, List[Dict[str, Union[str, None]]]]]]:
+                A dictionary with network interface information, including addresses and status.
+        """
+        addrs = _psutil.net_if_addrs()
+        stats = _psutil.net_if_stats()
+        network_info = {}
+        for interface, addr_info in addrs.items():
+            network_info[interface] = {
+                'addresses': [{'address': addr.address, 'family': str(addr.family), 'netmask': addr.netmask,
+                               'broadcast': addr.broadcast} for addr in addr_info],
+                'isup': stats[interface].isup
+            }
+        return network_info
+
+    @staticmethod
+    def set_environment_variable(key: str, value: str) -> None:
+        """Set an environment variable.
+
+        Args:
+            key (str): Name of the environment variable.
+            value (str): Value to assign to the environment variable.
+        """
+        _os.environ[key] = value
+
+    @staticmethod
+    def get_environment_variable(key: str) -> str | None:
+        """Retrieve an environment variable's value.
+
+        Args:
+            key (str): Name of the environment variable.
+
+        Returns:
+            Optional[str]: Value of the environment variable, or None if it is not set.
+        """
+        return _os.environ.get(key)
+
+    @staticmethod
+    def get_uptime() -> float:
+        """Calculate the system uptime in minutes.
+
+        Returns:
+            float: System uptime in minutes.
+        """
+        return (_time.time() - _psutil.boot_time()) / 60
+
+    @staticmethod
+    def measure_network_speed() -> dict[str, str | float]:
+        """Measure network download and upload speeds using the `speedtest-cli`.
+
+        Returns:
+            Dict[str, Union[str, float]]: Dictionary containing download and upload speeds in human-readable format.
+        """
+        import speedtest as _speedtest
+        st = _speedtest.Speedtest()
+        download_speed = st.download()
+        upload_speed = st.upload()
+        results = st.results.dict()
+        results['download'] = _bits_to_human_readable(download_speed)
+        results['upload'] = _bits_to_human_readable(upload_speed)
+        return results
+
+    @staticmethod
+    def set_working_dir_to_main_script_location() -> None:
+        """Set the current working directory to the main script's location.
+
+        This considers whether the script is frozen (e.g., PyInstaller) or running
+        as a normal Python script.
+        """
+        import __main__
+        try:
+            if getattr(_sys, 'frozen', False):
+                main_dir = _os.path.dirname(_sys.executable)
+            else:
+                if hasattr(__main__, '__file__'):
+                    main_dir = _os.path.dirname(_os.path.abspath(__main__.__file__))
+                else:
+                    main_dir = _os.getcwd()
+                    _warnings.warn(
+                        "Unable to set working directory to main script's location. Using current working directory.",
+                        RuntimeWarning,
+                        stacklevel=2
+                    )
+            _os.chdir(main_dir)
+            print(f"Working directory set to {main_dir}")
+
+        except Exception as e:
+            print(f"An error occurred while changing the working directory: {e}")
+            raise  # Re-raise the error
+
+    @staticmethod
+    def change_working_dir_to_script_location() -> None:
+        """Set the current working directory to the script's directory.
+
+        Uses the caller's file path, which may differ from the main script's location.
+        """
+        try:
+            if getattr(_sys, 'frozen', False):
+                script_dir = _os.path.dirname(_sys.executable)
+            else:
+                frame = _inspect.currentframe()
+                caller_frame = frame.f_back
+                caller_file = caller_frame.f_globals["__file__"]
+                script_dir = _os.path.dirname(_os.path.abspath(caller_file))
+
+            _os.chdir(script_dir)
+            print(f"Working directory changed to {script_dir}")
+        except Exception as e:
+            print(f"An error occurred while changing the working directory: {e}")
+            raise
+
+    @staticmethod
+    def change_working_dir_to_temp_folder() -> None:
+        """Set the current working directory to the system's temporary folder."""
+        try:
+            temp_dir = _tempfile.gettempdir()
+            _os.chdir(temp_dir)
+            print(f"Working directory changed to {temp_dir}")
+
+        except Exception as e:
+            print(f"An error occurred while changing the working directory: {e}")
+            raise
+
+    @staticmethod
+    def change_working_dir_to_new_temp_folder() -> str:
+        """Create a new temporary folder and set it as the working directory.
+
+        Returns:
+            str: Path to the newly created temporary folder.
+        """
+        try:
+            folder = _tempfile.mkdtemp()
+            _os.chdir(folder)
+            return folder
+        except Exception as e:
+            print(f"An error occurred while changing the working directory: {e}")
+            raise
+
+    @staticmethod
+    def change_working_dir_to_userprofile_folder(folder: str) -> None:
+        """Change the current working directory to a specified subfolder in the user's home directory.
+
+        Args:
+            folder (str): Name of the subfolder to navigate to within the home directory.
+
+        Raises:
+            OSError: If the operating system is unsupported.
+        """
+        try:
+            if _os.name == 'posix':
+                home_dir = _os.path.join(_os.path.expanduser("~"), folder)
+            elif _os.name == 'nt':
+                home_dir = _os.path.join(_os.environ['USERPROFILE'], folder)
+            else:
+                raise OSError(f"System {_os.name} is unsupported by this function.")
+            _os.chdir(home_dir)
+            print(f"Working directory changed to {home_dir}")
+        except Exception as e:
+            print(f"An error occurred while changing the working directory: {e}")
+            raise

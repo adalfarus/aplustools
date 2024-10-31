@@ -6,6 +6,7 @@ import math as _math
 import sys as _sys
 
 from ..package import enforce_hard_deps as _enforce_hard_deps
+from . import cutoff_iterable as _cutoff_iterable
 
 # Standard typing imports for aps
 import collections.abc as _a
@@ -1019,7 +1020,94 @@ class CNumStorage:
             return False
         for i in range(len(numbers)):
             if numbers[i] != other_numbers[i]:
-                self._debug_print(cutoff_iterable(numbers, i, 0, 0, True))
-                self._debug_print(cutoff_iterable(other_numbers, i, 0, 0, True))
+                self._debug_print(_cutoff_iterable(numbers, i, 0, 0, True))
+                self._debug_print(_cutoff_iterable(other_numbers, i, 0, 0, True))
                 return False
         return True
+
+
+def set_bits(bytes_like: bytes | bytearray, start_position: int, bits_: str,
+             byte_order: _ty.Literal["big", "little"] = "big", return_bytearray: bool = False,
+             auto_expand: bool = False):
+    """Set specific bits in a byte sequence.
+
+    Args:
+        bytes_like (bytes | bytearray): Original bytes or bytearray to modify.
+        start_position (int): Start position for the bits.
+        bits_ (str): A string of bits ('0' or '1') to set at the start position.
+        byte_order (Literal["big", "little"], optional): Byte order. Defaults to "big".
+        return_bytearray (bool, optional): If True, return a bytearray. Otherwise, return bytes.
+        auto_expand (bool, optional): If True, automatically expand bytearray if necessary.
+
+    Returns:
+        bytes | bytearray: The modified byte sequence.
+    """
+    byte_arr = bytearray(bytes_like) if not isinstance(bytes_like, bytearray) else bytes_like
+    for i, bit in zip(range(start_position, start_position + len(bits_)), [int(char) for char in bits_]):
+        byte_index = i // 8
+        bit_index = i % 8 if byte_order == "little" else ((len(bytes_like) * 8) - i % 8) - 1
+        bit_index -= (((len(bytes_like) - 1) - byte_index) * 8)
+        if byte_index >= len(byte_arr) and auto_expand:
+            if byte_order == "big":
+                byte_arr.append(0)
+            else:
+                byte_arr = bytearray(1) + byte_arr
+        if bit:
+            byte_arr[byte_index] |= (1 << (bit_index - (byte_index * 8)))
+        else:
+            byte_arr[byte_index] &= ~(1 << bit_index - (byte_index * 8))
+    return bytes(byte_arr) if not return_bytearray else byte_arr
+
+
+def bits(bytes_like: bytes | bytearray, return_str: bool = False) -> list | str:
+    """Convert bytes or bytearray to a list or string of binary representations.
+
+    Args:
+        bytes_like (bytes | bytearray): The byte sequence to convert.
+        return_str (bool, optional): If True, return as a single concatenated string.
+
+    Returns:
+        list | str: List of binary strings, or a single concatenated binary string.
+    """
+    bytes_like = bytes_like if isinstance(bytes_like, bytes) else bytes(bytes_like)
+    binary = "00000000" + bin(int.from_bytes(bytes_like))[2:]
+    if return_str:
+        return ''.join(list(reversed([binary[i-8:i] for i in range(len(binary), 0, -8)[:-1]])))
+    return list(reversed([binary[i-8:i] for i in range(len(binary), 0, -8)[:-1]]))
+
+
+def nice_bits(bytes_like: bytes | bytearray, spaced: bool = False, wrap_count: int = 0,
+              to_chars: bool = False, edge_space: bool = False) -> str:
+    """Format bits with options for spacing, wrapping, and conversion to characters.
+
+    Args:
+        bytes_like (bytes | bytearray): Byte sequence to format.
+        spaced (bool, optional): If True, add spaces between bits for readability.
+        wrap_count (int, optional): Number of bits per line before wrapping.
+        to_chars (bool, optional): If True, convert bits to characters when possible.
+        edge_space (bool, optional): If True, add extra space at line edges.
+
+    Returns:
+        str: Formatted bit string.
+    """
+    bytes_like = bytes_like if isinstance(bytes_like, bytes) else bytes(bytes_like)
+    this = [""] + bits(bytes_like)
+    i = 0
+    wrap_count = wrap_count if wrap_count > 0 else len(this) - 1
+    for i in range(0, len(this), wrap_count):
+        if edge_space and i+1 < len(this):
+            this[i+1] = " " + this[i+1]
+        if i + wrap_count < len(this):
+            chars = "  " + ''.join([chr(int(x, 2)) for x in this[i+1:i+wrap_count+1] if x])
+            this[i + wrap_count] += (chars if to_chars else "") + ("\n" if i+wrap_count != len(this)-1 else "")
+            if spaced:
+                for chunk_id in range(i+1, i+wrap_count):
+                    this[chunk_id] += " "
+        else:
+            if spaced:
+                for chunk_id in range(i+1, len(this)-1):
+                    this[chunk_id] += " "
+    if to_chars:
+        this[-1] += ("         " if spaced else "        ")*((i + wrap_count)-len(this)+1) + "  " + ''.join([chr(int(x, 2)) for x in this[i+1:len(this)] if x])
+    binary_str = ''.join(this)
+    return binary_str  # ("00000000" + binary)[7 + (len(binary) // 8):]
