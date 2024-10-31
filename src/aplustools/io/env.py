@@ -992,15 +992,259 @@ class _WindowsSystem(_BaseSystem):
 
 
 class _DarwinSystem(_BaseSystem):
-    pass
+    """System methods specific to macOS (Darwin)."""
+
+    def get_cpu_brand(self):
+        command = "sysctl -n machdep.cpu.brand_string"
+        return _subprocess.check_output(command.split(" ")).decode().strip()
+
+    def get_gpu_info(self):
+        command = "system_profiler SPDisplaysDataType | grep 'Chipset Model'"
+        output = _subprocess.check_output(command.split(" ")).decode()
+        return [line.split(': ')[1].strip() for line in output.split('\n') if 'Chipset Model' in line]
+
+    def get_system_theme(self) -> SystemTheme:
+        command = "defaults read -g AppleInterfaceStyle"
+        try:
+            theme = _subprocess.check_output(command.split(" ")).decode().strip()
+            return SystemTheme.DARK if theme.lower() == 'dark' else SystemTheme.LIGHT
+        except _subprocess.CalledProcessError:
+            return SystemTheme.UNKNOWN
+
+    def schedule_event(self, name: str, script_path: str, event_time: _ty.Literal["startup", "login"]):
+        """Schedule an event to run at startup or login on macOS."""
+        plist_content = f"""
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0">
+        <dict>
+            <key>Label</key>
+            <string>com.example.{name.replace(' ', '_').lower()}</string>
+            <key>ProgramArguments</key>
+            <array>
+                <string>{script_path}</string>
+            </array>
+            <key>RunAtLoad</key>
+            <true/>
+        </dict>
+        </plist>
+        """
+        plist_path = f'~/Library/LaunchAgents/com.example.{name.replace(" ", "_").lower()}.plist'
+        with open(_os.path.expanduser(plist_path), 'w') as f:
+            f.write(plist_content)
+        _subprocess.run(f'launchctl load {_os.path.expanduser(plist_path)}'.split(" "), check=True)
+
+    def send_native_notification(self, title: str, message: str):
+        script = f'display notification "{message}" with title "{title}"'
+        _subprocess.run(["osascript", "-e", script])
+
+    def get_battery_status(self):
+        command = "pmset -g batt" if self.os == 'Darwin' else "upower -i /org/freedesktop/UPower/devices/battery_BAT0"
+        try:
+            output = _subprocess.check_output(command.split(" ")).decode().strip()
+            return output
+        except _subprocess.CalledProcessError:
+            return "Battery status not available."
+
+    def get_appdata_directory(self, app_dir: str, scope: _ty.Literal["user", "global"] = "global"):
+        if scope == "user":
+            return _os.path.join(_os.path.expanduser("~"), "Library", "Application Support", app_dir)  # App data for the current user
+        return _os.path.join("/Library/Application Support", app_dir)  # App data for all users
+
+    def get_clipboard(self):
+        command = "pbpaste"
+        return _subprocess.check_output(command.split(" ")).decode().strip()
+
+    def set_clipboard(self, data: str):
+        command = f'echo "{data}" | pbcopy'
+        _subprocess.run(command.split(" "), check=True)
+
+    def get_system_language(self) -> tuple[str | str | None, str | str | None]:
+        language_code, encoding = super().get_system_language()
+        if language_code:
+            return language_code, encoding
+        result = _subprocess.run(['defaults', 'read', '-g', 'AppleLocale'], stdout=_subprocess.PIPE)
+        return result.stdout.decode().strip(), None
 
 
 class _LinuxSystem(_BaseSystem):
-    pass
+    """System methods specific to Linux."""
+
+    def get_cpu_brand(self):
+        try:
+            with open('/proc/cpuinfo') as f:
+                for line in f:
+                    if 'model name' in line:
+                        return line.split(':')[1].strip()
+        except FileNotFoundError:
+            return "Unknown"
+
+    def get_gpu_info(self):
+        try:
+            # Run `lspci` and pipe its output to the next process
+            p1 = _subprocess.Popen(["lspci"], stdout=_subprocess.PIPE, stderr=_subprocess.PIPE)
+            # Run `grep VGA` to filter the output of `lspci`
+            p2 = _subprocess.Popen(["grep", "VGA"], stdin=p1.stdout, stdout=_subprocess.PIPE, stderr=_subprocess.PIPE)
+            p1.stdout.close()  # Allow p1 to receive a SIGPIPE if p2 exits
+            output, error = p2.communicate()
+
+            if p2.returncode != 0:
+                print(f"grep VGA returned non-zero exit status {p2.returncode}. Error: {error.decode().strip()}")
+                return []
+
+            output = output.decode()
+            return [line.strip() for line in output.split('\n') if line.strip()]
+        except FileNotFoundError as e:
+            print("lspci or grep command not found. Please ensure both are installed.")
+            return []
+        except Exception as e:
+            print(f"Unexpected exception occurred: {e}")
+            if 'libEGL.so.1' in str(e):
+                print("libEGL.so.1 is missing. Please install it with:")
+                print("sudo apt-get install libegl1-mesa")  # For Debian-based systems
+                print("sudo yum install mesa-libEGL")  # For Red Hat-based systems
+            return []
+
+    def get_system_theme(self) -> SystemTheme:
+        """Get the current system theme by checking multiple desktop environments."""
+        try:
+            if "gnome" in _os.getenv("XDG_CURRENT_DESKTOP", "").lower():
+                command = "gsettings get org.gnome.desktop.interface gtk-theme"
+                theme = _subprocess.check_output(command.split(" ")).decode().strip().strip("'")
+                return SystemTheme.DARK if "dark" in theme.lower() else SystemTheme.LIGHT
+            elif "kde" in _os.getenv("XDG_CURRENT_DESKTOP", "").lower():
+                command = "lookandfeeltool --current"
+                theme = _subprocess.check_output(command.split(" ")).decode().strip()
+                return SystemTheme.DARK if "dark" in theme.lower() else SystemTheme.LIGHT
+            elif "xfce" in _os.getenv("XDG_CURRENT_DESKTOP", "").lower():
+                command = "xfconf-query -c xsettings -p /Net/ThemeName"
+                theme = _subprocess.check_output(command.split(" ")).decode().strip()
+                return SystemTheme.DARK if "dark" in theme.lower() else SystemTheme.LIGHT
+            raise _subprocess.CalledProcessError
+        except _subprocess.CalledProcessError:
+            # If theme detection fails for all, return unknown theme
+            return SystemTheme.UNKNOWN
+
+    def schedule_event(self, name: str, script_path: str, event_time: _ty.Literal["startup", "login"]):
+        """Schedule an event to run at startup or login on Linux."""
+        if event_time == "startup":
+            service_content = f"""
+            [Unit]
+            Description={name}
+            After=network.target
+
+            [Service]
+            ExecStart={script_path}
+            Restart=always
+            User={_os.getlogin()}
+
+            [Install]
+            WantedBy=default.target
+            """
+            service_path = f"/etc/systemd/system/{name.replace(' ', '_').lower()}_startup.service"
+            with open(service_path, 'w') as f:
+                f.write(service_content)
+            _os.system(f"systemctl enable {service_path}")
+            _os.system(f"systemctl start {service_path}")
+        elif event_time == "login":
+            cron_command = f'@reboot {script_path}'
+            _subprocess.run(f'(crontab -l; echo "{cron_command}") | crontab -'.split(" "), check=True)
+
+    def send_native_notification(self, title: str, message: str):
+        try:
+            _subprocess.run(["notify-send", title, message])
+        except FileNotFoundError:
+            print("notify-send command not found.")
+        except _subprocess.CalledProcessError as e:
+            print(f"Exception occurred: {e}")
+
+    def get_battery_status(self):
+        command = "pmset -g batt" if self.os == 'Darwin' else "upower -i /org/freedesktop/UPower/devices/battery_BAT0"
+        try:
+            output = _subprocess.check_output(command.split(" ")).decode().strip()
+            return output
+        except _subprocess.CalledProcessError:
+            return "Battery status not available."
+
+    def get_appdata_directory(self, app_dir: str, scope: _ty.Literal["user", "global"] = "global"):
+        if scope == "user":
+            return _os.path.join(_os.path.expanduser("~"), ".local", "share", app_dir)  # App data for the current user
+        return _os.path.join("/usr/local/share", app_dir)  # App data for all users
+
+    def get_clipboard(self):
+        command = "xclip -selection clipboard -o"
+        try:
+            return _subprocess.check_output(command.split(" ")).decode().strip()
+        except _subprocess.CalledProcessError:
+            return None
+
+    def set_clipboard(self, data: str) -> None:
+        command = f'echo "{data}" | xclip -selection clipboard'
+        _subprocess.run(command.split(" "))
+
+    def get_system_language(self) -> tuple[str | str | None, str | str | None]:
+        language_code, encoding = super().get_system_language()
+        return language_code or _os.getenv('LANG', 'en_US'), encoding
 
 
-class _FreeBSDSystem(_BaseSystem):
-    pass
+class _FreeBSDSystem(_LinuxSystem):
+    """System methods specific to FreeBSD."""
+
+    def get_cpu_brand(self) -> str:
+        """Get CPU brand using sysctl."""
+        command = "sysctl -n hw.model"
+        return _subprocess.check_output(command.split(" ")).decode().strip()
+
+    def get_gpu_info(self) -> list[str]:
+        """Get GPU information for FreeBSD."""
+        command = "pciconf -lv | grep -A 4 'display'"
+        try:
+            output = _subprocess.check_output(command, shell=True).decode()
+            return [line.strip() for line in output.splitlines()]
+        except _subprocess.CalledProcessError:
+            return ["pciconf command not found"]
+
+    def get_system_theme(self) -> SystemTheme:
+        """Get the current system theme by checking multiple desktop environments."""
+        try:
+            if "gnome" in _os.getenv("XDG_CURRENT_DESKTOP", "").lower():
+                command = "gsettings get org.gnome.desktop.interface gtk-theme"
+                theme = _subprocess.check_output(command.split(" ")).decode().strip().strip("'")
+                return SystemTheme.DARK if "dark" in theme.lower() else SystemTheme.LIGHT
+            elif "kde" in _os.getenv("XDG_CURRENT_DESKTOP", "").lower():
+                command = "lookandfeeltool --current"
+                theme = _subprocess.check_output(command.split(" ")).decode().strip()
+                return SystemTheme.DARK if "dark" in theme.lower() else SystemTheme.LIGHT
+            elif "xfce" in _os.getenv("XDG_CURRENT_DESKTOP", "").lower():
+                command = "xfconf-query -c xsettings -p /Net/ThemeName"
+                theme = _subprocess.check_output(command.split(" ")).decode().strip()
+                return SystemTheme.DARK if "dark" in theme.lower() else SystemTheme.LIGHT
+            raise _subprocess.CalledProcessError
+        except _subprocess.CalledProcessError:
+            # If theme detection fails for all, return unknown theme
+            return SystemTheme.UNKNOWN
+
+    def get_appdata_directory(self, app_dir: str, scope: _ty.Literal["user", "global"] = "global") -> str:
+        """Get application data directory for FreeBSD."""
+        if scope == "user":
+            return _os.path.join(_os.path.expanduser("~"), ".local", "share", app_dir)
+        return _os.path.join("/usr/local/share", app_dir)
+
+    def get_clipboard(self) -> str | None:
+        """Get clipboard content using xclip or xsel (if available on FreeBSD)."""
+        try:
+            return _subprocess.check_output(["xclip", "-selection", "clipboard", "-o"]).decode().strip()
+        except _subprocess.CalledProcessError:
+            return None
+
+    def set_clipboard(self, data: str) -> None:
+        """Set clipboard content using xclip or xsel (if available)."""
+        _subprocess.run(f'echo "{data}" | xclip -selection clipboard', shell=True)
+
+    def get_system_language(self) -> tuple[str | None, str | None]:
+        """Get system language for FreeBSD."""
+        language_code, encoding = super().get_system_language()
+        return language_code or _os.getenv('LANG', 'en_US'), encoding
 
 
 def get_system() -> _WindowsSystem | _DarwinSystem | _LinuxSystem | _FreeBSDSystem | _BaseSystem:
