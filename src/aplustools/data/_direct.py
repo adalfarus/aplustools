@@ -1,4 +1,6 @@
 """TBA"""
+import json as _json
+import re as _re
 
 from ..package import enforce_hard_deps as _enforce_hard_deps
 
@@ -352,3 +354,42 @@ class Sorters(_ty.Generic[_T]):
         help_arr = [None] * len(iterable)  # Helper array of the same length
         cls._merge(iterable, help_arr, 0, len(iterable) - 1)
         return iterable
+
+
+def _custom_serializer(obj):
+    """
+    Custom serializer function for handling non-serializable objects.
+
+    Args:
+        obj (any): The object to be serialized.
+
+    Returns:
+        str: The serialized object as a string.
+    """
+    try:
+        return str(obj)
+    except Exception:
+        raise TypeError(f"Type {type(obj)} not serializable")
+
+
+def beautify_json(data_dict):
+    """
+    Beautifies a dictionary by converting it to a pretty-printed JSON string.
+
+    Args:
+        data_dict (dict): The dictionary to be beautified.
+
+    Returns:
+        str: The beautified JSON string.
+    """
+    try:
+        # Convert dictionary to a pretty-printed JSON string using custom serializer
+        pretty_json = _json.dumps(data_dict, indent=4, sort_keys=False, default=_custom_serializer)
+        pretty_json = _re.sub(
+            r'\[\s+([^][]+?)\s+]',
+            lambda m: f"[{', '.join(item.strip() for item in m.group(1).split(','))}]",
+            pretty_json
+        )
+        return pretty_json
+    except (TypeError, ValueError) as e:
+        return f"Error converting dictionary to JSON: {e}"

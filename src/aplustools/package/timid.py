@@ -87,7 +87,7 @@ _RANSACRegressor = _optional_import("sklearn.linear_model.RANSACRegressor")
 _curve_fit = _optional_import("scipy.optimize.curve_fit")
 _np = _optional_import("numpy")
 
-__deps__ = ["scikit-learn>=1.5.2", "scipy>=1.13.0", "numpy>=1.26.4"]
+__deps__ = ["scikit-learn>=1.5.0", "scipy>=1.13.0", "numpy>=1.26.4"]
 __hard_deps__ = []
 _enforce_hard_deps(__hard_deps__, __name__)
 

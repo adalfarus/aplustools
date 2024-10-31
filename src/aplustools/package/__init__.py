@@ -29,5 +29,6 @@ if _TYPE_CHECKING:
 _setup_lazy_loaders(
     globals(),
     {
-        "timid": ".package.timid"
+        "timid": ".package.timid",
+        "argumint": ".package.argumint"
     }, _direct)

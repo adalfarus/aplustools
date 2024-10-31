@@ -305,7 +305,7 @@ class DynamicSecureAttrs:
     """
     def __init__(self, **kwargs) -> None:
         total_size = sum(len(value) for value in kwargs.values())
-        self._secure_memory = SecureMemoryChunk(total_size or 100)
+        self._secure_memory = SecureMemoryChunk(total_size or 1)
         self._offsets = {}
         current_offset = 0
         for key, value in kwargs.items():
