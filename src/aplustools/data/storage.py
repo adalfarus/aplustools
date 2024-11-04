@@ -204,13 +204,22 @@ class SQLite3Storage(StorageMedium):
     A storage medium using an SQLite3 database to store and retrieve key-data pairs.
     """
 
-    def __init__(self, filepath: str) -> None:
+    def __init__(self, filepath: str, table: str = "storage") -> None:
         """
         Initializes the SQLite3Storage with a database file.
 
         :param filepath: The path to the SQLite3 database file.
         """
         super().__init__(filepath)
+        self._table = table
+
+    def switch_table(self, table: str) -> None:
+        """
+        Switch to a different table within the same database.
+
+        :param table: The name of the new table to use.
+        """
+        self._table = table
 
     def create_storage(self, at: str) -> int:
         """
@@ -219,8 +228,8 @@ class SQLite3Storage(StorageMedium):
         with _sqlite3.connect(self._filepath) as conn:
             cursor = conn.cursor()
             # Create a table for storing key-value pairs if it doesn't already exist
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS storage (
+            cursor.execute(f'''
+                CREATE TABLE IF NOT EXISTS {self._table} (
                     key TEXT PRIMARY KEY,
                     value TEXT
                 )
@@ -238,8 +247,8 @@ class SQLite3Storage(StorageMedium):
         cursor = f.cursor()
 
         # Insert or update the key-value pair
-        cursor.executemany('''
-            INSERT INTO storage (key, value)
+        cursor.executemany(f'''
+            INSERT INTO {self._table} (key, value)
             VALUES (?, ?)
             ON CONFLICT(key) DO UPDATE SET value=excluded.value
         ''', items.items())
@@ -258,7 +267,7 @@ class SQLite3Storage(StorageMedium):
         cursor = f.cursor()
 
         # Use the IN clause to retrieve multiple keys in one query with parameterized queries
-        query = f'SELECT key, value FROM storage WHERE key IN ({",".join(["?"] * len(keys))})'
+        query = f'SELECT key, value FROM {self._table} WHERE key IN ({",".join(["?"] * len(keys))})'
         cursor.execute(query, keys)
         db_results = cursor.fetchall()
 
@@ -505,12 +514,29 @@ class SimpleSQLite3Storage(SimpleStorageMedium):
     A storage medium using an SQLite3 database to store and retrieve key-data pairs.
     """
 
+    def __init__(self, filepath: str, table: str = "storage") -> None:
+        """
+        Initializes the SQLite3Storage with a database file.
+
+        :param filepath: The path to the SQLite3 database file.
+        """
+        super().__init__(filepath)
+        self._table = table
+
+    def switch_table(self, table: str) -> None:
+        """
+        Switch to a different table within the same database.
+
+        :param table: The name of the new table to use.
+        """
+        self._table = table
+
     def create_storage(self, at: str) -> None:
         """Initialize the SQLite database with a table for key-value storage."""
         with _sqlite3.connect(self._filepath) as conn:
             cursor = conn.cursor()
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS storage (
+            cursor.execute(f'''
+                CREATE TABLE IF NOT EXISTS {self._table} (
                     key TEXT PRIMARY KEY,
                     value TEXT
                 )
@@ -520,8 +546,8 @@ class SimpleSQLite3Storage(SimpleStorageMedium):
     def _store_data(self, f: _sqlite3.Connection, items: dict[str, str]) -> None:
         """Store data in the SQLite database."""
         cursor = f.cursor()
-        cursor.executemany('''
-            INSERT INTO storage (key, value) VALUES (?, ?)
+        cursor.executemany(f'''
+            INSERT INTO {self._table} (key, value) VALUES (?, ?)
             ON CONFLICT(key) DO UPDATE SET value=excluded.value
         ''', items.items())
         f.commit()
@@ -530,7 +556,7 @@ class SimpleSQLite3Storage(SimpleStorageMedium):
         """Retrieve data from the SQLite database."""
         cursor = f.cursor()
         cursor.execute(f'''
-            SELECT key, value FROM storage WHERE key IN ({",".join(["?"] * len(keys))})
+            SELECT key, value FROM {self._table} WHERE key IN ({",".join(["?"] * len(keys))})
         ''', keys)
         db_results = cursor.fetchall()
 
