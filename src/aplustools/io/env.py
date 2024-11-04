@@ -52,9 +52,9 @@ _overlapped = _win32file.OVERLAPPED()
 
 class SystemTheme(_Enum):
     """Used to make system theme information standardized"""
-    LIGHT = "Light"
-    DARK = "Dark"
-    UNKNOWN = "Unknown"
+    LIGHT = 2
+    DARK = 1
+    UNKNOWN = 0
 
 
 class _BaseSystem(metaclass=_SingletonMeta):
