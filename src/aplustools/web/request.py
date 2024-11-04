@@ -199,15 +199,18 @@ class UnifiedRequestHandler:
         _pool (_LazyDynamicThreadPoolExecutor): A dynamically sized thread pool for executing tasks.
     """
 
-    def __init__(self, pool_size: range = range(2, 10, 5), check_interval: float = 5.0) -> None:
+    def __init__(self, min_workers: int = 2, max_workers: int = 10, workers_step: int = 5,
+                 check_interval: float = 5.0) -> None:
         """
         Initializes the request handler with a dynamic thread pool.
 
-        :param pool_size: A range specifying the minimum, maximum, and step size for
-                          dynamic thread pool resizing.
-        :param check_interval: The time interval for checking the pool and resizing threads.
+        :param min_workers: The minimum number of worker threads to maintain in the pool.
+        :param max_workers: The maximum number of worker threads allowed in the pool.
+        :param workers_step: The increment or decrement in the number of workers during pool resizing.
+        :param check_interval: The time interval, in seconds, to wait before checking if the pool
+                               needs resizing based on current load.
         """
-        self._pool = _LazyDynamicThreadPoolExecutor(pool_size.start, pool_size.stop, check_interval, pool_size.step)
+        self._pool = _LazyDynamicThreadPoolExecutor(min_workers, max_workers, check_interval, workers_step)
 
     @property
     def current_size(self) -> int:
