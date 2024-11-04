@@ -34,19 +34,24 @@ from PySide6.QtCore import QTimer as _QTimer, QEvent as _QEvent, QTimerEvent as 
 
 
 class AppFSModifier:
-    MANAGED = 0
-    SECURE = 14
-    OSLOCK = 34
+    """FileSystemManager Modifiers"""
+    UNMANAGED = 0
+    MANAGED = 1
+    SECURE = 2
+    OSLOCK = 4
 
 
 class AppFile:
-    modifiers: int = AppFSModifier.MANAGED
+    modifiers: int = AppFSModifier.UNMANAGED
 
-    def __init__(self, location: str, parent: "AppDir", secure: bool = False, oslock: bool = False) -> None:
+    def __init__(self, location: str, parent: "AppDir", secure: bool = False, oslock: bool = False,
+                 managed: bool = True) -> None:
         self.location: str = location
         self.parent: "AppDir" = parent
-        # True is 1, False is 0
-        self.modifiers = self.modifiers | (AppFSModifier.SECURE * secure) | (AppFSModifier.OSLOCK * oslock)
+        self.modifiers = (self.modifiers  # True is 1, False is 0
+                          | (AppFSModifier.MANAGED * managed)
+                          | (AppFSModifier.SECURE * secure)
+                          | (AppFSModifier.OSLOCK * oslock))
 
     def write(self):
         ...
@@ -57,58 +62,97 @@ class AppFile:
     def read(self, from_: int):
         ...
 
+    def encrypt(self, key: bytes):  # Key can be stored as a secret of the framework
+        if not self.modifiers & AppFSModifier.SECURE:
+            raise ValueError("Your manged instance does not support this method")
+        ...  # Encrypt / Decrypt on the fly
+
+    def decrypt(self, key: bytes):  # Key can be stored as a secret of the framework
+        if not self.modifiers & AppFSModifier.SECURE:
+            raise ValueError("Your manged instance does not support this method")
+        ...  # Encrypt / Decrypt on the fly
+
+    def lock(self):
+        if not self.modifiers & AppFSModifier.OSLOCK:
+            raise ValueError("Your manged instance does not support this method")
+        ...
+
+    def unlock(self):
+        if not self.modifiers & AppFSModifier.OSLOCK:
+            raise ValueError("Your manged instance does not support this method")
+        ...
+
 
 class AppDir:
-    modifiers: int = AppFSModifier.MANAGED
+    modifiers: int = AppFSModifier.UNMANAGED
 
-    def __init__(self, location: str, parent: _ty.Self | None = None,
-                 secure: bool = False, oslock: bool = False) -> None:
+    def __init__(self, location: str, parent: _ty.Self | None = None, secure: bool = False,
+                 oslock: bool = False, managed: bool = True) -> None:
         self.location: str = location
         self.parent: _ty.Self | None = parent
         if parent is None:
             self.tree: dict = {}  # Only used by the parent (for backups, as well as for a redundant parity file)
             # Unmanaged are not in it (e.g. a temp folder)
-        # True is 1, False is 0
-        self.modifiers = self.modifiers | (AppFSModifier.SECURE * secure) | (AppFSModifier.OSLOCK * oslock)
+        self.modifiers = (self.modifiers  # True is 1, False is 0
+                          | (AppFSModifier.MANAGED * managed)
+                          | (AppFSModifier.SECURE * secure)
+                          | (AppFSModifier.OSLOCK * oslock))
 
-    def dir(self, relative_location: str, secure: bool, oslock: bool, *_, unmanaged: bool = False) -> _ty.Self:
-        #  Make the mod = -1 then we can check for positivity when looking at it in mothods.c
-        return self.__class__(self.unmanged_dir(relative_location), self.parent or self, secure, oslock)
+    def app_dir(self, relative_location: str, secure: bool, oslock: bool, *_, unmanaged: bool = False) -> _ty.Self:
+        return type(self)(
+            self.default_dir(relative_location),
+            self.parent or self,
+            self.modifiers & AppFSModifier.SECURE or secure,
+            self.modifiers & AppFSModifier.OSLOCK or oslock,
+            not unmanaged)
 
-    def unmanged_dir(self, relative_location: str) -> str:
+    def default_dir(self, relative_location: str) -> str:
         new_loc = _os.path.join(self.location, relative_location)
         _os.makedirs(new_loc, exist_ok=True)
         return new_loc
 
-    def file(self, relative_location: str, secure: bool, oslock: bool) -> AppFile:
-        return AppFile(self.unmanaged_file(relative_location), self.parent or self, secure, oslock)
+    def app_file(self, relative_location: str, secure: bool, oslock: bool, *_, unmanaged: bool = False) -> AppFile:
+        return AppFile(
+            self.default_file(relative_location),
+            self.parent or self,
+            self.modifiers & AppFSModifier.SECURE or secure,
+            self.modifiers & AppFSModifier.OSLOCK or oslock,
+            not unmanaged)
 
-    def unmanaged_file(self, relative_location: str) -> str:
+    def default_file(self, relative_location: str) -> str:
         new_loc = _os.path.join(self.location, relative_location)
         if not _os.path.exists(new_loc):
             open(new_loc, "w").close()
         return new_loc
 
-    def storage(self, multiuser: bool = False, unmanged: bool = False) -> StorageMedium | SimpleStorageMedium:
-        ...
+    def app_storage(self, relative_location: str, multiuser: bool = False, unmanged: bool = False,
+                    storage_type: _ty.Literal["json", "sqlite3", "binary"] = "json"
+                    ) -> StorageMedium | SimpleStorageMedium:
+        mediums = {"json": SimpleJSONStorage, "sqlite3": SimpleSQLite3Storage, "binary": SimpleBinaryStorage}
+        if multiuser:
+            mediums = {"json": JSONStorage, "sqlite3": SQLite3Storage, "binary": BinaryStorage}
+        instance = mediums[storage_type](self.default_file(relative_location))
+        if not unmanged:
+            self.parent.tree[relative_location] = True  # How?
+        return instance
 
     def encrypt(self, key: bytes):  # Key can be stored as a secret of the framework
-        if not (self.modifiers == 46 or self.modifiers == 14):
+        if not self.modifiers & AppFSModifier.SECURE:
             raise ValueError("Your manged instance does not support this method")
-        ...
+        ...  # Encrypt / Decrypt on the fly
 
     def decrypt(self, key: bytes):  # Key can be stored as a secret of the framework
-        if not (self.modifiers == 46 or self.modifiers == 14):
+        if not self.modifiers & AppFSModifier.SECURE:
             raise ValueError("Your manged instance does not support this method")
-        ...
+        ...  # Encrypt / Decrypt on the fly
 
     def lock(self):
-        if not (self.modifiers == 46 or self.modifiers == 34):
+        if not self.modifiers & AppFSModifier.OSLOCK:
             raise ValueError("Your manged instance does not support this method")
         ...
 
     def unlock(self):
-        if not (self.modifiers == 46 or self.modifiers == 34):
+        if not self.modifiers & AppFSModifier.OSLOCK:
             raise ValueError("Your manged instance does not support this method")
         ...
 
@@ -122,8 +166,8 @@ class ActApp:
     exit_code: int = 0
     name: str = "ActApp"
 
-    def __init__(self, _: list[str], window: _QMainWindow | None = None) -> None:
-        self.window: _QMainWindow | None = window
+    def __init__(self, _: list[str], window: _QMainWindow) -> None:
+        self.window: _QMainWindow = window
         self.popups: list[_ty.Any] = []
         self.linked = False
         self.link()
@@ -215,8 +259,7 @@ class ActApp:
                 setattr(self.window, eventFunc, self._create_link_event(event_handler, eventFunc))
 
     def start(self) -> None:
-        if self.window is not None:
-            self.window.show()
+        self.window.show()
 
     def stop(self) -> None:
         ...
