@@ -210,8 +210,8 @@ class SQLite3Storage(StorageMedium):
 
         :param filepath: The path to the SQLite3 database file.
         """
+        self._table = table  # You have to set _table before the init call
         super().__init__(filepath)
-        self._table = table
 
     def switch_table(self, table: str) -> None:
         """
@@ -220,6 +220,7 @@ class SQLite3Storage(StorageMedium):
         :param table: The name of the new table to use.
         """
         self._table = table
+        self.create_storage(self._filepath)
 
     def create_storage(self, at: str) -> int:
         """
@@ -520,8 +521,8 @@ class SimpleSQLite3Storage(SimpleStorageMedium):
 
         :param filepath: The path to the SQLite3 database file.
         """
-        super().__init__(filepath)
         self._table = table
+        super().__init__(filepath)
 
     def switch_table(self, table: str) -> None:
         """
@@ -530,6 +531,7 @@ class SimpleSQLite3Storage(SimpleStorageMedium):
         :param table: The name of the new table to use.
         """
         self._table = table
+        self.create_storage(self._filepath)
 
     def create_storage(self, at: str) -> None:
         """Initialize the SQLite database with a table for key-value storage."""
