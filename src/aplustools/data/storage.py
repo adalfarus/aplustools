@@ -204,13 +204,14 @@ class SQLite3Storage(StorageMedium):
     A storage medium using an SQLite3 database to store and retrieve key-data pairs.
     """
 
-    def __init__(self, filepath: str, table: str = "storage") -> None:
+    def __init__(self, filepath: str, tables: tuple[str] = ("storage",)) -> None:
         """
         Initializes the SQLite3Storage with a database file.
 
         :param filepath: The path to the SQLite3 database file.
         """
-        self._table = table  # You have to set _table before the init call
+        self._tables = tables
+        self._table = tables[0]  # You have to set _table before the init call
         super().__init__(filepath)
 
     def switch_table(self, table: str) -> None:
@@ -220,22 +221,42 @@ class SQLite3Storage(StorageMedium):
         :param table: The name of the new table to use.
         """
         self._table = table
-        self.create_storage(self._filepath)
+        if table not in self._tables:
+            self.make_sure_exists(table, self._filepath)
 
-    def create_storage(self, at: str) -> int:
+    @staticmethod
+    def make_sure_exists(table: str, at: str) -> None:
         """
-        Initializes the database with a table for key-value storage.
+        Ensures a specified table exists in an SQLite database.
+
+        Connects to the SQLite database at the given path and checks if the specified
+        table exists. If not, it creates the table with `key` and `value` columns
+        for storing key-value pairs.
+
+        Args:
+            table (str): The name of the table to check or create.
+            at (str): The path to the SQLite database file.
+
+        Returns:
+            None
         """
-        with _sqlite3.connect(self._filepath) as conn:
+        with _sqlite3.connect(at) as conn:
             cursor = conn.cursor()
             # Create a table for storing key-value pairs if it doesn't already exist
             cursor.execute(f'''
-                CREATE TABLE IF NOT EXISTS {self._table} (
+                CREATE TABLE IF NOT EXISTS {table} (
                     key TEXT PRIMARY KEY,
                     value TEXT
                 )
             ''')
             conn.commit()
+
+    def create_storage(self, at: str) -> int:
+        """
+        Initializes the database with a table for key-value storage.
+        """
+        for table in self._tables:
+            self.make_sure_exists(table, at)
         return -1
 
     def _store_data(self, f: _sqlite3.Connection, items: dict[str, str]) -> None:
@@ -515,13 +536,14 @@ class SimpleSQLite3Storage(SimpleStorageMedium):
     A storage medium using an SQLite3 database to store and retrieve key-data pairs.
     """
 
-    def __init__(self, filepath: str, table: str = "storage") -> None:
+    def __init__(self, filepath: str, tables: tuple[str] = ("storage",)) -> None:
         """
         Initializes the SQLite3Storage with a database file.
 
         :param filepath: The path to the SQLite3 database file.
         """
-        self._table = table
+        self._tables = tables
+        self._table = tables[0]  # You have to set _table before the init call
         super().__init__(filepath)
 
     def switch_table(self, table: str) -> None:
@@ -531,19 +553,40 @@ class SimpleSQLite3Storage(SimpleStorageMedium):
         :param table: The name of the new table to use.
         """
         self._table = table
-        self.create_storage(self._filepath)
+        if table not in self._tables:
+            self.make_sure_exists(table, self._filepath)
 
-    def create_storage(self, at: str) -> None:
-        """Initialize the SQLite database with a table for key-value storage."""
-        with _sqlite3.connect(self._filepath) as conn:
+    @staticmethod
+    def make_sure_exists(table: str, at: str) -> None:
+        """
+        Ensures a specified table exists in an SQLite database.
+
+        Connects to the SQLite database at the given path and checks if the specified
+        table exists. If not, it creates the table with `key` and `value` columns
+        for storing key-value pairs.
+
+        Args:
+            table (str): The name of the table to check or create.
+            at (str): The path to the SQLite database file.
+
+        Returns:
+            None
+        """
+        with _sqlite3.connect(at) as conn:
             cursor = conn.cursor()
+            # Create a table for storing key-value pairs if it doesn't already exist
             cursor.execute(f'''
-                CREATE TABLE IF NOT EXISTS {self._table} (
+                CREATE TABLE IF NOT EXISTS {table} (
                     key TEXT PRIMARY KEY,
                     value TEXT
                 )
             ''')
             conn.commit()
+
+    def create_storage(self, at: str) -> None:
+        """Initialize the SQLite database with a table for key-value storage."""
+        for table in self._tables:
+            self.make_sure_exists(table, at)
 
     def _store_data(self, f: _sqlite3.Connection, items: dict[str, str]) -> None:
         """Store data in the SQLite database."""
