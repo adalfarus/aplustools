@@ -204,7 +204,7 @@ class SQLite3Storage(StorageMedium):
     A storage medium using an SQLite3 database to store and retrieve key-data pairs.
     """
 
-    def __init__(self, filepath: str, tables: tuple[str] = ("storage",)) -> None:
+    def __init__(self, filepath: str, tables: tuple[str, ...] = ("storage",)) -> None:
         """
         Initializes the SQLite3Storage with a database file.
 
@@ -536,7 +536,7 @@ class SimpleSQLite3Storage(SimpleStorageMedium):
     A storage medium using an SQLite3 database to store and retrieve key-data pairs.
     """
 
-    def __init__(self, filepath: str, tables: tuple[str] = ("storage",)) -> None:
+    def __init__(self, filepath: str, tables: tuple[str, ...] = ("storage",)) -> None:
         """
         Initializes the SQLite3Storage with a database file.
 
