@@ -204,7 +204,7 @@ class SQLite3Storage(StorageMedium):
     A storage medium using an SQLite3 database to store and retrieve key-data pairs.
     """
 
-    def __init__(self, filepath: str, tables: tuple[str, ...] = ("storage",)) -> None:
+    def __init__(self, filepath: str, tables: tuple[str, ...] = ("storage",), drop_unused_tables: bool = False) -> None:
         """
         Initializes the SQLite3Storage with a database file.
 
@@ -213,6 +213,17 @@ class SQLite3Storage(StorageMedium):
         self._tables = tables
         self._table = tables[0]  # You have to set _table before the init call
         super().__init__(filepath)
+        with _sqlite3.connect(filepath) as conn:
+            cursor = conn.cursor()
+            if drop_unused_tables:
+                cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
+                existing_tables = {row[0] for row in cursor.fetchall()}
+
+                unused_tables = existing_tables - set(self._tables)
+                for table in unused_tables:
+                    cursor.execute(f"DROP TABLE IF EXISTS {table}")
+
+            conn.commit()
 
     def switch_table(self, table: str) -> None:
         """
@@ -536,7 +547,7 @@ class SimpleSQLite3Storage(SimpleStorageMedium):
     A storage medium using an SQLite3 database to store and retrieve key-data pairs.
     """
 
-    def __init__(self, filepath: str, tables: tuple[str, ...] = ("storage",)) -> None:
+    def __init__(self, filepath: str, tables: tuple[str, ...] = ("storage",), drop_unused_tables: bool = False) -> None:
         """
         Initializes the SQLite3Storage with a database file.
 
@@ -545,6 +556,17 @@ class SimpleSQLite3Storage(SimpleStorageMedium):
         self._tables = tables
         self._table = tables[0]  # You have to set _table before the init call
         super().__init__(filepath)
+        with _sqlite3.connect(filepath) as conn:
+            cursor = conn.cursor()
+            if drop_unused_tables:
+                cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
+                existing_tables = {row[0] for row in cursor.fetchall()}
+
+                unused_tables = existing_tables - set(self._tables)
+                for table in unused_tables:
+                    cursor.execute(f"DROP TABLE IF EXISTS {table}")
+
+            conn.commit()
 
     def switch_table(self, table: str) -> None:
         """
