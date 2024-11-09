@@ -1591,3 +1591,14 @@ class BasicSystemFunctions:
         except Exception as e:
             print(f"An error occurred while changing the working directory: {e}")
             raise
+
+
+def is_compiled() -> bool:
+    """
+    Detects if the code is running in a compiled environment and identifies the compiler used.
+
+    This function checks for the presence of attributes and environment variables specific
+    to common Python compilers, including PyInstaller, cx_Freeze, and py2exe.
+    :return: bool
+    """
+    return getattr(_sys, 'frozen', False) or hasattr(_sys, '_MEIPASS') or _sys.executable.endswith(".exe")

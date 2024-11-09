@@ -1,6 +1,6 @@
 """TBA"""
 from traceback import format_exc as _format_exc
-from pathlib import Path as _Path
+from pathlib import Path as _PLPath
 import logging as _logging
 import sys as _sys
 import os as _os
@@ -370,31 +370,47 @@ class ActFramework:
 
     @staticmethod
     def _order_logs(directory: str) -> None:
-        logs_dir = _Path(directory)
-        logs = _os.listdir(logs_dir)
-        if "latest.log" in logs:
-            log_file = logs_dir / "latest.log"
-            with open(log_file, "r") as f:
-                line = f.readline()
-            try:
-                date = _re.search(r"[\[\(](\d{4}-\d{2}-\d{2})", line).group(1)
-            except AttributeError:
-                print("Removing malformed latest.log")
-                _os.remove(log_file)
-                return
-            new_name = logs_dir / f"{date}.log"
-            if not _os.path.exists(new_name) and not _os.path.exists(logs_dir / f"{date}_1.log"):
-                _os.rename(log_file, new_name)
-            elif _os.path.exists(new_name) and not _os.path.exists(logs_dir / f"{date}_1.log"):
-                _os.rename(new_name, logs_dir / f"{date}_1.log")
-                _os.rename(log_file, logs_dir / f"{date}_2.log")
-            else:
-                def _extract_num(name):
-                    match = _re.search(r'(\d+)\.log$', name)
-                    return int(match.group(1)) if match else None
-                names = [x for x in logs if date in x]
-                new_number = max(_extract_num(name) for name in names) + 1
-                _os.rename(log_file, logs_dir / f"{date}_{new_number}.log")
+        logs_dir = _PLPath(directory)
+        to_log_file = logs_dir / "latest.log"
+
+        if not to_log_file.exists():
+            return
+
+        with open(to_log_file, "rb") as f:
+            # (solution from https://stackoverflow.com/questions/46258499/how-to-read-the-last-line-of-a-file-in-python)
+            first_line = f.readline().decode()
+            try:  # catch OSError in case of a one line file
+                f.seek(-2, _os.SEEK_END)
+                while f.read(1) != b"\n":
+                    f.seek(-2, _os.SEEK_CUR)
+            except OSError:
+                f.seek(0)
+            last_line = f.readline().decode()
+
+        try:
+            date_pattern = r"[\[(](\d{4}-\d{2}-\d{2})"
+            start_date = _re.search(date_pattern, first_line).group(1)
+            end_date = _re.search(date_pattern, last_line).group(1)
+        except AttributeError:
+            print("Removing malformed latest.log")
+            _os.remove(to_log_file)
+            return
+
+        date_name = f"{start_date}_{end_date}"
+        date_logs = logs_dir.glob(f"{date_name}*.log")
+
+        if not date_logs:
+            new_log_file_name = logs_dir / f"{date_name}.log"
+        else:
+            max_num = max(
+                (int(_re.search(r"_(\d+)\.log$", p.stem).group(1)) for p in date_logs if
+                 _re.search(r"_(\d+)\.log$", p.stem)),
+                default=0
+            )
+            new_log_file_name = logs_dir / f"{date_name}#{max_num + 1}.log"
+
+        _os.rename(to_log_file, new_log_file_name)
+        print(f"Renamed latest.log to {new_log_file_name}")
 
     def set_light_theme_setter(self, theme_name: str, light_theme_setter: _a.Callable) -> None:
         self._persistent_storage.store({"default_light_theme": theme_name})
