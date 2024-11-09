@@ -388,7 +388,7 @@ class ActFramework:
             last_line = f.readline().decode()
 
         try:
-            date_pattern = r"[\[(](\d{4}-\d{2}-\d{2})"
+            date_pattern = r"^[\[(](\d{4}-\d{2}-\d{2})"
             start_date = _re.search(date_pattern, first_line).group(1)
             end_date = _re.search(date_pattern, last_line).group(1)
         except AttributeError:
