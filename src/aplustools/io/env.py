@@ -1601,4 +1601,4 @@ def is_compiled() -> bool:
     to common Python compilers, including PyInstaller, cx_Freeze, and py2exe.
     :return: bool
     """
-    return getattr(_sys, 'frozen', False) or hasattr(_sys, '_MEIPASS') or _sys.executable.endswith(".exe")
+    return getattr(_sys, "frozen", False) and (hasattr(_sys, "_MEIPASS") or _sys.executable.endswith(".exe"))
