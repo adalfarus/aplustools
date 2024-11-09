@@ -397,14 +397,14 @@ class ActFramework:
             return
 
         date_name = f"{start_date}_{end_date}"
-        date_logs = logs_dir.glob(f"{date_name}*.log")
+        date_logs = list(logs_dir.rglob(f"{date_name}*.log"))
 
         if not date_logs:
             new_log_file_name = logs_dir / f"{date_name}.log"
         else:
             max_num = max(
-                (int(_re.search(r"_(\d+)\.log$", p.stem).group(1)) for p in date_logs if
-                 _re.search(r"_(\d+)\.log$", p.stem)),
+                (int(_re.search(r"#(\d+)$", p.stem).group(1)) for p in date_logs if
+                 _re.search(r"#(\d+)$", p.stem)),
                 default=0
             )
             new_log_file_name = logs_dir / f"{date_name}#{max_num + 1}.log"
