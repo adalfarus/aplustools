@@ -8,6 +8,7 @@ import os as _os
 
 from ..io.fileio import os_open as _os_open
 from ..package import enforce_hard_deps as _enforce_hard_deps
+from ..data import beautify_json
 
 # Standard typing imports for aps
 import collections.abc as _a
@@ -138,6 +139,9 @@ class JSONStorage(StorageMedium):
     """
     A storage medium using JSON files to store and retrieve key-data pairs.
     """
+    def __init__(self, filepath: str, max_cache_size: int = 128, beautify: bool = False) -> None:
+        self.beautify: bool = beautify
+        super().__init__(filepath, max_cache_size)
 
     def _store_data(self, f: _os_open, items: dict[str, str]) -> None:
         """
@@ -161,7 +165,10 @@ class JSONStorage(StorageMedium):
 
         # Write the updated JSON data (without overwriting the version byte)
         f.truncate()
-        f.write(_json.dumps(storage).encode())
+        if self.beautify:
+            f.write(beautify_json(storage).encode())
+        else:
+            f.write(_json.dumps(storage).encode())
 
         for k, v in items.items():
             self._read_cache[k] = v
@@ -511,6 +518,9 @@ class SimpleJSONStorage(SimpleStorageMedium):
     """
     A simple storage medium using JSON files to store and retrieve key-data pairs.
     """
+    def __init__(self, filepath: str, beautify: bool = False) -> None:
+        self.beautify: bool = beautify
+        super().__init__(filepath)
 
     def create_storage(self, at: str) -> None:
         """Create an empty JSON file if it doesn't exist."""
@@ -529,7 +539,10 @@ class SimpleJSONStorage(SimpleStorageMedium):
         storage.update(items)
         f.seek(0)
         f.truncate()
-        f.write(_json.dumps(storage).encode())
+        if self.beautify:
+            f.write(beautify_json(storage).encode())
+        else:
+            f.write(_json.dumps(storage).encode())
 
     def _retrieve_data(self, f, keys: list[str]) -> list[str | None]:
         """Retrieve data from JSON format."""

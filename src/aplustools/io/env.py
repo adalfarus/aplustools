@@ -766,6 +766,9 @@ class _BaseSystem(metaclass=_SingletonMeta):
             raise NotImplementedError(f"Unsupported system: {self.os}")
 
 
+BaseSystemType: _BaseSystem = _BaseSystem
+
+
 class _WindowsSystem(_BaseSystem):
     """
     A class representing Windows-specific system functionalities, such as retrieving CPU and GPU information,

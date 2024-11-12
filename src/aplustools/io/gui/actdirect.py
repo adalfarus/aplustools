@@ -157,6 +157,19 @@ class AppDir:
         ...
 
 
+class MainWindowInterface(_QMainWindow):
+    """
+    Interface for main window functionality. This class is not meant to be instantiated directly
+    and should only be used as a base for other classes. Attempting to initialize this class
+    will raise an exception.
+
+    Raises:
+        Exception: If an attempt is made to instantiate this class directly.
+    """
+    def __new__(cls: type, *args: _ty.Any, **kwargs: _ty.Any) -> None:
+        raise Exception("This class can't be initialized; it is just an Interface.")
+
+
 class ActApp:
     """TBA"""
     logger: ActLogger | None = None
@@ -166,7 +179,7 @@ class ActApp:
     exit_code: int = 0
     name: str = "ActApp"
 
-    def __init__(self, _: list[str], window: _QMainWindow) -> None:
+    def __init__(self, _: list[str], window: MainWindowInterface) -> None:
         self.window: _QMainWindow = window
         self.popups: list[_ty.Any] = []
         self.linked = False
@@ -407,7 +420,12 @@ class ActFramework:
                  _re.search(r"#(\d+)$", p.stem)),
                 default=0
             )
-            new_log_file_name = logs_dir / f"{date_name}#{max_num + 1}.log"
+            max_num += 1
+            base_log_file = logs_dir / f"{date_name}.log"
+            if base_log_file.exists():
+                _os.rename(base_log_file, logs_dir / f"{date_name}#{max_num}.log")
+                max_num += 1
+            new_log_file_name = logs_dir / f"{date_name}#{max_num}.log"
 
         _os.rename(to_log_file, new_log_file_name)
         print(f"Renamed latest.log to {new_log_file_name}")
