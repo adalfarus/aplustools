@@ -1,7 +1,10 @@
 """TBA"""
+import io
 import time as _time
 import mmap as _mmap
+import uuid as _uuid
 import os as _os
+import shutil as _shutil
 
 from .env import get_system as _get_system
 from ..data import align_to_next as _align_to_next
@@ -1075,6 +1078,210 @@ class os_hyper_write(_FileLockMixin):
             self._release_lock(range(self._buffer_start, self._buffer_end), release_fd=True)
         elif is_fd_open(self._fd):
             _os.close(self._fd)
+
+    def __enter__(self) -> _ty.Self:
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+        self.close()
+
+    def __del__(self) -> None:
+        self.close()
+
+
+class FileIOType(_ty.Protocol):
+    """
+    A protocol defining the interface for file-like objects.
+    This includes methods commonly found in Python's file objects.
+    """
+    def read(self, n: int = -1) -> _ty.Any:
+        """
+        Read up to n bytes from the file. If n is -1, read all available data.
+        """
+        ...
+
+    def write(self, t: _ty.Any) -> int:
+        """
+        Write the given data to the file. Returns the number of bytes written.
+        """
+        ...
+
+    def seek(self, i: int, whence: int = 0) -> None:
+        """
+        Move the file pointer to a specified location.
+
+        Parameters:
+        - i: The offset to move to.
+        - whence: Optional, defaults to 0 (absolute positioning).
+                  1 (relative to the current position), or 2 (relative to the end of file).
+        """
+        ...
+
+    def close(self) -> None:
+        """
+        Close the file. After closing, operations on the file object will fail.
+        """
+        ...
+
+    def fileno(self) -> int:
+        """
+        Return the file descriptor associated with the file object.
+        """
+        ...
+
+    def flush(self) -> None:
+        """
+        Flush the file's internal buffer, ensuring data is written to disk.
+        """
+        ...
+
+
+class SafeFileWriter:
+    """
+    SafeFileWriter takes in a standard FileIO object with expected methods.
+    It opens the original in write mode but doesn't do anything with it.
+    It expects the open() to bring its own locking for greater compatibility.
+    The potential temporary file is opened in write mode too.
+
+    There are three modes to choose from:
+
+    - virtual: All changes are written to a memory map.
+
+    - copy on close: All changes are written to a copy of the file which gets written to the original at close.
+
+    - switch on close: Same as copy on close but the files are switched instead. This method is error and
+    corruption prone on Windows machines.
+
+    We do not catch or convert any data read or written, you need to know what your open needs.
+
+    Usage example:
+    safe_f = SafeFileWriter("./hello_world.txt", os_open, )
+    safe_f.seek(0, 2)
+    safe_f.write(b"Hello WORLD!")  # As I know os_open only accepts binary data
+    """
+
+    def __init__(self, path: str, open_func: _a.Callable[[str, str], FileIOType] | _ty.Type,
+                 mode: _ty.Literal["virtual", "copy_on_close", "switch_on_close"] = "copy_on_close") -> None:
+        if not _os.path.exists(path):
+            open(path, "w").close()
+        self._mode: str = mode
+        self._curr_open_obj: FileIOType | _mmap.mmap | None = None
+        self._path: str = path
+        self._temppath: str = f"{path}.{_uuid.uuid4().hex}.tempwrite"
+        self._closed: bool = False
+
+        if mode == "virtual":
+            self._open_obj: FileIOType = open_func(path, "r+")
+            file_size = _os.path.getsize(path)
+            if file_size == 0:  # Handle empty files
+                raise ValueError("Cannot use 'virtual' mode on an empty file.")
+            self._curr_open_obj = _mmap.mmap(self._open_obj.fileno(), file_size)
+        elif mode == "copy_on_close" or mode == "switch_on_close":
+            _shutil.copy(self._path, self._temppath)  # Prevent locking
+            self._open_obj: FileIOType = open_func(path, "r+")
+            self._curr_open_obj = open_func(self._temppath, "r+")
+        else:
+            raise ValueError(f"The mode '{mode}' is invalid")
+
+    def read(self, n: int = -1) -> _ty.Any:
+        """
+        Read data from the file or memory map.
+
+        Parameters:
+        - n: The number of bytes to read. Defaults to -1 (read all).
+
+        Returns:
+        - The data read.
+        """
+        if self._closed:
+            raise ValueError("The file is already closed")
+        return self._curr_open_obj.read(n)
+
+    def write(self, t: _ty.Any) -> int:
+        """
+        Write data to the file or memory map.
+
+        Parameters:
+        - t: The data to write.
+
+        Returns:
+        - The number of bytes written.
+        """
+        if self._closed:
+            raise ValueError("The file is already closed")
+        if self._mode == "virtual":
+            self._curr_open_obj.write(t.encode() if isinstance(t, str) else t)
+            return len(t)
+        return self._curr_open_obj.write(t)
+
+    def seek(self, i: int, whence: int = 0) -> None:
+        """
+        Move the file pointer to a specified position.
+
+        Parameters:
+        - i (int): The offset to move to.
+        - whence (int): Determines the reference point for the offset.
+            - 0: Start of the file (default).
+            - 1: Current position.
+            - 2: End of the file.
+
+        This method adjusts the current position in the file for subsequent read or write operations.
+        """
+        self._curr_open_obj.seek(i, whence)
+
+    def flush(self) -> None:
+        """
+        Flush the internal buffer, ensuring that all changes made to the file
+        are written to the underlying storage.
+
+        This is especially useful in buffered operations to avoid data loss
+        in case of an unexpected termination.
+        """
+        self._curr_open_obj.flush()
+
+    def fileno(self) -> int:
+        """
+        Return the file descriptor associated with the current open file object.
+
+        The file descriptor is an integer that uniquely identifies an open file
+        and can be used with low-level system calls.
+
+        Returns:
+        - int: The file descriptor for the underlying file object.
+        """
+        return self._curr_open_obj.fileno()
+
+    def close(self) -> None:
+        """
+        Close the SafeFileWriter, finalizing changes based on the mode.
+        """
+        if self._closed:
+            return
+        self._closed = True
+        if self._mode == "virtual":
+            self._curr_open_obj.flush()
+            self._curr_open_obj.close()
+            self._open_obj.close()
+        elif self._mode == "copy_on_close":
+            self._curr_open_obj.seek(0, 0)
+            content = self._curr_open_obj.read()
+            self._open_obj.seek(0, 0)
+            self._open_obj.write(content)
+            self._curr_open_obj.close()
+            self._open_obj.close()
+            _os.remove(self._temppath)
+        elif self._mode == "switch_on_close":
+            self._curr_open_obj.close()
+            try:
+                _os.remove(self._path)
+                _os.rename(self._temppath, self._path)
+            except OSError:
+                # We're on windows
+                self._open_obj.close()  # Someone else can lock the file right here leading to corruption
+                _os.remove(self._path)
+                _os.rename(self._temppath, self._path)
+            else:  # We're on posix, we can now safely release the lock
+                self._open_obj.close()  # This only works on posix
 
     def __enter__(self) -> _ty.Self:
         return self

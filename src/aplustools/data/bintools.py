@@ -1111,3 +1111,51 @@ def nice_bits(bytes_like: bytes | bytearray, spaced: bool = False, wrap_count: i
         this[-1] += ("         " if spaced else "        ")*((i + wrap_count)-len(this)+1) + "  " + ''.join([chr(int(x, 2)) for x in this[i+1:len(this)] if x])
     binary_str = ''.join(this)
     return binary_str  # ("00000000" + binary)[7 + (len(binary) // 8):]
+
+
+def bytes_to_human_readable_binary_iec(size: int | float) -> str:
+    """Convert bytes to a human-readable binary string using IEC units.
+
+    Args:
+        size (int | float): The size in bytes.
+
+    Returns:
+        str: The size formatted as a human-readable string (e.g., "1.00 MiB").
+    """
+    units = ['B', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB', 'EiB', 'ZiB', 'YiB']
+    for unit in units:
+        if size < 1024 or unit == units[-1]:
+            return f"{size:.2f} {unit}"
+        size /= 1024
+
+
+def bytes_to_human_readable_decimal_si(size: int | float) -> str:
+    """Convert bytes to a human-readable string using decimal SI units.
+
+    Args:
+        size (int | float): The size in bytes.
+
+    Returns:
+        str: The size formatted as a human-readable string (e.g., "1.00 MB").
+    """
+    units = ['B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB', 'RB', 'QB']
+    for unit in units:
+        if size < 1000 or unit == units[-1]:
+            return f"{size:.2f} {unit}"
+        size /= 1000
+
+
+def bits_to_human_readable(size: int | float) -> str:
+    """Convert bits to a human-readable string using SI units.
+
+    Args:
+        size (int | float): The size in bits.
+
+    Returns:
+        str: The size formatted as a human-readable string (e.g., "1.00 Mbps").
+    """
+    units = ['bps', 'Kbps', 'Mbps', 'Gbps', 'Tbps']
+    for unit in units:
+        if size < 1000 or unit == units[-1]:  # Ensure we don't exceed the last unit
+            return f"{size:.2f} {unit}"
+        size /= 1000

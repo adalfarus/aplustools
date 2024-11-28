@@ -5,6 +5,15 @@ import typing as _ty
 import sys
 
 
+from aplustools.io.fileio import SafeFileWriter, os_open
+
+
+with SafeFileWriter("./hello_world.txt", os_open) as safe_f:
+    safe_f.seek(0, 2)
+    print(safe_f.write(b"Hello WORLD!"))
+
+
+exit()
 def tstfunc(hello_world: str = "DEF!", *args, K: _ty.Literal[0, 1] = 1, **kwargs) -> int:
     """
     This is my func!

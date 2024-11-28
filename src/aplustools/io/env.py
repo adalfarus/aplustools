@@ -17,8 +17,9 @@ import sys as _sys
 import os as _os
 
 from ..package import optional_import as _optional_import, enforce_hard_deps as _enforce_hard_deps
-from ..data import (SingletonMeta as _SingletonMeta, bits_to_human_readable as _bits_to_human_readable,
-                    bytes_to_human_readable_binary_iec as _bytes_to_human_readable_binary_iec)
+from ..data import (SingletonMeta as _SingletonMeta)
+from ..data.bintools import (bits_to_human_readable as _bits_to_human_readable,
+                             bytes_to_human_readable_binary_iec as _bytes_to_human_readable_binary_iec)
 
 # Standard typing imports for aps
 import collections.abc as _a
