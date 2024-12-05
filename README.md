@@ -43,7 +43,7 @@ python -m build
 
 Here are a few quick examples of how to use aplustools:
 
-# Examples tba
+- Examples will be added in the full release.
 
 (If you have problems with the package please use `py -3.12 -m pip install aplustools[all]>=2.0.0.0 --upgrade --user`)
 (The standard shortform for aplustools is aps, so please use ```import aplustools as aps``` for consistency)
@@ -59,7 +59,7 @@ For more detailed usage and examples, check out our [documentation](https://gith
 For modules I use 'lowercase', classes are 'CapitalizedWords' and functions and methods are 'lower_case_with_underscores'.
 
 ### Information
-- STUFF
+- Additional information will be added in the full release.
 
 ## Contributing
 
