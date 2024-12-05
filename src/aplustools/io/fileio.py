@@ -1,5 +1,5 @@
 """TBA"""
-import io
+import io  # Make _ import
 import time as _time
 import mmap as _mmap
 import uuid as _uuid
