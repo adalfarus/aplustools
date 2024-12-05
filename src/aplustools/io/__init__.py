@@ -13,6 +13,8 @@ _setup_lazy_loaders(
     {
         "env": ".io.env",
         "fileio": ".io.fileio",
-        "concurrency": ".io.concurrency"
+        "concurrency": ".io.concurrency",
+        "actdirect": ".io.actdirect",
+        "qtquick": ".io.qtquick"
     }, _direct
 )

@@ -1482,22 +1482,6 @@ class BasicSystemFunctions:
         return (_time.time() - _psutil.boot_time()) / 60
 
     @staticmethod
-    def measure_network_speed() -> dict[str, str | float]:
-        """Measure network download and upload speeds using the `speedtest-cli`.
-
-        Returns:
-            Dict[str, Union[str, float]]: Dictionary containing download and upload speeds in human-readable format.
-        """
-        import speedtest as _speedtest
-        st = _speedtest.Speedtest()
-        download_speed = st.download()
-        upload_speed = st.upload()
-        results = st.results.dict()
-        results['download'] = _bits_to_human_readable(download_speed)
-        results['upload'] = _bits_to_human_readable(upload_speed)
-        return results
-
-    @staticmethod
     def set_working_dir_to_main_script_location() -> None:
         """Set the current working directory to the main script's location.
 
