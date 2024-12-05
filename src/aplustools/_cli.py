@@ -1,8 +1,8 @@
-"""The cli implementation of aplustools"""
+"""TBA"""
 try:
-    from .package.argumint import ArguMint, ArgStruct
+    from .package.argumint import Argumint, ArgStructBuilder, EndPoint
 except ImportError:
-    from package.argumint import ArguMint, ArgStruct
+    from package.argumint import Argumint, ArgStructBuilder, EndPoint
 
 import subprocess
 import inspect
@@ -69,18 +69,18 @@ def _cli():
                 _debug(f"Tests passed for {test}.")
         _debug("Tests completed.")
 
-    builder = ArgStruct()
+    builder = ArgStructBuilder()
     builder.add_command("aps")
     builder.add_nested_command("aps", "tests", "run")
     builder.add_subcommand("aps", "help")
 
     arg_struct = builder.get_structure()
 
-    argu_mint = ArguMint(lambda: print("Not implemented yet, sorry."), arg_struct=arg_struct)
-    argu_mint.add_endpoint("aps.tests.run", _run_tests)
-    argu_mint.add_endpoint("aps.help", lambda: print("aps --> tests -> run {tests} {-debug} {-minimal}\n    |\n     -> help"))
-    argu_mint.add_endpoint("aps", lambda: print("This command doesn't work like that, please use it like this:\n"
-                                                "aps --> tests -> run {tests} {-debug} {-minimal}\n    |\n     -> help"))
+    argu_mint = Argumint(EndPoint(lambda: print("Not implemented yet, sorry.")), arg_struct=arg_struct)
+    argu_mint.add_endpoint("aps.tests.run", EndPoint(_run_tests))
+    argu_mint.add_endpoint("aps.help", EndPoint(lambda: print("aps --> tests -> run {tests} {-debug} {-minimal}\n    |\n     -> help")))
+    argu_mint.add_endpoint("aps", EndPoint(lambda: print("This command doesn't work like that, please use it like this:\n"
+                                                "aps --> tests -> run {tests} {-debug} {-minimal}\n    |\n     -> help")))
 
     sys.argv[0] = "aps"
 

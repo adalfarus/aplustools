@@ -1,23 +1,34 @@
-# package __init__
+"""
+Module providing lazy loading of specific submodules and dynamic imports for the aplus tools package.
 
-from ._direct_functions import LazyModuleLoader as _LazyModuleLoader
+This module leverages a `LazyLoader` to lazily load the `timid` and `argumint` modules when they are first accessed.
+It also dynamically imports public members from the `_direct` module, updates the `__all__` list, and cleans up
+globals to remove private symbols (those starting with an underscore).
 
-# Lazy loading modules
-timid = _LazyModuleLoader('aplustools.package.timid')
-argumint = _LazyModuleLoader('aplustools.package.argumint')
+Attributes:
+    timid (LazyLoader): Lazy loader for the `timid` submodule.
+    argumint (LazyLoader): Lazy loader for the `argumint` submodule.
+    __all__ (list): List of public symbols exported by this module, including dynamically added symbols
+                    from the `_direct` module.
 
-# Define __all__ to limit what gets imported with 'from <package> import *'
-__all__ = ['timid', 'argumint']
+Lazy loading allows for deferred loading of these modules, improving performance and memory efficiency in cases where
+they are not always needed.
 
-# Dynamically add exports from _direct_functions
-from ._direct_functions import *
+Usage:
+    from aplus.tools.package import timid, argumint
+"""
 
-# Update __all__ with the public members from _direct_functions and clean up globals
-for name in list(globals()):
-    if name.startswith('_') and not (name.startswith('__') and name.endswith('__')):
-        # Remove private attributes from globals
-        del globals()[name]
-    else:
-        # Add public attributes to __all__
-        __all__.append(name)
-del name
+from ._direct import setup_lazy_loaders as _setup_lazy_loaders
+from . import _direct
+from typing import TYPE_CHECKING as _TYPE_CHECKING
+
+if _TYPE_CHECKING:
+    from ._direct import *
+    from . import timid
+
+_setup_lazy_loaders(
+    globals(),
+    {
+        "timid": ".package.timid",
+        "argumint": ".package.argumint"
+    }, _direct)

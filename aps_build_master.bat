@@ -1,6 +1,5 @@
 @echo off
 setlocal enabledelayedexpansion
-py -m pip install --upgrade pip
 
 REM Command line arguments processing
 if not "%~1"=="" (
@@ -24,6 +23,8 @@ echo 0. Exit
 echo ==============================================================
 echo.
 set /p choice="Enter your choice (0-5, or multiple choices): "
+set /p version="Enter your version of choice (e.g 3.12, 3.13): "
+py -%version% -m pip install --upgrade pip
 
 goto process_choice
 
@@ -60,7 +61,7 @@ REM Function to run tests
 :run_tests
 @echo off
 REM Install pytest
-py -m pip install pytest
+py -%version% -m pip install pytest
 
 REM Ensure test_data directory exists and is empty
 set "DIR=test_data"
@@ -73,7 +74,7 @@ mkdir "%DIR%"
 
 REM Run tests
 echo Running tests...
-py -m pytest src/aplustools/tests
+py -%version% -m pytest src/aplustools/tests
 echo Tests completed.
 exit /b
 
@@ -81,9 +82,9 @@ REM Function to build the project
 :build_project
 @echo off
 REM Install pytest
-py -m pip install build
+py -%version% -m pip install build
 echo Building the project...
-py -m build
+py -%version% -m build
 echo Build completed.
 exit /b
 
@@ -98,9 +99,9 @@ REM Function to install the newly built package
 :install_package
 @echo off
 for %%F in (dist\*.whl) do (
-    py -m pip install "%%F" --force-reinstall
+    py -%version% -m pip install "%%F" --force-reinstall
     REM Prevents force reinstall of all dependencies
-    py -m pip install "%%F"[all]
+    py -%version% -m pip install "%%F"[all]
 )
 echo Package installation completed.
 exit /b

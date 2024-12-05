@@ -1,5 +1,4 @@
 #!/bin/bash
-python3 -m pip install --upgrade pip
 
 # Function to display the menu
 show_menu() {
@@ -17,6 +16,8 @@ show_menu() {
     echo "=============================================================="
     echo
     read -p "Enter your choice (0-5, or multiple choices): " choice
+    read -p "Enter your version of choice (e.g 3.12, 3.13): " version
+    python3 -${#version} -m pip install --upgrade pip
     process_choice
 }
 
@@ -65,7 +66,7 @@ pause() {
 # Function to run tests
 run_tests() {
     # Install pytest
-    python3 -m pip install pytest
+    python3 -${#version} -m pip install pytest
 
     # Ensure test_data directory exists and is empty
     DIR="test_data"
@@ -78,16 +79,16 @@ run_tests() {
 
     # Run tests
     echo "Running tests..."
-    python3 -m pytest src/aplustools/tests
+    python3 -${#version} -m pytest src/aplustools/tests
     echo "Tests completed."
 }
 
 # Function to build the project
 build_project() {
     # Install build
-    python3 -m pip install build
+    python3 -${#version} -m pip install build
     echo "Building the project..."
-    python3 -m build
+    python3 -${#version} -m build
     echo "Build completed."
 }
 
@@ -100,8 +101,8 @@ clear() {
 # Function to install the newly built package
 install_package() {
     for file in dist/*.whl; do
-        python3 -m pip install "$file" --force-reinstall
-        python3 -m pip install "$file"[all]  # Prevents force reinstall of all dependencies
+        python3 -${#version} -m pip install "$file" --force-reinstall
+        python3 -${#version} -m pip install "$file"[all]  # Prevents force reinstall of all dependencies
     done
     echo "Package installation completed."
 }
