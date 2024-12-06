@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING as _TYPE_CHECKING
 
 if _TYPE_CHECKING:
     from ._direct import *
-    from . import env, fileio, concurrency
+    from . import env, fileio, concurrency, actdirect, qtquick
 
 _setup_lazy_loaders(
     globals(),
