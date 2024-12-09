@@ -48,7 +48,10 @@ __deps__ = ["speedtest-cli>=2.1.3", "windows-toasts>=1.1.1; os_name == 'nt'", "P
             "psutil>=6.0.0", "pywin32>=306"]
 __hard_deps__ = []
 _enforce_hard_deps(__hard_deps__, __name__)
-_overlapped = _win32file.OVERLAPPED()
+
+_overlapped = None
+if _win32file is not None:
+    _overlapped = _win32file.OVERLAPPED()
 
 
 class SystemTheme(_Enum):
