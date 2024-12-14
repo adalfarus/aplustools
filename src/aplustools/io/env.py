@@ -1351,7 +1351,9 @@ def auto_repr(cls: type):
     """
     if cls.__repr__ is object.__repr__:
         def __repr__(self):
-            attributes = ', '.join(f"{key}={getattr(self, key)}" for key in self.__dict__ if not key.startswith("_")
+            attributes = ', '.join(f"{key}={getattr(self, key)}"
+                                   if not isinstance(getattr(self, key), str) else f"{key}='{getattr(self, key)}'"
+                                   for key in self.__dict__ if not key.startswith("_")
                                    or (key.startswith("__") and key.endswith("__")))
             return f"{cls.__name__}({attributes})"
 
@@ -1365,7 +1367,9 @@ def auto_repr_with_privates(cls: type):
     """
     if cls.__repr__ is object.__repr__:
         def __repr__(self):
-            attributes = ', '.join(f"{key}={getattr(self, key)}" for key in self.__dict__)
+            attributes = ', '.join(f"{key}={getattr(self, key)}"
+                                   if not isinstance(getattr(self, key), str) else f"{key}='{getattr(self, key)}'"
+                                   for key in self.__dict__)
             return f"{cls.__name__}({attributes})"
 
         cls.__repr__ = __repr__
