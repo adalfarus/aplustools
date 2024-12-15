@@ -16,6 +16,11 @@ import time as _time
 import sys as _sys
 import os as _os
 
+try:
+    from ctypes.wintypes import MAX_PATH
+except ValueError:  # Raises on linux
+    MAX_PATH = _os.pathconf('/', 'PC_PATH_MAX')
+
 from ..package import optional_import as _optional_import, enforce_hard_deps as _enforce_hard_deps
 from ..data import (SingletonMeta as _SingletonMeta)
 from ..data.bintools import (bits_to_human_readable as _bits_to_human_readable,
@@ -1345,31 +1350,34 @@ def diagnose_shutdown_blockers(suggestions: bool = True, return_result: bool = F
     print(returns)
 
 
-def auto_repr(cls: type):
+def auto_repr(cls: type, *_, use_repr: bool = False):
     """
     Decorator that automatically generates a __repr__ method for a class.
     """
     if cls.__repr__ is object.__repr__:
         def __repr__(self):
-            attributes = ', '.join(f"{key}={getattr(self, key)}"
-                                   if not isinstance(getattr(self, key), str) else f"{key}='{getattr(self, key)}'"
-                                   for key in self.__dict__ if not key.startswith("_")
-                                   or (key.startswith("__") and key.endswith("__")))
+            if not use_repr:
+                attributes = ', '.join(f"{key}={getattr(self, key)}" for key in self.__dict__ if not key.startswith("_")
+                                       or (key.startswith("__") and key.endswith("__")))
+            else:
+                attributes = ', '.join(f"{key}={repr(getattr(self, key))}" for key in self.__dict__ if not key.startswith("_")
+                                       or (key.startswith("__") and key.endswith("__")))
             return f"{cls.__name__}({attributes})"
 
         cls.__repr__ = __repr__
     return cls
 
 
-def auto_repr_with_privates(cls: type):
+def auto_repr_with_privates(cls: type, use_repr: bool = False):
     """
     Decorator that automatically generates a __repr__ method for a class, including all private attributes.
     """
     if cls.__repr__ is object.__repr__:
         def __repr__(self):
-            attributes = ', '.join(f"{key}={getattr(self, key)}"
-                                   if not isinstance(getattr(self, key), str) else f"{key}='{getattr(self, key)}'"
-                                   for key in self.__dict__)
+            if not use_repr:
+                attributes = ', '.join(f"{key}={getattr(self, key)}" for key in self.__dict__)
+            else:
+                attributes = ', '.join(f"{key}={repr(getattr(self, key))}" for key in self.__dict__)
             return f"{cls.__name__}({attributes})"
 
         cls.__repr__ = __repr__
