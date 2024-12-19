@@ -16,16 +16,16 @@ from PySide6.QtWidgets import (QMessageBox as _QMessageBox, QCheckBox as _QCheck
 from PySide6.QtCore import Qt as _Qt
 
 
-
-_QMBoxButton = _QMessageBox.StandardButton
+MBoxIcon = _QMessageBox.Icon
+MBoxButton = _QMessageBox.StandardButton
 
 
 class QQuickMessageBox(_QMessageBox):
     """TBA"""
-    def __init__(self, parent=None, icon: _QMessageBox.Icon | None = None, window_title: str = "", text: str = "",
+    def __init__(self, parent=None, icon: MBoxIcon | None = None, window_title: str = "", text: str = "",
                  detailed_text: str = "", checkbox: _QCheckBox | None = None,
-                 standard_buttons: list[_QMBoxButton] | _QMBoxButton = _QMessageBox.StandardButton.Ok,
-                 default_button: _QMBoxButton | None = None):
+                 standard_buttons: list[MBoxButton] | MBoxButton = MBoxButton.Ok,
+                 default_button: MBoxButton | None = None):
         """
         An advanced QMessageBox with additional configuration options.
 
@@ -52,12 +52,7 @@ class QQuickMessageBox(_QMessageBox):
         self.activateWindow()
 
 
-class QBoxDirection:
-    """Shortcuts for the QBoxLayouts directions"""
-    LeftToRight = _QBoxLayout.Direction.LeftToRight
-    TopToBottom = _QBoxLayout.Direction.TopToBottom
-    RightToLeft = _QBoxLayout.Direction.RightToLeft
-    BottomToTop = _QBoxLayout.Direction.BottomToTop
+QBoxDirection = _QBoxLayout.Direction
 
 
 class QQuickBoxLayout(_QBoxLayout):

@@ -2,11 +2,16 @@
 from concurrent.futures import ThreadPoolExecutor as _ThreadPoolExecutor, Future as _Future
 # We basically need to change the way the threads work and thus need these
 from concurrent.futures.thread import _threads_queues, _shutdown, _base
-from threading import Event as _Event, Lock as _Lock, Thread as _Thread, current_thread as _current_thread
+from threading import Event as _Event, Lock as _TLock, Thread as _Thread, current_thread as _current_thread
+from multiprocessing.shared_memory import SharedMemory as _SharedMemory
+from multiprocessing.synchronize import RLock as _RMLockT
+from multiprocessing import RLock as _RMLock
 from queue import Empty as _Empty
 import weakref as _weakref
-import time as _time
+import struct as _struct
 
+from .env import MAX_PATH  # as a reference to be importable from here too
+from .env import auto_repr as _auto_repr
 from ..package import enforce_hard_deps as _enforce_hard_deps
 from ..package.timid import TimidTimer as _TimidTimer
 
@@ -20,12 +25,140 @@ __hard_deps__ = []
 _enforce_hard_deps(__hard_deps__, __name__)
 
 
+@_auto_repr
+class SharedReference:
+    """Shared reference to memory and a lock. It can get pickled and send between processes"""
+    def __init__(self, struct_format: str, shm_name: str, lock: _RMLockT) -> None:
+        self.struct_format: str = struct_format
+        self.shm_name: str = shm_name
+        self.lock = _MPLock = lock
+
+
+class SharedStruct:
+    """Shared memory through processes"""
+    def __init__(self, struct_format: str, create: bool = False, shm_name: str | None = None,
+                 *_, overwrite_mp_lock: _RMLockT | None = None) -> None:
+        if any([len(x) <= 1 for x in struct_format.split(" ")]):
+            raise RuntimeError("You need to leave a space after each entry in the struct format")
+        self._struct_format: str = struct_format
+        self._struct_size: int = _struct.calcsize(struct_format)
+
+        if isinstance(overwrite_mp_lock, _RMLockT):
+            self._lock: _RMLockT = overwrite_mp_lock
+        else:
+            self._lock: _RMLockT = _RMLock()
+
+        if create:  # Create a new, shared memory segment
+            self._shm: _SharedMemory = _SharedMemory(create=True, size=self._struct_size)
+        else:  # Attach to an existing shared memory segment
+            if shm_name is None:
+                raise ValueError("shm_name must be provided, when create=False")
+            self._shm: _SharedMemory = _SharedMemory(name=shm_name)
+        self._shm_name: str = self._shm.name  # Store the shared memory name for reference
+
+    def set_data(self, *values) -> None:
+        """
+        Set data in the shared memory structure.
+        :param values: Values to set, matching the struct format.
+        """
+        if len(values) != len(self._struct_format.replace(" ", "")):
+            raise ValueError("Number of values must match the struct format")
+        with self._lock:
+            packed_data = _struct.pack(self._struct_format, *values)
+            self._shm.buf[:self._struct_size] = packed_data
+
+    def get_data(self) -> tuple[_ty.Any, ...]:
+        """
+        Get data from the shared memory structure.
+        :return: Tuple of values unpacked from the shared memory.
+        """
+        with self._lock:
+            packed_data = self._shm.buf[:self._struct_size]
+            return _struct.unpack(self._struct_format, packed_data)
+
+    def set_field(self, index: int, value: _ty.Any) -> None:
+        """
+        Set a single field in the shared memory structure.
+        :param index: Index of the field to set (starting from 0).
+        :param value: The value to set, matching the struct format at the specified index.
+        """
+        format_parts = self._struct_format.split()
+        if index < 0 or index >= len(format_parts):
+            raise IndexError("Field index out of range")
+        # Calculate offset for the field based on the format
+        offset = sum(_struct.calcsize(fmt) for fmt in format_parts[:index])
+        field_format = format_parts[index]
+        field_size = _struct.calcsize(field_format)
+        with self._lock:
+            packed_field = _struct.pack(field_format, value)
+            self._shm.buf[offset:offset + field_size] = packed_field
+
+    def get_field(self, index: int) -> _ty.Any:
+        """
+        Get a single field from the shared memory structure.
+        :param index: Index of the field to get (starting from 0).
+        :return: The value of the field, unpacked based on the struct format.
+        """
+        format_parts = self._struct_format.split()
+        if index < 0 or index >= len(format_parts):
+            raise IndexError("Field index out of range")
+        offset = sum(_struct.calcsize(fmt) for fmt in format_parts[:index])
+        field_format = format_parts[index]
+        field_size = _struct.calcsize(field_format)
+        with self._lock:
+            packed_field = self._shm.buf[offset:offset + field_size]
+            return _struct.unpack(field_format, packed_field)[0]
+
+    def reference(self) -> SharedReference:
+        """References this shared struct in a simpler data structure"""
+        return SharedReference(self._struct_format, self._shm_name, self._lock)
+
+    @classmethod
+    def from_reference(cls, ref: SharedReference) -> _ty.Self:
+        """Loads a shared struct obj from a shared reference"""
+        return cls(ref.struct_format, False, ref.shm_name, overwrite_mp_lock=ref.lock)
+
+    def close(self) -> None:
+        """
+        Close the shared memory segment.
+        """
+        self._shm.close()
+
+    def unlink(self) -> None:
+        """
+        Unlock the shared memory segment (only call this if you own the memory).
+        """
+        self._shm.unlink()
+
+    def set_lock(self) -> None:
+        """Sets the lock for multiple operations."""
+        self._lock.acquire()
+
+    def unset_lock(self) -> None:
+        """Unsets the lock."""
+        self._lock.release()
+
+    def __enter__(self) -> _ty.Self:
+        self.set_lock()
+        return self
+
+    def __exit__(self, exc_type: _ty.Type[BaseException] | None, exc_val: BaseException | None,
+                 exc_tb: BaseException | None) -> bool | None:
+        self.unset_lock()
+        # If an exception occurred, propagate it by returning False (default behavior).
+        return False  # Exception will propagate to the caller
+
+    def __repr__(self) -> str:
+        return (f"SharedStruct(struct_format='{self._struct_format}', struct_size={self._struct_size}, "
+                f"shm_name='{self._shm_name}')")
+
+
 class ThreadSafeList(list):
     """
     A thread-safe implementation of a Python list, ensuring that all mutation operations are protected by a lock.
 
     This class extends the built-in Python `list` and overrides key methods to ensure that operations like
-    appending, removing, setting items, and modifying the list are thread-safe. It uses a lock (`_Lock`)
+    appending, removing, setting items, and modifying the list are thread-safe. It uses a lock (`_TLock`)
     to synchronize access, making it safe for use in multithreaded environments.
 
     This class is useful when you need a list that can be shared between threads and you want to prevent
@@ -34,7 +167,7 @@ class ThreadSafeList(list):
     with writes.
 
     Attributes:
-        _lock (_Lock): A threading lock used to synchronize access to the list and prevent race conditions.
+        _lock (_TLock): A threading lock used to synchronize access to the list and prevent race conditions.
 
     Example:
         ts_list = ThreadSafeList([1, 2, 3])
@@ -69,7 +202,7 @@ class ThreadSafeList(list):
     """
     def __init__(self, *args):
         super().__init__(*args)
-        self._lock = _Lock()
+        self._lock = _TLock()
 
     def append(self, item: _ty.Any) -> None:
         """Append object to the end of the list."""
@@ -251,7 +384,7 @@ class HyperScalingDynamicThreadPoolExecutor(_ThreadPoolExecutor):
         self._check_interval: float = check_interval
         self._check_timer: _TimidTimer = _TimidTimer(start_now=False)
         self._check_timer.fire(check_interval, self._join_threads, daemon=True)
-        self._lock: _Lock = _Lock()
+        self._lock: _TLock = _TLock()
         self._to_join: set = set()
         self._worker_func: _a.Callable = _self_managing_worker
 

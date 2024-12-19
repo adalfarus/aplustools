@@ -1,6 +1,6 @@
 """TBA"""
 from cachetools import LRUCache as _LRUCache
-from threading import Lock as _Lock
+from threading import RLock as _RLock
 import sqlite3 as _sqlite3
 import struct as _struct
 import json as _json
@@ -48,7 +48,7 @@ class StorageMedium:
         self._read_cache: _LRUCache = _LRUCache(maxsize=max_cache_size)
         self._filepath: str = filepath
         self._current_version: int | None = None
-        self._lock: _Lock = _Lock()
+        self._lock: _RLock = _RLock()
 
         self._current_version = self.create_storage(self._filepath)
 
@@ -69,7 +69,7 @@ class StorageMedium:
             requests.exceptions.RequestException: If the download fails.
             IOError: If the file cannot be written to the specified path.
         """
-        ...  # Download webresource and make new self
+        raise NotImplementedError()  # Download webresource and make new self
         return cls(new_file_path, max_cache_size)
 
     def create_storage(self, at: str) -> int:
@@ -133,6 +133,29 @@ class StorageMedium:
     def filepath(self) -> str:
         """Returns the filepath of the StorageMedium object."""
         return self._filepath
+
+    def acquire(self, timeout: float = -1) -> None:
+        """
+        Sets the lock for multiple operations.
+
+        :param timeout: Timeout before returning if lock cannot get acquired.
+        """
+        self._lock.acquire(timeout=timeout)
+
+    def release(self) -> None:
+        """
+        Releases the lock acquired with acquire(timeout=...)
+        :return:
+        """
+        self._lock.release()
+
+    def __enter__(self) -> _ty.Self:
+        self.acquire()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> bool:
+        self.release()
+        return False
 
 
 class JSONStorage(StorageMedium):
