@@ -1426,8 +1426,8 @@ class TimidTimer:
         self._times = []
         self._tick_tocks = []
 
-    def countdown(self, seconds: float | int, callback: _a.Callable = print, args: tuple[_ty.Any, ...] = (),
-                  kwargs: dict = None) -> None:
+    def timeout(self, seconds: float | int, callback: _a.Callable, args: tuple[_ty.Any, ...] = (),
+                kwargs: dict = None) -> None:
         """
         Starts a countdown timer for a specified number of seconds.
 
@@ -1439,10 +1439,10 @@ class TimidTimer:
         """
         if kwargs is None:
             kwargs = {}
-        self.single_shot(seconds, callback, args or (f"Countdown for {seconds}s is done.",), kwargs)
+        self.single_shot(seconds, callback, args, kwargs)
 
-    def countdown_ms(self, milliseconds: float | int, callback: _a.Callable = print, args: tuple[_ty.Any, ...] = (),
-                     kwargs: dict = None) -> None:
+    def timeout_ms(self, milliseconds: float | int, callback: _a.Callable, args: tuple[_ty.Any, ...] = (),
+                   kwargs: dict = None) -> None:
         """
         Starts a countdown timer for a specified number of milliseconds.
 
@@ -1454,10 +1454,10 @@ class TimidTimer:
         """
         if kwargs is None:
             kwargs = {}
-        self.single_shot_ms(milliseconds, callback, args or (f"Countdown for {milliseconds}ms is done.",), kwargs)
+        self.single_shot_ms(milliseconds, callback, args, kwargs)
 
-    def long_countdown(self, seconds: float | int, callback: _a.Callable = print, args: tuple[_ty.Any, ...] = (),
-                       kwargs: dict = None) -> None:
+    def long_timeout(self, seconds: float | int, callback: _a.Callable, args: tuple[_ty.Any, ...] = (),
+                     kwargs: dict = None) -> None:
         """
         Starts a long-running countdown timer for a specified number of seconds.
 
@@ -1469,7 +1469,7 @@ class TimidTimer:
         """
         if kwargs is None:
             kwargs = {}
-        self.long_single_shot(seconds, callback, args or (f"Countdown for {seconds}s is done.",), kwargs)
+        self.long_single_shot(seconds, callback, args, kwargs)
 
     def interval(self, interval: float | int, count: int | _ty.Literal["inf"] = "inf", callback: _a.Callable = print,
                  args: tuple[_ty.Any, ...] = (), kwargs: dict = None) -> None:
@@ -1627,7 +1627,7 @@ class TimidTimer:
         """
         try:
             cls.wait_static(interval)
-            while not stop_event.is_set() or iterations == 0:  # So infinite timers are possible
+            while not stop_event.is_set() and iterations != 0:  # So infinite timers are possible
                 try:
                     function(*args, **kwargs)
                 except Exception as e:
@@ -1653,7 +1653,7 @@ class TimidTimer:
         """
         try:
             cls.wait_ms_static(interval_ms)
-            while not stop_event.is_set() or iterations == 0:  # So infinite timers are possible
+            while not stop_event.is_set() and iterations != 0:  # So infinite timers are possible
                 try:
                     function(*args, **kwargs)
                 except Exception as e:
