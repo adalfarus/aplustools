@@ -1486,7 +1486,7 @@ class TimidTimer:
         if kwargs is None:
             kwargs = {}
         if count == "inf":
-            self.fire(interval, callback, args, kwargs)
+            self.fire(interval, callback, args, kwargs, daemon=True)
         else:
             self.shoot(interval, callback, args, kwargs, iterations=count)
 
@@ -1505,7 +1505,7 @@ class TimidTimer:
         if kwargs is None:
             kwargs = {}
         if count == "inf":
-            self.fire_ms(interval_ms, callback, args, kwargs)
+            self.fire_ms(interval_ms, callback, args, kwargs, daemon=True)
         else:
             self.shoot_ms(interval_ms, callback, args, kwargs, iterations=count)
 
@@ -1657,7 +1657,7 @@ class TimidTimer:
                 try:
                     function(*args, **kwargs)
                 except Exception as e:
-                    print(f"Error in _trigger thread: {e}")
+                    print(f"Error in _trigger_ms thread: {e}")
                 cls.wait_ms_static(interval_ms)
                 iterations -= 1
         except SystemExit:
@@ -1686,7 +1686,7 @@ class TimidTimer:
                 try:
                     function(*args, **kwargs)
                 except Exception as e:
-                    print(f"Error in _trigger thread: {e}")
+                    print(f"Error in _long_trigger thread: {e}")
 
                 iterations -= 1
                 # Reschedule the function
@@ -1715,7 +1715,9 @@ class TimidTimer:
         """
         if kwargs is None:
             kwargs = {}
-        _threading.Thread(target=cls._trigger, args=(wait_time, function, args, kwargs, 1), daemon=daemon).start()
+        _threading.Thread(target=cls._trigger, kwargs={
+            "interval": wait_time, "function": function, "args": args, "kwargs": kwargs, "iterations": 1
+        }, daemon=daemon).start()
         return cls
 
     @classmethod
@@ -1736,7 +1738,9 @@ class TimidTimer:
         """
         if kwargs is None:
             kwargs = {}
-        _threading.Thread(target=cls._trigger_ms, args=(wait_time_ms, function, args, kwargs, 1), daemon=daemon).start()
+        _threading.Thread(target=cls._trigger_ms, kwargs={
+            "interval_ms": wait_time_ms, "functions": function, "args": args, "kwargs": kwargs, "iterations": 1
+        }, daemon=daemon).start()
         return cls
 
     @classmethod
@@ -1779,7 +1783,9 @@ class TimidTimer:
         """
         if kwargs is None:
             kwargs = {}
-        _threading.Thread(target=cls._trigger, args=(interval, function, args, kwargs, iterations), daemon=daemon).start()
+        _threading.Thread(target=cls._trigger, kwargs={
+            "interval": interval, "function": function, "args": args, "kwargs": kwargs, "iterations": iterations
+        }, daemon=daemon).start()
         return cls
 
     @classmethod
@@ -1802,7 +1808,9 @@ class TimidTimer:
         """
         if kwargs is None:
             kwargs = {}
-        _threading.Thread(target=cls._trigger_ms, args=(interval_ms, function, args, kwargs, iterations), daemon=daemon).start()
+        _threading.Thread(target=cls._trigger_ms, kwargs={
+            "interval_ms": interval_ms, "function": function, "args": args, "kwargs": kwargs, "iterations": iterations
+        }, daemon=daemon).start()
         return cls
 
     @classmethod
@@ -1823,7 +1831,7 @@ class TimidTimer:
         """
         if kwargs is None:
             kwargs = {}
-        cls._long_trigger(interval, function, args, kwargs, iterations)
+        cls._long_trigger(interval=interval, function=function, args=args, kwargs=kwargs, iterations=iterations)
         return cls
 
     def fire(self, interval: _TimeType, function: _a.Callable, args: tuple[_ty.Any, ...] = (),
@@ -1850,7 +1858,10 @@ class TimidTimer:
             self._fires.append((None, None))
 
         event = _threading.Event()
-        thread = _threading.Thread(target=self._trigger, args=(interval, function, args, kwargs, -1, event), daemon=daemon)
+        thread = _threading.Thread(target=self._trigger, kwargs={
+            "interval": interval, "function": function, "args": args, "kwargs": kwargs, "iterations": -1,
+            "stop_event": event
+        }, daemon=daemon)
 
         if index < len(self._fires) and self._fires[index] == (None, None):
             self._fires[index] = (thread, event)
@@ -1883,7 +1894,10 @@ class TimidTimer:
             self._fires.append((None, None))
 
         event = _threading.Event()
-        thread = _threading.Thread(target=self._trigger_ms, args=(interval_ms, function, args, kwargs, -1, event), daemon=daemon)
+        thread = _threading.Thread(target=self._trigger_ms, kwargs={
+            "interval_ms": interval_ms, "function": function, "args": args, "kwargs": kwargs, "iterations": -1,
+            "stop_event": event
+        }, daemon=daemon)
 
         if index < len(self._fires) and self._fires[index] == (None, None):
             self._fires[index] = (thread, event)
@@ -1915,7 +1929,8 @@ class TimidTimer:
             self._fires.append((None, None))
 
         event = _threading.Event()
-        self._long_trigger(interval, function, args, kwargs, -1, event)
+        self._long_trigger(interval=interval, function=function, args=args, kwargs=kwargs, iterations=-1,
+                           stop_event=event)
 
         if index < len(self._fires) and self._fires[index] == (None, None):
             self._fires[index] = (None, event)
