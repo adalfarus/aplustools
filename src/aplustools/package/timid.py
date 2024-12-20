@@ -1471,7 +1471,7 @@ class TimidTimer:
             kwargs = {}
         self.long_single_shot(seconds, callback, args, kwargs)
 
-    def interval(self, interval: float | int, count: int | _ty.Literal["inf"] = "inf", callback: _a.Callable = print,
+    def interval(self, interval: float | int, count: int | _ty.Literal["inf"], callback: _a.Callable,
                  args: tuple[_ty.Any, ...] = (), kwargs: dict = None) -> None:
         """
         Starts an interval timer that triggers the callback at specified intervals.
@@ -1486,12 +1486,12 @@ class TimidTimer:
         if kwargs is None:
             kwargs = {}
         if count == "inf":
-            self.fire(interval, callback, args or (f"{interval}s is over.",), kwargs)
+            self.fire(interval, callback, args, kwargs)
         else:
-            self.shoot(interval, callback, args or (f"{interval}s is over.",), kwargs, iterations=count)
+            self.shoot(interval, callback, args, kwargs, iterations=count)
 
-    def interval_ms(self, interval_ms: float | int, count: int | _ty.Literal["inf"] = "inf",
-                    callback: _a.Callable = print, args: tuple[_ty.Any, ...] = (), kwargs: dict = None) -> None:
+    def interval_ms(self, interval_ms: float | int, count: int | _ty.Literal["inf"],
+                    callback: _a.Callable, args: tuple[_ty.Any, ...] = (), kwargs: dict = None) -> None:
         """
         Starts an interval timer that triggers the callback at specified intervals in milliseconds.
 
@@ -1505,11 +1505,11 @@ class TimidTimer:
         if kwargs is None:
             kwargs = {}
         if count == "inf":
-            self.fire_ms(interval_ms, callback, args or (f"{interval_ms}s is over.",), kwargs)
+            self.fire_ms(interval_ms, callback, args, kwargs)
         else:
-            self.shoot_ms(interval_ms, callback, args or (f"{interval_ms}s is over.",), kwargs, iterations=count)
+            self.shoot_ms(interval_ms, callback, args, kwargs, iterations=count)
 
-    def long_interval(self, interval: float | int, count: int | _ty.Literal["inf"] = "inf", callback: _a.Callable = print,
+    def long_interval(self, interval: float | int, count: int | _ty.Literal["inf"], callback: _a.Callable,
                       args: tuple[_ty.Any, ...] = (), kwargs: dict = None) -> None:
         """
         Starts a long-running interval timer that triggers the callback at specified intervals.
@@ -1524,9 +1524,9 @@ class TimidTimer:
         if kwargs is None:
             kwargs = {}
         if count == "inf":
-            self.long_fire(interval, callback, args or (f"{interval}s is over.",), kwargs)
+            self.long_fire(interval, callback, args, kwargs)
         else:
-            self.long_shoot(interval, callback, args or (f"{interval}s is over.",), kwargs, iterations=count)
+            self.long_shoot(interval, callback, args, kwargs, iterations=count)
 
     @staticmethod
     def schedule_task_at(time_str, callback: _a.Callable = print, args: tuple[_ty.Any, ...] = (),
