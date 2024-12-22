@@ -179,6 +179,16 @@ class ActLogger:
         """
         self.logger.error(message)
 
+    def warning(self, message: str):
+        """
+        Log a warning message.
+
+        :param message: The message to log at the WARNING level. Typically used to
+                        indicate a slight issue or warn about an action.
+        :return:
+        """
+        self.logger.warning(message)
+
 
 class ThreadOutputRedirector:
     """
