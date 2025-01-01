@@ -24,7 +24,7 @@ class QQuickMessageBox(_QMessageBox):
     """TBA"""
     def __init__(self, parent=None, icon: MBoxIcon | None = None, window_title: str = "", text: str = "",
                  detailed_text: str = "", checkbox: _QCheckBox | None = None,
-                 standard_buttons: list[MBoxButton] | MBoxButton = MBoxButton.Ok,
+                 standard_buttons: MBoxButton | None = MBoxButton.Ok,
                  default_button: MBoxButton | None = None):
         """
         An advanced QMessageBox with additional configuration options.
@@ -39,9 +39,9 @@ class QQuickMessageBox(_QMessageBox):
         :param default_button: The default button.
         """
         super().__init__(parent)
-        self.setStandardButtons(standard_buttons)
-        for arg, func in zip([icon, window_title, text, detailed_text, checkbox, default_button],
-                             ["setIcon", "setWindowTitle", "setText", "setDetailedText", "setCheckBox", "setDefaultButton"]):
+        for arg, func in zip([standard_buttons, icon, window_title, text, detailed_text, checkbox, default_button],
+                             ["setStandardButtons", "setIcon", "setWindowTitle", "setText", "setDetailedText",
+                              "setCheckBox", "setDefaultButton"]):
             if arg:
                 getattr(self, func)(arg)
 
