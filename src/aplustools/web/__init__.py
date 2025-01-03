@@ -6,10 +6,11 @@ from typing import TYPE_CHECKING as _TYPE_CHECKING
 
 if _TYPE_CHECKING:
     from ._direct import *
-    from . import request
+    from . import request, utils
 
 _setup_lazy_loaders(
     globals(),
     {
-        "request": ".web.request"
+        "request": ".web.request",
+        "utils": ".web.utils"
     }, _direct)
