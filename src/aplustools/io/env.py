@@ -470,9 +470,11 @@ class _BaseSystem(metaclass=_SingletonMeta):
         """
         fd = filepath_or_fd
         if isinstance(filepath_or_fd, str):
-            fd = _os.open(filepath_or_fd, open_flags)
+            fd: int = _os.open(filepath_or_fd, open_flags)
 
         if self.os == "Windows":
+            if _win32con is None or _win32file is None:
+                raise RuntimeError("Required dependency is not installed")
             try:
                 old_pos = _os.lseek(fd, 0, _os.SEEK_CUR)
                 lock_length = -0x10000

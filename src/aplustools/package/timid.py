@@ -773,6 +773,31 @@ class PreciseTimeDelta:
         self.total_nanoseconds = abs(total_nanoseconds)
         self.max_precision = max_precision
 
+    def __truediv__(self, other):
+        """
+        Divides the current PreciseTimeDelta by a number or another PreciseTimeDelta.
+
+        Args:
+            other (Union[float, int, PreciseTimeDelta]): The divisor.
+
+        Returns:
+            Union[PreciseTimeDelta, float]: A new PreciseTimeDelta if divided by a number,
+            or a float if divided by another PreciseTimeDelta.
+
+        Raises:
+            TypeError: If the divisor is not a number or PreciseTimeDelta.
+        """
+        if isinstance(other, (float, int)):
+            if other == 0:
+                raise ZeroDivisionError("Cannot divide by zero.")
+            return PreciseTimeDelta(nanoseconds=self.total_nanoseconds / other, max_precision=self.max_precision)
+        elif isinstance(other, PreciseTimeDelta):
+            if other.total_nanoseconds == 0:
+                raise ZeroDivisionError("Cannot divide by a PreciseTimeDelta with zero nanoseconds.")
+            return self.total_nanoseconds / other.total_nanoseconds
+        else:
+            raise TypeError("Division only supports numbers or PreciseTimeDelta objects.")
+
     def __str__(self) -> str:
         """
         Returns a string representation of the time difference in a format
@@ -1025,7 +1050,7 @@ class TimidTimer:
             TimidTimer: The current instance of the timer.
         """
         start_time = self._time()
-        indices = indices or [len(self._times)]
+        indices = indices or [self._get_first_other_index()]
 
         for index in indices:
             if index < len(self._times) and self._times[index][2] != 0:
@@ -1056,6 +1081,18 @@ class TimidTimer:
             if t is not self.EMPTY:
                 return i
         raise IndexError("No active timers.")
+
+    def _get_first_other_index(self) -> int:
+        """
+        Gets the first empty index.
+
+        Returns:
+            int: The first empty index.
+        """
+        for i, t in enumerate(self._times):
+            if t is self.EMPTY:
+                return i
+        return len(self._times)
 
     def pause(self, *indices: int | None, for_seconds: _TimeType | None = None) -> _ty.Self:
         """
@@ -1135,8 +1172,6 @@ class TimidTimer:
 
             with self._times[index][-1]:
                 start, end, paused_time, lock = self._times[index]
-                if end != 0:
-                    raise ValueError(f"Index {index} is already stopped.")
                 if paused_time != 0:
                     self._resume(end_time, index)
                     start, _, __, ___ = self._times[index]
@@ -1241,6 +1276,43 @@ class TimidTimer:
                 returns.append(PreciseTimeDelta(nanoseconds=elapsed_time))
             elif return_type == "timedelta":
                 returns.append(_timedelta(microseconds=elapsed_time / 1000))
+        if return_type is not None:
+            return returns if len(returns) > 1 else returns[0]
+        return self
+
+    def restart(self, *indices: int | None, return_type: _ty.Literal["timedelta", "PreciseTimeDelta", None] = "PreciseTimeDelta"
+            ) -> list[PreciseTimeDelta | _timedelta] | PreciseTimeDelta | _timedelta | _ty.Self:
+        """
+        Restarts an already running timer, skipping the whole .stop() .get_readable() .delete() boilerplate.
+
+        Args:
+            indices (int, optional): The index or indices where the timer should be ended. Defaults to the first active timer.
+            return_type (str, optional): The format to return the time in, either "timedelta", "PreciseTimeDelta", or None. Defaults to "PreciseTimeDelta".
+
+        Returns:
+            list[PreciseTimeDelta | timedelta] | PreciseTimeDelta | timedelta: The elapsed time(s) or TimidTimer: The current instance of the timer.
+        """
+        end_timer = self._time()
+        indices = indices or [self._get_first_index()]  # If it's 0 it just sets it to 0 so it's okay.
+        returns = []
+
+        for index in indices:
+            if index >= len(self._times) or self._times[index] is self.EMPTY:
+                raise IndexError(f"Index {index} doesn't exist or is not running.")
+            with self._times[index][-1]:
+                start, end, paused_time, _ = self._times[index]
+                max_paused_time = float('inf')
+                if paused_time != 0:
+                    paused_time = end_timer - paused_time
+                    max_paused_time = self._tick_tocks[-1]
+                elapsed_time = (end or end_timer) - min(max_paused_time, start + paused_time)
+                if return_type == "PreciseTimeDelta":
+                    returns.append(PreciseTimeDelta(nanoseconds=elapsed_time))
+                else:
+                    returns.append(_timedelta(microseconds=elapsed_time / 1000))
+                self._times[index] = self.EMPTY
+                self._tick_tocks[index] = []
+                self.start(index)
         if return_type is not None:
             return returns if len(returns) > 1 else returns[0]
         return self
@@ -2216,7 +2288,7 @@ class TimidTimer:
             def _wrapper(*args, **kwargs):
                 timer = cls()
                 result = func(*args, **kwargs)
-                elapsed = timer.end()
+                elapsed = timer.end().nanoseconds()
                 print(f"Function {func.__name__} took {PreciseTimeFormat.get_static_readable(elapsed, time_format)} to complete.")
                 return result
             return _wrapper
@@ -2240,6 +2312,7 @@ class TimidTimer:
         Returns:
             TimidTimer: The current instance of the timer.
         """
+        index: int = index or self._get_first_other_index()
         self.start(index)
         self._thread_data.entry_index = index
         return self.__enter__()
