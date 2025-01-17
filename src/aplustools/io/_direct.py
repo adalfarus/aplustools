@@ -20,6 +20,7 @@ from pathlib import Path as _Path
 import logging as _logging
 import sys as _sys
 
+from ..data import SingletonMeta
 from ..package import optional_import as _optional_import, enforce_hard_deps as _enforce_hard_deps
 
 # Standard typing imports for aps
@@ -75,7 +76,7 @@ class _StreamToLogger:
             self.linebuf = ''
 
 
-class ActLogger:
+class ActLogger(metaclass=SingletonMeta):
     """
     A configurable logger for ActFramework that supports logging to both the console
     and an optional log file. It provides methods to log messages at different

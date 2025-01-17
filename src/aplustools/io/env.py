@@ -1607,3 +1607,62 @@ def is_compiled() -> bool:
     :return: bool
     """
     return getattr(_sys, "frozen", False) and (hasattr(_sys, "_MEIPASS") or _sys.executable.endswith(".exe"))
+
+
+class Interface(object):
+    """
+    Base class for creating abstract interfaces.
+
+    This class is used to define interfaces that cannot be directly instantiated.
+    It ensures that any class inheriting from `Interface` serves purely as an abstract interface
+    without any instantiation behavior.
+
+    Usage:
+        - Create an interface by subclassing `Interface` (e.g., `class IExample(Interface):`).
+        - Attempting to instantiate the interface directly will raise an exception.
+
+    Raises:
+        Exception: If an attempt is made to instantiate this class directly.
+
+    Example:
+        class IMainWindow(Interface):
+            pass
+    """
+    def __new__(cls, *args, **kwargs):
+        raise Exception("This class can't be initialized; it is just an Interface.")
+
+
+class ImplInterface:
+    """
+    Mixin for implementing interfaces defined with the `Interface` base class.
+
+    This class allows concrete implementations of an interface to initialize correctly while
+    adhering to the structure of the interface. It ensures that the `__new__` method resolves
+    the correct base class when an implementation inherits multiple classes, including the
+    interface and `ImplInterface`.
+
+    Usage:
+        - Implement an interface by subclassing a concrete class first (e.g., `QMainWindow`),
+          the interface second, and `ImplInterface` last.
+        - This ensures the `__new__` method resolves the correct class to initialize.
+
+    Example:
+        class IMainWindow(Interface):
+            pass
+
+        class MainWindow(QMainWindow, IMainWindow, ImplInterface):
+            linked: bool = False
+
+        # In this case:
+        # - `QMainWindow` is the concrete base class.
+        # - `IMainWindow` is the interface being implemented.
+        # - `ImplInterface` ensures proper initialization.
+
+    Notes:
+        - The `ImplInterface` class depends on the multiple inheritance order to resolve the
+          correct base class for initialization. Always use the inheritor (e.g., `QMainWindow`)
+          as the first parent class, followed by the interface, and `ImplInterface` last.
+    """
+    def __new__(cls, *args, **kwargs):
+        # Resolve the correct base class for initialization
+        return super().__class__.__bases__[0].__new__(cls,)
