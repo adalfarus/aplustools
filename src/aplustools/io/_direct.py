@@ -83,7 +83,7 @@ class ActLogger(metaclass=SingletonMeta):
     logging levels and can monitor and redirect system output streams.
 
     Attributes:
-        logger: The logger instance used for logging messages.
+        _logger: The logger instance used for logging messages.
         handlers: A list of handlers attached to the logger (console, file handlers).
 
     Methods:
@@ -113,8 +113,8 @@ class ActLogger(metaclass=SingletonMeta):
         :param log_to_file: Boolean indicating if logs should be written to a file.
         :param filename: Name of the log file.
         """
-        self.logger = _logging.getLogger(name)
-        self.logger.setLevel(_logging.DEBUG)
+        self._logger = _logging.getLogger(name)
+        self._logger.setLevel(_logging.DEBUG)
         self.handlers = []
 
         # Create formatter with the desired format
@@ -126,15 +126,16 @@ class ActLogger(metaclass=SingletonMeta):
         # Console handler
         console_handler = _logging.StreamHandler()
         console_handler.setFormatter(formatter)
-        self.logger.addHandler(console_handler)
+        self._logger.addHandler(console_handler)
         self.handlers.append(console_handler)
 
         # File handler (optional)
         if log_to_file:
             file_handler = _logging.FileHandler(filename)
             file_handler.setFormatter(formatter)
-            self.logger.addHandler(file_handler)
+            self._logger.addHandler(file_handler)
             self.handlers.append(file_handler)
+        self.logging_level: int = -1
 
     def monitor_pipe(self, pipe, level: int = _logging.INFO) -> None:
         """
@@ -144,13 +145,13 @@ class ActLogger(metaclass=SingletonMeta):
         :param level: Logging level for messages from this pipe.
         """
         if pipe == _sys.stdout:
-            _sys.stdout = _StreamToLogger(self.logger, level)
+            _sys.stdout = _StreamToLogger(self._logger, level)
         elif pipe == _sys.stderr:
-            _sys.stderr = _StreamToLogger(self.logger, level)
+            _sys.stderr = _StreamToLogger(self._logger, level)
 
     def log(self, level: int, message: str) -> None:
         """Log a message with a specific logging level."""
-        self.logger.log(level, message)
+        self._logger.log(level, message)
 
     # Convenience methods for different logging levels
     def info(self, message: str) -> None:
@@ -160,7 +161,7 @@ class ActLogger(metaclass=SingletonMeta):
         :param message: The message to log at the INFO level. Typically used for
                         general application progress or operational messages.
         """
-        self.logger.info(message)
+        self._logger.info(message)
 
     def debug(self, message: str) -> None:
         """
@@ -169,7 +170,7 @@ class ActLogger(metaclass=SingletonMeta):
         :param message: The message to log at the DEBUG level. Typically used for
                         detailed information useful for diagnosing issues or tracing execution flow.
         """
-        self.logger.debug(message)
+        self._logger.debug(message)
 
     def error(self, message: str) -> None:
         """
@@ -178,9 +179,9 @@ class ActLogger(metaclass=SingletonMeta):
         :param message: The message to log at the ERROR level. Typically used to
                         indicate a significant issue or error in the application.
         """
-        self.logger.error(message)
+        self._logger.error(message)
 
-    def warning(self, message: str):
+    def warning(self, message: str) -> None:
         """
         Log a warning message.
 
@@ -188,7 +189,11 @@ class ActLogger(metaclass=SingletonMeta):
                         indicate a slight issue or warn about an action.
         :return:
         """
-        self.logger.warning(message)
+        self._logger.warning(message)
+
+    def setLevel(self, logging_level: int) -> None:
+        self._logger.setLevel(logging_level)
+        self.logging_level = logging_level
 
 
 class ThreadOutputRedirector:

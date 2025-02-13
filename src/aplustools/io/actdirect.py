@@ -342,7 +342,7 @@ class ActFramework:
         self.logs_dir: str = _os.path.join(self.app_path + "/logs")
         self._order_logs(self.logs_dir)
         self.logger: ActLogger = ActLogger(log_to_file=True, filename=self.logs_dir + "/latest.log")
-        self.logger.logger.setLevel(_logging.DEBUG)
+        self.logger.setLevel(_logging.DEBUG)
         self.logger.monitor_pipe(_sys.stdout, level=_logging.DEBUG)
         self.logger.monitor_pipe(_sys.stderr, level=_logging.ERROR)
 
