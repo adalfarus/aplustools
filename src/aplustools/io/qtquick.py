@@ -90,7 +90,7 @@ class QtTimidTimer(_QObject):
 
     def __init__(self, parent: _QWidget | None = None) -> None:
         super().__init__(parent)
-        self._timers: list[_QTimer | None] = []  # List of active timers
+        self._timers: dict[int, _QTimer | None] = {}  # dict of active timers
 
     def start(self, interval_ms: int, index: int = None):
         """
@@ -104,7 +104,7 @@ class QtTimidTimer(_QObject):
         timer.setInterval(interval_ms)
         timer.setSingleShot(False)
         timer.timeout.connect(lambda: self._on_timeout(index if index is not None else len(self._timers)))
-        self._timers.append(timer)
+        self._timers[index] = timer
         timer.start()
 
     def stop(self, index: int):
@@ -114,10 +114,12 @@ class QtTimidTimer(_QObject):
         Args:
             index (int): The index of the timer to stop.
         """
-        if 0 <= index < len(self._timers):
+        if index in self._timers:
             self._timers[index].stop()
             self._timers[index].deleteLater()
             self._timers[index] = None
+        else:
+            raise Exception("Invalid index")
 
     def _on_timeout(self, index: int):
         """
@@ -132,8 +134,8 @@ class QtTimidTimer(_QObject):
         """
         Stop all active timers.
         """
-        for timer in self._timers:
-            if timer:
+        for timer in self._timers.values():
+            if timer is not None:
                 timer.stop()
                 timer.deleteLater()
         self._timers.clear()
@@ -148,4 +150,4 @@ class QtTimidTimer(_QObject):
         Returns:
             bool: True if the timer is active, False otherwise.
         """
-        return 0 <= index < len(self._timers) and self._timers[index] and self._timers[index].isActive()
+        return index in self._timers and self._timers[index] is not None and self._timers[index].isActive()
