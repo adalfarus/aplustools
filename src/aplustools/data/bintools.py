@@ -213,7 +213,7 @@ def get_variable_bytes_like(bytes_like: bytes) -> bytes:
     >>> get_variable_bytes_like(b'hello')
     b'\x05hello'  # \x05 indicates the length of 'hello'
     """
-    return len(bytes_like).to_bytes(1, "big") + bytes_like
+    return to_progressive_length(len(bytes_like)) + bytes_like
 
 
 def read_variable_bytes_like(f: _ty.BinaryIO) -> bytes | None:
@@ -241,11 +241,11 @@ def read_variable_bytes_like(f: _ty.BinaryIO) -> bytes | None:
     >>> read_variable_bytes_like(f)
     b'hello'
     """
-    length_byte = f.read(1)
-    if length_byte != b"":
-        length = int.from_bytes(length_byte)
-        return f.read(length)
-    return None
+    try:
+        length = read_progressive_length(f)
+    except EOFError:
+        return None
+    return f.read(length)
 
 
 def expected_progressive_length_bytecount(length_of_x: int) -> int:
@@ -287,14 +287,18 @@ def to_progressive_length(length_of_x: int) -> bytes:
     result_buffer = bytearray(buffer_size)
     result_pointer = buffer_size  # - 1 is not needed as slices exclude the last element of the specified range
     current_length = length_of_x
-    first = True
+    last = True  # We move through the buffer back to front
 
     if length_of_x < 0:
         raise ValueError("Only positives lengths can exist")
+    elif length_of_x == 1:
+        return b"\x02"
+    elif length_of_x == 0:
+        return b"\x00"
 
     while current_length > 1:
-        stage = encode_integer((current_length << 1) | (0 if first else 1))
-        first = False
+        stage = encode_integer((current_length << 1) | (0 if last else 1))
+        last = False
         # Move pointer back and insert stage at the pointer
         stage_len = len(stage)
         result_pointer -= stage_len
@@ -302,7 +306,7 @@ def to_progressive_length(length_of_x: int) -> bytes:
             raise ValueError("Encountered bug while encoding, please report!")
         result_buffer[result_pointer:result_pointer + stage_len] = stage
         # Update length for the next loop iteration
-        current_length = bytes_length(current_length)
+        current_length = len(stage)  # bytes_length(current_length)
 
     return bytes(result_buffer[result_pointer:])
 
