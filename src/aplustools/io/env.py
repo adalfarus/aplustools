@@ -1386,6 +1386,16 @@ def auto_repr_with_privates(cls: type, use_repr: bool = False):
     return cls
 
 
+def is_accessible(path: str) -> bool:
+    """
+    Check if a path is accessible (has read/write permissions).
+
+    :param path: The path to be checked.
+    :return: True if accessible, False otherwise.
+    """
+    return _os.access(path, _os.R_OK | _os.W_OK)
+
+
 class BasicSystemFunctions:
     """Encapsulates common system utilities and information retrieval methods."""
 

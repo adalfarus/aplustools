@@ -44,7 +44,7 @@ package-dir = {"" = "src"}
 
 [project]
 name = "aplustools"
-version = "2.0.0.0a12"
+version = "2.0.0.0a13"
 dependencies = ["packaging", "pywin32>=306; os_name == 'nt'", "cachetools>=5.5.0"]
 requires-python = ">= 3.10"
 authors = [
