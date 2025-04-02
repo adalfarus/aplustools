@@ -5,20 +5,21 @@ import concurrent.futures as _concurrent_futures
 from urllib.parse import urlparse as _urlparse
 import requests as _requests
 import asyncio as _asyncio
-import aiohttp as _aiohttp
-import aiofiles as _aiofiles
 import certifi as _certifi
 
 from ..io.concurrency import LazyDynamicThreadPoolExecutor as _LazyDynamicThreadPoolExecutor
 from ..package import enforce_hard_deps as _enforce_hard_deps
+from ..package import optional_import as _optional_import
+
+_aiohttp = _optional_import("aiohttp")
 
 # Standard typing imports for aps
 import collections.abc as _a
 import typing as _ty
 import types as _ts
 
-__deps__ = []
-__hard_deps__ = ["aiohttp>=3.9.5", "certifi", "aiofiles"]
+__deps__ = ["aiohttp>=3.9.5"]
+__hard_deps__ = ["certifi"]
 _enforce_hard_deps(__hard_deps__, __name__)
 
 
@@ -286,6 +287,8 @@ class UnifiedRequestHandlerAdvanced:
     """
 
     def __init__(self) -> None:
+        if _aiohttp is None:
+            raise RuntimeError("AIOHttp is not installed")
         self.session: _aiohttp.ClientSession | None = None
         self.loop: _asyncio.AbstractEventLoop | None = None
 

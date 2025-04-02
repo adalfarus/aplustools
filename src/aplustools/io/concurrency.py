@@ -664,3 +664,7 @@ class LazySelfManagingDynamicThreadPoolExecutor(LazyDynamicThreadPoolExecutor):
                     self._threads.remove(thread)
                     del _threads_queues[thread]
                     self._to_join.add(thread)
+
+
+class SharedLDTPE(LazyDynamicThreadPoolExecutor):
+    ...
