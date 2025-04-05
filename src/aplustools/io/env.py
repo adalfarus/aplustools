@@ -2,6 +2,7 @@
 from mmap import ALLOCATIONGRANULARITY as _ALLOCATIONGRANULARITY
 from threading import enumerate as _threading_enumerate
 from multiprocessing import current_process as _multiprocessing_process
+from contextlib import contextmanager as _contextmanager
 from pathlib import Path as _Path
 import subprocess as _subprocess
 from enum import Enum as _Enum
@@ -49,9 +50,9 @@ _win32con = _optional_import("win32con")
 _winerror = _optional_import("winerror")
 _psutil = _optional_import("psutil")
 
-__deps__ = ["speedtest-cli>=2.1.3", "windows-toasts>=1.1.1; os_name == 'nt'", "PySide6>=6.7.0",
+__deps__: list[str] = ["speedtest-cli>=2.1.3", "windows-toasts>=1.1.1; os_name == 'nt'", "PySide6>=6.7.0",
             "psutil>=6.0.0", "pywin32>=306"]
-__hard_deps__ = []
+__hard_deps__: list[str] = []
 _enforce_hard_deps(__hard_deps__, __name__)
 
 _overlapped = None
@@ -1324,6 +1325,8 @@ def diagnose_shutdown_blockers(suggestions: bool = True, return_result: bool = F
 
     # Check for active processes
     current_process = _multiprocessing_process()
+    if _psutil is None:
+        raise RuntimeError("Psutil is not installed")
     child_processes = _psutil.Process(_os.getpid()).children(recursive=True)
     if child_processes:
         blockers.append(f"Active child processes: {[proc.pid for proc in child_processes]}")
@@ -1350,6 +1353,16 @@ def diagnose_shutdown_blockers(suggestions: bool = True, return_result: bool = F
     if return_result:
         return returns
     print(returns)
+
+
+@_contextmanager
+def suppress_warnings():
+    """Context manager to suppress warnings."""
+    _warnings.filterwarnings("ignore")
+    try:
+        yield
+    finally:
+        _warnings.filterwarnings("default")
 
 
 def auto_repr(cls: type, *_, use_repr: bool = False):

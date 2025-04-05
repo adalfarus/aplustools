@@ -13,39 +13,39 @@ packages = [
 #  "aplustools.tests",
   "aplustools.security",
 #  "aplustools.security.protocols",
-#  "aplustools.security.dicts",
-#  "aplustools.security.crypto",
-#  "aplustools.security.crypto._crypto",
-#  "aplustools.security.crypto._pycrypto"
+  "aplustools.security.dicts",
+  "aplustools.security.crypto",
+  "aplustools.security.crypto._crypto",
+  "aplustools.security.crypto._pycrypto"
 ]
 include-package-data = true
 package-dir = {"" = "src"}
 
-#[tool.setuptools.package-data]
-#"aplustools.security.dicts" = [
-#  "def-dict.txt",
-#  "google-10000-dict.txt",
-#  "scowl-50-dict.txt",
-#  "scowl-60-dict.txt",
-#  "scowl-70-dict.txt",
-#  "scowl-80-dict.txt",
-#  "scowl-95-dict.txt",
-#  "12-dicts/2of4brif.txt",
-#  "12-dicts/2of5core.txt",
-#  "12-dicts/2of12.txt",
-#  "12-dicts/2of12inf.txt",
-#  "12-dicts/3esl.txt",
-#  "12-dicts/3of6all.txt",
-#  "12-dicts/3of6game.txt",
-#  "12-dicts/5d+2a.txt",
-#  "12-dicts/6of12.txt",
-#  "12-dicts/6phrase.txt"
-#]
+[tool.setuptools.package-data]
+"aplustools.security.dicts" = [
+  "def-dict.txt",
+  "google-10000-dict.txt",
+  "scowl-50-dict.txt",
+  "scowl-60-dict.txt",
+  "scowl-70-dict.txt",
+  "scowl-80-dict.txt",
+  "scowl-95-dict.txt",
+  "12-dicts/2of4brif.txt",
+  "12-dicts/2of5core.txt",
+  "12-dicts/2of12.txt",
+  "12-dicts/2of12inf.txt",
+  "12-dicts/3esl.txt",
+  "12-dicts/3of6all.txt",
+  "12-dicts/3of6game.txt",
+  "12-dicts/5d+2a.txt",
+  "12-dicts/6of12.txt",
+  "12-dicts/6phrase.txt"
+]
 
 [project]
 name = "aplustools"
-version = "2.0.0.0a14"
-dependencies = ["packaging", "pywin32>=306; os_name == 'nt'", "cachetools>=5.5.0"]
+version = "2.0.0.0b1"
+dependencies = ["packaging", "pywin32>=306; os_name == 'nt'", "cachetools>=5.5.0", "typing_extensions"]
 requires-python = ">= 3.10"
 authors = [
   {name = "Cariel Becker", email = "cariel.becker@gmx.de"},
@@ -55,10 +55,9 @@ maintainers = [
 ]
 description = "A collection of helpful tools"
 readme = {file = "README.md", content-type = "text/markdown"}
-license = {text = "LGPL-2.1-or-later"}
+license = "LGPL-2.1-or-later"
 keywords = ["general", "tools", "app tools", "production", "apt"]
 classifiers = [
-    "License :: OSI Approved :: GNU Lesser General Public License v2 or later (LGPLv2+)",
 	"Development Status :: 5 - Production/Stable",
 	"Programming Language :: Python",
 	"Natural Language :: English"

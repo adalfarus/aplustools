@@ -13,8 +13,8 @@ import collections.abc as _a
 import typing as _ty
 import types as _ts
 
-__deps__ = []
-__hard_deps__ = ["requests", "bs4"]
+__deps__: list[str] = []
+__hard_deps__: list[str] = ["requests", "bs4"]
 _enforce_hard_deps(__hard_deps__, __name__)
 
 

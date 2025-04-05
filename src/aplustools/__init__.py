@@ -1,5 +1,5 @@
 """TBA"""
-__version__ = "2.0.0.0a14"
+__version__ = "2.0.0.0a15"
 
 from .package import _setup_lazy_loaders
 from . import _direct

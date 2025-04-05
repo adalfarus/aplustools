@@ -14,8 +14,8 @@ import collections.abc as _a
 import typing as _ty
 import types as _ts
 
-__deps__ = []
-__hard_deps__ = []
+__deps__: list[str] = []
+__hard_deps__: list[str] = []
 # _enforce_hard_deps(__hard_deps__, __name__)
 
 
@@ -72,7 +72,8 @@ class LazyLoader:
             module: The module for which dependencies need to be checked.
         """
         if not hasattr(module, "__deps__") or not hasattr(module, "__hard_deps__"):
-            raise ValueError(f"__deps__ or __hard_deps__ are not defined in '{self.module_name}'")
+            return
+        #     raise ValueError(f"__deps__ or __hard_deps__ are not defined in '{self.module_name}'")
 
         error = ""
         dependencies = module.__deps__
@@ -213,7 +214,7 @@ def setup_lazy_loaders(
                 LazyLoader._check_dependencies(fake_self, fake_module)
 
 
-def optional_import(module_name: str, fromlist: list | None = None):
+def optional_import(module_name: str, fromlist: list | None = None) -> _ts.ModuleType | None:  # TODO: Fix return type
     """
     Attempt to import a module by its name. Return the module if available, otherwise return None.
 

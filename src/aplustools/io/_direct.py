@@ -30,8 +30,8 @@ import types as _ts
 
 _local = _optional_import("werkzeug.local", ["LocalProxy"])
 
-__deps__ = ["werkzeug>=3.0.4"]
-__hard_deps__ = []
+__deps__: list[str] = ["werkzeug>=3.0.4"]
+__hard_deps__: list[str] = []
 _enforce_hard_deps(__hard_deps__, __name__)
 
 

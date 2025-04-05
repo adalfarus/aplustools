@@ -17,8 +17,8 @@ from ..package import optional_import as _optional_import
 
 _np = _optional_import("numpy")
 
-__deps__ = ["numpy==1.26.4"]
-__hard_deps__ = []
+__deps__: list[str] = ["numpy==1.26.4"]
+__hard_deps__: list[str] = []
 _enforce_hard_deps(__hard_deps__, __name__)
 
 

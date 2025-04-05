@@ -7,8 +7,8 @@ import collections.abc as _a
 import typing as _ty
 import types as _ts
 
-__deps__ = []
-__hard_deps__ = ["PySide6>=6.7.0"]
+__deps__: list[str] = []
+__hard_deps__: list[str] = ["PySide6>=6.7.0"]
 _enforce_hard_deps(__hard_deps__, __name__)
 
 from PySide6.QtWidgets import (QMessageBox as _QMessageBox, QCheckBox as _QCheckBox, QBoxLayout as _QBoxLayout,

@@ -18,8 +18,8 @@ import collections.abc as _a
 import typing as _ty
 import types as _ts
 
-__deps__ = ["aiohttp>=3.9.5"]
-__hard_deps__ = ["certifi"]
+__deps__: list[str] = ["aiohttp>=3.9.5"]
+__hard_deps__: list[str] = ["certifi"]
 _enforce_hard_deps(__hard_deps__, __name__)
 
 
