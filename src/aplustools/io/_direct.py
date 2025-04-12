@@ -24,8 +24,11 @@ from ..data import SingletonMeta
 from ..package import optional_import as _optional_import, enforce_hard_deps as _enforce_hard_deps
 
 # Standard typing imports for aps
+import typing_extensions as _te
 import collections.abc as _a
 import typing as _ty
+if _ty.TYPE_CHECKING:
+    import _typeshed as _tsh
 import types as _ts
 
 _local = _optional_import("werkzeug.local", ["LocalProxy"])
@@ -131,7 +134,7 @@ class ActLogger(metaclass=SingletonMeta):
 
         # File handler (optional)
         if log_to_file:
-            file_handler = _logging.FileHandler(filename)
+            file_handler = _logging.FileHandler(filename, encoding='utf8')
             file_handler.setFormatter(formatter)
             self._logger.addHandler(file_handler)
             self.handlers.append(file_handler)

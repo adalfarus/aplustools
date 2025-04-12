@@ -4,8 +4,11 @@ import sys as _sys
 from ..package import enforce_hard_deps as _enforce_hard_deps
 
 # Standard typing imports for aps
+import typing_extensions as _te
 import collections.abc as _a
 import typing as _ty
+if _ty.TYPE_CHECKING:
+    import _typeshed as _tsh
 import types as _ts
 
 __deps__: list[str] = []
@@ -42,9 +45,9 @@ class DummyBase:
         return None
 
     # Iter, index and with keyword dunder Methods
-    def __iter__(self) -> _a.Generator[None, None, None]:
+    def __iter__(self) -> _a.Iterator[_ty.Any]:
         """Return an empty generator."""
-        yield
+        return iter([])
 
     def __enter__(self) -> 'DummyBase':
         """Enter a context and return self."""
@@ -74,6 +77,9 @@ class DummyBase:
     def __float__(self) -> float:
         """Return 0.0 when cast to a float."""
         return float()
+
+    def __bool__(self) -> bool:
+        return bool()
 
     # Function dunder methods
     def __len__(self) -> int:
@@ -128,10 +134,6 @@ class DummyBase:
 
     def __rmul__(self, other: _ty.Any) -> 'DummyBase':
         """Return self for reverse multiplication."""
-        return self
-
-    def __div__(self, other: _ty.Any) -> 'DummyBase':
-        """Return self for division (Python 2 compatibility)."""
         return self
 
     def __rdiv__(self, other: _ty.Any) -> 'DummyBase':
@@ -232,6 +234,10 @@ class Dummy2(DummyBase):
         """Initialize the Dummy2 class and raise an error if not used in Python 2."""
         if _sys.version[0] != "2":
             raise RuntimeError("Please only use Dummy2 for Python 2")
+
+    def __div__(self, other: _ty.Any) -> 'DummyBase':
+        """Return self for division (Python 2 compatibility)."""
+        return self
 
     def __long__(self) -> 'Dummy2':
         """Return self when cast to a long integer (Python 2 compatibility)."""

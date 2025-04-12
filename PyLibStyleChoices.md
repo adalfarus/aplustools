@@ -37,8 +37,11 @@ from .. import act
 from ..package import optional_import as _optional_import, enforce_hard_deps as _enforce_hard_deps
 
 # Standard typing imports for aps
+import typing_extensions as _te
 import collections.abc as _a
 import typing as _ty
+if _ty.TYPE_CHECKING:
+    import _typeshed as _tsh
 import types as _ts
 
 # Optional imports (may or may not be installed) --> Some modules may refuse to load if a dependency is missing

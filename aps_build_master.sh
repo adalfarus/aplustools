@@ -1,13 +1,13 @@
 #!/bin/bash
 
-# Function to display the menu
+# Function to display the menu    // Install pytest and r
 show_menu() {
     clear
     echo
     echo "=============================================================="
     echo "                      AplusTools Main Menu"
     echo "=============================================================="
-    echo "1.             Install pytest and run tests"
+    echo "1.                      Run tests"
     echo "2.                 Clear dist directory"
     echo "3.                  Build the project"
     echo "4.           Install the newly built package"
@@ -16,8 +16,13 @@ show_menu() {
     echo "=============================================================="
     echo
     read -p "Enter your choice (0-5, or multiple choices): " choice
-    read -p "Enter your version of choice (e.g 3.12, 3.13): " version
-    python3 -${#version} -m pip install --upgrade pip
+    version="3.12"
+    read -p "Enter your version of choice (default is $version): " input_version
+    # Only update if user actually typed something
+    if [ -n "$input_version" ]; then
+        version="$input_version"
+    fi
+    # python3 -${#version} -m pip install --upgrade pip
     process_choice
 }
 
@@ -66,7 +71,7 @@ pause() {
 # Function to run tests
 run_tests() {
     # Install pytest
-    python3 -${#version} -m pip install pytest
+    # python3 -${#version} -m pip install pytest
 
     # Ensure test_data directory exists and is empty
     DIR="test_data"

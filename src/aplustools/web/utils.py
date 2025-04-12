@@ -9,8 +9,11 @@ import requests as _requests
 import bs4 as _bs4
 
 # Standard typing imports for aps
+import typing_extensions as _te
 import collections.abc as _a
 import typing as _ty
+if _ty.TYPE_CHECKING:
+    import _typeshed as _tsh
 import types as _ts
 
 __deps__: list[str] = []

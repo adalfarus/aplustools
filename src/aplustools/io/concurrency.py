@@ -16,8 +16,11 @@ from ..package import enforce_hard_deps as _enforce_hard_deps
 from ..package.timid import TimidTimer as _TimidTimer
 
 # Standard typing imports for aps
+import typing_extensions as _te
 import collections.abc as _a
 import typing as _ty
+if _ty.TYPE_CHECKING:
+    import _typeshed as _tsh
 import types as _ts
 
 __deps__: list[str] = []
@@ -38,7 +41,7 @@ class SharedStruct:
     """Shared memory through processes"""
     def __init__(self, struct_format: str, create: bool = False, shm_name: str | None = None,
                  *_, overwrite_mp_lock: _RMLockT | None = None) -> None:
-        if any([len(x) <= 1 for x in struct_format.split(" ")]):
+        if any([len(x) > 1 for x in struct_format.split(" ")]):
             raise RuntimeError("You need to leave a space after each entry in the struct format")
         self._struct_format: str = struct_format
         self._struct_size: int = _struct.calcsize(struct_format)
@@ -667,4 +670,14 @@ class LazySelfManagingDynamicThreadPoolExecutor(LazyDynamicThreadPoolExecutor):
 
 
 class SharedLDTPE(LazyDynamicThreadPoolExecutor):
-    ...
+    def __init__(self) -> None:
+        raise NotImplementedError("LazyDynamicThreadPoolExecutor is not implemented yet")
+
+    def create_handle(self) -> int:
+        ...
+
+    def reserve(self, amount_of_threads: int, handle: int) -> None:
+        ...
+
+    def submit(self, task, handle: int) -> None:
+        ...

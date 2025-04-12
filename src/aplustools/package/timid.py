@@ -79,8 +79,11 @@ from ..package import optional_import as _optional_import, enforce_hard_deps as 
 # from ..io.concurrency import ThreadSafeList as _ThreadSafeList  # Circular import
 
 # Standard typing imports for aps
+import typing_extensions as _te
 import collections.abc as _a
 import typing as _ty
+if _ty.TYPE_CHECKING:
+    import _typeshed as _tsh
 import types as _ts
 
 _RANSACRegressor = _optional_import("sklearn.linear_model.RANSACRegressor")

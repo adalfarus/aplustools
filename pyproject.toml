@@ -10,7 +10,12 @@ packages = [
 #  "aplustools.utils",
   "aplustools.web",
   "aplustools.package",
-#  "aplustools.tests",
+  "aplustools.tests",
+  "aplustools.tests.test_data",
+  "aplustools.tests.test_io",
+  "aplustools.tests.test_package",
+  "aplustools.tests.test_security",
+  "aplustools.tests.test_web",
   "aplustools.security",
 #  "aplustools.security.protocols",
   "aplustools.security.dicts",
@@ -44,7 +49,7 @@ package-dir = {"" = "src"}
 
 [project]
 name = "aplustools"
-version = "2.0.0.0b1"
+version = "2.0.0.0b2"
 dependencies = ["packaging", "pywin32>=306; os_name == 'nt'", "cachetools>=5.5.0", "typing_extensions"]
 requires-python = ">= 3.10"
 authors = [

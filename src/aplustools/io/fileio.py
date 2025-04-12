@@ -11,8 +11,11 @@ from ..data import align_to_next as _align_to_next
 from ..package import enforce_hard_deps as _enforce_hard_deps
 
 # Standard typing imports for aps
+import typing_extensions as _te
 import collections.abc as _a
 import typing as _ty
+if _ty.TYPE_CHECKING:
+    import _typeshed as _tsh
 import types as _ts
 
 __deps__: list[str] = []

@@ -3,10 +3,14 @@ import json as _json
 import re as _re
 
 from ..package import enforce_hard_deps as _enforce_hard_deps
+from ..package.argumint import analyze_function as _analyze_function
 
 # Standard typing imports for aps
+import typing_extensions as _te
 import collections.abc as _a
 import typing as _ty
+if _ty.TYPE_CHECKING:
+    import _typeshed as _tsh
 import types as _ts
 
 __deps__: list[str] = []
@@ -74,7 +78,7 @@ class SingletonMeta(type):
     """
     Metaclass to make UnifiedRequestHandlerAdvanced a Singleton.
     """
-    _instances = {}
+    _instances: dict[_ty.Type[_ty.Any], _ty.Any] = {}
 
     def __call__(cls, *args, **kwargs):
         if cls not in cls._instances:
@@ -83,6 +87,7 @@ class SingletonMeta(type):
         return cls._instances[cls]
 
 
+@_te.deprecated("Unused function")
 def reverse_map(functions: _a.Iterable[_a.Callable[..., _ty.Any]], *args: _ty.Any, **kwargs: _ty.Any) -> list[_ty.Any]:
     """
     Applies each function in the given iterable `functions` to the provided arguments and keyword arguments.
@@ -99,8 +104,9 @@ def reverse_map(functions: _a.Iterable[_a.Callable[..., _ty.Any]], *args: _ty.An
     return [func(*args, **kwargs) for func in functions]
 
 
-def gen_map(functions: _a.Iterable[_a.Callable[..., _ty.Any]], args_iter: _a.Iterator[_ty.Any],
-            kwargs_iter: _a.Iterator[_ty.Any]) -> _a.Iterator[_ty.Any]:
+@_te.deprecated("Unused function")
+def gen_map(functions: _a.Iterable[_a.Callable[..., _ty.Any]], args_iter: _a.Iterable[tuple[_ty.Any, ...]],
+            kwargs_iter: _a.Iterable[dict[str, _ty.Any]]) -> _a.Iterator[_ty.Any]:
     """
     Applies each function in the given iterable `functions` to corresponding arguments and keyword arguments
     from `args_iter` and `kwargs_iter`, yielding the results one by one.
@@ -116,6 +122,7 @@ def gen_map(functions: _a.Iterable[_a.Callable[..., _ty.Any]], args_iter: _a.Ite
     """
     for func, args, kwargs in zip(functions, args_iter, kwargs_iter):
         yield func(*args, **kwargs)
+    return None
 
 
 _T = _ty.TypeVar('_T')
@@ -356,7 +363,7 @@ class Sorters(_ty.Generic[_T]):
         return iterable
 
 
-def _custom_serializer(obj):
+def _custom_serializer(obj: _ty.Any) -> str:
     """
     Custom serializer function for handling non-serializable objects.
 
@@ -372,7 +379,7 @@ def _custom_serializer(obj):
         raise TypeError(f"Type {type(obj)} not serializable")
 
 
-def beautify_json(data_dict):
+def beautify_json(data_dict: dict[str, _ty.Any]) -> str:
     """
     Beautifies a dictionary by converting it to a pretty-printed JSON string.
 
@@ -382,40 +389,34 @@ def beautify_json(data_dict):
     Returns:
         str: The beautified JSON string.
     """
-    try:
-        # Convert dictionary to a pretty-printed JSON string using custom serializer
-        pretty_json = _json.dumps(data_dict, indent=4, sort_keys=False, default=_custom_serializer)
-        pretty_json = _re.sub(
-            r'\[\s+([^][]+?)\s+]',
-            lambda m: f"[{', '.join(item.strip() for item in m.group(1).split(','))}]",
-            pretty_json
-        )
-        return pretty_json
-    except (TypeError, ValueError) as e:
-        return f"Error converting dictionary to JSON: {e}"
+    # Convert dictionary to a pretty-printed JSON string using custom serializer
+    pretty_json = _json.dumps(data_dict, indent=4, sort_keys=False, default=_custom_serializer)
+    pretty_json = _re.sub(
+        r'\[\s+([^][]+?)\s+]',
+        lambda m: f"[{', '.join(item.strip() for item in m.group(1).split(','))}]",
+        pretty_json
+    )
+    return pretty_json
 
 
-class _SupportsRichComparisons(_ty.Protocol):
-    def __lt__(self, other: "_SupportsRichComparisons") -> bool: ...
-    def __gt__(self, other: "_SupportsRichComparisons") -> bool: ...
+if _ty.TYPE_CHECKING:
+    def minmax(to_reduce: _tsh.SupportsRichComparisonT, min_val: _tsh.SupportsRichComparisonT,
+               max_val: _tsh.SupportsRichComparisonT) -> _tsh.SupportsRichComparisonT:
+        ...
+else:
+    def minmax(to_reduce, min_val,
+               max_val) -> _ty.Any:
+        """Clamp a value within a specified minimum and maximum range.
 
+        Args:
+            to_reduce (SupportsRichComparisonsT): The value to clamp.
+            min_val (SupportsRichComparisonsT): The minimum allowable value.
+            max_val (SupportsRichComparisonsT): The maximum allowable value.
 
-_SupportsRichComparisonsT = _ty.TypeVar("_SupportsRichComparisonsT", bound=_SupportsRichComparisons)
-
-
-def minmax(to_reduce: _SupportsRichComparisonsT, min_val: _SupportsRichComparisonsT,
-           max_val: _SupportsRichComparisonsT) -> _SupportsRichComparisonsT:
-    """Clamp a value within a specified minimum and maximum range.
-
-    Args:
-        to_reduce (SupportsRichComparisonsT): The value to clamp.
-        min_val (SupportsRichComparisonsT): The minimum allowable value.
-        max_val (SupportsRichComparisonsT): The maximum allowable value.
-
-    Returns:
-        SupportsRichComparisonsT: The clamped value, ensuring it falls within [min_val, max_val].
-    """
-    return max(min_val, min(max_val, to_reduce))
+        Returns:
+            SupportsRichComparisonsT: The clamped value, ensuring it falls within [min_val, max_val].
+        """
+        return max(min_val, min(max_val, to_reduce))
 
 
 def isEvenInt(x: int) -> int:
@@ -427,7 +428,7 @@ def isEvenInt(x: int) -> int:
     Returns:
         int: 1 if the integer is even, otherwise 0.
     """
-    return x & 0
+    return not x & 1
 
 
 def isOddInt(x: int) -> int:
@@ -498,26 +499,68 @@ class StdList(list):
         super().__init__(*args)
         self.default_factory = default_factory
 
-    def __getitem__(self, key: int | tuple[int, ...] | tuple[slice, ...] | tuple[int, _ty.Any]) -> _ty.Any:
-        # Handle tuple indexing for multiple items
+    def __getitem__(self, key: _ty.Union[int, slice, tuple]) -> _ty.Any:
+        # Handle tuple access: (i1, i2, ...), (slice1, slice2, ...), or (index, default)
         if isinstance(key, tuple):
-            if len(key) == 2 and isinstance(key[1], slice):
-                return super().__getitem__(key[0])[key[1]]
-            elif isinstance(key[1], (int, slice)):
-                return tuple(super().__getitem__(i) for i in key)
+            if len(key) == 2 and not isinstance(key[0], slice) and not isinstance(key[1], slice):
+                idx, default = key
+                return super().__getitem__(idx) if idx < len(self) else default
 
-            idx, default = key
-            return super().__getitem__(idx) if idx < len(self) else default
+            # Handle slices or multiple indices
+            result = []
+            for part in key:
+                if isinstance(part, slice):
+                    result.extend(self[part])
+                else:
+                    result.append(self[part])
+            return tuple(x for x in result)
+        elif isinstance(key, slice):
+            result = []
+            for part in range(key.start or 0, key.stop or len(self), key.step or 1):
+                result.append(self[part])
+            return tuple(result)
 
-        # Standard list behavior
-        if key >= len(self) and self.default_factory is not None:
+        # Normal list indexing, auto-expand if needed
+        if isinstance(key, int) and key >= len(self) and self.default_factory is not None:
             self.extend(self.default_factory() for _ in range(len(self), key + 1))
         return super().__getitem__(key)
 
-    def __setitem__(self, index: int, value: _ty.Any) -> None:
-        if index >= len(self) and self.default_factory is not None:
-            self.extend(self.default_factory() for _ in range(len(self), index + 1))
-        super().__setitem__(index, value)
+    def __setitem__(self, key: _ty.Union[int, slice, tuple], value: _ty.Any) -> None:
+        if isinstance(key, tuple):
+            if isinstance(value, (list, tuple)) and len(value) != len(key):
+                raise ValueError("Value must match length of keys when assigning with tuple.")
+
+            for i, part in enumerate(key):
+                val = value[i] if isinstance(value, (list, tuple)) else value
+                if isinstance(part, slice):
+                    indices = range(part.start or 0, part.stop or len(self), part.step or 1)
+                    for j, idx in enumerate(indices):
+                        if idx >= len(self) and self.default_factory is not None:
+                            self.extend(self.default_factory() for _ in range(len(self), idx + 1))
+                        self[idx] = val[j] if isinstance(val, (list, tuple)) else val
+                else:
+                    if part >= len(self) and self.default_factory is not None:
+                        self.extend(self.default_factory() for _ in range(len(self), part + 1))
+                    super().__setitem__(part, val)
+            return
+        elif isinstance(key, slice):
+            indices = range(key.start or 0, key.stop or len(self), key.step or 1)
+            if isinstance(value, (list, tuple)) and len(value) != len(indices):
+                raise ValueError("Value must match length of slice range.")
+            for i, idx in enumerate(indices):
+                val = value[i] if isinstance(value, (list, tuple)) else value
+                if idx >= len(self) and self.default_factory is not None:
+                    self.extend(self.default_factory() for _ in range(len(self), idx + 1))
+                super().__setitem__(idx, val)
+            return
+        if isinstance(key, int) and key >= len(self) and self.default_factory is not None:
+            self.extend(self.default_factory() for _ in range(len(self), key + 1))
+        super().__setitem__(key, value)
+
+    def get(self, key: int, default_factory=None) -> _ty.Any:
+        if key >= len(self):
+            self.extend(default_factory() for _ in range(len(self), key + 1))
+        return super().__getitem__(key)
 
 
 def unnest_iterable(iterable: _a.Iterable, max_depth: int = 4) -> list[_ty.Any]:
@@ -617,5 +660,59 @@ def cutoff_string(string: str, max_chars_start: int = 4, max_chars_end: int = 0,
     Returns:
         str: Formatted truncated string.
     """
-    truncated_list = cutoff_iterable(list(string), max_chars_start, max_chars_end, show_hidden_chars_num, True)
+    truncated_list = cutoff_iterable(list(string), 0, max_chars_start, max_chars_end, show_hidden_chars_num, True)
     return "".join(truncated_list)
+
+
+def what_func(func: _ts.FunctionType, type_names: bool = False, print_def: bool = True) -> str:
+    """
+    Analyzes the passed function, formats it into a nice string and optionally prints it.
+
+    :param func:
+    :param type_names:
+    :param print_def:
+    :return:
+    """
+    analysis = _analyze_function(func)
+
+    def _get_type_name(t: _ty.Any) -> str | None:
+        if hasattr(t, '__origin__') and t.__origin__ is _ty.Union or type(t) is _ty.Union and type(None) in t.__args__:  # type: ignore
+            non_none_types = [arg for arg in t.__args__ if arg is not type(None)]
+            return f"{t.__name__}[{', '.join(_get_type_name(arg) for arg in non_none_types)}]"  # type: ignore
+        return t.__name__ if hasattr(t, '__name__') else (type(t).__name__ if t is not None else None)
+
+    arguments_str = ''.join([f"{argument['name']}: "  # type: ignore 
+                             f"{(_get_type_name(argument['type']) or type(argument['default']).__name__) if type_names else _get_type_name(argument['type']) or type(argument['default'])}"  # type: ignore 
+                             f" = {argument['default']}, " for argument in analysis["arguments"]])[:-2]  # type: ignore
+    definition = f"{func.__module__}.{analysis['name']}({arguments_str}){(' -> ' + str(analysis['return_type'])) if analysis['return_type'] is not None else ''}"
+    if print_def:
+        print(definition)
+    return definition
+
+
+def what_class(cls: _ty.Type[_ty.Any], type_names: bool = False, print_def: bool = True) -> str:
+    """
+    Analyzes the passed class, formats it into a string, and optionally prints it.
+
+    :param cls:
+    :param type_names:
+    :param print_def:
+    :return:
+    """
+    class_name = cls.__name__
+    methods = [attr for attr in dir(cls) if callable(getattr(cls, attr)) and (not attr.startswith("_") or
+                                                                              (attr == "__init__"))]
+
+    class_def = [f"{class_name}:"]
+    where = "???"
+    for method in methods:
+        where, method_def = what_func(getattr(cls, method), type_names=type_names,
+                                      print_def=False).split(".", maxsplit=1)
+        class_def.append(f"    {method_def}\n")
+
+    class_def[0] = "class " + where + "." + class_def[0]
+    result = "\n".join(class_def)
+
+    if print_def:
+        print(result)
+    return result

@@ -1,4 +1,5 @@
 """TBA"""
+import warnings
 from collections import OrderedDict as _OrderedDict
 from threading import Lock as _Lock
 import struct as _struct
@@ -9,8 +10,11 @@ from ..package import enforce_hard_deps as _enforce_hard_deps
 from . import cutoff_iterable as _cutoff_iterable
 
 # Standard typing imports for aps
+import typing_extensions as _te
 import collections.abc as _a
 import typing as _ty
+if _ty.TYPE_CHECKING:
+    import _typeshed as _tsh
 import types as _ts
 
 from ..package import optional_import as _optional_import
@@ -119,7 +123,7 @@ def bytes_length(data: int | float | str) -> int:
         The total number of bytes required to represent the input data.
     """
     if isinstance(data, int):
-        return ((data.bit_length() + 7) // 8) or 1
+        return ((data.bit_length() + 7) // 8) * (1 if data > 0 else 2) or 1
     elif isinstance(data, float):
         return len(encode_float(data))
     elif isinstance(data, str):
@@ -142,7 +146,7 @@ def bit_length(data: int | float | str) -> int:
     elif isinstance(data, float):
         return int.from_bytes(encode_float(data)).bit_length() or 1
     elif isinstance(data, str):
-        return int.from_bytes(data.encode("utf-8")).bit_length()
+        return len(data) * 8
     raise ValueError(f"Unsupported data type '{type(data).__name__}'.")
 
 
@@ -167,8 +171,7 @@ def encode_integer(integer: int, negatives: bool = False, byteorder: _ty.Literal
     """
     if integer < 0 and not negatives:
         raise ValueError(f"The integer passed is negative but you haven't enabled negatives.")
-    byte_size = (integer.bit_length() + 7) // 8  # Determine the required number of bytes
-    return integer.to_bytes(byte_size if integer != 0 else 1, byteorder, signed=negatives)
+    return integer.to_bytes(bytes_length(integer if not negatives else -integer), byteorder, signed=negatives)
 
 
 def decode_integer(bytes_like: bytes, negatives: bool = False, byteorder: _ty.Literal["little", "big"] = "big") -> int:
@@ -190,56 +193,136 @@ def decode_integer(bytes_like: bytes, negatives: bool = False, byteorder: _ty.Li
     return int.from_bytes(bytes_like, byteorder, signed=negatives)
 
 
-def get_variable_bytes_like(bytes_like: bytes) -> bytes:
+def get_variable_bytes_like(data: bytes) -> bytes:
     """
-    Encode a byte sequence with a length prefix.
+    Encode a byte sequence with a length prefix using varint encoding.
 
-    This function prepends the byte sequence with its length as a single byte, allowing
-    for variable-length encoding. The length byte represents the size of the byte sequence
-    and is followed by the actual bytes.
+    Uses standard varint (7-bit) length encoding, followed by the original data.
+    More efficient than progressive for most values below ~1.9 sextillion.
 
-    Args:
-    -----
-    bytes_like : bytes
-        The byte sequence to encode with a length prefix.
-
-    Returns:
-    --------
-    bytes
-        A new byte sequence with the length byte prepended, followed by the original byte sequence.
+    :param data: The byte sequence to encode.
+    :return: A varint-prefixed byte sequence.
 
     Example:
     --------
     >>> get_variable_bytes_like(b'hello')
-    b'\x05hello'  # \x05 indicates the length of 'hello'
+    b'\\x05hello'
     """
-    return to_progressive_length(len(bytes_like)) + bytes_like
+    return to_varint_length(len(data)) + data
 
 
 def read_variable_bytes_like(f: _ty.BinaryIO) -> bytes | None:
     """
-    Read a length-prefixed byte sequence from a binary stream or bytes.
+    Decode a varint-prefixed byte sequence from a binary stream.
 
-    This function reads the first byte, which indicates the length of the subsequent byte sequence,
-    then reads that number of bytes from the input. It can work on a file-like binary stream or
-    directly on a bytes object.
+    Reads the varint-encoded length, then reads that many bytes from the stream.
 
-    Args:
-    -----
-    f : _ty.BinaryIO or bytes
-        The file-like binary stream or bytes object to read from.
-
-    Returns:
-    --------
-    bytes or None
-        The read byte sequence (without the length prefix), or None if the stream is empty.
+    :param f: A binary stream or file-like object.
+    :return: The decoded byte sequence, or None if stream ends.
 
     Example:
     --------
     >>> import io
-    >>> f = io.BytesIO(b'\x05hello')
+    >>> f = io.BytesIO(b'\\x05hello')
     >>> read_variable_bytes_like(f)
     b'hello'
+    """
+    try:
+        length = read_varint_length(f)
+    except EOFError:
+        return None
+    return f.read(length)
+
+
+def expected_varint_length_bytecount(x: int) -> int:
+    """
+    Estimate the number of bytes required to encode an integer using varint encoding.
+
+    This uses the standard 7-bit chunk scheme, where each byte encodes 7 bits of actual data,
+    and the 8th bit (MSB) is a continuation flag.
+
+    :param x: Integer to estimate.
+    :return: Estimated number of bytes required for varint encoding.
+
+    Note:
+    -----
+    For very large values (x >= ~1.9 sextillion), progressive encoding becomes more efficient.
+    """
+    if x < 0:
+        raise ValueError("Varint encoding doesn't support negative values.")
+    if x == 0:
+        return 1
+    return _math.ceil(_math.log2(x + 1) / 7)
+
+
+def to_varint_length(x: int) -> bytes:
+    """
+    Encode an integer using standard varint encoding (7 bits per byte, MSB continuation flag).
+
+    :param x: Non-negative integer.
+    :return: Varint-encoded byte sequence.
+
+    Note:
+    -----
+    For large integers (x > ~1.9 sextillion), progressive encoding may be more efficient.
+    """
+    if x < 0:
+        raise ValueError("Varint encoding does not support negative values.")
+
+    result = bytearray()
+    while True:
+        byte = x & 0x7F  # Extract 7 bits
+        x >>= 7
+        if x:
+            result.append(0x80 | byte)  # Set MSB to 1 (continue)
+        else:
+            result.append(byte)        # MSB 0 = end of sequence
+            break
+    return bytes(result)
+
+
+def read_varint_length(f: _ty.BinaryIO) -> int:
+    """
+    Decode a varint-encoded integer from a binary stream.
+
+    :param f: File-like binary stream.
+    :return: Decoded integer.
+    :raises EOFError: If stream ends unexpectedly.
+    """
+    shift = 0
+    result = 0
+    while True:
+        byte = f.read(1)
+        if not byte:
+            raise EOFError("Unexpected EOF while reading varint.")
+        b = byte[0]
+        result |= (b & 0x7F) << shift
+        if not (b & 0x80):  # MSB not set means end of varint
+            break
+        shift += 7
+    return result
+
+
+def get_progressive_bytes_like(data: bytes) -> bytes:
+    """
+    Encode a byte sequence with a progressive-length prefix.
+
+    Uses logarithmic, recursive metadata-based compression. Becomes more efficient than varint
+    after ~1.9 sextillion input size.
+
+    :param data: The byte sequence to encode.
+    :return: A progressively-encoded byte sequence with prefix.
+    """
+    return to_progressive_length(len(data)) + data
+
+
+def read_progressive_bytes_like(f: _ty.BinaryIO) -> bytes | None:
+    """
+    Decode a progressively-prefixed byte sequence from a binary stream.
+
+    :param f: File-like binary stream.
+    :return: The decoded byte sequence.
+    :raises EOFError: If stream ends prematurely.
     """
     try:
         length = read_progressive_length(f)
@@ -261,7 +344,9 @@ def expected_progressive_length_bytecount(length_of_x: int) -> int:
     :param length_of_x: The length value to estimate for encoding.
     :return: The estimated byte count for encoding `length_of_x`.
     """
-    total = 0
+    total: int = 0
+    x: float  # Length
+    cx: int  # Ceiling length (what we actually add in bytes)
     x = cx = abs(length_of_x)
     while x > 1:
         x = _math.log(cx, 256) + 0.125  # 1/8 as a float
@@ -271,19 +356,25 @@ def expected_progressive_length_bytecount(length_of_x: int) -> int:
     return total or 1  # Handle cases where length_of_x == 0
 
 
-def to_progressive_length(length_of_x: int) -> bytes:
+def to_progressive_length(length_of_x: int, margin_of_error: float = 2) -> bytes:
     """
-    Encode an integer length into a compact, progressively larger byte format.
+    Encode an integer into a recursive progressive-length byte format.
 
-    This encoding supports small numbers with minimal bytes and scales up for larger
-    numbers using additional bytes as needed. The format is efficient, aiming to
-    use the least space for each length magnitude.
+    This encoding represents the length using a self-describing, logarithmic byte structure.
+    It is slightly less efficient than varint encoding for small numbers, but becomes
+    more compact for extremely large values x ≈ 1,919,742,501,929,869,639,680 (above ~1.9 sextillion).
+    But then it stays very close to the optimal encoding size:
+         1.03125 when 1 is the byte length of length_of_x, varint sits at a 1.125
 
-    :param length_of_x: The integer to encode in progressive length format.
-    :return: A byte-encoded representation of `length`.
-    :raises ValueError: If `length` is negative or an internal bug occurs.
+    The encoding grows recursively based on the magnitude of the number, using a structure
+    where each level encodes metadata about the next, resulting in space savings at high scales.
+
+    :param length_of_x: The non-negative integer to encode.
+    :param margin_of_error: Internal tuning parameter for buffer sizing (optional).
+    :return: A byte-encoded representation of the input length.
+    :raises ValueError: If `length_of_x` is negative.
     """
-    buffer_size = int(expected_progressive_length_bytecount(length_of_x) * 1.1)  # Margin of error as a buffer
+    buffer_size = int(expected_progressive_length_bytecount(length_of_x) * margin_of_error)  # Margin of error as a buffer
     result_buffer = bytearray(buffer_size)
     result_pointer = buffer_size  # - 1 is not needed as slices exclude the last element of the specified range
     current_length = length_of_x
@@ -303,7 +394,9 @@ def to_progressive_length(length_of_x: int) -> bytes:
         stage_len = len(stage)
         result_pointer -= stage_len
         if result_pointer < 0:
-            raise ValueError("Encountered bug while encoding, please report!")
+            warnings.warn("to_progressive_length ran out of buffer space, doubling ...", RuntimeWarning)
+            return to_progressive_length(length_of_x, margin_of_error * 2)
+            # raise ValueError("Encountered bug while encoding, please report!")
         result_buffer[result_pointer:result_pointer + stage_len] = stage
         # Update length for the next loop iteration
         current_length = len(stage)  # bytes_length(current_length)
@@ -761,6 +854,28 @@ class CNumStorage:
                 buffer.disregard()  # 95% of the processing time. (4.5 seconds for 5.5 million 22-bit numbers from 4.6
                 #                                                                                      seconds in total)
 
+    def merge_groups(self, merge_group: int, into_group: int, overwrite_bit_len: int | None = None) -> None:
+        """
+        Merges two groups of numbers into one, updating the group bit length if necessary.
+
+        Parameters:
+        -----------
+        merge_group : int
+            Index of the group that will be merged.
+        into_group : int
+            Index of the group to merge into.
+        overwrite_bit_len : int, optional
+            If provided, this bit length will overwrite the bit length of the merged group.
+
+        Notes:
+        ------
+        This method is useful for reducing the number of groups by merging them based on criteria such as
+        their bit lengths and sizes. The merging strategy can be customized by setting `merge_into` and
+        `overwrite_bit_len`.
+        """
+        self._merge_groups(merge_group, into_group, 1, overwrite_bit_len)
+        # self._numbers.pop(merge_group)  # TODO: Possible?
+
     def _merge_groups(self, idx0: int, idx1: int, merge_into: _ty.Literal[0, 1],
                       overwrite_bit_len: int | None = None) -> None:
         """
@@ -789,14 +904,14 @@ class CNumStorage:
             (group_0_idx, group_1_idx, idx0, idx1, group_0_bit_len, True),
             (group_1_idx, group_0_idx, idx1, idx0, group_1_bit_len, False)
         )[merge_into]
-        del self._groups[other_group_idx]
         if from_right_merge:
             self._numbers[merge_number_idx].extend(self._numbers[other_number_idx])
         else:
             self._numbers[other_number_idx].extend(self._numbers[merge_number_idx])  # Extend is better than joining
             self._numbers[merge_number_idx] = self._numbers[other_number_idx]
-        self._numbers[other_number_idx] = None
+        self._numbers[other_number_idx] = None  # TODO: Why none when we could delete it?
         self._groups[merge_group_idx] = (overwrite_bit_len or group_bit_len, merge_number_idx)
+        del self._groups[other_group_idx]
 
     def create_optimal_groups(self) -> None:
         """
@@ -1032,7 +1147,7 @@ class CNumStorage:
 
 def set_bits(bytes_like: bytes | bytearray, start_position: int, bits_: str,
              byte_order: _ty.Literal["big", "little"] = "big", return_bytearray: bool = False,
-             auto_expand: bool = False):
+             auto_expand: bool = False) -> bytes | bytearray:
     """Set specific bits in a byte sequence.
 
     Args:
@@ -1063,7 +1178,7 @@ def set_bits(bytes_like: bytes | bytearray, start_position: int, bits_: str,
     return bytes(byte_arr) if not return_bytearray else byte_arr
 
 
-def bits(bytes_like: bytes | bytearray, return_str: bool = False) -> list | str:
+def bits(bytes_like: bytes | bytearray, return_str: bool = False) -> list[_ty.Any] | str:
     """Convert bytes or bytearray to a list or string of binary representations.
 
     Args:
@@ -1131,6 +1246,7 @@ def bytes_to_human_readable_binary_iec(size: int | float) -> str:
         if size < 1024 or unit == units[-1]:
             return f"{size:.2f} {unit}"
         size /= 1024
+    raise RuntimeError()
 
 
 def bytes_to_human_readable_decimal_si(size: int | float) -> str:
@@ -1142,11 +1258,12 @@ def bytes_to_human_readable_decimal_si(size: int | float) -> str:
     Returns:
         str: The size formatted as a human-readable string (e.g., "1.00 MB").
     """
-    units = ['B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB', 'RB', 'QB']
+    units = ['B', 'kB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB', 'RB', 'QB']
     for unit in units:
         if size < 1000 or unit == units[-1]:
             return f"{size:.2f} {unit}"
         size /= 1000
+    raise RuntimeError()
 
 
 def bits_to_human_readable(size: int | float) -> str:
@@ -1163,3 +1280,4 @@ def bits_to_human_readable(size: int | float) -> str:
         if size < 1000 or unit == units[-1]:  # Ensure we don't exceed the last unit
             return f"{size:.2f} {unit}"
         size /= 1000
+    raise RuntimeError()

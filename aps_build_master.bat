@@ -7,14 +7,14 @@ if not "%~1"=="" (
     goto process_choice_no_pause
 )
 
-REM Function to display the menu
+REM Function to display the menu  // Install pytest and r
 :show_menu
 cls
 echo.
 echo ==============================================================
 echo                      AplusTools Main Menu
 echo ==============================================================
-echo 1.             Install pytest and run tests
+echo 1.                      Run tests
 echo 2.                 Clear dist directory
 echo 3.                  Build the project
 echo 4.           Install the newly built package
@@ -23,8 +23,13 @@ echo 0. Exit
 echo ==============================================================
 echo.
 set /p choice="Enter your choice (0-5, or multiple choices): "
-set /p version="Enter your version of choice (e.g 3.12, 3.13): "
-py -%version% -m pip install --upgrade pip
+REM set /p version="Enter your version of choice (e.g 3.12, 3.13): "
+set version=3.12
+set /p input="Enter your version of choice (default is %version%): "
+if not "%input%"=="" (
+    set version=%input%
+)
+REM py -%version% -m pip install --upgrade pip
 
 goto process_choice
 
@@ -61,7 +66,7 @@ REM Function to run tests
 :run_tests
 @echo off
 REM Install pytest
-py -%version% -m pip install pytest
+REM py -%version% -m pip install pytest
 
 REM Ensure test_data directory exists and is empty
 set "DIR=test_data"

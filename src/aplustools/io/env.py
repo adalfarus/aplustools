@@ -28,8 +28,11 @@ from ..data.bintools import (bits_to_human_readable as _bits_to_human_readable,
                              bytes_to_human_readable_binary_iec as _bytes_to_human_readable_binary_iec)
 
 # Standard typing imports for aps
+import typing_extensions as _te
 import collections.abc as _a
 import typing as _ty
+if _ty.TYPE_CHECKING:
+    import _typeshed as _tsh
 import types as _ts
 
 _winreg = _optional_import("winreg")

@@ -1,6 +1,4 @@
 """TBA"""
-raise NotImplementedError("This module is not yet complete, please wait until a later release")
-
 from importlib import import_module as _import_module
 import warnings as _warnings
 import os as _os
@@ -19,8 +17,11 @@ from ...io.env import suppress_warnings as _suppress_warnings
 from ...package import enforce_hard_deps as _enforce_hard_deps, optional_import as _optional_import
 
 # Standard typing imports for aps
+import typing_extensions as _te
 import collections.abc as _a
 import typing as _ty
+if _ty.TYPE_CHECKING:
+    import _typeshed as _tsh
 import types as _ts
 
 __deps__: list[str] = ["bcrypt"]
@@ -135,13 +136,15 @@ class AdvancedCryptography:
     _backend: _Backend | None = None
     _real_backend: tuple[_ts.ModuleType, _ts.ModuleType] | None = None
 
-    def __init__(self, backend: _Backend | None = None) -> None:
-        self.auto_pack: bool = True
-        self.easy_hash: bool = True
+    def __init__(self, auto_pack: bool = True, easy_hash: bool = True,
+                 maximum_risk_level: _RiskLevel = _RiskLevel.HARMLESS, backend: _Backend | None = None) -> None:
+        self.auto_pack: bool = auto_pack
+        self.easy_hash: bool = easy_hash
+        self.maximum_risk_level: _RiskLevel = maximum_risk_level
         if backend is not None:
             self.set_backend(backend)
 
-    def set_backend(self, backend: _Backend):
+    def set_backend(self, backend: _Backend) -> None:
         """Resets the backend to a new one"""
         if backend not in {_Backend.cryptography, _Backend.pycryptodomex}:
             raise _NotSupportedError(f"{backend.info} is not supported by AdvancedCryptography")
@@ -170,7 +173,7 @@ class AdvancedCryptography:
                     asym_to_set._KEYPAIR = None
 
     @staticmethod
-    def check_unsafe(*to_check, max_unsafe_rating: _RiskLevel = _RiskLevel.HARMLESS, force_hand: bool = True
+    def check_unsafe(*to_check: _ty.Any, max_unsafe_rating: _RiskLevel = _RiskLevel.HARMLESS, auto_raise: bool = True
                      ) -> list[Exception | Warning] | None:
         """Checks the rating of multiple items and returns appropriate Exceptions/Warnings"""
         returns = []
@@ -193,7 +196,7 @@ class AdvancedCryptography:
                          _RiskLevel.HIGHLY_DANGEROUS: Exception}[rating](expl)
                     )
 
-        if force_hand:
+        if auto_raise:
             for ret in returns:
                 if isinstance(ret, Exception) and not isinstance(ret, Warning):
                     raise ret
@@ -202,28 +205,18 @@ class AdvancedCryptography:
 
         return returns
 
-    def check_backend(self) -> None:
-        """Checks for an empty backend, can warn or raise a ValueError if not backend is set yet"""
-        if self._backend is _Backend.cryptography:
-            return None
-        elif self._backend is _Backend.pycryptodomex:
-            _warnings.warn("PyCryptodomeX is not fully compatible yet")
-            return None
-        raise ValueError("Please set a Backend before usage")
-
-    def hash(self, to_hash: bytes, algo: _HashAlgorithm, force_text_ids: bool = False,
-             maximum_risk_level: _RiskLevel = _RiskLevel.HARMLESS) -> bytes:
+    def hash(self, to_hash: bytes, algo: _HashAlgorithm, force_text_ids: bool = False) -> bytes:
         """
         Hashes to_hash using the provided algorithm and returns it.
 
         :param to_hash:
         :param algo:
         :param force_text_ids:
-        :param maximum_risk_level:
         :return:
         """
-        self.check_backend()
-        self.check_unsafe(algo, maximum_risk_level)
+        if self._backend is None:
+            raise ValueError("Please set a Backend before usage")
+        self.check_unsafe(algo, max_unsafe_rating=self.maximum_risk_level)
         match algo:
             case _HashAlgorithm.BCRYPT:
                 try:
