@@ -1,4 +1,5 @@
 """TBA"""
+from contextlib import contextmanager as _contextmanager
 from cachetools import LRUCache as _LRUCache
 from threading import RLock as _RLock
 import sqlite3 as _sqlite3
@@ -237,7 +238,8 @@ class SQLite3Storage(StorageMedium):
     A storage medium using an SQLite3 database to store and retrieve key-data pairs.
     """
 
-    def __init__(self, filepath: str, tables: tuple[str, ...] = ("storage",), drop_unused_tables: bool = False) -> None:
+    def __init__(self, filepath: str, tables: tuple[str, ...] = ("storage",), drop_unused_tables: bool = False,
+                 use_wal_journal_mode: bool = False) -> None:
         """
         Initializes the SQLite3Storage with a database file.
 
@@ -246,7 +248,9 @@ class SQLite3Storage(StorageMedium):
         self._tables = tables
         self._table = tables[0]  # You have to set _table before the init call
         super().__init__(filepath)
-        with _sqlite3.connect(filepath) as conn:
+        with self._connection(filepath) as conn:
+            if use_wal_journal_mode:
+                conn.execute("PRAGMA journal_mode=WAL;")
             cursor = conn.cursor()
             if drop_unused_tables:
                 cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
@@ -258,6 +262,18 @@ class SQLite3Storage(StorageMedium):
 
             conn.commit()
 
+    @_contextmanager
+    def _connection(self, filepath: str) -> _ty.Generator[_sqlite3.Connection, None, None]:
+        with self._lock:
+            conn = None
+            try:
+                conn = _sqlite3.connect(filepath, check_same_thread=False)
+                yield conn
+                conn.commit()  # Commit changes automatically at the end of the block
+            finally:
+                if conn is not None:
+                    conn.close()
+
     def switch_table(self, table: str) -> None:
         """
         Switch to a different table within the same database.
@@ -268,8 +284,7 @@ class SQLite3Storage(StorageMedium):
         if table not in self._tables:
             self.make_sure_exists(table, self._filepath)
 
-    @staticmethod
-    def make_sure_exists(table: str, at: str) -> None:
+    def make_sure_exists(self, table: str, at: str) -> None:
         """
         Ensures a specified table exists in an SQLite database.
 
@@ -284,7 +299,7 @@ class SQLite3Storage(StorageMedium):
         Returns:
             None
         """
-        with _sqlite3.connect(at) as conn:
+        with self._connection(at) as conn:
             cursor = conn.cursor()
             # Create a table for storing key-value pairs if it doesn't already exist
             cursor.execute(f'''
@@ -303,14 +318,14 @@ class SQLite3Storage(StorageMedium):
             self.make_sure_exists(table, at)
         return -1
 
-    def _store_data(self, f: _sqlite3.Connection, items: dict[str, str]) -> None:
+    def _store_data(self, db_conn: _sqlite3.Connection, items: dict[str, str]) -> None:
         """
         Store the data under a specified key in the SQLite database.
 
-        :param f: The SQLite connection object to store data.
+        :param db_conn: The SQLite connection object to store data.
         :param items: A dictionary with items to be stored.
         """
-        cursor = f.cursor()
+        cursor = db_conn.cursor()
 
         # Insert or update the key-value pair
         cursor.executemany(f'''
@@ -320,17 +335,17 @@ class SQLite3Storage(StorageMedium):
         ''', items.items())
 
         # Commit the transaction
-        f.commit()
+        db_conn.commit()
 
-    def _retrieve_data(self, f: _sqlite3.Connection, keys: list[str]) -> list[str | None]:
+    def _retrieve_data(self, db_conn: _sqlite3.Connection, keys: list[str]) -> list[str | None]:
         """
         Retrieve the data stored under the specified key from the SQLite database.
 
-        :param f: The SQLite connection object to read data from.
+        :param db_conn: The SQLite connection object to read data from.
         :param keys: The keys associated with the data.
         :return: The retrieved data or None if the key doesn't exist.
         """
-        cursor = f.cursor()
+        cursor = db_conn.cursor()
 
         # Use the IN clause to retrieve multiple keys in one query with parameterized queries
         query = f'SELECT key, value FROM {self._table} WHERE key IN ({",".join(["?"] * len(keys))})'
@@ -351,9 +366,8 @@ class SQLite3Storage(StorageMedium):
 
         :param items: A dictionary with items to be stored.
         """
-        with self._lock:  # Ensure thread-safety
-            with _sqlite3.connect(self._filepath) as conn:
-                self._store_data(conn, items)
+        with self._connection(self._filepath) as conn:
+            self._store_data(conn, items)
 
     def retrieve(self, keys: list[str]) -> list[str | None]:
         """
@@ -362,10 +376,8 @@ class SQLite3Storage(StorageMedium):
         :param keys: The keys associated with the data.
         :return: The retrieved data or None if the key doesn't exist.
         """
-        with self._lock:  # Ensure thread-safety
-            # If not in cache, query the database
-            with _sqlite3.connect(self._filepath) as conn:
-                return self._retrieve_data(conn, keys)
+        with self._connection(self._filepath) as conn:
+            return self._retrieve_data(conn, keys)
 
 
 class BinaryStorage(StorageMedium):
@@ -583,7 +595,7 @@ class SimpleJSONStorage(SimpleStorageMedium):
 
 class SimpleSQLite3Storage(SimpleStorageMedium):
     """
-    A storage medium using an SQLite3 database to store and retrieve key-data pairs.
+    A storage medium using an SQLite3 database to store and retrieve key-data pairs. This is not thread-safe.
     """
 
     def __init__(self, filepath: str, tables: tuple[str, ...] = ("storage",), drop_unused_tables: bool = False) -> None:

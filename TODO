@@ -2,12 +2,12 @@ wrapwitharea(QScrollarea, QVLayout, mywidget)
 wrapwithframe(QFrame, mywidget)
 
 
-binaryfiler.configure(  --> ACCESS means ease of access
-{
-"frame": KnownType(uint8, access=ACCESS(5)),
-"weight": UnknownType(list(UnknownType(int)), access=ACCESS(10)),
-"users": KnownType(array(8, uint8), access=ACCESS(0))  # The lower the more important, negatives are not allowed
-}
+binaryfiler.configure(  --> ACCESS means ease of access or priority of access
+    {
+        "frame": KnownType(uint8, access=ACCESS(5)),
+        "weight": UnknownType(list(UnknownType(int)), access=ACCESS(10)),
+        "users": KnownType(array(8, uint8), access=ACCESS(0))  # The lower the more important, negatives are not allowed
+    }
 )
 
 THEMER
