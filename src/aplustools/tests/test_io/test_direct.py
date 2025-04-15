@@ -119,3 +119,4 @@ def test_enable_proxy_without_local(monkeypatch: pytest.MonkeyPatch, redirector:
     monkeypatch.setattr("aplustools.io._direct._local", None)
     with pytest.raises(ValueError, match="Optional dependency werkzeug not installed."):
         redirector.enable_proxy()
+        raise ValueError()  # Kind of janky with monkeypatch for installed and uninstalled

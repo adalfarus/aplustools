@@ -1,5 +1,5 @@
 """TBA"""
-from ...package._direct import *
+from ...package.timid import *
 import pytest
 
 # Standard typing imports for aps

@@ -346,12 +346,12 @@ class PreciseTimeFormat:
         return f"{value} {singular if value == 1 else plural}"
 
     @staticmethod
-    def _format_value(value: float) -> _TimeType:
+    def _format_value(value: float, max_precision: int) -> _TimeType:
         # If the value is an integer, display as an integer, otherwise show full precision
-        return int(value) if value.is_integer() else value
+        return int(value) if value.is_integer() else round(value, max_precision)
 
     @classmethod
-    def get_static_readable(cls, nanos: _TimeType, format_to: int | None = None) -> str:
+    def get_static_readable(cls, nanos: _TimeType, format_to: int | None = None, max_precision: int = 10) -> str:
         """
         Convert a given timedelta to a human-readable string based on the specified
         time format. If no format is provided, it defaults to seconds.
@@ -360,17 +360,16 @@ class PreciseTimeFormat:
             nanos (int | float): The time in nanoseconds.
             format_to (Optional[TimeFormat]): The time unit format to convert to.
                 If None, defaults to SECONDS.
+            max_precision:
 
         Returns:
             str: A human-readable string representing the timedelta in the specified
             time format.
         """
 
-        # Handling different formats
-        if format_to is None:
-            format_to = cls.SECONDS
-
         # Conversion constants
+        nanos_per_microsecond = 1e3
+        nanos_per_millisecond = 1e6
         nanos_per_second = 1e9
         nanos_per_minute = nanos_per_second * 60
         nanos_per_hour = nanos_per_minute * 60
@@ -379,63 +378,76 @@ class PreciseTimeFormat:
         nanos_per_month = nanos_per_day * 30.44  # Average month duration in days
         nanos_per_year = nanos_per_day * 365.25  # Accounting for leap years
 
+        if format_to is None:
+            format_to = cls.NANOSEC
+            for conversion_constant, time_format in zip(
+                    [nanos_per_microsecond, nanos_per_millisecond, nanos_per_second, nanos_per_minute, nanos_per_hour,
+                     nanos_per_day, nanos_per_week, nanos_per_month, nanos_per_year],
+                    [cls.MICROSEC         , cls.MILLISEC,          cls.SECONDS,      cls.MINUTES,      cls.HOURS,
+                     cls.DAYS,      cls.WEEKS,      cls.MONTHS,      cls.YEARS]
+            ):
+                value = nanos / conversion_constant
+                if value < 1:
+                    break
+                format_to = time_format
+
         if format_to == cls.YEARS:
             years, remainder = divmod(nanos, nanos_per_year)
-            months = cls._format_value(remainder / nanos_per_month)
-            return f"{cls._pluralize(cls._format_value(years), 'year', 'years')}, {cls._pluralize(months, 'month', 'months')}"
+            months = cls._format_value(remainder / nanos_per_month, max_precision)
+            return f"{cls._pluralize(cls._format_value(years, max_precision), 'year', 'years')}, {cls._pluralize(months, 'month', 'months')}"
 
         elif format_to == cls.MONTHS:
             months, remainder = divmod(nanos, nanos_per_month)
-            days = cls._format_value(remainder / nanos_per_day)
-            return f"{cls._pluralize(cls._format_value(months), 'month', 'months')}, {cls._pluralize(days, 'day', 'days')}"
+            days = cls._format_value(remainder / nanos_per_day, max_precision)
+            return f"{cls._pluralize(cls._format_value(months, max_precision), 'month', 'months')}, {cls._pluralize(days, 'day', 'days')}"
 
         elif format_to == cls.WEEKS:
             weeks, remainder = divmod(nanos, nanos_per_week)
-            days = cls._format_value(remainder / nanos_per_day)
-            return f"{cls._pluralize(cls._format_value(weeks), 'week', 'weeks')}, {cls._pluralize(days, 'day', 'days')}"
+            days = cls._format_value(remainder / nanos_per_day, max_precision)
+            return f"{cls._pluralize(cls._format_value(weeks, max_precision), 'week', 'weeks')}, {cls._pluralize(days, 'day', 'days')}"
 
         elif format_to == cls.DAYS:
             days, remainder = divmod(nanos, nanos_per_day)
-            hours = cls._format_value(remainder / nanos_per_hour)
-            return f"{cls._pluralize(cls._format_value(days), 'day', 'days')}, {cls._pluralize(hours, 'hour', 'hours')}"
+            hours = cls._format_value(remainder / nanos_per_hour, max_precision)
+            return f"{cls._pluralize(cls._format_value(days, max_precision), 'day', 'days')}, {cls._pluralize(hours, 'hour', 'hours')}"
 
         elif format_to == cls.HOURS:
             hours, remainder = divmod(nanos, nanos_per_hour)
-            minutes = cls._format_value(remainder / nanos_per_minute)
-            return f"{cls._pluralize(cls._format_value(hours), 'hour', 'hours')}, {cls._pluralize(minutes, 'minute', 'minutes')}"
+            minutes = cls._format_value(remainder / nanos_per_minute, max_precision)
+            return f"{cls._pluralize(cls._format_value(hours, max_precision), 'hour', 'hours')}, {cls._pluralize(minutes, 'minute', 'minutes')}"
 
         elif format_to == cls.MINUTES:
             minutes, remainder = divmod(nanos, nanos_per_minute)
-            seconds = cls._format_value(remainder / nanos_per_second)
-            return f"{cls._pluralize(cls._format_value(minutes), 'minute', 'minutes')}, {seconds:.9f} second(s)"
+            seconds = cls._format_value(remainder / nanos_per_second, max_precision)
+            return f"{cls._pluralize(cls._format_value(minutes, max_precision), 'minute', 'minutes')}, {seconds} second(s)"
 
         elif format_to == cls.SECONDS:
             seconds, remainder = divmod(nanos, nanos_per_second)
-            milliseconds = cls._format_value(remainder / 1e6)
-            return f"{cls._pluralize(cls._format_value(seconds), 'second', 'seconds')}, {milliseconds:.6f} millisecond(s)"
+            milliseconds = cls._format_value(remainder / nanos_per_millisecond, max_precision)
+            return f"{cls._pluralize(cls._format_value(seconds, max_precision), 'second', 'seconds')}, {milliseconds} millisecond(s)"
 
         elif format_to == cls.MILLISEC:
-            millisecs, remainder = divmod(nanos, 1e6)
-            microsecs = cls._format_value(remainder / 1e3)
-            return f"{cls._pluralize(cls._format_value(millisecs), 'millisecond', 'milliseconds')}, {microsecs:.3f} microsecond(s)"
+            millisecs, remainder = divmod(nanos, nanos_per_millisecond)
+            microsecs = cls._format_value(remainder / nanos_per_microsecond, max_precision)
+            return f"{cls._pluralize(cls._format_value(millisecs, max_precision), 'millisecond', 'milliseconds')}, {microsecs} microsecond(s)"
 
         elif format_to == cls.MICROSEC:
-            microsecs = cls._format_value(nanos / 1e3)
+            microsecs = cls._format_value(nanos / nanos_per_microsecond, max_precision)
             return f"{cls._pluralize(microsecs, 'microsecond', 'microseconds')}"
 
         elif format_to == cls.NANOSEC:
-            return f"{cls._pluralize(cls._format_value(nanos), 'nanosecond', 'nanoseconds')}"
+            return f"{cls._pluralize(cls._format_value(nanos, max_precision), 'nanosecond', 'nanoseconds')}"
 
         elif format_to == cls.PICOSEC:
-            picosecs = cls._format_value(nanos * 1e3)
+            picosecs = cls._format_value(nanos * 1e3, max_precision)
             return f"{cls._pluralize(picosecs, 'picosecond', 'picoseconds')}"
 
         elif format_to == cls.FEMTOSEC:
-            femtosecs = cls._format_value(nanos * 1e6)
+            femtosecs = cls._format_value(nanos * 1e6, max_precision)
             return f"{cls._pluralize(femtosecs, 'femtosecond', 'femtoseconds')}"
 
         elif format_to == cls.ATTOSEC:
-            attosecs = cls._format_value(nanos * 1e9)
+            attosecs = cls._format_value(nanos * 1e9, max_precision)
             return f"{cls._pluralize(attosecs, 'attosecond', 'attoseconds')}"
 
         return "Invalid format specified"
@@ -814,11 +826,11 @@ class PreciseTimeDelta:
         minutes, seconds = divmod(remainder, self.SECONDS_IN_MINUTE)
 
         # Get the fractional seconds with high precision
-        fractional_seconds = total_seconds - _math.floor(total_seconds)
+        fractional_seconds = round(total_seconds - _math.floor(total_seconds), self.max_precision)
 
         # Adjust precision dynamically based on the fractional part
         if fractional_seconds > 0:
-            fractional_part_str = f"{fractional_seconds:.{self.max_precision}f}".split('.')[1].rstrip('0')
+            fractional_part_str = f"{fractional_seconds}".split('.')[1].rstrip('0')
             time_str = f"{hours}:{minutes:02}:{seconds:02}.{fractional_part_str}"
         else:
             time_str = f"{hours}:{minutes:02}:{seconds:02}"

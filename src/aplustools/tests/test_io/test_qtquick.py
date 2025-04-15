@@ -1,5 +1,5 @@
 """TBA"""
-from ...package._direct import *
+from ...io.qtquick import *
 import pytest
 
 # Standard typing imports for aps
@@ -11,5 +11,5 @@ if _ty.TYPE_CHECKING:
 import types as _ts
 
 
-def test_() -> None:  # That the package structure works is proof enough it works (for now)
+def test_() -> None:
     assert True

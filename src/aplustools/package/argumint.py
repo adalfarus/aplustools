@@ -17,7 +17,12 @@ __hard_deps__: list[str] = []
 _enforce_hard_deps(__hard_deps__, __name__)
 
 
-def analyze_function(function: _ts.FunctionType) -> dict[str, list[_ty.Any] | str | None]:
+class NoDefault:
+    def __repr__(self) -> str:
+        return "<NoDefault Object>"
+
+
+def analyze_function(function: _a.Callable) -> dict[str, list[_ty.Any] | str | None]:
     """
     Analyzes a given function's signature and docstring, returning a structured summary of its
     arguments, including default values, types, keyword-only flags, documentation hints, and
@@ -44,6 +49,11 @@ def analyze_function(function: _ts.FunctionType) -> dict[str, list[_ty.Any] | st
             - "return_choices" (List[Any] or []): Options for `Literal` type hints for the return type, if applicable.
             - "return_doc_help" (str): The extracted docstring help for the return type.
     """
+    if hasattr(function, "__func__"):
+        function = function.__func__
+    elif not isinstance(function, _ts.FunctionType):
+        raise ValueError(f"Only a real function can be analyzed, not '{function}'")
+
     name = function.__name__
     arg_count = (function.__code__.co_argcount
                  + function.__code__.co_kwonlyargcount
@@ -51,10 +61,11 @@ def analyze_function(function: _ts.FunctionType) -> dict[str, list[_ty.Any] | st
     argument_names = list(function.__code__.co_varnames[:arg_count] or ())
     has_args = (function.__code__.co_flags & 0b0100) == 4
     has_kwargs = (function.__code__.co_flags & 0b1000) == 8
-    defaults = list(function.__defaults__ or ())
+    defaults = [NoDefault() for _ in range(len(argument_names))]
+    defaults.extend(list(function.__defaults__ or ()))
     if function.__kwdefaults__ is not None:
         defaults.extend(list(function.__kwdefaults__.values()))
-    defaults.extend([None] * (len(argument_names) - len(defaults)))
+    defaults = defaults[len(defaults) - len(argument_names):]
     types = function.__annotations__ or {}
     docstring = function.__doc__ or ""
     type_hints = _ty.get_type_hints(function)
@@ -327,6 +338,7 @@ class Argumint:
                 continue
             else:
                 to_del.append(path)
+        self._arg_struct = new_arg_struct
         print(f"Removed {len([self._endpoints.pop(epPath) for epPath in to_del])} endpoints.")
 
     def add_endpoint(self, path: str, endpoint: EndPoint) -> None:

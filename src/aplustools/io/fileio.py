@@ -1,5 +1,4 @@
 """TBA"""
-import io  # Make _ import
 import time as _time
 import mmap as _mmap
 import uuid as _uuid
@@ -120,6 +119,7 @@ class BasicFileLock:
         if self.open_mode is not None:
             self.file = open(self.filepath, mode=self.open_mode)
             return self.file
+        return None
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
         """

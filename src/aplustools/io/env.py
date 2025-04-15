@@ -225,6 +225,20 @@ class _BaseSystem(metaclass=_SingletonMeta):
         language_code, encoding = _locale.getdefaultlocale()
         return language_code, encoding
 
+    def is_hidden(self, filepath: str | _Path) -> bool:
+        """Check if a file is hidden based on OS-specific rules."""
+        if self.os in {"Linux", "Darwin", "FreeBSD"}:
+            return _os.path.basename(filepath).startswith(".")
+        elif self.os == "Windows":
+            try:
+                FILE_ATTRIBUTE_HIDDEN = 0x02
+                attrs = _ctypes.windll.kernel32.GetFileAttributesW(str(filepath))
+                return bool(attrs & FILE_ATTRIBUTE_HIDDEN)
+            except Exception as e:
+                print(f"Error checking hidden status on Windows: {e}")
+                return False
+        return False
+
     def hide_file(self, filepath: str | _Path) -> bool:
         """
         Hides a file by renaming it or setting the hidden attribute, depending on the operating system.
@@ -280,6 +294,29 @@ class _BaseSystem(metaclass=_SingletonMeta):
             except Exception as e:
                 print(f"Error hiding the file on Windows: {e}")
                 return False
+        print(f"Unsupported OS: {self.os}")
+        return False
+
+    def unhide_file(self, filepath: str | _Path) -> bool:
+        """Unhides a file based on OS."""
+        if self.os in {"Linux", "Darwin", "FreeBSD"}:
+            base = _os.path.basename(filepath)
+            if not base.startswith("."):
+                return False  # Already unhidden
+
+            unhidden_path = _os.path.join(_os.path.dirname(filepath), base.lstrip("."))
+            _os.rename(filepath, unhidden_path)
+            return True
+
+        elif self.os == "Windows":
+            try:
+                FILE_ATTRIBUTE_NORMAL = 0x80
+                result = _ctypes.windll.kernel32.SetFileAttributesW(str(filepath), FILE_ATTRIBUTE_NORMAL)
+                return bool(result)
+            except Exception as e:
+                print(f"Error unhiding the file on Windows: {e}")
+                return False
+
         print(f"Unsupported OS: {self.os}")
         return False
 
@@ -781,7 +818,7 @@ class _BaseSystem(metaclass=_SingletonMeta):
             raise NotImplementedError(f"Unsupported system: {self.os}")
 
 
-BaseSystemType: _BaseSystem = _BaseSystem
+BaseSystemType = _BaseSystem
 
 
 class _WindowsSystem(_BaseSystem):
@@ -943,7 +980,7 @@ class _WindowsSystem(_BaseSystem):
         else:
             print("You are not on a default windows machine")
 
-    def get_battery_status(self) -> dict[str, float | int | bool]:
+    def get_battery_status(self) -> dict[str, float | int | bool] | None:
         """
         Get the battery status on a Windows system, including battery percentage, time left, and charging status.
 
@@ -954,6 +991,7 @@ class _WindowsSystem(_BaseSystem):
         battery = _psutil.sensors_battery()
         if battery:
             return {"percent": battery.percent, "secsleft": battery.secsleft, "power_plugged": battery.power_plugged}
+        return None
 
     def get_appdata_directory(self, app_dir: str, scope: _ty.Literal["user", "global"] = "global") -> str:
         """
@@ -1265,7 +1303,7 @@ class _FreeBSDSystem(_LinuxSystem):
         return language_code or _os.getenv('LANG', 'en_US'), encoding
 
 
-def get_system() -> _WindowsSystem | _DarwinSystem | _LinuxSystem | _FreeBSDSystem | _BaseSystem:
+def get_system() -> BaseSystemType:
     """Gets the appropriate system instance based on the operating system."""
     os_name = _platform.system()
     if os_name == "Windows":

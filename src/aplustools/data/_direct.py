@@ -1,9 +1,10 @@
 """TBA"""
+import inspect as _inspect
 import json as _json
 import re as _re
 
 from ..package import enforce_hard_deps as _enforce_hard_deps
-from ..package.argumint import analyze_function as _analyze_function
+from ..package.argumint import analyze_function as _analyze_function, NoDefault as _NoDefault
 
 # Standard typing imports for aps
 import typing_extensions as _te
@@ -664,38 +665,119 @@ def cutoff_string(string: str, max_chars_start: int = 4, max_chars_end: int = 0,
     return "".join(truncated_list)
 
 
-def what_func(func: _ts.FunctionType, type_names: bool = False, print_def: bool = True) -> str:
+_TYPE_ALIASES = {
+    id(val): f"types.{name}"
+    for name, val in vars(_ts).items()
+    if isinstance(val, type) and not name.startswith("_")
+}
+def format_type(tp: _ty.Any, show_origin: bool = False) -> str:
+    """Recursively formats any type into a string"""
+    alias: str | None = _TYPE_ALIASES.get(id(tp))
+    if alias is not None:
+        if show_origin:
+            return alias
+        return alias.rsplit(".", maxsplit=1)[1]
+
+    if isinstance(tp, list):
+        output = []
+        for type_ in tp:
+            output.append(format_type(type_, show_origin))
+        return "[" + ", ".join(output) + "]"
+
+    origin: _ty.ParamSpec | None = _ty.get_origin(tp)
+    args: tuple[_ty.Any, ...] = _ty.get_args(tp)
+
+    # Handle generics like list[int]
+    if origin is not None:
+        origin_str: str = format_type(origin, show_origin=show_origin)
+        args_str = ", ".join(format_type(arg, show_origin=show_origin) for arg in args)
+        return f"{origin_str}[{args_str}]"
+    # Dunder methods as a fallback for base types
+    if _inspect.isclass(tp):
+        if tp.__module__ == "builtins":
+            return tp.__qualname__
+        if show_origin:
+            return f"{tp.__module__}.{tp.__qualname__}"
+        return tp.__qualname__
+    # Handle special cases
+    if callable(tp) and hasattr(tp, "__name__") and hasattr(tp, "__module__"):
+        if show_origin:
+            return f"{tp.__module__}.{tp.__name__}"
+        return str(tp.__name__)
+    # Last fallback
+    return repr(tp)
+
+
+def what_func(func: _a.Callable, type_names: bool = True, show_type_origin: bool = False,
+              show_method_origin: bool = False, print_def: bool = True) -> str:
     """
     Analyzes the passed function, formats it into a nice string and optionally prints it.
 
     :param func:
     :param type_names:
+    :param show_type_origin:
+    :param show_method_origin:
     :param print_def:
     :return:
     """
+    if hasattr(func, "__func__"):
+        func = func.__func__
+    elif not isinstance(func, _ts.FunctionType):
+        raise ValueError(f"Only a real function can be analyzed, not '{func}'")
     analysis = _analyze_function(func)
 
-    def _get_type_name(t: _ty.Any) -> str | None:
-        if hasattr(t, '__origin__') and t.__origin__ is _ty.Union or type(t) is _ty.Union and type(None) in t.__args__:  # type: ignore
-            non_none_types = [arg for arg in t.__args__ if arg is not type(None)]
-            return f"{t.__name__}[{', '.join(_get_type_name(arg) for arg in non_none_types)}]"  # type: ignore
-        return t.__name__ if hasattr(t, '__name__') else (type(t).__name__ if t is not None else None)
+    formatted_arguments: list[str] = []
 
-    arguments_str = ''.join([f"{argument['name']}: "  # type: ignore 
-                             f"{(_get_type_name(argument['type']) or type(argument['default']).__name__) if type_names else _get_type_name(argument['type']) or type(argument['default'])}"  # type: ignore 
-                             f" = {argument['default']}, " for argument in analysis["arguments"]])[:-2]  # type: ignore
-    definition = f"{func.__module__}.{analysis['name']}({arguments_str}){(' -> ' + str(analysis['return_type'])) if analysis['return_type'] is not None else ''}"
+    arguments: list[dict[str, str]] = analysis["arguments"]  # type: ignore
+    for argument in arguments:
+        type_ = argument['type']
+        formatted_type: str
+        if type_ is None:
+            formatted_type = ""
+        elif type_names:
+            formatted_type = f": {format_type(type_, show_type_origin)}"
+        else:
+            formatted_type = ""
+            # if not isinstance(argument['default'], _NoDefault):
+            #     formatted_type = f" #{type(argument['default'])}#"
+            #     formatted_type = f": {type_}"
+            # else:
+            #     formatted_type = f": {type(argument['default'])}"
+        if isinstance(argument['default'], _NoDefault):
+            formatted_argument = f"{argument['name']}{formatted_type}"
+        else:
+            formatted_argument = f"{argument['name']}{formatted_type} = {repr(argument['default'])}"
+        formatted_arguments.append(formatted_argument)
+    origin = f"{func.__module__}." if show_method_origin else ""
+    arguments_str: str = ", ".join(formatted_arguments)
+    return_type = analysis['return_type']
+    formatted_return_type: str = " -> "
+    if type_names:
+        if return_type is None:
+            formatted_return_type += "None"
+        else:
+            formatted_return_type += format_type(return_type, show_type_origin)
+    else:
+        formatted_return_type = ""  # formatted_return_type += str(return_type)
+    definition: str = f"{origin}{analysis['name']}({arguments_str}){formatted_return_type}"
     if print_def:
         print(definition)
     return definition
 
 
-def what_class(cls: _ty.Type[_ty.Any], type_names: bool = False, print_def: bool = True) -> str:
+# TODO: Show parent class, repeat inherited methods -> method origin show where inherited from (also in what func?) add docstring + max docstring length
+def what_class(cls: _ty.Type[_ty.Any], spaced_methods: bool = False, type_names: bool = True,
+               show_type_origin: bool = False, show_method_origin: bool = False, show_cls_origin: bool = False,
+               print_def: bool = True) -> str:
     """
     Analyzes the passed class, formats it into a string, and optionally prints it.
 
     :param cls:
+    :param spaced_methods:
     :param type_names:
+    :param show_type_origin:
+    :param show_method_origin:
+    :param show_cls_origin:
     :param print_def:
     :return:
     """
@@ -703,16 +785,66 @@ def what_class(cls: _ty.Type[_ty.Any], type_names: bool = False, print_def: bool
     methods = [attr for attr in dir(cls) if callable(getattr(cls, attr)) and (not attr.startswith("_") or
                                                                               (attr == "__init__"))]
 
-    class_def = [f"{class_name}:"]
-    where = "???"
+    class_def = [f"{class_name}:\n"]
+    where = f"{cls.__module__}." if show_cls_origin else ""
     for method in methods:
-        where, method_def = what_func(getattr(cls, method), type_names=type_names,
-                                      print_def=False).split(".", maxsplit=1)
+        try:
+            method_def = what_func(getattr(cls, method), type_names=type_names, show_type_origin=show_type_origin,
+                                   show_method_origin=show_method_origin, print_def=False)
+        except Exception as e:
+            method_def = f"Unknown: {e}"
         class_def.append(f"    {method_def}\n")
 
-    class_def[0] = "class " + where + "." + class_def[0]
-    result = "\n".join(class_def)
+    class_def[0] = "class " + where + class_def[0]
+    if spaced_methods:
+        result = "\n".join(class_def)
+    else:
+        result = "".join(class_def)
 
     if print_def:
         print(result)
     return result
+
+
+def what_module(module: _ts.ModuleType, spaced: bool = True, spaced_methods: bool = False, type_names: bool = True,
+                show_type_origin: bool = False, show_method_origin: bool = False, show_cls_origin: bool = False,
+                print_def: bool = True) -> str:
+    """
+    Analyzes the passed module, formats it into a string, and optionally prints it.
+
+    :param module:
+    :param spaced:
+    :param spaced_methods:
+    :param type_names:
+    :param show_type_origin:
+    :param show_method_origin:
+    :param show_cls_origin:
+    :param print_def:
+    :return:
+    """
+
+    result = []
+    for item in dir(module):
+        if item.startswith("_"):
+            continue
+        object_ = getattr(module, item)
+        if hasattr(object_, "__func__"):
+            object_ = object_.__func__
+        if _inspect.isclass(object_):
+            result.append(what_class(object_, spaced_methods=spaced_methods, type_names=type_names,
+                                     show_type_origin=show_type_origin, show_method_origin=show_method_origin,
+                                     show_cls_origin=show_cls_origin, print_def=False))
+        elif _inspect.isfunction(object_):
+            result.append(what_func(object_, type_names=type_names, show_type_origin=show_type_origin,
+                                    show_method_origin=show_method_origin, print_def=False) + "\n")
+        else:
+            type_ = f"Unknown type '{object_}'"
+            print(type_)
+            result.append(type_)
+    if spaced:
+        finished = "\n".join(result)
+    else:
+        finished = "".join(result)
+    if print_def:
+        print(finished)
+    return finished
