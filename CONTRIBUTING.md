@@ -8,7 +8,7 @@ Thank you for your interest in contributing to `aplustools`! We welcome contribu
     - Click on the 'Fork' button at the top right corner of the repository page to create a copy of the repository in your GitHub account.
     
 2. **Clone the Repository**:
-    - Clone your forked repository to your local machine using `git clone https://github.com/your-username/aplustools.git`
+    - Clone your forked repository to your local machine using `git clone https://github.com/adalfarus/aplustools.git`
 
 3. **Set Up a Virtual Environment**:
     - It's a good practice to create a virtual environment for the project. You can create a virtual environment using `python -m venv env`.
