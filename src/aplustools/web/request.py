@@ -3,9 +3,9 @@ from ssl import create_default_context as _create_default_context
 from http.client import HTTPSConnection as _HTTPSConnection
 import concurrent.futures as _concurrent_futures
 from urllib.parse import urlparse as _urlparse
-import requests as _requests
-import asyncio as _asyncio
-import certifi as _certifi
+import requests
+import asyncio
+import certifi
 
 from ..io.concurrency import LazyDynamicThreadPoolExecutor as _LazyDynamicThreadPoolExecutor
 from ..package import enforce_hard_deps as _enforce_hard_deps
@@ -30,7 +30,7 @@ def _get_data_manual(url: str, method: str = "GET", data: _ty.Any = None) -> byt
     """
     Internal method to fetch the data from a URL using HTTPSConnection and SSL context.
     """
-    context = _create_default_context(cafile=_certifi.where())
+    context = _create_default_context(cafile=certifi.where())
     parsed_url = _urlparse(url)
 
     if parsed_url.hostname is None:
@@ -62,9 +62,9 @@ def _get_data(url: str, method: str = "GET", data: _ty.Any = None) -> bytes:
     try:
         # Handle GET and POST requests; add other methods if needed.
         if method == "GET":
-            response = _requests.get(url)
+            response = requests.get(url)
         elif method == "POST":
-            response = _requests.post(url, data=data)
+            response = requests.post(url, data=data)
         else:
             raise ValueError(f"HTTP method '{method}' is not supported.")
 
@@ -73,7 +73,7 @@ def _get_data(url: str, method: str = "GET", data: _ty.Any = None) -> bytes:
 
         return response.content  # Return the raw bytes from the response
 
-    except _requests.exceptions.RequestException as e:
+    except requests.exceptions.RequestException as e:
         print(f"An error occurred while fetching {url}: {e}")
         return b""  # Return empty bytes in case of an error
 
@@ -293,7 +293,7 @@ class UnifiedRequestHandlerAdvanced:
         if _aiohttp is None:
             raise RuntimeError("AIOHttp is not installed")
         self.session: _aiohttp.ClientSession | None = None
-        self.loop: _asyncio.AbstractEventLoop | None = None
+        self.loop: asyncio.AbstractEventLoop | None = None
 
     async def _initialize_session(self) -> None:
         if not self.session:
@@ -307,25 +307,25 @@ class UnifiedRequestHandlerAdvanced:
         await self._initialize_session()
         return await self._get_data(url, method, data)
 
-    async def _request_many_async(self, urls: list[str], method: str = "GET", data: _ty.Any = None) -> _asyncio.gather:
+    async def _request_many_async(self, urls: list[str], method: str = "GET", data: _ty.Any = None) -> asyncio.gather:
         await self._initialize_session()
-        tasks = [_asyncio.create_task(self._get_data(url, method, data)) for url in urls]
-        return await _asyncio.gather(*tasks)
+        tasks = [asyncio.create_task(self._get_data(url, method, data)) for url in urls]
+        return await asyncio.gather(*tasks)
 
-    def _get_or_create_event_loop(self) -> _asyncio.AbstractEventLoop:
+    def _get_or_create_event_loop(self) -> asyncio.AbstractEventLoop:
         """
         Get the running event loop or create a new one if none exists.
         """
         try:
             # Try to get the running event loop
-            loop = _asyncio.get_running_loop()
+            loop = asyncio.get_running_loop()
             if loop.is_closed():
                 raise RuntimeError("Event loop is closed")
             return loop
         except RuntimeError:
             # No running event loop, create a new one
             if self.loop is None:
-                self.loop = _asyncio.new_event_loop()
+                self.loop = asyncio.new_event_loop()
             return self.loop
 
     def _run_in_event_loop(self, coro: _ty.Any) -> _ty.Any:

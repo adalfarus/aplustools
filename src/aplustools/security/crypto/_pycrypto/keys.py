@@ -12,25 +12,25 @@ import warnings
 import secrets
 
 
-from ..algorithms import Sym, ASym, _ECCCurve, KeyDerivationFunction, MessageAuthenticationCode, _ECCType
-from .._keys import _BASIC_KEY, _BASIC_KEYPAIR
-from ..backends import Backend
+from .._algorithms import Sym, ASym, ECCCurve, KeyDerivationFunction, MessageAuthenticationCode, ECCType
+from .._algorithms import _BASIC_KEYTYPE, _BASIC_KEYPAIRTYPE
+from .._backends import Backend
 from ..exceptions import NotSupportedError
 
 _ECC_TYPE_MAPPING = {
-    _ECCType.ECDSA: 'ECDSA',
-    _ECCType.Ed25519: 'Ed25519',
-    _ECCType.Ed448: 'Ed448',
-    _ECCType.X25519: 'X25519',
-    _ECCType.X448: 'X448'
+    ECCType.ECDSA: 'ECDSA',
+    ECCType.Ed25519: 'Ed25519',
+    ECCType.Ed448: 'Ed448',
+    ECCType.X25519: 'X25519',
+    ECCType.X448: 'X448'
 }
 _ECC_CURVE_CONVERSION = {
-    _ECCCurve.SECP192R1: 'P-192',
-    _ECCCurve.SECP224R1: 'P-224',
-    _ECCCurve.SECP256K1: 'secp256k1',
-    _ECCCurve.SECP256R1: 'P-256',
-    _ECCCurve.SECP384R1: 'P-384',
-    _ECCCurve.SECP521R1: 'P-521'
+    ECCCurve.SECP192R1: 'P-192',
+    ECCCurve.SECP224R1: 'P-224',
+    ECCCurve.SECP256K1: 'secp256k1',
+    ECCCurve.SECP256R1: 'P-256',
+    ECCCurve.SECP384R1: 'P-384',
+    ECCCurve.SECP521R1: 'P-521'
 }
 _SYM_OPERATION_CONVERSION = {
     Sym.Operation.ECB: AES.MODE_ECB,
@@ -62,12 +62,49 @@ _CIPHER_MODULE_MAPPING = {
 }
 
 
-class _BASIC_PYCRYPTO_KEY(_BASIC_KEY):
+class _BASIC_PYCRYPTO_KEY(_BASIC_KEYTYPE):
+    cipher_type = Sym
+    cipher = None
     backend = Backend.pycryptodomex
 
+    def __init__(self, key: bytes, original_key: str) -> None:
+        self._key: bytes = key
+        self._original_key: str = original_key
 
-class _BASIC_PYCRYPTO_KEYPAIR(_BASIC_KEYPAIR):
+    def get_key(self) -> bytes:
+        """Get the key"""
+        return self._key
+
+    def get_original_key(self) -> str:
+        """Get the original key used to generate the key"""
+        return self._original_key
+
+    def __bytes__(self) -> bytes:
+        return self._key
+
+    def __str__(self) -> str:
+        return self._key.hex()
+
+    def __repr__(self) -> str:
+        return str(self)
+
+
+class _BASIC_PYCRYPTO_KEYPAIR(_BASIC_KEYPAIRTYPE):
+    cipher_type = ASym
+    cipher = None
     backend = Backend.pycryptodomex
+
+    def __init__(self, private_key, public_key) -> None:
+        self._private_key = private_key
+        self._public_key = public_key
+
+    def get_private_key(self):
+        """Returns the private key"""
+        return self._private_key
+
+    def get_public_key(self):
+        """Returns the public key"""
+        return self._public_key
 
     def get_private_bytes(self) -> bytes:
         """Returns the private key in a byte format"""
@@ -76,6 +113,15 @@ class _BASIC_PYCRYPTO_KEYPAIR(_BASIC_KEYPAIR):
     def get_public_bytes(self) -> bytes:
         """Returns the public key in a byte format"""
         return self._public_key.export_key(format='PEM')
+
+    def __bytes__(self) -> bytes:
+        return self.get_public_bytes()
+
+    def __str__(self) -> str:
+        return bytes(self).decode()
+
+    def __repr__(self) -> str:
+        return str(self)
 
 
 class _AES_KEY(_BASIC_PYCRYPTO_KEY):

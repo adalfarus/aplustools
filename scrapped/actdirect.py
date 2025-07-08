@@ -6,20 +6,18 @@ import sys as _sys
 import os as _os
 import re as _re
 
-from .qtquick import QQuickMessageBox as _QQuickMessageBox
-from .env import get_system as _get_system, SystemTheme as _SystemTheme
-from . import ActLogger
-from ..package import enforce_hard_deps as _enforce_hard_deps
-from ..data.storage import (StorageMedium, JSONStorage, SQLite3Storage, BinaryStorage,
-                            SimpleStorageMedium, SimpleJSONStorage, SimpleSQLite3Storage, SimpleBinaryStorage)
+from scrapped.qtquick import QQuickMessageBox as _QQuickMessageBox
+from src.aplustools.io.env import get_system as _get_system, SystemTheme as _SystemTheme
+from src.aplustools.io import ActLogger
+from src.aplustools.package import enforce_hard_deps as _enforce_hard_deps
+from src.aplustools.data.storage import (StorageMedium, JSONStorage, SQLite3Storage, BinaryStorage,
+                                         SimpleStorageMedium, SimpleJSONStorage, SimpleSQLite3Storage, SimpleBinaryStorage)
 
 # Standard typing imports for aps
-import typing_extensions as _te
 import collections.abc as _a
 import typing as _ty
 if _ty.TYPE_CHECKING:
-    import _typeshed as _tsh
-import types as _ts
+    pass
 
 __deps__: list[str] = []
 __hard_deps__: list[str] = ["PySide6>=6.7.0"]

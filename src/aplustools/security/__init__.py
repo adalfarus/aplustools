@@ -11,7 +11,6 @@ if _TYPE_CHECKING:
 _setup_lazy_loaders(
     globals(),
     {
-        #"prot": ".security.prot",
         "rand": ".security.rand",
         "passwords": ".security.passwords",
         "crypto": ".security.crypto"

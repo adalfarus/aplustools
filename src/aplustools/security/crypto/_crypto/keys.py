@@ -10,36 +10,36 @@ import warnings
 import secrets
 import os
 
-from .._keys import _BASIC_KEY, _BASIC_KEYPAIR
-from ..algorithms import Sym, ASym, _ECCCurve, _ECCType, KeyDerivationFunction, MessageAuthenticationCode
-from ..backends import Backend
+from .._algorithms import _BASIC_KEYTYPE, _BASIC_KEYPAIRTYPE
+from .._algorithms import Sym, ASym, ECCCurve, ECCType, KeyDerivationFunction, MessageAuthenticationCode
+from .._backends import Backend
 from ..exceptions import NotSupportedError
 
 
 _ECC_CURVE_CONVERSION = {
-    _ECCCurve.SECP192R1: ec.SECP192R1,
-    _ECCCurve.SECP224R1: ec.SECP224R1,
-    _ECCCurve.SECP256K1: ec.SECP256K1,
-    _ECCCurve.SECP256R1: ec.SECP256R1,  # Default
-    _ECCCurve.SECP384R1: ec.SECP384R1,
-    _ECCCurve.SECP521R1: ec.SECP521R1,
-    _ECCCurve.SECT163K1: ec.SECT163K1,
-    _ECCCurve.SECT163R2: ec.SECT163R2,
-    _ECCCurve.SECT233K1: ec.SECT233K1,
-    _ECCCurve.SECT233R1: ec.SECT233R1,
-    _ECCCurve.SECT283K1: ec.SECT283K1,
-    _ECCCurve.SECT283R1: ec.SECT283R1,
-    _ECCCurve.SECT409K1: ec.SECT409K1,
-    _ECCCurve.SECT409R1: ec.SECT409R1,
-    _ECCCurve.SECT571K1: ec.SECT571K1,
-    _ECCCurve.SECT571R1: ec.SECT571R1
+    ECCCurve.SECP192R1: ec.SECP192R1,
+    ECCCurve.SECP224R1: ec.SECP224R1,
+    ECCCurve.SECP256K1: ec.SECP256K1,
+    ECCCurve.SECP256R1: ec.SECP256R1,  # Default
+    ECCCurve.SECP384R1: ec.SECP384R1,
+    ECCCurve.SECP521R1: ec.SECP521R1,
+    ECCCurve.SECT163K1: ec.SECT163K1,
+    ECCCurve.SECT163R2: ec.SECT163R2,
+    ECCCurve.SECT233K1: ec.SECT233K1,
+    ECCCurve.SECT233R1: ec.SECT233R1,
+    ECCCurve.SECT283K1: ec.SECT283K1,
+    ECCCurve.SECT283R1: ec.SECT283R1,
+    ECCCurve.SECT409K1: ec.SECT409K1,
+    ECCCurve.SECT409R1: ec.SECT409R1,
+    ECCCurve.SECT571K1: ec.SECT571K1,
+    ECCCurve.SECT571R1: ec.SECT571R1
 }
 _ECC_TYPE_CONVERSION = {
-    _ECCType.ECDSA: _ECCType.ECDSA,  # Catch this before conversion
-    _ECCType.Ed25519: ed25519.Ed25519PrivateKey,
-    _ECCType.Ed448: ed448.Ed448PrivateKey,
-    _ECCType.X25519: x25519.X25519PrivateKey,
-    _ECCType.X448: x448.X448PrivateKey
+    ECCType.ECDSA: ECCType.ECDSA,  # Catch this before conversion
+    ECCType.Ed25519: ed25519.Ed25519PrivateKey,
+    ECCType.Ed448: ed448.Ed448PrivateKey,
+    ECCType.X25519: x25519.X25519PrivateKey,
+    ECCType.X448: x448.X448PrivateKey
 }
 _SYM_OPERATION_CONVERSION = {
     Sym.Operation.ECB: modes.ECB,  # Electronic Codebook
@@ -72,12 +72,49 @@ _ASYM_PADDING_CONVERSION = {
 }
 
 
-class _BASIC_CRYPTO_KEY(_BASIC_KEY):
+class _BASIC_CRYPTO_KEY(_BASIC_KEYTYPE):
+    cipher_type = Sym
+    cipher = None
     backend = Backend.cryptography
 
+    def __init__(self, key: bytes, original_key: str) -> None:
+        self._key: bytes = key
+        self._original_key: str = original_key
 
-class _BASIC_CRYPTO_KEYPAIR(_BASIC_KEYPAIR):
+    def get_key(self) -> bytes:
+        """Get the key"""
+        return self._key
+
+    def get_original_key(self) -> str:
+        """Get the original key used to generate the key"""
+        return self._original_key
+
+    def __bytes__(self) -> bytes:
+        return self._key
+
+    def __str__(self) -> str:
+        return self._key.hex()
+
+    def __repr__(self) -> str:
+        return str(self)
+
+
+class _BASIC_CRYPTO_KEYPAIR(_BASIC_KEYPAIRTYPE):
+    cipher_type = ASym
+    cipher = None
     backend = Backend.cryptography
+
+    def __init__(self, private_key, public_key) -> None:
+        self._private_key = private_key
+        self._public_key = public_key
+
+    def get_private_key(self):
+        """Returns the private key"""
+        return self._private_key
+
+    def get_public_key(self):
+        """Returns the public key"""
+        return self._public_key
 
     @staticmethod
     def _load_pem_private_key(key_to_load: bytes | str):
@@ -101,6 +138,15 @@ class _BASIC_CRYPTO_KEYPAIR(_BASIC_KEYPAIR):
             encoding=serialization.Encoding.PEM,
             format=serialization.PublicFormat.SubjectPublicKeyInfo
         )
+
+    def __bytes__(self) -> bytes:
+        return self.get_public_bytes()
+
+    def __str__(self) -> str:
+        return bytes(self).decode()
+
+    def __repr__(self) -> str:
+        return str(self)
 
 
 class _AES_KEY(_BASIC_CRYPTO_KEY):
@@ -317,14 +363,14 @@ class _DSA_KEYPAIR(_BASIC_CRYPTO_KEYPAIR):
 class _ECC_KEYPAIR(_BASIC_CRYPTO_KEYPAIR):
     cipher = ASym.Cipher.ECC
 
-    def __init__(self, ecc_type: _ECCType = _ECCType.ECDSA,
+    def __init__(self, ecc_type: ECCType = ECCType.ECDSA,
                  ecc_curve: Optional[ec.SECP192R1 | ec.SECP224R1 | ec.SECP256K1 | ec.SECP256R1 |
                                      ec.SECP384R1 | ec.SECP521R1 | ec.SECT163K1 | ec.SECT163R2 |
                                      ec.SECT233K1 | ec.SECT233R1 | ec.SECT283K1 | ec.SECT283R1 |
-                                     ec.SECT409K1 | ec.SECT409R1 | ec.SECT571K1 | ec.SECT571R1] = _ECCCurve.SECP256R1,
+                                     ec.SECT409K1 | ec.SECT409R1 | ec.SECT571K1 | ec.SECT571R1] = ECCCurve.SECP256R1,
                  private_key: Optional[bytes | str] = None):
         if private_key is None:
-            if ecc_type == _ECCType.ECDSA:
+            if ecc_type == ECCType.ECDSA:
                 _private_key = ec.generate_private_key(_ECC_CURVE_CONVERSION[ecc_curve]())
             else:
                 if ecc_curve is not None:

@@ -4,7 +4,7 @@ from pathlib import Path as PLPath
 from tempfile import mkdtemp
 import os
 
-from .algorithms import Sym, ASym
+from ._algorithms import Sym, ASym, _BASIC_KEYTYPE, _BASIC_KEYPAIRTYPE
 
 # Standard typing imports for aps
 import typing_extensions as _te
@@ -21,44 +21,17 @@ try:
     from quantcrypt.kdf import Argon2, KKDF
     from quantcrypt import errors
 except ImportError:
-    Kyber = KryptonKEM = Dilithium = Argon2 = errors = None
+    Kyber = KryptonKEM = Dilithium = Argon2 = KKDF = errors = None
 
 
-class _BASIC_KEY:
-    cipher_type = Sym
-    cipher = None
-    backend = None
+# TODO: Move to _fallbacks
+class _KYBER_KEYPAIR(_BASIC_KEYPAIRTYPE):
+    cipher = ASym.Cipher.KYBER  # type: ignore
 
-    def __init__(self, key: bytes, original_key: str) -> None:
-        self._key: bytes = key
-        self._original_key: str = original_key
-
-    def get_key(self) -> bytes:
-        """Get the key"""
-        return self._key
-
-    def get_original_key(self) -> str:
-        """Get the original key used to generate the key"""
-        return self._original_key
-
-    def __bytes__(self) -> bytes:
-        return self._key
-
-    def __str__(self) -> str:
-        return self._key.hex()
-
-    def __repr__(self) -> str:
-        return str(self)
-
-
-class _BASIC_KEYPAIR:
-    cipher_type = ASym
-    cipher = None
-    backend = None
-
-    def __init__(self, private_key, public_key) -> None:
-        self._private_key = private_key
-        self._public_key = public_key
+    def __init__(self):
+        if Kyber is None:
+            raise EnvironmentError("Module QuantCrypt is not installed.")
+        self._public_key, self._private_key = Kyber().keygen()
 
     def get_private_key(self):
         """Returns the private key"""
@@ -67,33 +40,6 @@ class _BASIC_KEYPAIR:
     def get_public_key(self):
         """Returns the public key"""
         return self._public_key
-
-    def get_private_bytes(self) -> bytes:
-        """Returns the private key in a byte format"""
-        raise NotImplementedError()
-
-    def get_public_bytes(self) -> bytes:
-        """Returns the public key in a byte format"""
-        raise NotImplementedError()
-
-    def __bytes__(self) -> bytes:
-        return self.get_public_bytes()
-
-    def __str__(self) -> str:
-        return bytes(self).decode()
-
-    def __repr__(self) -> str:
-        return str(self)
-
-
-class _KYBER_KEYPAIR(_BASIC_KEYPAIR):
-    cipher = ASym.Cipher.KYBER  # type: ignore
-
-    def __init__(self):
-        if Kyber is None:
-            raise EnvironmentError("Module QuantCrypt is not installed.")
-        _public_key, _private_key = Kyber().keygen()
-        super().__init__(_private_key, _public_key)
 
     def get_private_bytes(self) -> bytes:
         """Returns the private key in a byte format"""
@@ -181,18 +127,39 @@ class _KYBER_KEYPAIR(_BASIC_KEYPAIR):
         shutil.rmtree(temp_dir)
         return content
 
+    def __bytes__(self) -> bytes:
+        return self.get_public_bytes()
+
     def __str__(self):
         return self.get_public_bytes().hex()
 
+    def __repr__(self) -> str:
+        return str(self)
 
-class _DILITHIUM_KEYPAIR(_BASIC_KEYPAIR):
+
+class _DILITHIUM_KEYPAIR(_BASIC_KEYPAIRTYPE):
     cipher = ASym.Cipher.DILITHIUM  # type: ignore
 
     def __init__(self) -> None:
         if Dilithium is None:
             raise EnvironmentError("Module QuantCrypt is not installed.")
-        _public_key, _private_key = Dilithium().keygen()
-        super().__init__(_private_key, _public_key)
+        self._public_key, self._private_key = Dilithium().keygen()
+
+    def get_private_key(self):
+        """Returns the private key"""
+        return self._private_key
+
+    def get_public_key(self):
+        """Returns the public key"""
+        return self._public_key
+
+    def get_private_bytes(self) -> bytes:
+        """Returns the private key in a byte format"""
+        return self._private_key
+
+    def get_public_bytes(self) -> bytes:
+        """Returns the public key in a byte format"""
+        return self._public_key
 
     def sign(self, message: bytes) -> bytes | None:
         if Dilithium is None:
@@ -210,5 +177,12 @@ class _DILITHIUM_KEYPAIR(_BASIC_KEYPAIR):
         except errors.DSSVerifyFailedError:
             return False
 
+    def __bytes__(self) -> bytes:
+        return self.get_public_bytes()
+
     def __str__(self) -> str:
         return self.get_public_bytes().hex()
+
+    def __repr__(self) -> str:
+        return str(self)
+

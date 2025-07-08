@@ -1,9 +1,9 @@
 """TBA"""
-import time as _time
-import mmap as _mmap
-import uuid as _uuid
-import os as _os
-import shutil as _shutil
+import time
+import mmap
+import uuid
+import os
+import shutil
 
 from .env import get_system as _get_system
 from ..data import align_to_next as _align_to_next
@@ -41,7 +41,7 @@ def is_fd_open(fd: int) -> bool:
         `True` if the file descriptor is open, `False` if it is closed.
     """
     try:
-        _os.fstat(fd)
+        os.fstat(fd)
         return True  # If fstat succeeds, the fd is open
     except OSError:
         return False  # If OSError occurs, the fd is closed
@@ -102,7 +102,7 @@ class BasicFileLock:
         Returns:
             bool: True if the file is locked, False otherwise.
         """
-        return _os.path.exists(self.lock_filepath)
+        return os.path.exists(self.lock_filepath)
 
     def __enter__(self) -> _ty.IO | _ty.BinaryIO | None:
         """
@@ -112,8 +112,8 @@ class BasicFileLock:
         Returns:
             _ty.IO | _ty.BinaryIO | None: An opened file object in the specified mode (if open_mode is provided), or None.
         """
-        while _os.path.exists(self.lock_filepath):
-            _time.sleep(self.check_interval)
+        while os.path.exists(self.lock_filepath):
+            time.sleep(self.check_interval)
 
         open(self.lock_filepath, "w").close()
         if self.open_mode is not None:
@@ -128,8 +128,8 @@ class BasicFileLock:
         if self.file is not None:
             self.file.close()
             self.file = None
-        if _os.path.exists(self.lock_filepath):
-            _os.remove(self.lock_filepath)
+        if os.path.exists(self.lock_filepath):
+            os.remove(self.lock_filepath)
 
 
 class BasicFDWrapper:
@@ -139,9 +139,9 @@ class BasicFDWrapper:
     This class wraps an existing file descriptor and provides higher-level
     file operations like read, write, seek, and close.
     """
-    SEEK_SET = _os.SEEK_SET
-    SEEK_CUR = _os.SEEK_CUR
-    SEEK_END = _os.SEEK_END
+    SEEK_SET = os.SEEK_SET
+    SEEK_CUR = os.SEEK_CUR
+    SEEK_END = os.SEEK_END
 
     def __init__(self, fd: int, close_fd: bool = True) -> None:
         """
@@ -168,13 +168,13 @@ class BasicFDWrapper:
             # If size is -1, read all content until EOF
             chunks = []
             while True:
-                chunk = _os.read(self.fd, 1024)
+                chunk = os.read(self.fd, 1024)
                 if not chunk:
                     break
                 chunks.append(chunk)
             return b''.join(chunks)
         else:
-            return _os.read(self.fd, size)
+            return os.read(self.fd, size)
 
     def write(self, data: bytes) -> int:
         """
@@ -186,9 +186,9 @@ class BasicFDWrapper:
         Returns:
             int: The number of bytes written.
         """
-        return _os.write(self.fd, data)
+        return os.write(self.fd, data)
 
-    def seek(self, offset: int, whence: int = _os.SEEK_SET) -> int:
+    def seek(self, offset: int, whence: int = os.SEEK_SET) -> int:
         """
         Moves the file descriptor's read/write position.
 
@@ -199,7 +199,7 @@ class BasicFDWrapper:
         Returns:
             int: The new absolute position.
         """
-        return _os.lseek(self.fd, offset, whence)
+        return os.lseek(self.fd, offset, whence)
 
     def tell(self) -> int:
         """
@@ -208,7 +208,7 @@ class BasicFDWrapper:
         Returns:
             int: The current file offset.
         """
-        return _os.lseek(self.fd, 0, _os.SEEK_CUR)
+        return os.lseek(self.fd, 0, os.SEEK_CUR)
 
     def truncate(self, size: int | None = None) -> None:
         """
@@ -220,17 +220,17 @@ class BasicFDWrapper:
         """
         if size is None:
             # If size is not specified, truncate at the current position of the file pointer
-            size = _os.lseek(self.fd, 0, _os.SEEK_CUR)  # Get the current file position
+            size = os.lseek(self.fd, 0, os.SEEK_CUR)  # Get the current file position
 
         # Truncate the file to the specified size
-        _os.ftruncate(self.fd, size)
+        os.ftruncate(self.fd, size)
 
     def close(self) -> None:
         """
         Closes the file descriptor.
         """
         if not self.closed and self.close_fd and is_fd_open(self.fd):
-            _os.close(self.fd)
+            os.close(self.fd)
             self.closed = True
 
     def __enter__(self) -> _ty.Self:
@@ -261,7 +261,7 @@ class BasicFDWrapper:
         Returns:
             bool: True if the file descriptor refers to a terminal, False otherwise.
         """
-        return _os.isatty(self.fd)
+        return os.isatty(self.fd)
 
 
 class OSFileLock:
@@ -283,7 +283,7 @@ class OSFileLock:
         _system: System-specific lock manager (determined based on OS).
     """
 
-    def __init__(self, filepath: str, open_flags: int = _os.O_RDWR | _os.O_CREAT) -> None:
+    def __init__(self, filepath: str, open_flags: int = os.O_RDWR | os.O_CREAT) -> None:
         """
         Initialize the file lock for the given filepath and set up system-specific locking.
 
@@ -311,24 +311,24 @@ class OSFileLock:
 
         if "r" in mode:
             if "+" in mode:
-                flags |= _os.O_RDWR
+                flags |= os.O_RDWR
             else:
-                flags |= _os.O_RDONLY
+                flags |= os.O_RDONLY
         elif "w" in mode:
             if "+" in mode:
-                flags |= _os.O_RDWR | _os.O_CREAT | _os.O_TRUNC
+                flags |= os.O_RDWR | os.O_CREAT | os.O_TRUNC
             else:
-                flags |= _os.O_WRONLY | _os.O_CREAT | _os.O_TRUNC
+                flags |= os.O_WRONLY | os.O_CREAT | os.O_TRUNC
         elif "a" in mode:
             if "+" in mode:
-                flags |= _os.O_RDWR | _os.O_CREAT | _os.O_APPEND
+                flags |= os.O_RDWR | os.O_CREAT | os.O_APPEND
             else:
-                flags |= _os.O_WRONLY | _os.O_CREAT | _os.O_APPEND
+                flags |= os.O_WRONLY | os.O_CREAT | os.O_APPEND
 
         # Handle binary mode
         if "b" in mode:
-            if _os.name == "nt":  # Windows needs O_BINARY for binary mode
-                flags |= _os.O_BINARY
+            if os.name == "nt":  # Windows needs O_BINARY for binary mode
+                flags |= os.O_BINARY
 
         return flags
 
@@ -403,12 +403,12 @@ class os_open(BasicFDWrapper):
             content = file.read()
 
     """
-    RDWR = _os.O_RDWR
-    CREAT = _os.O_CREAT
-    TRUNC = _os.O_TRUNC
-    APPEND = _os.O_APPEND
-    WRONLY = _os.O_WRONLY
-    BINARY = _os.O_BINARY
+    RDWR = os.O_RDWR
+    CREAT = os.O_CREAT
+    TRUNC = os.O_TRUNC
+    APPEND = os.O_APPEND
+    WRONLY = os.O_WRONLY
+    BINARY = os.O_BINARY
 
     def __init__(self, filepath: str,
                  mode: _ty.Literal["r", "rb", "r+", "r+b", "w", "wb", "w+", "w+b", "a", "ab", "a+", "a+b"] = "r",
@@ -475,7 +475,7 @@ class os_open(BasicFDWrapper):
     #     print("[fileio] final read", read_data)
     #     return bytes(read_data)
     #
-    # def seek(self, offset: int, whence: int = _os.SEEK_SET) -> int:
+    # def seek(self, offset: int, whence: int = os.SEEK_SET) -> int:
     #     self.flush()
     #     return super().seek(offset, whence)
     #
@@ -507,9 +507,9 @@ class os_open(BasicFDWrapper):
 
 
 class _FileLockMixin:
-    SEEK_SET = _os.SEEK_SET
-    SEEK_CUR = _os.SEEK_CUR
-    SEEK_END = _os.SEEK_END
+    SEEK_SET = os.SEEK_SET
+    SEEK_CUR = os.SEEK_CUR
+    SEEK_END = os.SEEK_END
 
     def __init__(self, filepath: str, fd: int) -> None:
         self._filepath: str = filepath
@@ -558,7 +558,7 @@ class os_hyper_read(_FileLockMixin):
     def __init__(self, filepath: str, chunk_size: int = (1024 * 1024) * 4,
                  max_buffer_size: int = (1024 * 1024) * 16) -> None:
         raise NotImplementedError(f"This class is not yet ready to be used.")
-        super().__init__(filepath, _os.open(filepath, _os.O_RDONLY))  # Open file in read-only mode
+        super().__init__(filepath, os.open(filepath, os.O_RDONLY))  # Open file in read-only mode
         self._chunk_size: int = chunk_size
         self._max_buffer_size: int = max_buffer_size
         self._buffer: bytearray = bytearray()  # Internal buffer to store chunks
@@ -578,7 +578,7 @@ class os_hyper_read(_FileLockMixin):
         int
             The total size of the file in bytes.
         """
-        return _os.fstat(self._fd).st_size
+        return os.fstat(self._fd).st_size
 
     def _read_chunk(self, offset: int) -> bytes:
         """
@@ -596,8 +596,8 @@ class os_hyper_read(_FileLockMixin):
         bytes
             The chunk of data read from the file.
         """
-        _os.lseek(self._fd, offset, _os.SEEK_SET)  # Seek to the specified offset
-        return _os.read(self._fd, self._chunk_size)  # Read a chunk from the file
+        os.lseek(self._fd, offset, os.SEEK_SET)  # Seek to the specified offset
+        return os.read(self._fd, self._chunk_size)  # Read a chunk from the file
 
     def _fill_buffer(self) -> None:
         """
@@ -772,7 +772,7 @@ class os_hyper_read(_FileLockMixin):
         are released when the object is deleted.
         """
         if is_fd_open(self._fd):
-            _os.close(self._fd)
+            os.close(self._fd)
 
     def __enter__(self) -> _ty.Self:
         return self
@@ -798,13 +798,13 @@ class os_hyper_write(_FileLockMixin):
     def __init__(self, filepath: str, chunk_size: int = (1024 * 1024) * 4,
                  max_buffer_size: int = (1024 * 1024) * 16) -> None:
         raise NotImplementedError(f"This class is not yet ready to be used.")
-        super().__init__(filepath, _os.open(filepath, _os.O_RDWR | _os.O_CREAT))
+        super().__init__(filepath, os.open(filepath, os.O_RDWR | os.O_CREAT))
         self._chunk_size: int = _align_to_next(chunk_size, self._page_size) or self._page_size
         self._max_buffer_size: int = _align_to_next(max_buffer_size, self._chunk_size) or self._chunk_size
 
         self._offset = self._buffer_start = self._buffer_end = 0
         self.dirty: bool = False
-        self._mmap_obj: _mmap.mmap | None = None
+        self._mmap_obj: mmap.mmap | None = None
         self._map_region(self._offset)
 
     def _get_file_size(self) -> int:
@@ -816,7 +816,7 @@ class os_hyper_write(_FileLockMixin):
         int
             The total size of the file in bytes.
         """
-        return _os.fstat(self._fd).st_size
+        return os.fstat(self._fd).st_size
 
     def _flush_mmap(self) -> None:
         """
@@ -857,7 +857,7 @@ class os_hyper_write(_FileLockMixin):
             if was_locked:
                 self._release_lock(range(self._buffer_start, self._buffer_end))
             self._acquire_write_lock(range(offset, new_file_size))
-            _os.truncate(self._fd, new_file_size)
+            os.truncate(self._fd, new_file_size)
             self._release_lock(range(offset, new_file_size))
             if was_locked:
                 self._acquire_read_lock(range(self._buffer_start, self._buffer_end))
@@ -887,9 +887,9 @@ class os_hyper_write(_FileLockMixin):
         self._acquire_read_lock(byte_range)  # Lock only the current chunk
 
         # Create the mmap object for the specified region
-        self._mmap_obj = _mmap.mmap(self._fd, self._chunk_size,
+        self._mmap_obj = mmap.mmap(self._fd, self._chunk_size,
                                     # prot=mmap.PROT_WRITE | mmap.PROT_READ,
-                                    access=_mmap.ACCESS_DEFAULT,
+                                    access=mmap.ACCESS_DEFAULT,
                                     offset=self._buffer_start)
         self.dirty = False
         self._offset = 0
@@ -1080,7 +1080,7 @@ class os_hyper_write(_FileLockMixin):
         if self._locked:  # If we aren't locked, we aren't opened.
             self._release_lock(range(self._buffer_start, self._buffer_end), release_fd=True)
         elif is_fd_open(self._fd):
-            _os.close(self._fd)
+            os.close(self._fd)
 
     def __enter__(self) -> _ty.Self:
         return self
@@ -1165,22 +1165,22 @@ class SafeFileWriter:
 
     def __init__(self, path: str, open_func: _a.Callable[[str, str], FileIOType] | _ty.Type,
                  mode: _ty.Literal["virtual", "copy_on_close", "switch_on_close"] = "copy_on_close") -> None:
-        if not _os.path.exists(path):
+        if not os.path.exists(path):
             open(path, "w").close()
         self._mode: str = mode
-        self._curr_open_obj: FileIOType | _mmap.mmap | None = None
+        self._curr_open_obj: FileIOType | mmap.mmap | None = None
         self._path: str = path
-        self._temppath: str = f"{path}.{_uuid.uuid4().hex}.tempwrite"
+        self._temppath: str = f"{path}.{uuid.uuid4().hex}.tempwrite"
         self._closed: bool = False
 
         if mode == "virtual":
             self._open_obj: FileIOType = open_func(path, "r+")
-            file_size = _os.path.getsize(path)
+            file_size = os.path.getsize(path)
             if file_size == 0:  # Handle empty files
                 raise ValueError("Cannot use 'virtual' mode on an empty file.")
-            self._curr_open_obj = _mmap.mmap(self._open_obj.fileno(), file_size)
+            self._curr_open_obj = mmap.mmap(self._open_obj.fileno(), file_size)
         elif mode == "copy_on_close" or mode == "switch_on_close":
-            _shutil.copy(self._path, self._temppath)  # Prevent locking
+            shutil.copy(self._path, self._temppath)  # Prevent locking
             self._open_obj: FileIOType = open_func(path, "r+")
             self._curr_open_obj = open_func(self._temppath, "r+")
         else:
@@ -1272,17 +1272,17 @@ class SafeFileWriter:
             self._open_obj.write(content)
             self._curr_open_obj.close()
             self._open_obj.close()
-            _os.remove(self._temppath)
+            os.remove(self._temppath)
         elif self._mode == "switch_on_close":
             self._curr_open_obj.close()
             try:
-                _os.remove(self._path)
-                _os.rename(self._temppath, self._path)
+                os.remove(self._path)
+                os.rename(self._temppath, self._path)
             except OSError:
                 # We're on windows
                 self._open_obj.close()  # Someone else can lock the file right here leading to corruption
-                _os.remove(self._path)
-                _os.rename(self._temppath, self._path)
+                os.remove(self._path)
+                os.rename(self._temppath, self._path)
             else:  # We're on posix, we can now safely release the lock
                 self._open_obj.close()  # This only works on posix
 

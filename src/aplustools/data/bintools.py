@@ -1,10 +1,8 @@
 """TBA"""
 import warnings
-from collections import OrderedDict as _OrderedDict
-from threading import Lock as _Lock
-import struct as _struct
-import math as _math
-import sys as _sys
+import struct
+import math
+import sys
 
 from ..package import enforce_hard_deps as _enforce_hard_deps
 from . import cutoff_iterable as _cutoff_iterable
@@ -54,14 +52,14 @@ def encode_float(fp: float, precision: _ty.Literal["half", "single", "double", "
             raise RuntimeError(f"You need to have numpy to encode a 16-bit float")
         return _np.float16(fp).tobytes()
     elif precision == "single":  # 32-bit float
-        return _struct.pack(">f", fp)
+        return struct.pack(">f", fp)
     elif precision == "double":  # 64-bit float
-        return _struct.pack(">d", fp)
+        return struct.pack(">d", fp)
     elif precision == "quad":  # 128-bit float (if supported)
-        if _sys.maxsize > 2**32:
+        if sys.maxsize > 2**32:
             try:
-                return _struct.pack(">e", fp)
-            except _struct.error:
+                return struct.pack(">e", fp)
+            except struct.error:
                 raise ValueError("128-bit floats are not supported on this system.")
         else:
             raise ValueError("128-bit floats are not supported on this system.")
@@ -97,14 +95,14 @@ def decode_float(bytes_like: bytes, precision: _ty.Literal["half", "single", "do
             raise RuntimeError(f"You need to have numpy to decode a 16-bit float")
         return _np.frombuffer(bytes_like, dtype=_np.float16)[0]
     elif precision == "single":  # 32-bit float
-        return _struct.unpack(">f", bytes_like)[0]
+        return struct.unpack(">f", bytes_like)[0]
     elif precision == "double":  # 64-bit float
-        return _struct.unpack(">d", bytes_like)[0]
+        return struct.unpack(">d", bytes_like)[0]
     elif precision == "quad":  # 128-bit float (if supported)
-        if _sys.maxsize > 2**32:
+        if sys.maxsize > 2**32:
             try:
-                return _struct.unpack(">e", bytes_like)[0]
-            except _struct.error:
+                return struct.unpack(">e", bytes_like)[0]
+            except struct.error:
                 raise ValueError("128-bit floats are not supported on this system.")
         else:
             raise ValueError("128-bit floats are not supported on this system.")
@@ -252,7 +250,7 @@ def expected_varint_length_bytecount(x: int) -> int:
         raise ValueError("Varint encoding doesn't support negative values.")
     if x == 0:
         return 1
-    return _math.ceil(_math.log2(x + 1) / 7)
+    return math.ceil(math.log2(x + 1) / 7)
 
 
 def to_varint_length(x: int) -> bytes:
@@ -349,9 +347,9 @@ def expected_progressive_length_bytecount(length_of_x: int) -> int:
     cx: int  # Ceiling length (what we actually add in bytes)
     x = cx = abs(length_of_x)
     while x > 1:
-        x = _math.log(cx, 256) + 0.125  # 1/8 as a float
+        x = math.log(cx, 256) + 0.125  # 1/8 as a float
         # x = (math.log(cx, 2) / 8) + 0.125  # This is noticeably a little slower, by around 00.01->00.02 seconds.
-        cx = _math.ceil(x)
+        cx = math.ceil(x)
         total += cx
     return total or 1  # Handle cases where length_of_x == 0
 

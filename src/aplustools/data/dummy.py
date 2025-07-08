@@ -1,5 +1,5 @@
 """TBA"""
-import sys as _sys
+import sys
 
 from ..package import enforce_hard_deps as _enforce_hard_deps
 
@@ -232,7 +232,7 @@ class Dummy2(DummyBase):
 
     def __init__(self, *args: _ty.Any, **kwargs: _ty.Any) -> None:
         """Initialize the Dummy2 class and raise an error if not used in Python 2."""
-        if _sys.version[0] != "2":
+        if sys.version[0] != "2":
             raise RuntimeError("Please only use Dummy2 for Python 2")
 
     def __div__(self, other: _ty.Any) -> 'DummyBase':
@@ -275,7 +275,7 @@ class Dummy3(DummyBase):
 
     def __init__(self, *args: _ty.Any, **kwargs: _ty.Any) -> None:
         """Initialize the Dummy3 class and raise an error if not used in Python 3."""
-        if _sys.version[0] != "3":
+        if sys.version[0] != "3":
             raise RuntimeError("Please only use Dummy3 for Python 3")
 
     def __index__(self) -> int:

@@ -1,7 +1,7 @@
 """TBA"""
-import inspect as _inspect
-import json as _json
-import re as _re
+import inspect
+import json
+import re
 
 from ..package import enforce_hard_deps as _enforce_hard_deps
 from ..package.argumint import analyze_function as _analyze_function, NoDefault as _NoDefault
@@ -391,8 +391,8 @@ def beautify_json(data_dict: dict[str, _ty.Any]) -> str:
         str: The beautified JSON string.
     """
     # Convert dictionary to a pretty-printed JSON string using custom serializer
-    pretty_json = _json.dumps(data_dict, indent=4, sort_keys=False, default=_custom_serializer)
-    pretty_json = _re.sub(
+    pretty_json = json.dumps(data_dict, indent=4, sort_keys=False, default=_custom_serializer)
+    pretty_json = re.sub(
         r'\[\s+([^][]+?)\s+]',
         lambda m: f"[{', '.join(item.strip() for item in m.group(1).split(','))}]",
         pretty_json
@@ -693,7 +693,7 @@ def format_type(tp: _ty.Any, show_origin: bool = False) -> str:
         args_str = ", ".join(format_type(arg, show_origin=show_origin) for arg in args)
         return f"{origin_str}[{args_str}]"
     # Dunder methods as a fallback for base types
-    if _inspect.isclass(tp):
+    if inspect.isclass(tp):
         if tp.__module__ == "builtins":
             return tp.__qualname__
         if show_origin:
@@ -830,11 +830,11 @@ def what_module(module: _ts.ModuleType, spaced: bool = True, spaced_methods: boo
         object_ = getattr(module, item)
         if hasattr(object_, "__func__"):
             object_ = object_.__func__
-        if _inspect.isclass(object_):
+        if inspect.isclass(object_):
             result.append(what_class(object_, spaced_methods=spaced_methods, type_names=type_names,
                                      show_type_origin=show_type_origin, show_method_origin=show_method_origin,
                                      show_cls_origin=show_cls_origin, print_def=False))
-        elif _inspect.isfunction(object_):
+        elif inspect.isfunction(object_):
             result.append(what_func(object_, type_names=type_names, show_type_origin=show_type_origin,
                                     show_method_origin=show_method_origin, print_def=False) + "\n")
         else:

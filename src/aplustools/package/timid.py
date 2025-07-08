@@ -46,14 +46,14 @@ Usage Example:
     To use a basic timer:
     >>> timer = BasicTimer(auto_start=True)
     >>> timer.tick()
-    >>> _time.sleep(1)
+    >>> time.sleep(1)
     >>> timer.tock()
     >>> print(timer.get())
 
     For an advanced timer with tick-tock:
     >>> timid_timer = TimidTimer()
     >>> timid_timer.start()
-    >>> _time.sleep(1)
+    >>> time.sleep(1)
     >>> timid_timer.tock()
     >>> print(timid_timer.tally())
 
@@ -69,11 +69,11 @@ Note:
 """
 from datetime import timedelta as _timedelta, datetime as _datetime
 from timeit import default_timer as _default_timer
-import time as _time
+import time
 
-import threading as _threading
-import pickle as _pickle
-import math as _math
+import threading
+import pickle
+import math
 
 from ..package import optional_import as _optional_import, enforce_hard_deps as _enforce_hard_deps
 # from ..io.concurrency import ThreadSafeList as _ThreadSafeList  # Circular import
@@ -148,7 +148,7 @@ class _ThreadSafeList(list):
     """
     def __init__(self, *args):
         super().__init__(*args)
-        self._lock = _threading.Lock()
+        self._lock = threading.Lock()
 
     def append(self, item: _ty.Any) -> None:
         """Append object to the end of the list."""
@@ -554,13 +554,13 @@ class BasicTimer:
             raise RuntimeError("Cannot start a timer that has been ended.")
         if self.is_stopped:
             # Overwrite the current timer
-            self.start_time = _time.time()
+            self.start_time = time.time()
             self.is_stopped = False
             self.stop_time = None
             self.tick_tocks = []
             self.pause_duration = 0
         elif self.start_time is None:
-            self.start_time = _time.time()
+            self.start_time = time.time()
         else:
             raise RuntimeError("Timer is already running.")
         return self
@@ -573,7 +573,7 @@ class BasicTimer:
         Returns:
             self: The current BasicTimer instance for method chaining.
         """
-        tick_time = _time.time()
+        tick_time = time.time()
         if self.is_ended:
             raise RuntimeError("Cannot record time on a timer that has been ended.")
         if self.start_time is not None:
@@ -590,7 +590,7 @@ class BasicTimer:
         Returns:
             self: The current BasicTimer instance for method chaining.
         """
-        tock_time = _time.time()
+        tock_time = time.time()
         if self.is_ended:
             raise RuntimeError("Cannot record time on a timer that has been ended.")
         if self.start_time is not None:
@@ -642,7 +642,7 @@ class BasicTimer:
         """
         if self.start_time is None:
             return None
-        elapsed_time = (self.stop_time or _time.time()) - self.start_time - self.pause_duration
+        elapsed_time = (self.stop_time or time.time()) - self.start_time - self.pause_duration
         return _timedelta(seconds=elapsed_time)
 
     def stop(self) -> _ty.Self:
@@ -656,7 +656,7 @@ class BasicTimer:
         if self.is_stopped:
             raise RuntimeError("Timer is already stopped.")
         if self.start_time is not None:
-            self.stop_time = _time.time()
+            self.stop_time = time.time()
             self.is_stopped = True
         else:
             raise RuntimeError("Timer has not been started.")
@@ -675,7 +675,7 @@ class BasicTimer:
         if self.pause_start_time is not None:
             raise RuntimeError("Timer is already paused.")
         if self.start_time is not None:
-            self.pause_start_time = _time.time()
+            self.pause_start_time = time.time()
         else:
             raise RuntimeError("Timer has not been started.")
         return self
@@ -692,7 +692,7 @@ class BasicTimer:
             raise RuntimeError("Timer is not paused.")
         if self.is_ended:
             raise RuntimeError("Cannot resume a timer that has been ended.")
-        pause_end_time = _time.time()
+        pause_end_time = time.time()
         self.pause_duration += pause_end_time - self.pause_start_time
         self.pause_start_time = None
         return self
@@ -826,7 +826,7 @@ class PreciseTimeDelta:
         minutes, seconds = divmod(remainder, self.SECONDS_IN_MINUTE)
 
         # Get the fractional seconds with high precision
-        fractional_seconds = round(total_seconds - _math.floor(total_seconds), self.max_precision)
+        fractional_seconds = round(total_seconds - math.floor(total_seconds), self.max_precision)
 
         # Adjust precision dynamically based on the fractional part
         if fractional_seconds > 0:
@@ -975,7 +975,7 @@ class TimidTimer:
     Attributes:
         EMPTY (tuple): A constant tuple representing an empty timer slot.
     """
-    EMPTY: tuple[_TimeType, _TimeType, _TimeType, _ty.Optional[_threading.Lock]] = (0, 0, 0, None)
+    EMPTY: tuple[_TimeType, _TimeType, _TimeType, _ty.Optional[threading.Lock]] = (0, 0, 0, None)
     SENTINEL = object()
     _tracked_timers = _ThreadSafeList()
 
@@ -987,10 +987,10 @@ class TimidTimer:
             start_at (float or int, optional): The initial starting point of the timer. Defaults to 0.
             start_now (bool, optional): If True, the timer starts immediately. Defaults to True.
         """
-        self._fires: list[tuple[_threading.Thread | None, _threading.Event | None]] = _ThreadSafeList()
-        self._times: list[tuple[_TimeType, _TimeType, _TimeType, _threading.Lock | None] | None] = _ThreadSafeList()
+        self._fires: list[tuple[threading.Thread | None, threading.Event | None]] = _ThreadSafeList()
+        self._times: list[tuple[_TimeType, _TimeType, _TimeType, threading.Lock | None] | None] = _ThreadSafeList()
         self._tick_tocks: list[list[_TimeType | tuple[_TimeType, _TimeType]]] = _ThreadSafeList()
-        self._thread_data: _threading.local = _threading.local()
+        self._thread_data: threading.local = threading.local()
 
         if start_now:
             self._warmup()
@@ -1076,7 +1076,7 @@ class TimidTimer:
                 self._times.extend([self.EMPTY] * length_to_extend)
                 self._tick_tocks.extend([[] for _ in range(length_to_extend)])
             if self._times[index] is self.EMPTY:
-                self._times[index] = (start_time + (start_at * 1e9), 0, 0, _threading.Lock())
+                self._times[index] = (start_time + (start_at * 1e9), 0, 0, threading.Lock())
                 self._tick_tocks[index].clear()  # List is always already here.
             else:
                 raise Exception(f"A Timer already running on index {index}")
@@ -1643,7 +1643,7 @@ class TimidTimer:
         diff = target_datetime - current_datetime
 
         # Schedule task
-        _threading.Timer(diff.total_seconds(), callback, args or (f"Timer for {time_str} is over.",), kwargs or {}).start()
+        threading.Timer(diff.total_seconds(), callback, args or (f"Timer for {time_str} is over.",), kwargs or {}).start()
 
     def save_state(self) -> bytes:
         """
@@ -1656,7 +1656,7 @@ class TimidTimer:
             "_times": self._times,
             "_tick_tocks": self._tick_tocks,
         }
-        return _pickle.dumps(state)
+        return pickle.dumps(state)
 
     def load_state(self, state_bytes: bytes) -> None:
         """
@@ -1665,7 +1665,7 @@ class TimidTimer:
         Args:
             state_bytes (bytes): The serialized state to load.
         """
-        state = _pickle.loads(state_bytes)
+        state = pickle.loads(state_bytes)
         self._times = state["_times"]
         self._tick_tocks = state["_tick_tocks"]
 
@@ -1700,7 +1700,7 @@ class TimidTimer:
 
     @classmethod
     def _trigger(cls, interval: _TimeType, function, args: tuple, kwargs: dict, iterations: int,
-                 stop_event: _threading.Event = _threading.Event()) -> None:
+                 stop_event: threading.Event = threading.Event()) -> None:
         """
         A helper function to trigger a function at specified intervals, with a specified number of iterations.
 
@@ -1726,7 +1726,7 @@ class TimidTimer:
 
     @classmethod
     def _trigger_ms(cls, interval_ms: _TimeType, function, args: tuple, kwargs: dict, iterations: int,
-                    stop_event: _threading.Event = _threading.Event()) -> None:
+                    stop_event: threading.Event = threading.Event()) -> None:
         """
         A helper function to trigger a function at specified intervals in milliseconds, with a specified number of iterations.
 
@@ -1752,7 +1752,7 @@ class TimidTimer:
 
     @classmethod
     def _long_trigger(cls, interval: _TimeType, function, args: tuple, kwargs: dict, iterations: int,
-                      stop_event: _threading.Event = _threading.Event()) -> None:
+                      stop_event: threading.Event = threading.Event()) -> None:
         """
         A helper function to trigger a function at specified intervals indefinitely or for a specified number of iterations.
 
@@ -1777,12 +1777,12 @@ class TimidTimer:
 
                 iterations -= 1
                 # Reschedule the function
-                _threading.Timer(interval, _trigger_function).start()
+                threading.Timer(interval, _trigger_function).start()
             except SystemExit:
                 pass
 
         # Start the initial function call
-        _threading.Timer(interval, _trigger_function).start()
+        threading.Timer(interval, _trigger_function).start()
 
     @classmethod
     def single_shot(cls, wait_time: _TimeType, function: _a.Callable, args: tuple[_ty.Any, ...] = (),
@@ -1802,7 +1802,7 @@ class TimidTimer:
         """
         if kwargs is None:
             kwargs = {}
-        _threading.Thread(target=cls._trigger, kwargs={
+        threading.Thread(target=cls._trigger, kwargs={
             "interval": wait_time, "function": function, "args": args, "kwargs": kwargs, "iterations": 1
         }, daemon=daemon).start()
         return cls
@@ -1825,7 +1825,7 @@ class TimidTimer:
         """
         if kwargs is None:
             kwargs = {}
-        _threading.Thread(target=cls._trigger_ms, kwargs={
+        threading.Thread(target=cls._trigger_ms, kwargs={
             "interval_ms": wait_time_ms, "functions": function, "args": args, "kwargs": kwargs, "iterations": 1
         }, daemon=daemon).start()
         return cls
@@ -1870,7 +1870,7 @@ class TimidTimer:
         """
         if kwargs is None:
             kwargs = {}
-        _threading.Thread(target=cls._trigger, kwargs={
+        threading.Thread(target=cls._trigger, kwargs={
             "interval": interval, "function": function, "args": args, "kwargs": kwargs, "iterations": iterations
         }, daemon=daemon).start()
         return cls
@@ -1895,7 +1895,7 @@ class TimidTimer:
         """
         if kwargs is None:
             kwargs = {}
-        _threading.Thread(target=cls._trigger_ms, kwargs={
+        threading.Thread(target=cls._trigger_ms, kwargs={
             "interval_ms": interval_ms, "function": function, "args": args, "kwargs": kwargs, "iterations": iterations
         }, daemon=daemon).start()
         return cls
@@ -1944,8 +1944,8 @@ class TimidTimer:
         while len(self._fires) < index:
             self._fires.append((None, None))
 
-        event = _threading.Event()
-        thread = _threading.Thread(target=self._trigger, kwargs={
+        event = threading.Event()
+        thread = threading.Thread(target=self._trigger, kwargs={
             "interval": interval, "function": function, "args": args, "kwargs": kwargs, "iterations": -1,
             "stop_event": event
         }, daemon=daemon)
@@ -1980,8 +1980,8 @@ class TimidTimer:
         while len(self._fires) < index:
             self._fires.append((None, None))
 
-        event = _threading.Event()
-        thread = _threading.Thread(target=self._trigger_ms, kwargs={
+        event = threading.Event()
+        thread = threading.Thread(target=self._trigger_ms, kwargs={
             "interval_ms": interval_ms, "function": function, "args": args, "kwargs": kwargs, "iterations": -1,
             "stop_event": event
         }, daemon=daemon)
@@ -2015,7 +2015,7 @@ class TimidTimer:
         while len(self._fires) < index:
             self._fires.append((None, None))
 
-        event = _threading.Event()
+        event = threading.Event()
         self._long_trigger(interval=interval, function=function, args=args, kwargs=kwargs, iterations=-1,
                            stop_event=event)
 
@@ -2155,7 +2155,7 @@ class TimidTimer:
         Returns:
             TimidTimer: The class itself.
         """
-        _time.sleep(seconds)
+        time.sleep(seconds)
         return cls
 
     @classmethod
@@ -2172,7 +2172,7 @@ class TimidTimer:
         wanted_time = cls._time() + (milliseconds * 1e+6)
         while cls._time() < wanted_time:
             if wanted_time - cls._time() > 1_000_000:  # 3_000_000
-                _time.sleep(0.001)
+                time.sleep(0.001)
             else:
                 continue
         return cls
@@ -2375,16 +2375,16 @@ class TimidTimer:
         self.stop_fire(amount=len(self._fires))
 
 
-TimeTimer: _ty.Type[TimidTimer] = TimidTimer.setup_timer_func(_time.time, 1e9)
-TimeTimerNS: _ty.Type[TimidTimer] = TimidTimer.setup_timer_func(_time.time_ns, 1)
-PerfTimer: _ty.Type[TimidTimer] = TimidTimer.setup_timer_func(_time.perf_counter, 1e9)
-PerfTimerNS: _ty.Type[TimidTimer] = TimidTimer.setup_timer_func(_time.perf_counter_ns, 1)
-CPUTimer: _ty.Type[TimidTimer] = TimidTimer.setup_timer_func(_time.process_time, 1e9)
-CPUTimerNS: _ty.Type[TimidTimer] = TimidTimer.setup_timer_func(_time.process_time_ns, 1)
-MonotonicTimer: _ty.Type[TimidTimer] = TimidTimer.setup_timer_func(_time.monotonic, 1e9)
-MonotonicTimerNS: _ty.Type[TimidTimer] = TimidTimer.setup_timer_func(_time.monotonic_ns, 1)
-ThreadTimer: _ty.Type[TimidTimer] = TimidTimer.setup_timer_func(_time.thread_time, 1e9)
-ThreadTimerNS: _ty.Type[TimidTimer] = TimidTimer.setup_timer_func(_time.thread_time_ns, 1)
+TimeTimer: _ty.Type[TimidTimer] = TimidTimer.setup_timer_func(time.time, 1e9)
+TimeTimerNS: _ty.Type[TimidTimer] = TimidTimer.setup_timer_func(time.time_ns, 1)
+PerfTimer: _ty.Type[TimidTimer] = TimidTimer.setup_timer_func(time.perf_counter, 1e9)
+PerfTimerNS: _ty.Type[TimidTimer] = TimidTimer.setup_timer_func(time.perf_counter_ns, 1)
+CPUTimer: _ty.Type[TimidTimer] = TimidTimer.setup_timer_func(time.process_time, 1e9)
+CPUTimerNS: _ty.Type[TimidTimer] = TimidTimer.setup_timer_func(time.process_time_ns, 1)
+MonotonicTimer: _ty.Type[TimidTimer] = TimidTimer.setup_timer_func(time.monotonic, 1e9)
+MonotonicTimerNS: _ty.Type[TimidTimer] = TimidTimer.setup_timer_func(time.monotonic_ns, 1)
+ThreadTimer: _ty.Type[TimidTimer] = TimidTimer.setup_timer_func(time.thread_time, 1e9)
+ThreadTimerNS: _ty.Type[TimidTimer] = TimidTimer.setup_timer_func(time.thread_time_ns, 1)
 
 
 class DateTimeTimer(TimidTimer):

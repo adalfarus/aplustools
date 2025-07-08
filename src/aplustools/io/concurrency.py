@@ -1,4 +1,5 @@
 """TBA"""
+import typing
 from concurrent.futures import ThreadPoolExecutor as _ThreadPoolExecutor, Future as _Future
 # We basically need to change the way the threads work and thus need these
 from concurrent.futures.thread import _threads_queues, _shutdown, _base
@@ -6,9 +7,9 @@ from threading import Event as _Event, Lock as _TLock, Thread as _Thread, curren
 from multiprocessing.shared_memory import SharedMemory as _SharedMemory
 from multiprocessing.synchronize import RLock as _RMLockT
 from multiprocessing import RLock as _RMLock
-from queue import Empty as _Empty
-import weakref as _weakref
-import struct as _struct
+import weakref
+import struct
+import queue
 
 from .env import MAX_PATH  # as a reference to be importable from here too
 from .env import auto_repr as _auto_repr
@@ -44,7 +45,7 @@ class SharedStruct:
         if any([len(x) > 1 for x in struct_format.split(" ")]):
             raise RuntimeError("You need to leave a space after each entry in the struct format")
         self._struct_format: str = struct_format
-        self._struct_size: int = _struct.calcsize(struct_format)
+        self._struct_size: int = struct.calcsize(struct_format)
 
         if isinstance(overwrite_mp_lock, _RMLockT):
             self._lock: _RMLockT = overwrite_mp_lock
@@ -67,7 +68,7 @@ class SharedStruct:
         if len(values) != len(self._struct_format.replace(" ", "")):
             raise ValueError("Number of values must match the struct format")
         with self._lock:
-            packed_data = _struct.pack(self._struct_format, *values)
+            packed_data = struct.pack(self._struct_format, *values)
             self._shm.buf[:self._struct_size] = packed_data
 
     def get_data(self) -> tuple[_ty.Any, ...]:
@@ -77,7 +78,7 @@ class SharedStruct:
         """
         with self._lock:
             packed_data = self._shm.buf[:self._struct_size]
-            return _struct.unpack(self._struct_format, packed_data)
+            return struct.unpack(self._struct_format, packed_data)
 
     def set_field(self, index: int, value: _ty.Any) -> None:
         """
@@ -89,11 +90,11 @@ class SharedStruct:
         if index < 0 or index >= len(format_parts):
             raise IndexError("Field index out of range")
         # Calculate offset for the field based on the format
-        offset = sum(_struct.calcsize(fmt) for fmt in format_parts[:index])
+        offset = sum(struct.calcsize(fmt) for fmt in format_parts[:index])
         field_format = format_parts[index]
-        field_size = _struct.calcsize(field_format)
+        field_size = struct.calcsize(field_format)
         with self._lock:
-            packed_field = _struct.pack(field_format, value)
+            packed_field = struct.pack(field_format, value)
             self._shm.buf[offset:offset + field_size] = packed_field
 
     def get_field(self, index: int) -> _ty.Any:
@@ -105,12 +106,12 @@ class SharedStruct:
         format_parts = self._struct_format.split()
         if index < 0 or index >= len(format_parts):
             raise IndexError("Field index out of range")
-        offset = sum(_struct.calcsize(fmt) for fmt in format_parts[:index])
+        offset = sum(struct.calcsize(fmt) for fmt in format_parts[:index])
         field_format = format_parts[index]
-        field_size = _struct.calcsize(field_format)
+        field_size = struct.calcsize(field_format)
         with self._lock:
             packed_field = self._shm.buf[offset:offset + field_size]
-            return _struct.unpack(field_format, packed_field)[0]
+            return struct.unpack(field_format, packed_field)[0]
 
     def reference(self) -> SharedReference:
         """References this shared struct in a simpler data structure"""
@@ -156,7 +157,8 @@ class SharedStruct:
                 f"shm_name='{self._shm_name}')")
 
 
-class ThreadSafeList(list):
+_T = _ty.TypeVar("_T")
+class ThreadSafeList(list[_T], _ty.Generic[_T]):
     """
     A thread-safe implementation of a Python list, ensuring that all mutation operations are protected by a lock.
 
@@ -168,115 +170,90 @@ class ThreadSafeList(list):
     race conditions when modifying the list. Read operations such as `__getitem__` and `__len__` are also
     protected for full thread safety, though read-only operations are generally safe unless done concurrently
     with writes.
-
-    Attributes:
-        _lock (_TLock): A threading lock used to synchronize access to the list and prevent race conditions.
-
-    Example:
-        ts_list = ThreadSafeList([1, 2, 3])
-        ts_list.append(4)
-        ts_list.remove(2)
-
-        # Safe iteration over a copy
-        for item in ts_list:
-            print(item)
-
-    Methods:
-        append(item): Thread-safe method for appending an item to the list.
-        remove(item): Thread-safe method for removing the first occurrence of an item.
-        insert(index, item): Thread-safe method for inserting an item at a specific index.
-        pop(index=-1): Thread-safe method for removing and returning an item at the given index (default last).
-        __setitem__(index, value): Thread-safe method for setting the value at a specific index.
-        __delitem__(index): Thread-safe method for deleting the item at a specific index.
-        extend(iterable): Thread-safe method for extending the list with an iterable.
-        sort(*args, **kwargs): Thread-safe method for sorting the list in place.
-        reverse(): Thread-safe method for reversing the list in place.
-        __getitem__(index): Thread-safe method for retrieving the item at the given index.
-        __len__(): Thread-safe method for retrieving the length of the list.
-        __iter__(): Thread-safe method for iterating over the list by returning a copy to avoid modification during iteration.
-
-    Notes:
-        - For full thread safety, both read and write operations are protected by a lock.
-        - When iterating over the list, the `__iter__()` method returns a copy of the list to avoid issues
-          when the list is modified during iteration by another thread.
-        - If additional list methods are required, they should be overridden and wrapped with the lock to
-          ensure thread safety.
-
     """
-    def __init__(self, *args):
-        super().__init__(*args)
-        self._lock = _TLock()
+    def __init__(self, *args: _ty.Any, **kwargs: _ty.Any) -> None:
+        super().__init__(*args, **kwargs)
+        self._lock: _TLock = _TLock()
 
-    def append(self, item: _ty.Any) -> None:
-        """Append object to the end of the list."""
+    def append(self, item: _T) -> None:
         with self._lock:
             super().append(item)
 
-    def remove(self, item: _ty.Any) -> None:
-        """Remove first occurrence of value.
-
-Raises ValueError if the value is not present."""
-        with self._lock:
-            super().remove(item)
-
-    def insert(self, index: int, item: _ty.Any) -> None:
-        """Insert object before index."""
-        with self._lock:
-            super().insert(index, item)
-
-    def pop(self, index: int = -1) -> _ty.Any:
-        """Remove and return item at index (default last).
-
-Raises IndexError if list is empty or index is out of range."""
-        with self._lock:
-            return super().pop(index)
-
-    def __setitem__(self, index, value):
-        with self._lock:
-            super().__setitem__(index, value)
-
-    def __delitem__(self, index):
-        with self._lock:
-            super().__delitem__(index)
-
-    def extend(self, iterable: _a.Iterable[_ty.Any]) -> None:
-        """Extend list by appending elements from the iterable."""
+    def extend(self, iterable: _ty.Iterable[_T]) -> None:
         with self._lock:
             super().extend(iterable)
 
-    def sort(self, *, key: None = None, reverse: bool = False) -> None:
-        """
-        Sort the list in ascending order and return None.
+    def insert(self, index: int, item: _T) -> None:
+        with self._lock:
+            super().insert(index, item)
 
-        The sort is in-place (i. e. the list itself is modified) and stable (i. e. the order of two equal elements is maintained).
+    def remove(self, item: _T) -> None:
+        with self._lock:
+            super().remove(item)
 
-        If a key function is given, apply it once to each list item and sort them, ascending or descending, according to their function values.
+    def pop(self, index: int = -1) -> _T:
+        with self._lock:
+            return super().pop(index)
 
-        The reverse flag can be set to sort in descending order.
-        """
+    def clear(self) -> None:
+        with self._lock:
+            super().clear()
+
+    def index(self, item: _T, *args) -> int:
+        with self._lock:
+            return super().index(item, *args)
+
+    def count(self, item: _T) -> int:
+        with self._lock:
+            return super().count(item)
+
+    def sort(self, *, key=None, reverse: bool = False) -> None:
         with self._lock:
             super().sort(key=key, reverse=reverse)
 
     def reverse(self) -> None:
-        """ """
         with self._lock:
             super().reverse()
 
-    # Optionally override other methods as needed to ensure thread safety
-    # Reading operations, such as __getitem__, __contains__, len(), etc.,
-    # are usually safe unless done concurrently with writes.
+    def copy(self) -> list[_T]:
+        with self._lock:
+            return super().copy()
 
-    def __getitem__(self, index):
+    def __getitem__(self, index: _ty.Union[int, slice]) -> _ty.Union[_T, list[_T]]:
         with self._lock:
             return super().__getitem__(index)
 
-    def __len__(self):
+    def __setitem__(self, index: _ty.Union[int, slice], value: _ty.Union[_T, _ty.Iterable[_T]]) -> None:
+        with self._lock:
+            super().__setitem__(index, value)
+
+    def __delitem__(self, index: _ty.Union[int, slice]) -> None:
+        with self._lock:
+            super().__delitem__(index)
+
+    def __len__(self) -> int:
         with self._lock:
             return super().__len__()
 
-    def __iter__(self):
+    def __iter__(self) -> _ty.Iterator[_T]:
         with self._lock:
-            return iter(super().copy())  # Returning a copy for thread-safe iteration
+            return iter(super().copy())  # Safe iteration on a copy
+
+    def __contains__(self, item: _T) -> bool:
+        with self._lock:
+            return super().__contains__(item)
+
+    def __eq__(self, other) -> bool:
+        with self._lock:
+            return super().__eq__(other)
+
+    def __repr__(self) -> str:
+        with self._lock:
+            return super().__repr__()
+
+    def __str__(self) -> str:
+        with self._lock:
+            return super().__str__()
 
 
 def _self_managing_worker(executor_reference, work_queue, signal_func: _a.Callable[[_Thread, _Event], None],
@@ -296,7 +273,7 @@ def _self_managing_worker(executor_reference, work_queue, signal_func: _a.Callab
         while True:
             try:
                 work_item = work_queue.get_nowait()
-            except _Empty:
+            except queue.Empty:
                 # attempt to increment idle count if queue is empty
                 executor = executor_reference()
                 if executor is not None:
@@ -429,7 +406,7 @@ class HyperScalingDynamicThreadPoolExecutor(_ThreadPoolExecutor):
             thread_name = '%s_%d' % (self._thread_name_prefix or self,
                                      num_threads)
             t = _Thread(name=thread_name, target=self._worker_func,
-                                 args=(_weakref.ref(self, weakref_cb),
+                                 args=(weakref.ref(self, weakref_cb),
                                        self._work_queue,
                                        self._should_shutdown,
                                        self._initializer,
@@ -481,8 +458,8 @@ def _lazy_worker(executor_reference, work_queue, signal_func: _a.Callable[[_Thre
             try:
                 work_item = work_queue.get_nowait()
                 if work_item is _ExitWorkerFlag:
-                    raise _Empty
-            except _Empty:
+                    raise queue.Empty
+            except queue.Empty:
                 # attempt to increment idle count if queue is empty
                 executor = executor_reference()
                 if executor is not None:

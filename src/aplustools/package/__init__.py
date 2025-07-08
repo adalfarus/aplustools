@@ -24,7 +24,7 @@ from typing import TYPE_CHECKING as _TYPE_CHECKING
 
 if _TYPE_CHECKING:
     from ._direct import *
-    from . import timid
+    from . import timid, argumint
 
 _setup_lazy_loaders(
     globals(),

@@ -6,7 +6,7 @@ import ctypes as _ctypes
 import mmap as _mmap
 import numpy as _np
 
-from ..package import enforce_hard_deps as _enforce_hard_deps
+from src.aplustools.package import enforce_hard_deps as _enforce_hard_deps
 
 # Standard typing imports for aps
 import typing_extensions as _te

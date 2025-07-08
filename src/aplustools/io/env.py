@@ -4,23 +4,23 @@ from threading import enumerate as _threading_enumerate
 from multiprocessing import current_process as _multiprocessing_process
 from contextlib import contextmanager as _contextmanager
 from pathlib import Path as _Path
-import subprocess as _subprocess
-from enum import Enum as _Enum
-import tempfile as _tempfile
-import warnings as _warnings
-import platform as _platform
-import inspect as _inspect
-import locale as _locale
-import ctypes as _ctypes
-import shutil as _shutil
-import time as _time
-import sys as _sys
-import os as _os
+import subprocess
+import tempfile
+import warnings
+import platform
+import inspect
+import locale
+import ctypes
+import shutil
+import enum
+import time
+import sys
+import os
 
 try:
     from ctypes.wintypes import MAX_PATH
 except ValueError:  # Raises on linux
-    MAX_PATH = _os.pathconf('/', 'PC_PATH_MAX')
+    MAX_PATH = os.pathconf('/', 'PC_PATH_MAX')
 
 from ..package import optional_import as _optional_import, enforce_hard_deps as _enforce_hard_deps
 from ..data import (SingletonMeta as _SingletonMeta)
@@ -63,7 +63,7 @@ if _win32file is not None:
     _overlapped = _win32file.OVERLAPPED()
 
 
-class SystemTheme(_Enum):
+class SystemTheme(enum.Enum):
     """Used to make system theme information standardized"""
     LIGHT = 2
     DARK = 1
@@ -82,9 +82,9 @@ class _BaseSystem(metaclass=_SingletonMeta):
         Initialize the _BaseSystem with basic OS information, including the OS name, version,
         and major version number.
         """
-        self.os: str = _platform.system()
-        self.os_version: str = _platform.version()
-        self.major_os_version: str = _platform.release()
+        self.os: str = platform.system()
+        self.os_version: str = platform.version()
+        self.major_os_version: str = platform.release()
 
     def get_cpu_arch(self) -> str:
         """
@@ -92,7 +92,7 @@ class _BaseSystem(metaclass=_SingletonMeta):
 
         :return: A string representing the CPU architecture (e.g., 'x86_64', 'arm64').
         """
-        return _platform.machine()
+        return platform.machine()
 
     def get_cpu_brand(self) -> str:
         """
@@ -101,10 +101,10 @@ class _BaseSystem(metaclass=_SingletonMeta):
         :return: A string representing the CPU brand and model. If not supported by the OS, returns 'Unknown'.
         """
         if self.os == "Windows":
-            return _platform.processor()
+            return platform.processor()
         elif self.os == "Linux" or self.os == "Darwin":
             command = "cat /proc/cpuinfo | grep 'model name' | uniq"
-            return _subprocess.check_output(command, shell=True).decode().split(": ")[1].strip()
+            return subprocess.check_output(command, shell=True).decode().split(": ")[1].strip()
         return "Unknown"
 
     def get_gpu_info(self) -> str:
@@ -222,17 +222,17 @@ class _BaseSystem(metaclass=_SingletonMeta):
 
         :return: A tuple containing the language code and the encoding format.
         """
-        language_code, encoding = _locale.getdefaultlocale()
+        language_code, encoding = locale.getdefaultlocale()
         return language_code, encoding
 
     def is_hidden(self, filepath: str | _Path) -> bool:
         """Check if a file is hidden based on OS-specific rules."""
         if self.os in {"Linux", "Darwin", "FreeBSD"}:
-            return _os.path.basename(filepath).startswith(".")
+            return os.path.basename(filepath).startswith(".")
         elif self.os == "Windows":
             try:
                 FILE_ATTRIBUTE_HIDDEN = 0x02
-                attrs = _ctypes.windll.kernel32.GetFileAttributesW(str(filepath))
+                attrs = ctypes.windll.kernel32.GetFileAttributesW(str(filepath))
                 return bool(attrs & FILE_ATTRIBUTE_HIDDEN)
             except Exception as e:
                 print(f"Error checking hidden status on Windows: {e}")
@@ -274,12 +274,12 @@ class _BaseSystem(metaclass=_SingletonMeta):
         """
         if self.os in {"Linux", "Darwin", "FreeBSD"}:
             # Rename the file by adding a dot at the beginning (if not already hidden)
-            base_name = _os.path.basename(filepath)
-            dir_name = _os.path.dirname(filepath)
+            base_name = os.path.basename(filepath)
+            dir_name = os.path.dirname(filepath)
 
             if not base_name.startswith("."):
-                hidden_filepath = _os.path.join(dir_name, "." + base_name)
-                _os.rename(filepath, hidden_filepath)
+                hidden_filepath = os.path.join(dir_name, "." + base_name)
+                os.rename(filepath, hidden_filepath)
                 return True
             return False
         elif self.os == "Windows":
@@ -287,7 +287,7 @@ class _BaseSystem(metaclass=_SingletonMeta):
             FILE_ATTRIBUTE_HIDDEN = 0x02
             try:
                 # Get a handle to the file
-                result = _ctypes.windll.kernel32.SetFileAttributesW(filepath, FILE_ATTRIBUTE_HIDDEN)
+                result = ctypes.windll.kernel32.SetFileAttributesW(filepath, FILE_ATTRIBUTE_HIDDEN)
                 if result:
                     return True
                 return False
@@ -300,18 +300,18 @@ class _BaseSystem(metaclass=_SingletonMeta):
     def unhide_file(self, filepath: str | _Path) -> bool:
         """Unhides a file based on OS."""
         if self.os in {"Linux", "Darwin", "FreeBSD"}:
-            base = _os.path.basename(filepath)
+            base = os.path.basename(filepath)
             if not base.startswith("."):
                 return False  # Already unhidden
 
-            unhidden_path = _os.path.join(_os.path.dirname(filepath), base.lstrip("."))
-            _os.rename(filepath, unhidden_path)
+            unhidden_path = os.path.join(os.path.dirname(filepath), base.lstrip("."))
+            os.rename(filepath, unhidden_path)
             return True
 
         elif self.os == "Windows":
             try:
                 FILE_ATTRIBUTE_NORMAL = 0x80
-                result = _ctypes.windll.kernel32.SetFileAttributesW(str(filepath), FILE_ATTRIBUTE_NORMAL)
+                result = ctypes.windll.kernel32.SetFileAttributesW(str(filepath), FILE_ATTRIBUTE_NORMAL)
                 return bool(result)
             except Exception as e:
                 print(f"Error unhiding the file on Windows: {e}")
@@ -342,10 +342,10 @@ class _BaseSystem(metaclass=_SingletonMeta):
             shared_dir = "/var/lock"
 
             # If /var/lock is not writable (permission denied), fallback to a custom directory
-            if not _os.access(shared_dir, _os.W_OK):
+            if not os.access(shared_dir, os.W_OK):
                 shared_dir = "/srv/shared-locks"  # Replace with a valid shared directory
-                if not _os.path.exists(shared_dir):
-                    _os.makedirs(shared_dir, mode=0o777, exist_ok=True)  # Create directory if it doesn't exist
+                if not os.path.exists(shared_dir):
+                    os.makedirs(shared_dir, mode=0o777, exist_ok=True)  # Create directory if it doesn't exist
         else:
             raise OSError(f"Unsupported operating system: {self.os}")
         return shared_dir
@@ -365,12 +365,12 @@ class _BaseSystem(metaclass=_SingletonMeta):
         shared_dir = self.get_shared_folder()
 
         # Ensure the shared directory exists
-        if not _os.path.exists(shared_dir):
+        if not os.path.exists(shared_dir):
             raise OSError(f"Shared directory does not exist: {shared_dir}")
 
         # Construct the full file path
-        file_path = _os.path.join(shared_dir, filename)
-        if _os.path.exists(file_path):
+        file_path = os.path.join(shared_dir, filename)
+        if os.path.exists(file_path):
             raise OSError(f"The filepath {file_path} already exists.")
 
         try:
@@ -378,7 +378,7 @@ class _BaseSystem(metaclass=_SingletonMeta):
 
             # On Windows, public files are generally shared by default
             if self.os in {"Linux", "Darwin", "FreeBSD"}:
-                _os.chmod(file_path, 0o666)  # Set permissions to Read and write for everyone
+                os.chmod(file_path, 0o666)  # Set permissions to Read and write for everyone
             return file_path
         except PermissionError as e:
             raise PermissionError(f"Failed to create lock file at {file_path}. Permission denied.") from e
@@ -393,11 +393,11 @@ class _BaseSystem(metaclass=_SingletonMeta):
         :return: True if the volume is the OS volume, False otherwise.
         """
         if self.os == "Windows":
-            system_root = _os.environ.get("SystemRoot", "")
+            system_root = os.environ.get("SystemRoot", "")
             return system_root.startswith(volume)
 
         elif self.os in {"Linux", "Darwin", "FreeBSD"}:
-            return _os.path.ismount("/") and _os.path.samefile("/", volume)
+            return os.path.ismount("/") and os.path.samefile("/", volume)
 
         else:
             raise OSError(f"Unsupported operating system: {self.os}")
@@ -426,7 +426,7 @@ class _BaseSystem(metaclass=_SingletonMeta):
             volume_path = f"{volume.upper()}:\\"
 
             if (False in (ord(letter) in range(97, 123) for letter in volume)
-                    or not _os.path.exists(volume_path)):
+                    or not os.path.exists(volume_path)):
                 return False
             return True
         elif self.os in {"Linux", "Darwin", "FreeBSD"}:
@@ -434,12 +434,12 @@ class _BaseSystem(metaclass=_SingletonMeta):
             mount_file = "/proc/mounts" if self.os != "FreeBSD" else "/etc/fstab"
 
             # Normalize the volume path (e.g., /mnt/volume or /dev/sda1)
-            volume_path = _os.path.normpath(volume)
+            volume_path = os.path.normpath(volume)
 
             try:
                 with open(mount_file, "r") as f:
                     mounted_volumes = [line.split()[1] for line in f.readlines()]
-                    if volume in mounted_volumes and _os.path.exists(volume_path):
+                    if volume in mounted_volumes and os.path.exists(volume_path):
                         return True
             except FileNotFoundError:
                 pass
@@ -491,7 +491,7 @@ class _BaseSystem(metaclass=_SingletonMeta):
             raise NotImplementedError(f"Unsupported system: {self.os}")
 
     def lock_file(self, filepath_or_fd: str | int, byte_range: range | None = None, blocking: bool = True, *,
-                  open_flags: int = _os.O_RDWR | _os.O_CREAT, shared_lock: bool = False) -> None | int:
+                  open_flags: int = os.O_RDWR | os.O_CREAT, shared_lock: bool = False) -> None | int:
         """
         Attempt to lock the file for exclusive or shared access, with optional byte-range locking.
 
@@ -511,13 +511,13 @@ class _BaseSystem(metaclass=_SingletonMeta):
         """
         fd = filepath_or_fd
         if isinstance(filepath_or_fd, str):
-            fd: int = _os.open(filepath_or_fd, open_flags)
+            fd: int = os.open(filepath_or_fd, open_flags)
 
         if self.os == "Windows":
             if _win32con is None or _win32file is None:
                 raise RuntimeError("Required dependency is not installed")
             try:
-                old_pos = _os.lseek(fd, 0, _os.SEEK_CUR)
+                old_pos = os.lseek(fd, 0, os.SEEK_CUR)
                 lock_length = -0x10000
                 seek_set = lock_flags = 0
                 file_handle = _msvcrt.get_osfhandle(fd)
@@ -526,11 +526,11 @@ class _BaseSystem(metaclass=_SingletonMeta):
                     seek_set = byte_range.start
                     lock_length = byte_range.stop - byte_range.start
                 if seek_set != old_pos:
-                    _os.lseek(fd, seek_set, _os.SEEK_SET)
+                    os.lseek(fd, seek_set, os.SEEK_SET)
                 if not shared_lock:
                     lock_flags |= _win32con.LOCKFILE_EXCLUSIVE_LOCK
                 else:  # If a shared lock using pywin32 gets opened by PyCharm and something is written than reverted,
-                    lock_length = _os.path.getsize(fd)  # the file is truncated to 0,
+                    lock_length = os.path.getsize(fd)  # the file is truncated to 0,
                     if blocking:  # even though the lock was never lifted. This doesn't happen with msvcrt
                         _msvcrt.locking(fd, _msvcrt.LK_RLCK, lock_length)
                     else:  # Simulate non-blocking shared lock by trying to acquire exclusive lock first
@@ -550,10 +550,10 @@ class _BaseSystem(metaclass=_SingletonMeta):
                         raise OSError("File already locked.") from e
                 finally:
                     if seek_set != old_pos:
-                        _os.lseek(fd, old_pos, _os.SEEK_SET)  # Make sure to respect the position of the open flags
+                        os.lseek(fd, old_pos, os.SEEK_SET)  # Make sure to respect the position of the open flags
                 return fd
             except OSError:
-                _os.close(fd)
+                os.close(fd)
                 return None
         elif self.os in {"Linux", "Darwin", "FreeBSD"}:
             try:
@@ -563,14 +563,14 @@ class _BaseSystem(metaclass=_SingletonMeta):
                 if byte_range is None:
                     _fcntl.flock(fd, lock_type)
                 else:
-                    old_pos = _os.lseek(fd, 0, _os.SEEK_CUR)
-                    _os.lseek(fd, byte_range.start, _os.SEEK_SET)
+                    old_pos = os.lseek(fd, 0, os.SEEK_CUR)
+                    os.lseek(fd, byte_range.start, os.SEEK_SET)
                     lock_length = byte_range.stop - byte_range.start
                     _fcntl.lockf(fd, lock_type, lock_length)
-                    _os.lseek(fd, old_pos, _os.SEEK_SET)  # Make sure to respect the position of the open flags
+                    os.lseek(fd, old_pos, os.SEEK_SET)  # Make sure to respect the position of the open flags
                 return fd
             except BlockingIOError:
-                _os.close(fd)
+                os.close(fd)
                 return None
         else:
             raise NotImplementedError(f"Unsupported system: {self.os}")
@@ -589,7 +589,7 @@ class _BaseSystem(metaclass=_SingletonMeta):
         """
         try:
             if self.os == "Windows":
-                old_pos = _os.lseek(fd, 0, _os.SEEK_CUR)
+                old_pos = os.lseek(fd, 0, os.SEEK_CUR)
                 lock_length = -0x10000
                 seek_set = 0
                 file_handle = _msvcrt.get_osfhandle(fd)
@@ -598,7 +598,7 @@ class _BaseSystem(metaclass=_SingletonMeta):
                     seek_set = byte_range.start
                     lock_length = byte_range.stop - byte_range.start
                 if seek_set != old_pos:
-                    _os.lseek(fd, seek_set, _os.SEEK_SET)
+                    os.lseek(fd, seek_set, os.SEEK_SET)
 
                 try:
                     _win32file.UnlockFileEx(file_handle, 0, lock_length, _overlapped)
@@ -607,20 +607,20 @@ class _BaseSystem(metaclass=_SingletonMeta):
                         raise e
                 finally:
                     if seek_set != old_pos:
-                        _os.lseek(fd, old_pos, _os.SEEK_SET)  # Make sure to respect the position
+                        os.lseek(fd, old_pos, os.SEEK_SET)  # Make sure to respect the position
             elif self.os in {"Linux", "Darwin", "FreeBSD"}:
                 if byte_range is None:
                     _fcntl.flock(fd, _fcntl.LOCK_UN)
                 else:
-                    old_pos = _os.lseek(fd, 0, _os.SEEK_CUR)
-                    _os.lseek(fd, byte_range.start, _os.SEEK_SET)
+                    old_pos = os.lseek(fd, 0, os.SEEK_CUR)
+                    os.lseek(fd, byte_range.start, os.SEEK_SET)
                     _fcntl.lockf(fd, _fcntl.LOCK_UN, byte_range.stop - byte_range.start)
-                    _os.lseek(fd, old_pos, _os.SEEK_SET)  # Restore file pointer
+                    os.lseek(fd, old_pos, os.SEEK_SET)  # Restore file pointer
             else:
                 raise NotImplementedError(f"Unsupported system: {self.os}")
         finally:
             if not keep_fd_open:
-                _os.close(fd)
+                os.close(fd)
 
     def is_file_locked(self, filepath: str) -> bool:
         """
@@ -632,25 +632,25 @@ class _BaseSystem(metaclass=_SingletonMeta):
         Raises:
             NotImplementedError: If the operating system is not supported.
         """
-        fd = _os.open(filepath, _os.O_RDWR | _os.O_CREAT)
+        fd = os.open(filepath, os.O_RDWR | os.O_CREAT)
 
         if self.os == "Windows":
             try:
-                _msvcrt.locking(fd, _msvcrt.LK_NBLCK, _os.path.getsize(filepath) or 1)
-                _msvcrt.locking(fd, _msvcrt.LK_UNLCK, _os.path.getsize(filepath) or 1)
-                _os.close(fd)
+                _msvcrt.locking(fd, _msvcrt.LK_NBLCK, os.path.getsize(filepath) or 1)
+                _msvcrt.locking(fd, _msvcrt.LK_UNLCK, os.path.getsize(filepath) or 1)
+                os.close(fd)
                 return False
             except OSError:
-                _os.close(fd)
+                os.close(fd)
                 return True
         elif self.os in {"Linux", "Darwin", "FreeBSD"}:
             try:
                 _fcntl.flock(fd, _fcntl.LOCK_EX | _fcntl.LOCK_NB)
                 _fcntl.flock(fd, _fcntl.LOCK_UN)
-                _os.close(fd)
+                os.close(fd)
                 return False
             except BlockingIOError:
-                _os.close(fd)
+                os.close(fd)
                 return True
         else:
             raise NotImplementedError(f"Unsupported system: {self.os}")
@@ -671,7 +671,7 @@ class _BaseSystem(metaclass=_SingletonMeta):
         if self.os == "Windows":
             return _ALLOCATIONGRANULARITY  # Is a constant so it doesn't need caching
         elif self.os in {"Linux", "Darwin", "FreeBSD"}:
-            return _os.sysconf("SC_PAGESIZE") or _os.sysconf("SC_PAGE_SIZE")
+            return os.sysconf("SC_PAGESIZE") or os.sysconf("SC_PAGE_SIZE")
         else:
             raise NotImplementedError(f"Unsupported system: {self.os}")
 
@@ -719,7 +719,7 @@ class _BaseSystem(metaclass=_SingletonMeta):
                             return True
                 # On Windows, use wmic to check for virtual hardware
                 elif self.os == "Windows":
-                    result = _subprocess.check_output("wmic baseboard get product", shell=True)
+                    result = subprocess.check_output("wmic baseboard get product", shell=True)
                     if any(driver in str(result) for driver in vm_drivers):
                         return True
             except Exception as e:
@@ -730,10 +730,10 @@ class _BaseSystem(metaclass=_SingletonMeta):
         def check_cpu_behavior():
             try:
                 # Check access times (simplified example, measure cache speed)
-                start = _time.time()
+                start = time.time()
                 for _ in range(1000000):
-                    _ = _os.urandom(1)  # Random data access to stress CPU
-                elapsed_time = _time.time() - start
+                    _ = os.urandom(1)  # Random data access to stress CPU
+                elapsed_time = time.time() - start
                 # Virtual environments can have slower performance for such repetitive tasks
                 if elapsed_time > 0.5:  # Arbitrary threshold for a VM (adjust as necessary)
                     return True
@@ -745,7 +745,7 @@ class _BaseSystem(metaclass=_SingletonMeta):
         def check_cpu_instructions():
             try:
                 # VM-specific instructions often show different results or errors
-                if "hypervisor" in _platform.uname().version:
+                if "hypervisor" in platform.uname().version:
                     return True
             except Exception as e:
                 pass
@@ -778,18 +778,18 @@ class _BaseSystem(metaclass=_SingletonMeta):
 
         """
         if self.os == "Windows":
-            user32 = _ctypes.windll.User32
+            user32 = ctypes.windll.User32
             user32.LockWorkStation()
         elif self.os == "Linux":
             # Try to lock using Gnome or KDE specific commands
-            if _os.system("gnome-screensaver-command -l") != 0:
+            if os.system("gnome-screensaver-command -l") != 0:
                 # If Gnome screensaver command fails, try KDE command
-                _os.system("qdbus org.freedesktop.ScreenSaver /ScreenSaver Lock")
+                os.system("qdbus org.freedesktop.ScreenSaver /ScreenSaver Lock")
         elif self.os == "Darwin":  # macOS
-            _os.system("""osascript -e 'tell application "System Events" to keystroke "q" using {control down, command down}'""")
+            os.system("""osascript -e 'tell application "System Events" to keystroke "q" using {control down, command down}'""")
         elif self.os == "FreeBSD":
             # Assuming FreeBSD would have similar command line utilities as Linux
-            _os.system("gnome-screensaver-command -l")
+            os.system("gnome-screensaver-command -l")
         else:
             raise NotImplementedError(f"Unsupported system: {self.os}")
 
@@ -804,13 +804,13 @@ class _BaseSystem(metaclass=_SingletonMeta):
             None
         """
         if self.os == "Windows":
-            _subprocess.run(["explorer.exe", location])
+            subprocess.run(["explorer.exe", location])
         elif self.os == "Darwin":
-            _subprocess.run(["open", location])
+            subprocess.run(["open", location])
         elif self.os in {"Linux", "FreeBSD"}:  # Try common Linux file managers
             for file_manager in ["xdg-open", "nautilus", "dolphin", "thunar"]:
                 try:
-                    _subprocess.run([file_manager, location])
+                    subprocess.run([file_manager, location])
                     break
                 except FileNotFoundError:
                     continue
@@ -833,7 +833,7 @@ class _WindowsSystem(_BaseSystem):
 
         :return: A string representing the CPU brand and model.
         """
-        return _platform.processor()
+        return platform.processor()
 
     def get_gpu_info(self) -> list[str]:
         """
@@ -842,7 +842,7 @@ class _WindowsSystem(_BaseSystem):
         :return: A list of strings representing the names of the video controllers (GPUs) on the system.
         """
         command = "wmic path win32_VideoController get name"
-        output = _subprocess.check_output(command.split(" ")).decode()
+        output = subprocess.check_output(command.split(" ")).decode()
         return [line.strip() for line in output.split("\n") if line.strip()][1:]
 
     def get_system_theme(self) -> SystemTheme:
@@ -904,7 +904,7 @@ class _WindowsSystem(_BaseSystem):
             command = f'schtasks /create /tn "{task_name}" /tr "{script_path}" /sc onstart /rl highest /f'
         elif event_time == "login":
             command = f'schtasks /create /tn "{task_name}" /tr "{script_path}" /sc onlogon /rl highest /f'
-        _subprocess.run(command.split(" "), check=True)
+        subprocess.run(command.split(" "), check=True)
 
     def send_notification(self, title: str, message: str,
                           input_fields: tuple[tuple[str, str, str], ...] = (("input_arg", "Input", "Hint"),),
@@ -1003,8 +1003,8 @@ class _WindowsSystem(_BaseSystem):
         :return: The path to the appropriate AppData directory.
         """
         if scope == "user":
-            return _os.path.join(_os.environ.get("APPDATA"), app_dir)  # App data for the current user
-        return _os.path.join(_os.environ.get("PROGRAMDATA"), app_dir)  # App data for all users
+            return os.path.join(os.environ.get("APPDATA"), app_dir)  # App data for the current user
+        return os.path.join(os.environ.get("PROGRAMDATA"), app_dir)  # App data for all users
 
     def get_clipboard(self) -> str | None:
         """
@@ -1042,9 +1042,9 @@ class _WindowsSystem(_BaseSystem):
         if language_code:
             return language_code, encoding
         else:
-            GetUserDefaultUILanguage = _ctypes.windll.kernel32.GetUserDefaultUILanguage
+            GetUserDefaultUILanguage = ctypes.windll.kernel32.GetUserDefaultUILanguage
             lang_id = GetUserDefaultUILanguage()
-            return _locale.windows_locale[lang_id], None
+            return locale.windows_locale[lang_id], None
 
 
 class _DarwinSystem(_BaseSystem):
@@ -1052,19 +1052,19 @@ class _DarwinSystem(_BaseSystem):
 
     def get_cpu_brand(self):
         command = "sysctl -n machdep.cpu.brand_string"
-        return _subprocess.check_output(command.split(" ")).decode().strip()
+        return subprocess.check_output(command.split(" ")).decode().strip()
 
     def get_gpu_info(self):
         command = "system_profiler SPDisplaysDataType | grep 'Chipset Model'"
-        output = _subprocess.check_output(command.split(" ")).decode()
+        output = subprocess.check_output(command.split(" ")).decode()
         return [line.split(': ')[1].strip() for line in output.split('\n') if 'Chipset Model' in line]
 
     def get_system_theme(self) -> SystemTheme:
         command = "defaults read -g AppleInterfaceStyle"
         try:
-            theme = _subprocess.check_output(command.split(" ")).decode().strip()
+            theme = subprocess.check_output(command.split(" ")).decode().strip()
             return SystemTheme.DARK if theme.lower() == 'dark' else SystemTheme.LIGHT
-        except _subprocess.CalledProcessError:
+        except subprocess.CalledProcessError:
             return SystemTheme.UNKNOWN
 
     def schedule_event(self, name: str, script_path: str, event_time: _ty.Literal["startup", "login"]):
@@ -1086,40 +1086,40 @@ class _DarwinSystem(_BaseSystem):
         </plist>
         """
         plist_path = f'~/Library/LaunchAgents/com.example.{name.replace(" ", "_").lower()}.plist'
-        with open(_os.path.expanduser(plist_path), 'w') as f:
+        with open(os.path.expanduser(plist_path), 'w') as f:
             f.write(plist_content)
-        _subprocess.run(f'launchctl load {_os.path.expanduser(plist_path)}'.split(" "), check=True)
+        subprocess.run(f'launchctl load {os.path.expanduser(plist_path)}'.split(" "), check=True)
 
     def send_native_notification(self, title: str, message: str):
         script = f'display notification "{message}" with title "{title}"'
-        _subprocess.run(["osascript", "-e", script])
+        subprocess.run(["osascript", "-e", script])
 
     def get_battery_status(self):
         command = "pmset -g batt" if self.os == 'Darwin' else "upower -i /org/freedesktop/UPower/devices/battery_BAT0"
         try:
-            output = _subprocess.check_output(command.split(" ")).decode().strip()
+            output = subprocess.check_output(command.split(" ")).decode().strip()
             return output
-        except _subprocess.CalledProcessError:
+        except subprocess.CalledProcessError:
             return "Battery status not available."
 
     def get_appdata_directory(self, app_dir: str, scope: _ty.Literal["user", "global"] = "global"):
         if scope == "user":
-            return _os.path.join(_os.path.expanduser("~"), "Library", "Application Support", app_dir)  # App data for the current user
-        return _os.path.join("/Library/Application Support", app_dir)  # App data for all users
+            return os.path.join(os.path.expanduser("~"), "Library", "Application Support", app_dir)  # App data for the current user
+        return os.path.join("/Library/Application Support", app_dir)  # App data for all users
 
     def get_clipboard(self):
         command = "pbpaste"
-        return _subprocess.check_output(command.split(" ")).decode().strip()
+        return subprocess.check_output(command.split(" ")).decode().strip()
 
     def set_clipboard(self, data: str):
         command = f'echo "{data}" | pbcopy'
-        _subprocess.run(command.split(" "), check=True)
+        subprocess.run(command.split(" "), check=True)
 
     def get_system_language(self) -> tuple[str | str | None, str | str | None]:
         language_code, encoding = super().get_system_language()
         if language_code:
             return language_code, encoding
-        result = _subprocess.run(['defaults', 'read', '-g', 'AppleLocale'], stdout=_subprocess.PIPE)
+        result = subprocess.run(['defaults', 'read', '-g', 'AppleLocale'], stdout=subprocess.PIPE)
         return result.stdout.decode().strip(), None
 
 
@@ -1138,9 +1138,9 @@ class _LinuxSystem(_BaseSystem):
     def get_gpu_info(self):
         try:
             # Run `lspci` and pipe its output to the next process
-            p1 = _subprocess.Popen(["lspci"], stdout=_subprocess.PIPE, stderr=_subprocess.PIPE)
+            p1 = subprocess.Popen(["lspci"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             # Run `grep VGA` to filter the output of `lspci`
-            p2 = _subprocess.Popen(["grep", "VGA"], stdin=p1.stdout, stdout=_subprocess.PIPE, stderr=_subprocess.PIPE)
+            p2 = subprocess.Popen(["grep", "VGA"], stdin=p1.stdout, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             p1.stdout.close()  # Allow p1 to receive a SIGPIPE if p2 exits
             output, error = p2.communicate()
 
@@ -1164,20 +1164,20 @@ class _LinuxSystem(_BaseSystem):
     def get_system_theme(self) -> SystemTheme:
         """Get the current system theme by checking multiple desktop environments."""
         try:
-            if "gnome" in _os.getenv("XDG_CURRENT_DESKTOP", "").lower():
+            if "gnome" in os.getenv("XDG_CURRENT_DESKTOP", "").lower():
                 command = "gsettings get org.gnome.desktop.interface gtk-theme"
-                theme = _subprocess.check_output(command.split(" ")).decode().strip().strip("'")
+                theme = subprocess.check_output(command.split(" ")).decode().strip().strip("'")
                 return SystemTheme.DARK if "dark" in theme.lower() else SystemTheme.LIGHT
-            elif "kde" in _os.getenv("XDG_CURRENT_DESKTOP", "").lower():
+            elif "kde" in os.getenv("XDG_CURRENT_DESKTOP", "").lower():
                 command = "lookandfeeltool --current"
-                theme = _subprocess.check_output(command.split(" ")).decode().strip()
+                theme = subprocess.check_output(command.split(" ")).decode().strip()
                 return SystemTheme.DARK if "dark" in theme.lower() else SystemTheme.LIGHT
-            elif "xfce" in _os.getenv("XDG_CURRENT_DESKTOP", "").lower():
+            elif "xfce" in os.getenv("XDG_CURRENT_DESKTOP", "").lower():
                 command = "xfconf-query -c xsettings -p /Net/ThemeName"
-                theme = _subprocess.check_output(command.split(" ")).decode().strip()
+                theme = subprocess.check_output(command.split(" ")).decode().strip()
                 return SystemTheme.DARK if "dark" in theme.lower() else SystemTheme.LIGHT
-            raise _subprocess.CalledProcessError
-        except _subprocess.CalledProcessError:
+            raise subprocess.CalledProcessError
+        except subprocess.CalledProcessError:
             # If theme detection fails for all, return unknown theme
             return SystemTheme.UNKNOWN
 
@@ -1192,7 +1192,7 @@ class _LinuxSystem(_BaseSystem):
             [Service]
             ExecStart={script_path}
             Restart=always
-            User={_os.getlogin()}
+            User={os.getlogin()}
 
             [Install]
             WantedBy=default.target
@@ -1200,47 +1200,47 @@ class _LinuxSystem(_BaseSystem):
             service_path = f"/etc/systemd/system/{name.replace(' ', '_').lower()}_startup.service"
             with open(service_path, 'w') as f:
                 f.write(service_content)
-            _os.system(f"systemctl enable {service_path}")
-            _os.system(f"systemctl start {service_path}")
+            os.system(f"systemctl enable {service_path}")
+            os.system(f"systemctl start {service_path}")
         elif event_time == "login":
             cron_command = f'@reboot {script_path}'
-            _subprocess.run(f'(crontab -l; echo "{cron_command}") | crontab -'.split(" "), check=True)
+            subprocess.run(f'(crontab -l; echo "{cron_command}") | crontab -'.split(" "), check=True)
 
     def send_native_notification(self, title: str, message: str):
         try:
-            _subprocess.run(["notify-send", title, message])
+            subprocess.run(["notify-send", title, message])
         except FileNotFoundError:
             print("notify-send command not found.")
-        except _subprocess.CalledProcessError as e:
+        except subprocess.CalledProcessError as e:
             print(f"Exception occurred: {e}")
 
     def get_battery_status(self):
         command = "pmset -g batt" if self.os == 'Darwin' else "upower -i /org/freedesktop/UPower/devices/battery_BAT0"
         try:
-            output = _subprocess.check_output(command.split(" ")).decode().strip()
+            output = subprocess.check_output(command.split(" ")).decode().strip()
             return output
-        except _subprocess.CalledProcessError:
+        except subprocess.CalledProcessError:
             return "Battery status not available."
 
     def get_appdata_directory(self, app_dir: str, scope: _ty.Literal["user", "global"] = "global"):
         if scope == "user":
-            return _os.path.join(_os.path.expanduser("~"), ".local", "share", app_dir)  # App data for the current user
-        return _os.path.join("/usr/local/share", app_dir)  # App data for all users
+            return os.path.join(os.path.expanduser("~"), ".local", "share", app_dir)  # App data for the current user
+        return os.path.join("/usr/local/share", app_dir)  # App data for all users
 
     def get_clipboard(self):
         command = "xclip -selection clipboard -o"
         try:
-            return _subprocess.check_output(command.split(" ")).decode().strip()
-        except _subprocess.CalledProcessError:
+            return subprocess.check_output(command.split(" ")).decode().strip()
+        except subprocess.CalledProcessError:
             return None
 
     def set_clipboard(self, data: str) -> None:
         command = f'echo "{data}" | xclip -selection clipboard'
-        _subprocess.run(command.split(" "))
+        subprocess.run(command.split(" "))
 
     def get_system_language(self) -> tuple[str | str | None, str | str | None]:
         language_code, encoding = super().get_system_language()
-        return language_code or _os.getenv('LANG', 'en_US'), encoding
+        return language_code or os.getenv('LANG', 'en_US'), encoding
 
 
 class _FreeBSDSystem(_LinuxSystem):
@@ -1249,63 +1249,63 @@ class _FreeBSDSystem(_LinuxSystem):
     def get_cpu_brand(self) -> str:
         """Get CPU brand using sysctl."""
         command = "sysctl -n hw.model"
-        return _subprocess.check_output(command.split(" ")).decode().strip()
+        return subprocess.check_output(command.split(" ")).decode().strip()
 
     def get_gpu_info(self) -> list[str]:
         """Get GPU information for FreeBSD."""
         command = "pciconf -lv | grep -A 4 'display'"
         try:
-            output = _subprocess.check_output(command, shell=True).decode()
+            output = subprocess.check_output(command, shell=True).decode()
             return [line.strip() for line in output.splitlines()]
-        except _subprocess.CalledProcessError:
+        except subprocess.CalledProcessError:
             return ["pciconf command not found"]
 
     def get_system_theme(self) -> SystemTheme:
         """Get the current system theme by checking multiple desktop environments."""
         try:
-            if "gnome" in _os.getenv("XDG_CURRENT_DESKTOP", "").lower():
+            if "gnome" in os.getenv("XDG_CURRENT_DESKTOP", "").lower():
                 command = "gsettings get org.gnome.desktop.interface gtk-theme"
-                theme = _subprocess.check_output(command.split(" ")).decode().strip().strip("'")
+                theme = subprocess.check_output(command.split(" ")).decode().strip().strip("'")
                 return SystemTheme.DARK if "dark" in theme.lower() else SystemTheme.LIGHT
-            elif "kde" in _os.getenv("XDG_CURRENT_DESKTOP", "").lower():
+            elif "kde" in os.getenv("XDG_CURRENT_DESKTOP", "").lower():
                 command = "lookandfeeltool --current"
-                theme = _subprocess.check_output(command.split(" ")).decode().strip()
+                theme = subprocess.check_output(command.split(" ")).decode().strip()
                 return SystemTheme.DARK if "dark" in theme.lower() else SystemTheme.LIGHT
-            elif "xfce" in _os.getenv("XDG_CURRENT_DESKTOP", "").lower():
+            elif "xfce" in os.getenv("XDG_CURRENT_DESKTOP", "").lower():
                 command = "xfconf-query -c xsettings -p /Net/ThemeName"
-                theme = _subprocess.check_output(command.split(" ")).decode().strip()
+                theme = subprocess.check_output(command.split(" ")).decode().strip()
                 return SystemTheme.DARK if "dark" in theme.lower() else SystemTheme.LIGHT
-            raise _subprocess.CalledProcessError
-        except _subprocess.CalledProcessError:
+            raise subprocess.CalledProcessError
+        except subprocess.CalledProcessError:
             # If theme detection fails for all, return unknown theme
             return SystemTheme.UNKNOWN
 
     def get_appdata_directory(self, app_dir: str, scope: _ty.Literal["user", "global"] = "global") -> str:
         """Get application data directory for FreeBSD."""
         if scope == "user":
-            return _os.path.join(_os.path.expanduser("~"), ".local", "share", app_dir)
-        return _os.path.join("/usr/local/share", app_dir)
+            return os.path.join(os.path.expanduser("~"), ".local", "share", app_dir)
+        return os.path.join("/usr/local/share", app_dir)
 
     def get_clipboard(self) -> str | None:
         """Get clipboard content using xclip or xsel (if available on FreeBSD)."""
         try:
-            return _subprocess.check_output(["xclip", "-selection", "clipboard", "-o"]).decode().strip()
-        except _subprocess.CalledProcessError:
+            return subprocess.check_output(["xclip", "-selection", "clipboard", "-o"]).decode().strip()
+        except subprocess.CalledProcessError:
             return None
 
     def set_clipboard(self, data: str) -> None:
         """Set clipboard content using xclip or xsel (if available)."""
-        _subprocess.run(f'echo "{data}" | xclip -selection clipboard', shell=True)
+        subprocess.run(f'echo "{data}" | xclip -selection clipboard', shell=True)
 
     def get_system_language(self) -> tuple[str | None, str | None]:
         """Get system language for FreeBSD."""
         language_code, encoding = super().get_system_language()
-        return language_code or _os.getenv('LANG', 'en_US'), encoding
+        return language_code or os.getenv('LANG', 'en_US'), encoding
 
 
 def get_system() -> BaseSystemType:
     """Gets the appropriate system instance based on the operating system."""
-    os_name = _platform.system()
+    os_name = platform.system()
     if os_name == "Windows":
         return _WindowsSystem()
     elif os_name == "Darwin":
@@ -1315,7 +1315,7 @@ def get_system() -> BaseSystemType:
     elif os_name == "FreeBSD":
         return _FreeBSDSystem()
     else:
-        _warnings.warn("Unsupported Operating System, returning _BaseSystem instance.", RuntimeWarning, 2)
+        warnings.warn("Unsupported Operating System, returning _BaseSystem instance.", RuntimeWarning, 2)
         return _BaseSystem()
 
 
@@ -1368,20 +1368,20 @@ def diagnose_shutdown_blockers(suggestions: bool = True, return_result: bool = F
     current_process = _multiprocessing_process()
     if _psutil is None:
         raise RuntimeError("Psutil is not installed")
-    child_processes = _psutil.Process(_os.getpid()).children(recursive=True)
+    child_processes = _psutil.Process(os.getpid()).children(recursive=True)
     if child_processes:
         blockers.append(f"Active child processes: {[proc.pid for proc in child_processes]}")
         blockers.append("Suggestion: Ensure all child processes are "
                         "properly terminated using process.terminate() or process.join().")
 
     # Check for open files
-    open_files = _psutil.Process(_os.getpid()).open_files()
+    open_files = _psutil.Process(os.getpid()).open_files()
     if open_files:
         blockers.append(f"Open files: {[file.path for file in open_files]}")
         blockers.append("Suggestion: Ensure all files are properly closed using file.close().")
 
     # Check for open network connections
-    open_connections = _psutil.Process(_os.getpid()).connections()
+    open_connections = _psutil.Process(os.getpid()).connections()
     if open_connections:
         blockers.append(f"Open network connections: {open_connections}")
         blockers.append("Suggestion: Ensure all network connections are properly closed.")
@@ -1399,11 +1399,11 @@ def diagnose_shutdown_blockers(suggestions: bool = True, return_result: bool = F
 @_contextmanager
 def suppress_warnings():
     """Context manager to suppress warnings."""
-    _warnings.filterwarnings("ignore")
+    warnings.filterwarnings("ignore")
     try:
         yield
     finally:
-        _warnings.filterwarnings("default")
+        warnings.filterwarnings("default")
 
 
 def auto_repr(cls: type, *_, use_repr: bool = False):
@@ -1447,7 +1447,7 @@ def is_accessible(path: str) -> bool:
     :param path: The path to be checked.
     :return: True if accessible, False otherwise.
     """
-    return _os.access(path, _os.R_OK | _os.W_OK)
+    return os.access(path, os.R_OK | os.W_OK)
 
 
 class BasicSystemFunctions:
@@ -1460,7 +1460,7 @@ class BasicSystemFunctions:
         Returns:
             str: The absolute path to the user's home directory.
         """
-        return _os.path.expanduser("~")
+        return os.path.expanduser("~")
 
     @staticmethod
     def get_running_processes() -> list[dict[str, int | str]]:
@@ -1489,7 +1489,7 @@ class BasicSystemFunctions:
         """
         if path is None:
             path = cls.get_home_directory()
-        usage = _shutil.disk_usage(path)
+        usage = shutil.disk_usage(path)
         return {
             'total': _bytes_to_human_readable_binary_iec(usage.total),
             'used': _bytes_to_human_readable_binary_iec(usage.used),
@@ -1539,7 +1539,7 @@ class BasicSystemFunctions:
             key (str): Name of the environment variable.
             value (str): Value to assign to the environment variable.
         """
-        _os.environ[key] = value
+        os.environ[key] = value
 
     @staticmethod
     def get_environment_variable(key: str) -> str | None:
@@ -1551,7 +1551,7 @@ class BasicSystemFunctions:
         Returns:
             Optional[str]: Value of the environment variable, or None if it is not set.
         """
-        return _os.environ.get(key)
+        return os.environ.get(key)
 
     @staticmethod
     def get_uptime() -> float:
@@ -1560,7 +1560,7 @@ class BasicSystemFunctions:
         Returns:
             float: System uptime in minutes.
         """
-        return (_time.time() - _psutil.boot_time()) / 60
+        return (time.time() - _psutil.boot_time()) / 60
 
     @staticmethod
     def set_working_dir_to_main_script_location() -> None:
@@ -1571,19 +1571,19 @@ class BasicSystemFunctions:
         """
         import __main__
         try:
-            if getattr(_sys, 'frozen', False):
-                main_dir = _os.path.dirname(_sys.executable)
+            if getattr(sys, 'frozen', False):
+                main_dir = os.path.dirname(sys.executable)
             else:
                 if hasattr(__main__, '__file__'):
-                    main_dir = _os.path.dirname(_os.path.abspath(__main__.__file__))
+                    main_dir = os.path.dirname(os.path.abspath(__main__.__file__))
                 else:
-                    main_dir = _os.getcwd()
-                    _warnings.warn(
+                    main_dir = os.getcwd()
+                    warnings.warn(
                         "Unable to set working directory to main script's location. Using current working directory.",
                         RuntimeWarning,
                         stacklevel=2
                     )
-            _os.chdir(main_dir)
+            os.chdir(main_dir)
             print(f"Working directory set to {main_dir}")
 
         except Exception as e:
@@ -1597,15 +1597,15 @@ class BasicSystemFunctions:
         Uses the caller's file path, which may differ from the main script's location.
         """
         try:
-            if getattr(_sys, 'frozen', False):
-                script_dir = _os.path.dirname(_sys.executable)
+            if getattr(sys, 'frozen', False):
+                script_dir = os.path.dirname(sys.executable)
             else:
-                frame = _inspect.currentframe()
+                frame = inspect.currentframe()
                 caller_frame = frame.f_back
                 caller_file = caller_frame.f_globals["__file__"]
-                script_dir = _os.path.dirname(_os.path.abspath(caller_file))
+                script_dir = os.path.dirname(os.path.abspath(caller_file))
 
-            _os.chdir(script_dir)
+            os.chdir(script_dir)
             print(f"Working directory changed to {script_dir}")
         except Exception as e:
             print(f"An error occurred while changing the working directory: {e}")
@@ -1615,8 +1615,8 @@ class BasicSystemFunctions:
     def change_working_dir_to_temp_folder() -> None:
         """Set the current working directory to the system's temporary folder."""
         try:
-            temp_dir = _tempfile.gettempdir()
-            _os.chdir(temp_dir)
+            temp_dir = tempfile.gettempdir()
+            os.chdir(temp_dir)
             print(f"Working directory changed to {temp_dir}")
 
         except Exception as e:
@@ -1631,8 +1631,8 @@ class BasicSystemFunctions:
             str: Path to the newly created temporary folder.
         """
         try:
-            folder = _tempfile.mkdtemp()
-            _os.chdir(folder)
+            folder = tempfile.mkdtemp()
+            os.chdir(folder)
             return folder
         except Exception as e:
             print(f"An error occurred while changing the working directory: {e}")
@@ -1649,13 +1649,13 @@ class BasicSystemFunctions:
             OSError: If the operating system is unsupported.
         """
         try:
-            if _os.name == 'posix':
-                home_dir = _os.path.join(_os.path.expanduser("~"), folder)
-            elif _os.name == 'nt':
-                home_dir = _os.path.join(_os.environ['USERPROFILE'], folder)
+            if os.name == 'posix':
+                home_dir = os.path.join(os.path.expanduser("~"), folder)
+            elif os.name == 'nt':
+                home_dir = os.path.join(os.environ['USERPROFILE'], folder)
             else:
-                raise OSError(f"System {_os.name} is unsupported by this function.")
-            _os.chdir(home_dir)
+                raise OSError(f"System {os.name} is unsupported by this function.")
+            os.chdir(home_dir)
             print(f"Working directory changed to {home_dir}")
         except Exception as e:
             print(f"An error occurred while changing the working directory: {e}")
@@ -1670,4 +1670,4 @@ def is_compiled() -> bool:
     to common Python compilers, including PyInstaller, cx_Freeze, and py2exe.
     :return: bool
     """
-    return getattr(_sys, "frozen", False) and (hasattr(_sys, "_MEIPASS") or _sys.executable.endswith(".exe"))
+    return getattr(sys, "frozen", False) and (hasattr(sys, "_MEIPASS") or sys.executable.endswith(".exe"))

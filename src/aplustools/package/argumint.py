@@ -1,6 +1,6 @@
 """TBA"""
 from argparse import ArgumentParser as _ArgumentParser
-import sys as _sys
+import sys
 
 from ..package import enforce_hard_deps as _enforce_hard_deps
 
@@ -299,7 +299,7 @@ class Argumint:
         print(' '.join(command_lst) + "\n" +
               " " * (length + arg_i) + "^")
         if do_exit:
-            _sys.exit(1)
+            sys.exit(1)
 
     def _check_path(self, path: str, overwrite_pre_args: dict | None = None) -> bool:
         """Verifies if a specified path exists within the argument structure.
@@ -568,7 +568,7 @@ class Argumint:
         func = self._parse_args_native_light if mode == "native_light" else self._parse_args_arg_parse
         return func(args, endpoint)
 
-    def parse_cli(self, system: _sys = _sys, mode: _ty.Literal["arg_parse", "native_light"] = "arg_parse") -> None:
+    def parse_cli(self, system: sys = sys, mode: _ty.Literal["arg_parse", "native_light"] = "arg_parse") -> None:
         """Parses CLI arguments and calls the endpoint based on the parsed path.
 
         This method processes command-line input, navigates the argument structure,
@@ -576,7 +576,7 @@ class Argumint:
         the `default_endpoint`.
 
         Args:
-            system (_sys, optional): System module to access arguments from `argv`.
+            system (sys, optional): System module to access arguments from `argv`.
             mode (Literal["arg_parse", "native_light"], optional): Mode to parse
                 arguments. Defaults to `"arg_parse"`, but `"native_light"` can be used
                 for lightweight parsing.

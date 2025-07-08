@@ -18,49 +18,6 @@ if _ty.TYPE_CHECKING:
 import types as _ts
 
 
-def test_actlogger_console_logging() -> None:
-    logger = ActLogger("TestLogger")
-    stream = StringIO()
-    handler = logging.StreamHandler(stream)
-    logger._logger.handlers.clear()  # Remove default console/file handlers
-    logger._logger.addHandler(handler)
-
-    logger.info("test info")
-    logger.debug("test debug")
-    logger.error("test error")
-    handler.flush()
-    output = stream.getvalue()
-
-    assert "test info" in output
-    assert "test debug" in output
-    assert "test error" in output
-
-
-def test_actlogger_file_logging() -> None:
-    ActLogger._instances.clear()  # ← reset singleton instance
-
-    with tempfile.NamedTemporaryFile(delete=False) as tmp:
-        path = tmp.name
-
-    try:
-        logger = ActLogger("FileLogger", log_to_file=True, filename=path)
-        logger.info("file test")
-        logger.error("file error")
-
-        # Flush and close all handlers manually
-        for handler in logger.handlers:
-            handler.flush()
-            handler.close()
-        logger._logger.handlers.clear()
-
-        with open(path, "r", encoding="utf8") as f:
-            content = f.read()
-            assert "file test" in content
-            assert "file error" in content
-    finally:
-        os.remove(path)
-
-
 @pytest.fixture
 def redirector() -> ThreadOutputRedirector:
     return ThreadOutputRedirector()

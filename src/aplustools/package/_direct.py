@@ -3,9 +3,8 @@ from importlib.metadata import version as _version, PackageNotFoundError as _Pac
 from importlib import import_module as _import_module
 
 from packaging.specifiers import SpecifierSet as _SpecifierSet
-from packaging import version as _pkg_version
-import warnings as _warnings
-import re as _re
+import warnings
+import re
 
 # from ..package import enforce_hard_deps as _enforce_hard_deps
 
@@ -58,7 +57,7 @@ class LazyLoader:
     @staticmethod
     def _parse_dependency(dep) -> tuple[str | None, str | None]:
         # Regular expression to match a package name followed by an optional version specifier
-        match = _re.match(r'([A-Za-z0-9_.-]+)([><=!~]{1,2}.*)?', dep)
+        match = re.match(r'([A-Za-z0-9_.-]+)([><=!~]{1,2}.*)?', dep)
 
         if match:
             pkg_name = match.group(1)  # Package name
@@ -106,7 +105,7 @@ class LazyLoader:
                 if error != "":
                     if dep in hard_dependencies:
                         raise ModuleNotFoundError(error.format(err_type="hard dependency", err_type_upper="Hard Dependency"))
-                    _warnings.warn(error.format(err_type="dependency", err_type_upper="Dependency"))
+                    warnings.warn(error.format(err_type="dependency", err_type_upper="Dependency"))
 
     def _ensure_loaded_module(self):
         """
@@ -205,7 +204,7 @@ def setup_lazy_loaders(
         for name in direct_module_contents:
             if not name.startswith('_') and not (name.startswith('__') and name.endswith('__')):
                 if name in module_globals:
-                    _warnings.warn(f"Overwrote {name} while lazy loading", stacklevel=2)
+                    warnings.warn(f"Overwrote {name} while lazy loading", stacklevel=2)
                 module_globals[name] = getattr(direct_module, name)
                 module_globals["__all__"].append(name)
             elif name == "__deps__":

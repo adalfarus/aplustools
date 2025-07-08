@@ -1,9 +1,18 @@
-from aplustools import security
+"""Test"""
+from aplustools.security.crypto.algos import Sym, ASym, HashAlgorithm
+from aplustools.security.crypto import set_backend, Backend, hash
 
-ac = security.crypto.AdvancedCryptography()
-ac.set_backend(security.crypto.backends.Backend.pycryptodomex)
-key = security.crypto.algorithms.Sym.Cipher.Salsa20.key(b"\xa1\x07']\x9bX\xf5\x8d\x01.\x8b\xf4D\x7fF\xb4\x81\xddt\x8b(\xa4d\x86/>\x98\xd0_\x02b[")
+set_backend(Backend.cryptography)
+
+key1 = Sym.Cipher.Salsa20.key((256, "mypassword"))
+key2 = Sym.Cipher.Salsa20.key(b"\xa1\x07']\x9bX\xf5\x8d\x01.\x8b\xf4D\x7fF\xb4\x81\xddt\x8b(\xa4d\x86/>\x98\xd0_\x02b[")
+
 plaintext = b"Hello from Salsa20"
-ciphertext = ac.encrypt(plaintext, key, 1, None)
-decrypted = ac.decrypt(ciphertext, key, 1, None)
+ciphertext = key2.encrypt(plaintext, key, 1, None)
+decrypted = key2.decrypt(ciphertext, key, 1, None)
 print(decrypted)
+
+hash(b"", HashAlgorithm.MD2)
+
+# OR
+HashAlgorithm.MD2.hash( ... )  # Pass more advanced values

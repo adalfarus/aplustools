@@ -1,12 +1,12 @@
 """TBA"""
-from urllib.parse import quote_plus as _quote_plus, urlparse as _urlparse, urljoin as _urljoin
-import random as _random
+from urllib.parse import urlparse as _urlparse, urljoin as _urljoin
+import random
 
 from ..package import enforce_hard_deps as _enforce_hard_deps
 from ..io.env import auto_repr as _auto_repr
 
-import requests as _requests
-import bs4 as _bs4
+import requests
+import bs4
 
 # Standard typing imports for aps
 import typing_extensions as _te
@@ -43,8 +43,8 @@ class WebPage:
         self._status_code: int
         self._accessible, self._status_code = self.check_url(self._url)
 
-        self._page: _requests.Response | None = None
-        self._soup: _bs4.BeautifulSoup | None = None
+        self._page: requests.Response | None = None
+        self._soup: bs4.BeautifulSoup | None = None
 
         if self._accessible and self._crawlable:
             self.fetch_page()
@@ -55,22 +55,22 @@ class WebPage:
         try:  # Parse the given URL to get the netloc (domain) part
             domain: str = _urlparse(url).netloc
             robots_txt_url: str = _urljoin(f"https://{domain}", "robots.txt")
-            response: _requests.Response = _requests.get(robots_txt_url, timeout=timeout)
+            response: requests.Response = requests.get(robots_txt_url, timeout=timeout)
 
             if response.status_code == 200:  # We check, if "Disallow: /" is found for User-agent: *, if ...
                 cases: tuple[bool, ...] = ("User-agent: *\nDisallow: /" in response.text, True)
                 return not any(cases)
             return None
-        except _requests.RequestException:
+        except requests.RequestException:
             return None
 
     @staticmethod
     def check_url(url: str, timeout: float = 2.0) -> int | None:
         """TBA, returns status code, None if unclear"""
         try:
-            response: _requests.Response = _requests.head(url, allow_redirects=True, timeout=timeout)
+            response: requests.Response = requests.head(url, allow_redirects=True, timeout=timeout)
             status_code: int | None = response.status_code
-        except _requests.RequestException:
+        except requests.RequestException:
             status_code: int | None = None
         return status_code
 
@@ -78,11 +78,11 @@ class WebPage:
     def generate_user_agent() -> str:
         """TBA"""
         platforms: tuple[str, ...] = (
-            f"Windows NT {_random.choice([10, 11])}.0; Win64; x64",
+            f"Windows NT {random.choice([10, 11])}.0; Win64; x64",
             f"Macintosh; Intel Mac OS X 10_15_7",
             f"X11; Linux x86_64",
-            f"iPhone; CPU iPhone OS {_random.choice(range(10, 13))}_{_random.choice(range(0, 7))} like Mac OS X",
-            f"Android {_random.choice(range(8, 12))}; Mobile"
+            f"iPhone; CPU iPhone OS {random.choice(range(10, 13))}_{random.choice(range(0, 7))} like Mac OS X",
+            f"Android {random.choice(range(8, 12))}; Mobile"
         )
         browsers: tuple[str, ...] = (
             "Mozilla/5.0 ({platform}) Gecko/20100101 Firefox/{firefox_version}",
@@ -92,12 +92,12 @@ class WebPage:
             "Mozilla/5.0 ({platform}) AppleWebKit/537.36 (KHTML, like Gecko) Opera/{opera_version} Safari/537.36"
         )
 
-        platform: str = _random.choice(platforms)
-        browser_template: str = _random.choice(browsers)
-        firefox_version: str = f"{_random.randint(50, 90)}.0"
-        chrome_version: str = f"{_random.randint(70, 110)}.0.0.0"
-        edge_version: str = f"{_random.randint(70, 100)}.0.{_random.randrange(1000, 2000)}.{_random.randrange(50, 99)}"
-        opera_version: str = f"{_random.randint(60, 75)}.0.0.0"
+        platform: str = random.choice(platforms)
+        browser_template: str = random.choice(browsers)
+        firefox_version: str = f"{random.randint(50, 90)}.0"
+        chrome_version: str = f"{random.randint(70, 110)}.0.0.0"
+        edge_version: str = f"{random.randint(70, 100)}.0.{random.randrange(1000, 2000)}.{random.randrange(50, 99)}"
+        opera_version: str = f"{random.randint(60, 75)}.0.0.0"
 
         user_agent: str = browser_template.format(platform=platform, firefox_version=firefox_version,
                                              chrome_version=chrome_version, edge_version=edge_version,
@@ -107,18 +107,18 @@ class WebPage:
     def fetch_page(self, timeout: float = 2.0) -> None:
         """TBA"""
         try:
-            self._page = _requests.get(self._url, headers=self._headers, timeout=timeout)
-            self._soup = _bs4.BeautifulSoup(self._page.content, "html.parser")
-        except _requests.RequestException:
+            self._page = requests.get(self._url, headers=self._headers, timeout=timeout)
+            self._soup = bs4.BeautifulSoup(self._page.content, "html.parser")
+        except requests.RequestException:
             return
 
-    def get_by_tag(self, tag: str) -> list[_bs4.element.Tag] | None:
+    def get_by_tag(self, tag: str) -> list[bs4.element.Tag] | None:
         """TBA"""
         if self._soup is None:
             return None
         return self._soup.find_all(tag)
 
-    def get_by_class(self, class_name: str) -> list[_bs4.element.Tag] | None:
+    def get_by_class(self, class_name: str) -> list[bs4.element.Tag] | None:
         """TBA"""
         if self._soup is None:
             return None

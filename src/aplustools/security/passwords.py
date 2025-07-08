@@ -1,21 +1,20 @@
 """TBA"""
 from importlib.resources import files as _files
-import unicodedata as _unicodedata
-import secrets as _secrets
-import string as _string
-import base64 as _base64
-import random as _random
-import math as _math
-import json as _json
-import os as _os
+import unicodedata
+import secrets
+import string
+import random
+import math
 
 from ..package import enforce_hard_deps as _enforce_hard_deps, optional_import as _optional_import
 from .rand import generator as _generator
 
 # Standard typing imports for aps
-from abc import abstractmethod
+import typing_extensions as _te
 import collections.abc as _a
 import typing as _ty
+if _ty.TYPE_CHECKING:
+    import _typeshed as _tsh
 import types as _ts
 
 __deps__: list[str] = ["zxcvbn"]
@@ -96,8 +95,8 @@ class PasswordFilter:
 
 class QuickGeneratePasswords:
     """Used to quickly generate a lot of passwords in minimal time"""
-    _rng = _random
-    characters: str = _string.ascii_letters + _string.digits
+    _rng = random
+    characters: str = string.ascii_letters + string.digits
     debug: bool = False
 
     @classmethod
@@ -116,7 +115,7 @@ class QuickGeneratePasswords:
         :return: The secured password
         """
         cls._debug_print(f"Quick securing password: {password}")
-        characters = _string.ascii_letters + _string.digits + _string.punctuation
+        characters = string.ascii_letters + string.digits + string.punctuation
 
         for _ in range(passes):
             if expand:
@@ -137,7 +136,7 @@ class QuickGeneratePasswords:
 
             # Add a random digit or punctuation
             pos = cls._rng.randint(0, len(password)-1)
-            password = password[:pos] + cls._rng.choice(_string.digits + _string.punctuation) + password[(pos if expand else pos+1):]
+            password = password[:pos] + cls._rng.choice(string.digits + string.punctuation) + password[(pos if expand else pos+1):]
 
         # Shuffle the resulting password to ensure randomness
         password_list = list(password)
@@ -157,11 +156,11 @@ class QuickGeneratePasswords:
         :return: The generated password
         """
         cls._debug_print(f"Generating password of length {length}")
-        characters = _string.ascii_letters + _string.digits + _string.punctuation
+        characters = string.ascii_letters + string.digits + string.punctuation
         if filter_:
             characters = filter_.apply(characters, "letters")
-            characters += filter_.apply(_string.digits, "numbers")
-            characters += filter_.apply(_string.punctuation, "punctuations")
+            characters += filter_.apply(string.digits, "numbers")
+            characters += filter_.apply(string.punctuation, "punctuations")
             cls._debug_print(f"Filtered characters: {characters}")
         password = ''.join(cls._rng.choice(characters) for _ in range(length))
         cls._debug_print(f"Generated password: {password}")
@@ -177,13 +176,13 @@ class QuickGeneratePasswords:
         :return: The generated password
         """
         cls._debug_print(f"Generating secure password of length {length}")
-        characters = _string.ascii_letters + _string.digits + _string.punctuation
+        characters = string.ascii_letters + string.digits + string.punctuation
         if filter_:
             characters = filter_.apply(characters, "letters")
-            characters += filter_.apply(_string.digits, "numbers")
-            characters += filter_.apply(_string.punctuation, "punctuations")
+            characters += filter_.apply(string.digits, "numbers")
+            characters += filter_.apply(string.punctuation, "punctuations")
             cls._debug_print(f"Filtered characters: {characters}")
-        password = ''.join(_secrets.choice(characters) for _ in range(length))
+        password = ''.join(secrets.choice(characters) for _ in range(length))
         cls._debug_print(f"Generated secure password: {password}")
         return password
 
@@ -219,11 +218,11 @@ class QuickGeneratePasswords:
 
         def _random_char(c: str) -> str:
             if c == 'X':
-                chars = _string.ascii_uppercase
+                chars = string.ascii_uppercase
             elif c == 'x':
-                chars = _string.ascii_lowercase
+                chars = string.ascii_lowercase
             elif c == '9':
-                chars = _string.digits
+                chars = string.digits
             else:
                 return c
 
@@ -250,26 +249,26 @@ class QuickGeneratePasswords:
         if length < 4:
             raise ValueError("Password length should be at least 4")
 
-        all_characters = _string.ascii_letters + _string.digits + _string.punctuation
+        all_characters = string.ascii_letters + string.digits + string.punctuation
         if filter_:
             all_characters = filter_.apply(all_characters, "letters")
-            all_characters += filter_.apply(_string.digits, "numbers")
-            all_characters += filter_.apply(_string.punctuation, "punctuations")
+            all_characters += filter_.apply(string.digits, "numbers")
+            all_characters += filter_.apply(string.punctuation, "punctuations")
             cls._debug_print(f"Filtered all characters: {all_characters}")
 
         if filter_:
             password = [
-                cls._rng.choice(filter_.apply(_string.ascii_uppercase, "letters")),
-                cls._rng.choice(filter_.apply(_string.ascii_lowercase, "letters")),
-                cls._rng.choice(filter_.apply(_string.digits, "numbers")),
-                cls._rng.choice(filter_.apply(_string.punctuation, "punctuations"))
+                cls._rng.choice(filter_.apply(string.ascii_uppercase, "letters")),
+                cls._rng.choice(filter_.apply(string.ascii_lowercase, "letters")),
+                cls._rng.choice(filter_.apply(string.digits, "numbers")),
+                cls._rng.choice(filter_.apply(string.punctuation, "punctuations"))
             ]
         else:
             password = [
-                cls._rng.choice(_string.ascii_uppercase),
-                cls._rng.choice(_string.ascii_lowercase),
-                cls._rng.choice(_string.digits),
-                cls._rng.choice(_string.punctuation)
+                cls._rng.choice(string.ascii_uppercase),
+                cls._rng.choice(string.ascii_lowercase),
+                cls._rng.choice(string.digits),
+                cls._rng.choice(string.punctuation)
             ]
 
         remaining_chars = all_characters
@@ -290,8 +289,8 @@ class QuickGeneratePasswords:
         cls._debug_print(f"Generating mnemonic password")
         adjectives = ["quick", "lazy", "sleepy", "noisy", "hungry"]
         nouns = ["fox", "dog", "cat", "mouse", "bear"]
-        symbols = _string.punctuation
-        numbers = _string.digits
+        symbols = string.punctuation
+        numbers = string.digits
 
         adj = cls._rng.choice(adjectives)
         noun = cls._rng.choice(nouns)
@@ -328,9 +327,9 @@ class QuickGeneratePasswords:
         num_symbols = length - num_letters - num_digits
 
         characters = (
-                (filter_.apply(_string.ascii_letters, "letters") if filter_ else _string.ascii_letters) * num_letters +
-                (filter_.apply(_string.digits, "numbers") if filter_ else _string.digits) * num_digits +
-                (filter_.apply(_string.punctuation, "punctuations") if filter_ else _string.punctuation) * num_symbols
+                (filter_.apply(string.ascii_letters, "letters") if filter_ else string.ascii_letters) * num_letters +
+                (filter_.apply(string.digits, "numbers") if filter_ else string.digits) * num_digits +
+                (filter_.apply(string.punctuation, "punctuations") if filter_ else string.punctuation) * num_symbols
         )
 
         password = ''.join(cls._rng.choice(characters) for _ in range(length))
@@ -349,8 +348,8 @@ class QuickGeneratePasswords:
         cls._debug_print(f"Generating sentence-based password with structure {structure}")
 
         words = ["quick", "brown", "fox", "jumps", "over", "lazy", "dog"]
-        symbols = _string.punctuation
-        digits = _string.digits
+        symbols = string.punctuation
+        digits = string.digits
 
         password = []
         for char in structure:
@@ -485,7 +484,7 @@ class SpecificPasswordGenerator:
         :return: The secured password
         """
         self._debug_print(f"Securing password: {password}")
-        characters = _string.ascii_letters + _string.digits + _string.punctuation
+        characters = string.ascii_letters + string.digits + string.punctuation
 
         for _ in range(passes):
             rnd = self._rng.randint(0, 3)
@@ -510,11 +509,11 @@ class SpecificPasswordGenerator:
                 case 2:
                     # Add a random digit
                     pos = self._rng.randint(0, len(password)-1)
-                    password = password[:pos] + self._rng.choice(_string.digits) + password[(pos if expand else pos+1):]
+                    password = password[:pos] + self._rng.choice(string.digits) + password[(pos if expand else pos+1):]
                 case 3:
                     # Add a random punctuation
                     pos = self._rng.randint(0, len(password)-1)
-                    password = password[:pos] + self._rng.choice(_string.punctuation) + password[(pos if expand else pos+1):]
+                    password = password[:pos] + self._rng.choice(string.punctuation) + password[(pos if expand else pos+1):]
 
         # Calculate the number of characters to switch
         length = len(password)
@@ -541,7 +540,7 @@ class SpecificPasswordGenerator:
         :return: The secured password
         """
         self._debug_print(f"Securing password: {password}")
-        characters = _string.ascii_letters + _string.digits + _string.punctuation
+        characters = string.ascii_letters + string.digits + string.punctuation
 
         for _ in range(passes):
             if expand:
@@ -562,11 +561,11 @@ class SpecificPasswordGenerator:
 
             # Add a random digit
             pos = self._rng.randint(0, len(password)-1)
-            password = password[:pos] + self._rng.choice(_string.digits) + password[(pos if expand else pos+1):]
+            password = password[:pos] + self._rng.choice(string.digits) + password[(pos if expand else pos+1):]
 
             # Add a random punctuation
             pos = self._rng.randint(0, len(password)-1)
-            password = password[:pos] + self._rng.choice(_string.punctuation) + password[(pos if expand else pos+1):]
+            password = password[:pos] + self._rng.choice(string.punctuation) + password[(pos if expand else pos+1):]
 
         # Calculate the number of characters to switch
         length = len(password)
@@ -592,7 +591,7 @@ class SpecificPasswordGenerator:
         :return: The secured password
         """
         self._debug_print(f"Securing password: {password}")
-        characters = _string.ascii_letters + _string.digits + _string.punctuation
+        characters = string.ascii_letters + string.digits + string.punctuation
         length = len(password)
         get_num: _ty.Callable[[], int] = lambda: max(2, (length * self._rng.choice([10, 20, 30])) // 100)
 
@@ -616,11 +615,11 @@ class SpecificPasswordGenerator:
 
                 # Add a random digit
                 pos = self._rng.randint(0, len(password)-1)
-                password = password[:pos] + self._rng.choice(_string.digits) + password[(pos if expand else pos+1):]
+                password = password[:pos] + self._rng.choice(string.digits) + password[(pos if expand else pos+1):]
 
                 # Add a random punctuation
                 pos = self._rng.randint(0, len(password)-1)
-                password = password[:pos] + self._rng.choice(_string.punctuation) + password[(pos if expand else pos+1):]
+                password = password[:pos] + self._rng.choice(string.punctuation) + password[(pos if expand else pos+1):]
 
         # Calculate the number of characters to switch
         num_to_switch = get_num()
@@ -698,11 +697,11 @@ class SpecificPasswordGenerator:
         :return: The generated password
         """
         self._debug_print(f"Generating password of length {length}")
-        characters = _string.ascii_letters + _string.digits + _string.punctuation
+        characters = string.ascii_letters + string.digits + string.punctuation
         if filter_:
             characters = filter_.apply(characters, "letters")
-            characters += filter_.apply(_string.digits, "numbers")
-            characters += filter_.apply(_string.punctuation, "punctuations")
+            characters += filter_.apply(string.digits, "numbers")
+            characters += filter_.apply(string.punctuation, "punctuations")
             self._debug_print(f"Filtered characters: {characters}")
         password = ''.join(self._rng.choice(characters) for _ in range(length))
         self._debug_print(f"Generated password: {password}")
@@ -747,16 +746,16 @@ class SpecificPasswordGenerator:
         """
         self._debug_print(f"Generating pattern password with pattern {pattern}")
         if filter_:
-            upper = filter_.apply(_string.ascii_uppercase, "letters")
-            self._debug_print(f"Filtered characters for '{_string.ascii_uppercase}': {upper}")
-            lower = filter_.apply(_string.ascii_lowercase, "letters")
-            self._debug_print(f"Filtered characters for '{_string.ascii_lowercase}': {lower}")
-            digits = filter_.apply(_string.digits, "numbers")
-            self._debug_print(f"Filtered characters for '{_string.digits}': {digits}")
+            upper = filter_.apply(string.ascii_uppercase, "letters")
+            self._debug_print(f"Filtered characters for '{string.ascii_uppercase}': {upper}")
+            lower = filter_.apply(string.ascii_lowercase, "letters")
+            self._debug_print(f"Filtered characters for '{string.ascii_lowercase}': {lower}")
+            digits = filter_.apply(string.digits, "numbers")
+            self._debug_print(f"Filtered characters for '{string.digits}': {digits}")
         else:
-            upper = _string.ascii_uppercase
-            lower = _string.ascii_lowercase
-            digits = _string.digits
+            upper = string.ascii_uppercase
+            lower = string.ascii_lowercase
+            digits = string.digits
 
         def _random_char(c: str) -> str:
             if c == 'X':
@@ -787,19 +786,19 @@ class SpecificPasswordGenerator:
         """
         self._debug_print(f"Generating pattern password with pattern {pattern}")
         if filter_:
-            upper = filter_.apply(_string.ascii_uppercase, "letters")
-            self._debug_print(f"Filtered characters for '{_string.ascii_uppercase}': {upper}")
-            lower = filter_.apply(_string.ascii_lowercase, "letters")
-            self._debug_print(f"Filtered characters for '{_string.ascii_lowercase}': {lower}")
-            digits = filter_.apply(_string.digits, "numbers")
-            self._debug_print(f"Filtered characters for '{_string.digits}': {digits}")
-            symbols = filter_.apply(_string.punctuation, "punctuations")
-            self._debug_print(f"Filtered characters for '{_string.punctuation}': {digits}")
+            upper = filter_.apply(string.ascii_uppercase, "letters")
+            self._debug_print(f"Filtered characters for '{string.ascii_uppercase}': {upper}")
+            lower = filter_.apply(string.ascii_lowercase, "letters")
+            self._debug_print(f"Filtered characters for '{string.ascii_lowercase}': {lower}")
+            digits = filter_.apply(string.digits, "numbers")
+            self._debug_print(f"Filtered characters for '{string.digits}': {digits}")
+            symbols = filter_.apply(string.punctuation, "punctuations")
+            self._debug_print(f"Filtered characters for '{string.punctuation}': {digits}")
         else:
-            upper = _string.ascii_uppercase
-            lower = _string.ascii_lowercase
-            digits = _string.digits
-            symbols = _string.punctuation
+            upper = string.ascii_uppercase
+            lower = string.ascii_lowercase
+            digits = string.digits
+            symbols = string.punctuation
         password = []
 
         for char in pattern:
@@ -841,22 +840,22 @@ class SpecificPasswordGenerator:
         if length < 4:
             raise ValueError("Password length should be at least 4")
 
-        all_characters = _string.ascii_letters + _string.digits + _string.punctuation
+        all_characters = string.ascii_letters + string.digits + string.punctuation
 
         if filter_:
-            upper_chars = filter_.apply(_string.ascii_uppercase, "letters")
-            lower_chars = filter_.apply(_string.ascii_lowercase, "letters")
-            digit_chars = filter_.apply(_string.digits, "numbers")
-            punct_chars = filter_.apply(_string.punctuation, "punctuations")
+            upper_chars = filter_.apply(string.ascii_uppercase, "letters")
+            lower_chars = filter_.apply(string.ascii_lowercase, "letters")
+            digit_chars = filter_.apply(string.digits, "numbers")
+            punct_chars = filter_.apply(string.punctuation, "punctuations")
 
             all_characters = filter_.apply(all_characters, "letters") + \
-                             filter_.apply(_string.digits, "numbers") + \
-                             filter_.apply(_string.punctuation, "punctuations")
+                             filter_.apply(string.digits, "numbers") + \
+                             filter_.apply(string.punctuation, "punctuations")
         else:
-            upper_chars = _string.ascii_uppercase
-            lower_chars = _string.ascii_lowercase
-            digit_chars = _string.digits
-            punct_chars = _string.punctuation
+            upper_chars = string.ascii_uppercase
+            lower_chars = string.ascii_lowercase
+            digit_chars = string.digits
+            punct_chars = string.punctuation
 
         self._debug_print(f"Filtered all characters: {all_characters}")
 
@@ -887,8 +886,8 @@ class SpecificPasswordGenerator:
         self._debug_print(f"Generating mnemonic password")
         adjectives = ["quick", "lazy", "sleepy", "noisy", "hungry", "brave", "clever", "fierce", "jolly", "kind"]
         nouns = ["fox", "dog", "cat", "mouse", "bear", "tiger", "lion", "wolf", "eagle", "shark"]
-        symbols = _string.punctuation
-        numbers = _string.digits
+        symbols = string.punctuation
+        numbers = string.digits
 
         adj = self._rng.choice(adjectives)
         noun = self._rng.choice(nouns)
@@ -933,7 +932,7 @@ class SpecificPasswordGenerator:
             "punctuations": '!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~'
         }
         if unicode_ratio != 0.0:
-            character_sets["unicode"] = ''.join(chr(i) for i in range(0x110000) if _unicodedata.category(chr(i)).startswith('P'))
+            character_sets["unicode"] = ''.join(chr(i) for i in range(0x110000) if unicodedata.category(chr(i)).startswith('P'))
         self._debug_print(f"Generated char_sets {character_sets}")
 
         if filter_:
@@ -944,10 +943,10 @@ class SpecificPasswordGenerator:
         self._debug_print(f"Filtered char_sets {character_sets}")
 
         non_zero_lengths = {ratio_name: ratio for ratio_name, ratio in
-                            {"letters": _math.ceil(length * letters_ratio),
-                             "numbers": _math.ceil(length * numbers_ratio),
-                             "punctuations": _math.ceil(length * punctuations_ratio),
-                             "unicode": _math.ceil(length * unicode_ratio)}.items()
+                            {"letters": math.ceil(length * letters_ratio),
+                             "numbers": math.ceil(length * numbers_ratio),
+                             "punctuations": math.ceil(length * punctuations_ratio),
+                             "unicode": math.ceil(length * unicode_ratio)}.items()
                             if ratio != 0 and len(character_sets[ratio_name]) != 0}
         remaining_length = length - sum(non_zero_lengths.values())
 
@@ -1127,7 +1126,7 @@ class SecurePasswordGenerator:
         :param multiplier: Multiplier parameter x**mult e of the distribution.
         :return: Scaled random number from the exponential distribution.
         """
-        transformed_value: float = (lambda x: x ** (multiplier * _math.e))(self._rng.random())
+        transformed_value: float = (lambda x: x ** (multiplier * math.e))(self._rng.random())
         scaled_value: float = lower_bound + (upper_bound - lower_bound) * transformed_value
         return scaled_value
 

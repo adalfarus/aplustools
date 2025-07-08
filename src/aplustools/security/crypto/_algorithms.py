@@ -1,7 +1,9 @@
 """TBA"""
+import enum
+
 from .exceptions import NotSupportedError as _NotSupportedError
-from ._hashes import HashAlgorithm  # To export this value
-from .. import GenericLabeledEnum as _GenericLabeledEnum
+# from .. import GenericLabeledEnum as _GenericLabeledEnum
+from ._backends import Backend as _Backend
 
 # Standard typing imports for aps
 import typing_extensions as _te
@@ -12,24 +14,59 @@ if _ty.TYPE_CHECKING:
 import types as _ts
 
 
+class Cipher: ...
+class SymCipher(Cipher): ...
+class ASymCipher(Cipher): ...
+
+
+# TODO: What about encrypt? maybe _encrypt?
 class _BASIC_KEYTYPE(_ty.Protocol):
-    # def __int__(self, key: bytes, original_key: str) -> None: ...
+    # cipher_type: "_ty.Type[Sym]"
+    # cipher: Cipher
+    backend: _Backend
+
+    def __int__(self, key: bytes, original_key: str) -> None: ...
     def get_key(self) -> bytes: ...
     def get_original_key(self) -> str: ...
+    def encrypt(self) -> None: ...  # TODO: MAKE PUBLIC AND IMPLEMENT THE RIGHT WAY!
+    def decrypt(self) -> None: ...  # TODO: MAKE PUBLIC AND IMPLEMENT THE RIGHT WAY!
     def __bytes__(self) -> bytes: ...
     def __str__(self) -> str: ...
     def __repr__(self) -> str: ...
 
 
 class _BASIC_KEYPAIRTYPE(_ty.Protocol):
-    # def __init__(self, private_key: _ty.Any, public_key: _ty.Any) -> None: ...
+    # cipher_type: "_ty.Type[ASym]"
+    # cipher: Cipher
+    backend: _Backend
+
+    def __init__(self, private_key: _ty.Any, public_key: _ty.Any) -> None: ...
     def get_private_key(self) -> _ty.Any: ...
     def get_public_key(self) -> _ty.Any: ...
     def get_private_bytes(self) -> bytes: ...
     def get_public_bytes(self) -> bytes: ...
+    def encrypt(self) -> None: ...  # TODO: MAKE PUBLIC AND IMPLEMENT THE RIGHT WAY!
+    def decrypt(self) -> None: ...  # TODO: MAKE PUBLIC AND IMPLEMENT THE RIGHT WAY!
+    def sign(self) -> None: ...  # TODO: MAKE PUBLIC AND IMPLEMENT THE RIGHT WAY!
+    def sign_verify(self) -> None: ...  # TODO: MAKE PUBLIC AND IMPLEMENT THE RIGHT WAY!
+    def generate_auth_code(self) -> None: ...  # TODO: MAKE PUBLIC AND IMPLEMENT THE RIGHT WAY!
+    def key_exchange(self) -> None: ...  # TODO: MAKE PUBLIC AND IMPLEMENT THE RIGHT WAY!
     def __bytes__(self) -> bytes: ...
     def __str__(self) -> str: ...
     def __repr__(self) -> str: ...
+
+
+class _BASIC_HASHER(_ty.Protocol):
+    backend: _Backend
+
+    def hash(self, to_hash: bytes, text_ids: bool = True) -> bytes: ...
+    def hash_verify(self, to_verify: bytes, original_hash: bytes, text_ids: bool = True) -> bool: ...
+
+
+class _BASIC_KEY_DERIVATION_FUNC(_ty.Protocol):
+    backend: _Backend
+
+    def derive(self, password: bytes, length: int, salt: bytes | None = None) -> bytes: ...
 
 
 _AES_KEYSIZES = (128, 192, 256)
@@ -38,7 +75,7 @@ class _AES_KEYTYPE(_BASIC_KEYTYPE):
     def __init__(self, key_size: _AES_KEYLITERAL, key: _ty.Optional[bytes | str]) -> None: ...
 
 
-class _AES:  # Advanced Encryption Standard
+class AES(SymCipher):  # Advanced Encryption Standard
     _KEY: _ty.Type[_AES_KEYTYPE] | None = None
 
     @classmethod
@@ -78,7 +115,7 @@ class _ChaCha20_KEYTYPE(_BASIC_KEYTYPE):
     def __init__(self, key: _ty.Optional[bytes | str] = None) -> None: ...
 
 
-class _ChaCha20:  # Advanced Encryption Standard
+class ChaCha20(SymCipher):  # Advanced Encryption Standard
     _KEY: _ty.Type[_ChaCha20_KEYTYPE] | None = None
 
     @classmethod
@@ -103,7 +140,7 @@ class _TripleDES_KEYTYPE(_BASIC_KEYTYPE):
     def __init__(self, key_size: _ty.Literal[192], key: _ty.Optional[bytes | str] = None) -> None: ...
 
 
-class _TripleDES:  # Advanced Encryption Standard
+class TripleDES(SymCipher):  # Advanced Encryption Standard
     _KEY: _ty.Type[_TripleDES_KEYTYPE] | None = None
 
     @classmethod
@@ -130,7 +167,7 @@ class _Blowfish_KEYTYPE(_BASIC_KEYTYPE):
     def __init__(self, key_size: _ty.Literal[128, 256], key: _ty.Optional[bytes | str] = None) -> None: ...
 
 
-class _Blowfish:  # Advanced Encryption Standard
+class Blowfish(SymCipher):  # Advanced Encryption Standard
     _KEY: _ty.Type[_Blowfish_KEYTYPE] | None = None
 
     @classmethod
@@ -172,7 +209,7 @@ class _CAST5_KEYTYPE(_BASIC_KEYTYPE):
     def __init__(self, key_size: _ty.Literal[40, 128], key: _ty.Optional[bytes | str] = None) -> None: ...
 
 
-class _CAST5:  # Advanced Encryption Standard
+class CAST5(SymCipher):  # Advanced Encryption Standard
     _KEY: _ty.Type[_CAST5_KEYTYPE] | None = None
 
     @classmethod
@@ -212,7 +249,7 @@ class _ARC4_KEYTYPE(_BASIC_KEYTYPE):
     def __init__(self, key: _ty.Optional[bytes | str] = None) -> None: ...
 
 
-class _ARC4:
+class ARC4(SymCipher):
     _KEY: _ty.Type[_ARC4_KEYTYPE] | None = None
 
     @classmethod
@@ -239,7 +276,7 @@ class _Camellia_KEYTYPE(_BASIC_KEYTYPE):
     def __init__(self, key_size: _Camellia_KEYLITERAL, key: _ty.Optional[bytes | str] = None) -> None: ...
 
 
-class _Camellia:
+class Camellia(SymCipher):
     _KEY: _ty.Type[_Camellia_KEYTYPE] | None = None
 
     @classmethod
@@ -279,7 +316,7 @@ class _IDEA_KEYTYPE(_BASIC_KEYTYPE):
     def __init__(self, key: _ty.Optional[bytes | str] = None) -> None: ...
 
 
-class _IDEA:
+class IDEA(SymCipher):
     _KEY: _ty.Type[_IDEA_KEYTYPE] | None = None
 
     @classmethod
@@ -304,7 +341,7 @@ class _SEED_KEYTYPE(_BASIC_KEYTYPE):
     def __init__(self, key: _ty.Optional[bytes | str] = None) -> None: ...
 
 
-class _SEED:
+class SEED(SymCipher):
     _KEY: _ty.Type[_SEED_KEYTYPE] | None = None
 
     @classmethod
@@ -329,7 +366,7 @@ class _SM4_KEYTYPE(_BASIC_KEYTYPE):
     def __init__(self, key: _ty.Optional[bytes | str] = None): ...
 
 
-class _SM4:
+class SM4(SymCipher):
     _KEY: _ty.Type[_SM4_KEYTYPE] | None = None
 
     @classmethod
@@ -354,7 +391,7 @@ class _DES_KEYTYPE(_BASIC_KEYTYPE):
     def __init__(self, key: _ty.Optional[bytes | str] = None) -> None: ...
 
 
-class _DES:
+class DES(SymCipher):
     _KEY: _ty.Type[_DES_KEYTYPE] | None = None
 
     @classmethod
@@ -384,7 +421,7 @@ class _ARC2_KEYTYPE(_BASIC_KEYTYPE):
     def __init__(self, key_size: _ARC2_KEYLITERAL = 128, key: _ty.Optional[bytes | str] = None) -> None: ...
 
 
-class _ARC2:
+class ARC2(SymCipher):
     _KEY: _ty.Type[_ARC2_KEYTYPE] | None = None
 
     @classmethod
@@ -427,7 +464,7 @@ class _Salsa20_KEYTYPE(_BASIC_KEYTYPE):
     def __init__(self, key_size: _Salsa20_KEYLITERAL = 256, key: _ty.Optional[bytes | str] = None) -> None: ...
 
 
-class _Salsa20:
+class Salsa20(SymCipher):
     _KEY: _ty.Type[_Salsa20_KEYTYPE] | None = None
 
     @classmethod
@@ -463,56 +500,6 @@ class _Salsa20:
         return "Salsa20"
 
 
-class _SymCipher:
-    """Symmetric Encryption"""
-    AES = _AES
-    ChaCha20 = _ChaCha20
-    TripleDES = _TripleDES
-    Blowfish = _Blowfish
-    CAST5 = _CAST5
-    ARC4 = _ARC4
-    Camellia = _Camellia
-    IDEA = _IDEA
-    SEED = _SEED
-    SM4 = _SM4
-    DES = _DES
-    ARC2 = _ARC2
-    Salsa20 = _Salsa20
-
-
-class _SymOperation(_GenericLabeledEnum):
-    """Different modes of operation"""
-    ECB = (None, "Electronic Codebook")
-    CBC = (None, "Cipher Block Chaining")
-    CFB = (None, "Cipher Feedback")
-    OFB = (None, "Output Feedback")
-    CTR = (None, "Counter")
-    GCM = (None, "Galois/Counter Mode")
-
-
-class _SymPadding(_GenericLabeledEnum):
-    """Padding Schemes"""
-    PKCS7 = (None, "")
-    ANSIX923 = (None, "")
-
-
-class _SymKeyEncoding(_GenericLabeledEnum):
-    HEX = (None, "")
-    RAW = (None, "")
-    ASCII = (None, "")
-    BASE16 = (None, "")
-    BASE32 = (None, "")
-    BASE64 = (None, "")
-
-
-class Sym:
-    """Provides all enums for symmetric cryptography operations"""
-    Cipher = _SymCipher
-    Operation = _SymOperation
-    Padding = _SymPadding
-    KeyEncoding = _SymKeyEncoding
-
-
 _RSA_KEYSIZES = (512, 768, 1024, 2048, 3072, 4096, 8192, 15360)
 _RSA_KEYLITERAL = _ty.Literal[512, 768, 1024, 2048, 3072, 4096, 8192, 15360]
 class _RSA_KEYPAIRTYPE(_BASIC_KEYPAIRTYPE):
@@ -520,7 +507,7 @@ class _RSA_KEYPAIRTYPE(_BASIC_KEYPAIRTYPE):
     def __init__(self, key_size: _RSA_KEYLITERAL, private_key: _ty.Optional[bytes | str] = None) -> None: ...
 
 
-class _RSA:  # Rivest-Shamir-Adleman
+class RSA(ASymCipher):  # Rivest-Shamir-Adleman
     _KEYPAIR: _ty.Type[_RSA_KEYPAIRTYPE] | None = None
 
     @classmethod
@@ -566,7 +553,8 @@ class _DSA_KEYPAIRTYPE(_BASIC_KEYPAIRTYPE):
     def __init__(self, key_size: _DSA_KEYLITERAL, private_key: _ty.Optional[bytes | str] = None) -> None: ...
 
 
-class _DSA:
+class DSA(ASymCipher):
+    """Digital Signature Algorithm"""
     _KEYPAIR: _ty.Type[_DSA_KEYPAIRTYPE] | None = None
 
     @classmethod
@@ -606,7 +594,7 @@ class _DSA:
         return "DSA"
 
 
-class _ECCCurve(_GenericLabeledEnum):
+class ECCCurve(enum.Enum):
     """Elliptic key functions"""
     SECP192R1 = (None, "")
     SECP224R1 = (None, "")
@@ -626,7 +614,7 @@ class _ECCCurve(_GenericLabeledEnum):
     SECT571R1 = (None, "")
 
 
-class _ECCType(_GenericLabeledEnum):
+class ECCType(enum.Enum):
     """How the signing is done, heavily affects the performance, key generation and what you can do with it"""
     ECDSA = (None, "Elliptic Curve Digital Signature Algorithm")
     Ed25519 = (None, "")
@@ -636,30 +624,30 @@ class _ECCType(_GenericLabeledEnum):
 
 
 class _ECC_KEYPAIRTYPE(_BASIC_KEYPAIRTYPE):
-    def __init__(self, ecc_type: _ECCType = _ECCType.ECDSA, ecc_curve: _ECCCurve | None = _ECCCurve.SECP256R1,
+    def __init__(self, ecc_type: ECCType = ECCType.ECDSA, ecc_curve: ECCCurve | None = ECCCurve.SECP256R1,
                  private_key: _ty.Optional[bytes | str] = None) -> None: ...
 
 
-class _ECC:
+class ECC(ASymCipher):
     """Elliptic Curve Cryptography"""
     _KEYPAIR: _ty.Type[_ECC_KEYPAIRTYPE] | None = None
-    Curve = _ECCCurve
-    Type = _ECCType
+    Curve = ECCCurve
+    Type = ECCType
 
     @classmethod
-    def ecdsa_key(cls, ecc_curve: _ECCCurve = _ECCCurve.SECP256R1,
+    def ecdsa_key(cls, ecc_curve: ECCCurve = ECCCurve.SECP256R1,
                   private_key: bytes | str | None = None) -> _ECC_KEYPAIRTYPE:
         """Elliptic Curve Digital Signature Algorithm"""
         if cls._KEYPAIR is None:
             raise _NotSupportedError(f"The {cls()} cipher is not supported by this backend")
-        elif not isinstance(ecc_curve, _ECCCurve):
+        elif not isinstance(ecc_curve, ECCCurve):
             raise ValueError(f"ecc_curve needs to be of type 'ECCCurve', and not '{repr(ecc_curve)}'")
         elif not (isinstance(private_key, (str, bytes)) or private_key is None):
             raise ValueError(f"private_key needs to be of type 'bytes | str | None', and not '{repr(private_key)}'")
-        return cls._KEYPAIR(_ECCType.ECDSA, ecc_curve, private_key)
+        return cls._KEYPAIR(ECCType.ECDSA, ecc_curve, private_key)
 
     @classmethod
-    def optimized_key(cls, ecc_type: _ECCType,
+    def optimized_key(cls, ecc_type: ECCType,
                       private_key: bytes | str | None = None) -> _ECC_KEYPAIRTYPE:
         """
         TBA
@@ -670,11 +658,11 @@ class _ECC:
         """
         if cls._KEYPAIR is None:
             raise _NotSupportedError(f"The {cls()} cipher is not supported by this backend")
-        elif not isinstance(ecc_type, _ECCType):
+        elif not isinstance(ecc_type, ECCType):
             raise ValueError(f"ecc_type needs to be of type 'ECCType', and not '{repr(ecc_type)}'")
         elif not (isinstance(private_key, (str, bytes)) or private_key is None):
             raise ValueError(f"private_key needs to be of type 'bytes | str | None', and not '{repr(private_key)}'")
-        elif ecc_type == _ECCType.ECDSA:
+        elif ecc_type == ECCType.ECDSA:
             raise ValueError("Please use ECC.ecdsa_key to generate ECDSA keys")
         return cls._KEYPAIR(ecc_type, None, private_key)
 
@@ -686,7 +674,7 @@ class _KYBER_KEYPAIRTYPE(_BASIC_KEYPAIRTYPE):
     def __init__(self) -> None: ...
 
 
-class _KYBER:
+class KYBER(ASymCipher):
     _KEYPAIR: _ty.Type[_KYBER_KEYPAIRTYPE] | None = None
 
     @classmethod
@@ -708,7 +696,7 @@ class _DILITHIUM_KEYPAIRTYPE(_BASIC_KEYPAIRTYPE):
     def __init__(self) -> None: ...
 
 
-class _DILITHIUM:
+class DILITHIUM(ASymCipher):
     _KEYPAIR: _ty.Type[_DILITHIUM_KEYPAIRTYPE] | None = None
 
     @classmethod
@@ -722,57 +710,3 @@ class _DILITHIUM:
 
     def __str__(self) -> str:
         return "DILITHIUM"
-
-
-class _ASymCipher:
-    """Asymmetric Encryption"""
-    RSA = _RSA
-    DSA = _DSA  # Digital Signature Algorithm
-    ECC = _ECC
-    KYBER = _KYBER
-    DILITHIUM = _DILITHIUM
-
-
-class _ASymPadding(_GenericLabeledEnum):
-    """Asymmetric Encryption Padding Schemes"""
-    PKCShash1v15 = (0, "")
-    OAEP = (1, "")
-    PSS = (2, "")
-
-
-class _ASymKeyEncoding(_GenericLabeledEnum):
-    PEM = (3, "")
-    PKCS8 = (4, "")
-    ASN1_DER = (5, "")
-    OPENSSH = (6, "")
-
-
-class ASym:
-    """Provides all enums for asymmetric cryptography operations"""
-    Cipher = _ASymCipher
-    Padding = _ASymPadding
-    KeyEncoding = _ASymKeyEncoding
-
-
-class KeyDerivationFunction(_GenericLabeledEnum):
-    """Key Derivation Functions (KDFs)"""
-    PBKDF2HMAC = (None, "Password-Based Key Derivation Function 2")
-    Scrypt = (None, "")
-    HKDF = (None, "HMAC-based Extract-and-Expand Key Derivation Function")
-    X963 = (None, "")
-    ConcatKDF = (None, "")
-    PBKDF1 = (None, "")
-    KMAC128 = (None, "")
-    KMAC256 = (None, "")
-    ARGON2 = (None, "")
-    KKDF = (None, "")
-    BCRYPT = (None, "")
-
-
-class MessageAuthenticationCode(_GenericLabeledEnum):
-    """Authentication Codes"""
-    HMAC = (None, "Hash-based Message Authentication Code")
-    CMAC = (None, "Cipher-based Message Authentication Code")
-    KMAC128 = (None, "")
-    KMAC256 = (None, "")
-    Poly1305 = (None, "")
