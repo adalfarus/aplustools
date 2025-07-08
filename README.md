@@ -28,7 +28,7 @@ aplustools2 is a simple, user-friendly Python library for performing amazing tas
 You can install aplustools2 via pip:
 
 ```sh
-pip install aplustools[all]>=2.0.0.0 --upgrade
+pip install aplustools[all] --pre --upgrade
 ```
 
 Or clone the repository and install manually:
@@ -45,7 +45,7 @@ Here are a few quick examples of how to use aplustools:
 
 - Examples will be added in the full release.
 
-(If you have problems with the package please use `py -3.12 -m pip install aplustools[all]>=2.0.0.0 --upgrade --user`)
+(If you have problems with the package please use `py -m pip install aplustools[all] --pre --upgrade --user`)
 (The standard shortform for aplustools is aps, so please use ```import aplustools as aps``` for consistency)
 
 ### aps cli
