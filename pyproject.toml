@@ -21,7 +21,12 @@ packages = [
   "aplustools.security.dicts",
   "aplustools.security.crypto",
   "aplustools.security.crypto._crypto",
-  "aplustools.security.crypto._pycrypto"
+  "aplustools.security.crypto._pycrypto",
+  "aplustools.security.crypto._fallbacks",
+  "aplustools.security.crypto.algos",
+  "aplustools.security.crypto.algos._asym",
+  "aplustools.security.crypto.algos._hash_algorithm",
+  "aplustools.security.crypto.algos._sym",
 ]
 include-package-data = true
 package-dir = {"" = "src"}
