@@ -190,14 +190,6 @@ class _BaseSystem(metaclass=_SingletonMeta):
         """
         raise NotImplementedError("get_appdata_directory is not implemented for this os")
 
-    def get_battery_status(self) -> dict[str, float | int | bool]:
-        """
-        Get the system's battery status information.
-
-        :raises NotImplementedError: This method is not implemented for this operating system.
-        """
-        raise NotImplementedError("get_battery_status is not implemented for this os")
-
     def get_system_language(self) -> tuple[str | str | None, str | str | None]:
         """
         Get the current system language and encoding settings.
@@ -962,19 +954,6 @@ class _WindowsSystem(_BaseSystem):
         else:
             print("You are not on a default windows machine")
 
-    def get_battery_status(self) -> dict[str, float | int | bool] | None:
-        """
-        Get the battery status on a Windows system, including battery percentage, time left, and charging status.
-
-        :return: A dictionary containing battery status information: 'percent', 'secsleft', and 'power_plugged'.
-        """
-        if _psutil is None:
-            raise ValueError("Optional dependency psutil is not installed.")
-        battery = _psutil.sensors_battery()
-        if battery:
-            return {"percent": battery.percent, "secsleft": battery.secsleft, "power_plugged": battery.power_plugged}
-        return None
-
     def get_appdata_directory(self, app_dir: str, scope: _ty.Literal["user", "global"] = "global") -> str:
         """
         Get the appropriate AppData directory for storing application data based on the specified scope (user or global).
@@ -1050,14 +1029,6 @@ class _DarwinSystem(_BaseSystem):
     def send_native_notification(self, title: str, message: str):
         script = f'display notification "{message}" with title "{title}"'
         subprocess.run(["osascript", "-e", script])
-
-    def get_battery_status(self):
-        command = "pmset -g batt" if self.os == 'Darwin' else "upower -i /org/freedesktop/UPower/devices/battery_BAT0"
-        try:
-            output = subprocess.check_output(command.split(" ")).decode().strip()
-            return output
-        except subprocess.CalledProcessError:
-            return "Battery status not available."
 
     def get_appdata_directory(self, app_dir: str, scope: _ty.Literal["user", "global"] = "global"):
         if scope == "user":
@@ -1162,14 +1133,6 @@ class _LinuxSystem(_BaseSystem):
             print("notify-send command not found.")
         except subprocess.CalledProcessError as e:
             print(f"Exception occurred: {e}")
-
-    def get_battery_status(self):
-        command = "pmset -g batt" if self.os == 'Darwin' else "upower -i /org/freedesktop/UPower/devices/battery_BAT0"
-        try:
-            output = subprocess.check_output(command.split(" ")).decode().strip()
-            return output
-        except subprocess.CalledProcessError:
-            return "Battery status not available."
 
     def get_appdata_directory(self, app_dir: str, scope: _ty.Literal["user", "global"] = "global"):
         if scope == "user":
@@ -1388,106 +1351,6 @@ class BasicSystemFunctions:
             str: The absolute path to the user's home directory.
         """
         return os.path.expanduser("~")
-
-    @staticmethod
-    def get_running_processes() -> list[dict[str, int | str]]:
-        """Retrieve a list of currently running processes, including PID and name.
-
-        Returns:
-            List[Dict[str, Union[int, str]]]: A list of dictionaries containing process information.
-        """
-        processes = []
-        for proc in _psutil.process_iter(['pid', 'name']):
-            try:
-                processes.append(proc.as_dict(attrs=['pid', 'name']))
-            except _psutil.NoSuchProcess:
-                pass  # Process has terminated between iteration and retrieval
-        return processes
-
-    @classmethod
-    def get_disk_usage(cls, path: str | None = None) -> dict[str, str]:
-        """Retrieve disk usage statistics for a specified path.
-
-        Args:
-            path (Optional[str], optional): Path to check disk usage for. Defaults to the home directory.
-
-        Returns:
-            Dict[str, str]: A dictionary containing total, used, and free space.
-        """
-        if path is None:
-            path = cls.get_home_directory()
-        usage = shutil.disk_usage(path)
-        return {
-            'total': _bytes_to_human_readable_binary_iec(usage.total),
-            'used': _bytes_to_human_readable_binary_iec(usage.used),
-            'free': _bytes_to_human_readable_binary_iec(usage.free)
-        }
-
-    @staticmethod
-    def get_memory_info() -> dict[str, str]:
-        """Retrieve memory usage statistics for the current system.
-
-        Returns:
-            Dict[str, str]: A dictionary containing total, available, percent used, used, and free memory.
-        """
-        memory = _psutil.virtual_memory()
-        return {
-            'total': _bytes_to_human_readable_binary_iec(memory.total),
-            'available': _bytes_to_human_readable_binary_iec(memory.available),
-            'percent': f"{memory.percent}%",
-            'used': _bytes_to_human_readable_binary_iec(memory.used),
-            'free': _bytes_to_human_readable_binary_iec(memory.free)
-        }
-
-    @staticmethod
-    def get_network_info() -> dict[str, dict[str, bool | list[dict[str, str | None]]]]:
-        """Retrieve information about network interfaces.
-
-        Returns:
-            Dict[str, Dict[str, Union[bool, List[Dict[str, Union[str, None]]]]]]:
-                A dictionary with network interface information, including addresses and status.
-        """
-        addrs = _psutil.net_if_addrs()
-        stats = _psutil.net_if_stats()
-        network_info = {}
-        for interface, addr_info in addrs.items():
-            network_info[interface] = {
-                'addresses': [{'address': addr.address, 'family': str(addr.family), 'netmask': addr.netmask,
-                               'broadcast': addr.broadcast} for addr in addr_info],
-                'isup': stats[interface].isup
-            }
-        return network_info
-
-    @staticmethod
-    def set_environment_variable(key: str, value: str) -> None:
-        """Set an environment variable.
-
-        Args:
-            key (str): Name of the environment variable.
-            value (str): Value to assign to the environment variable.
-        """
-        os.environ[key] = value
-
-    @staticmethod
-    def get_environment_variable(key: str) -> str | None:
-        """Retrieve an environment variable's value.
-
-        Args:
-            key (str): Name of the environment variable.
-
-        Returns:
-            Optional[str]: Value of the environment variable, or None if it is not set.
-        """
-        return os.environ.get(key)
-
-    @staticmethod
-    def get_uptime() -> float:
-        """Calculate the system uptime in minutes.
-
-        Returns:
-            float: System uptime in minutes.
-        """
-        return (time.time() - _psutil.boot_time()) / 60
 
     @staticmethod
     def set_working_dir_to_main_script_location() -> None:

@@ -410,39 +410,6 @@ def test_get_home_directory_returns_home_path() -> None:
     assert os.path.expanduser("~") == BasicSystemFunctions.get_home_directory()
 
 
-def test_get_running_processes_contains_python() -> None:
-    processes = BasicSystemFunctions.get_running_processes()
-    names = [p["name"] for p in processes if "name" in p]
-    assert any("python" in (n.lower() if n else "") for n in names)
-
-
-def test_get_disk_usage_returns_valid_keys() -> None:
-    usage = BasicSystemFunctions.get_disk_usage()
-    assert {"total", "used", "free"} <= usage.keys()
-
-
-def test_get_memory_info_contains_valid_fields() -> None:
-    info = BasicSystemFunctions.get_memory_info()
-    assert {"total", "available", "percent", "used", "free"} <= info.keys()
-
-
-def test_get_network_info_contains_interfaces() -> None:
-    info = BasicSystemFunctions.get_network_info()
-    assert isinstance(info, dict)
-    for iface in info.values():
-        assert "addresses" in iface
-        assert "isup" in iface
-
-
-def test_environment_variable_set_and_get() -> None:
-    BasicSystemFunctions.set_environment_variable("APLUS_TEST_ENV", "123")
-    assert BasicSystemFunctions.get_environment_variable("APLUS_TEST_ENV") == "123"
-
-
-def test_get_uptime_is_positive() -> None:
-    assert BasicSystemFunctions.get_uptime() > 0
-
-
 def test_change_working_dir_to_new_temp_folder() -> None:
     path = BasicSystemFunctions.change_working_dir_to_new_temp_folder()
     assert os.path.realpath(os.getcwd()) == os.path.realpath(path)
