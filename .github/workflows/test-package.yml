@@ -73,4 +73,9 @@ jobs:
         git config --global user.name "github-actions"
         git config --global user.email "github-actions@github.com"
         git add coverage-badge.svg
-        git diff --cached --quiet && echo "No changes to commit" || (git commit -m "Update coverage badge" && git push)
+        git diff --cached --quiet && echo "No changes to commit" || (
+          git commit -m "Update coverage badge"
+    
+          git remote set-url origin https://x-access-token:${TOKEN}@github.com/${{ github.repository }}
+          git push origin HEAD
+        )
