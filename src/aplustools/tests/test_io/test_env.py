@@ -451,7 +451,7 @@ def test_change_working_dir_to_new_temp_folder() -> None:
 
 def test_change_working_dir_to_temp_folder() -> None:
     BasicSystemFunctions.change_working_dir_to_temp_folder()
-    assert os.getcwd() == tempfile.gettempdir()
+    assert os.path.realpath(os.getcwd()) == os.path.realpath(tempfile.gettempdir())
 
 
 def test_change_working_dir_to_userprofile_folder(tmp_path) -> None:
