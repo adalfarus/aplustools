@@ -142,7 +142,7 @@ def bit_length(data: int | float | str) -> int:
     if isinstance(data, int):
         return data.bit_length() or 1
     elif isinstance(data, float):
-        return int.from_bytes(encode_float(data)).bit_length() or 1
+        return int.from_bytes(encode_float(data), byteorder="big").bit_length() or 1
     elif isinstance(data, str):
         return len(data) * 8
     raise ValueError(f"Unsupported data type '{type(data).__name__}'.")
@@ -188,7 +188,7 @@ def decode_integer(bytes_like: bytes, negatives: bool = False, byteorder: _ty.Li
         decode_integer(b'09')  # 12345
         decode_integer(b'\xc7\xcf\xff\xff', negatives=True, byteorder='little')  # -12345
     """
-    return int.from_bytes(bytes_like, byteorder, signed=negatives)
+    return int.from_bytes(bytes_like, byteorder=byteorder, signed=negatives)
 
 
 def get_variable_bytes_like(data: bytes) -> bytes:
@@ -818,22 +818,22 @@ class CNumStorage:
         self._groups.clear()
 
         with open(from_, "rb") as f:
-            num_groups_length = int.from_bytes(f.read(1), "big")
-            num_groups = int.from_bytes(f.read(num_groups_length), "big")
+            num_groups_length = int.from_bytes(f.read(1), byteorder="big")
+            num_groups = int.from_bytes(f.read(num_groups_length), byteorder="big")
 
             group_info = []
 
             for _ in range(num_groups):
                 # Read the current group's offset
-                offset_length = int.from_bytes(f.read(1), "big")
-                offset = int.from_bytes(f.read(offset_length), "big")
+                offset_length = int.from_bytes(f.read(1), byteorder="big")
+                offset = int.from_bytes(f.read(offset_length), byteorder="big")
 
                 # Read the bit length for this group
-                bit_length = int.from_bytes(f.read(1), "big")
+                bit_length = int.from_bytes(f.read(1), byteorder="big")
 
                 # Read the length of this group (number of elements)
-                group_length_length = int.from_bytes(f.read(1), "big")
-                group_length = int.from_bytes(f.read(group_length_length), "big")
+                group_length_length = int.from_bytes(f.read(1), byteorder="big")
+                group_length = int.from_bytes(f.read(group_length_length), byteorder="big")
 
                 group_info.append((offset, bit_length, group_length))
 
@@ -1187,7 +1187,7 @@ def bits(bytes_like: bytes | bytearray, return_str: bool = False) -> list[_ty.An
         list | str: List of binary strings, or a single concatenated binary string.
     """
     bytes_like = bytes_like if isinstance(bytes_like, bytes) else bytes(bytes_like)
-    binary = "00000000" + bin(int.from_bytes(bytes_like))[2:]
+    binary = "00000000" + bin(int.from_bytes(bytes_like, byteorder="big"))[2:]
     if return_str:
         return ''.join(list(reversed([binary[i-8:i] for i in range(len(binary), 0, -8)[:-1]])))
     return list(reversed([binary[i-8:i] for i in range(len(binary), 0, -8)[:-1]]))
