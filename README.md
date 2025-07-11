@@ -2,6 +2,7 @@
 [![CI Test Status](https://github.com/Adalfarus/aplustools/actions/workflows/test-package.yml/badge.svg)](https://github.com/Adalfarus/aplustools/actions)
 [![License: LGPL-2.1](https://img.shields.io/github/license/Adalfarus/aplustools)](https://github.com/Adalfarus/aplustools/blob/main/LICENSE)
 [![PyPI Downloads](https://static.pepy.tech/badge/aplustools)](https://pepy.tech/projects/aplustools)
+![coverage](./coverage-badge.svg)
 
 # aplustools2
 

@@ -541,9 +541,9 @@ class Argumint:
         # Set up argparse for keyword and flag arguments
         for arg in endpoint.analysis["arguments"]:
             if arg["type"] is bool:  # For boolean flags
-                parser.add_argument(f"-{arg["name"][0]}", f"--{arg["name"]}", action='store_true', help=arg["help"])
+                parser.add_argument(f"-{arg['name'][0]}", f"--{arg['name']}", action='store_true', help=arg["help"])
             else:
-                parser.add_argument(f"--{arg["name"]}", type=arg["type"], default=arg["default"], help=arg["help"])
+                parser.add_argument(f"--{arg['name']}", type=arg["type"], default=arg["default"], help=arg["help"])
 
         # Parse arguments with argparse
         parsed_args = parser.parse_args(args)

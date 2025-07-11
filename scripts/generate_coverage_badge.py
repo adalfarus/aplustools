@@ -3,7 +3,7 @@ import json
 import sys
 
 COVERAGE_PATH = "coverage.json"
-BADGE_PATH = "coverage-badge.svg"
+BADGE_PATH = "../coverage-badge.svg"
 
 def get_coverage_percentage(path):
     with open(path) as f:
