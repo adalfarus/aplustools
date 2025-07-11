@@ -830,7 +830,12 @@ class SpecificPasswordGenerator:
 
     def generate_complex_password(self, length: int = 18, filter_: PasswordFilter | None = None) -> str:
         """
-        Entirely random, a complex password.
+        Generate a complex, high-entropy password using random characters.
+
+        The password includes at least one uppercase letter, one lowercase letter,
+        one digit, and one punctuation character. The remaining characters are selected
+        randomly from all allowed character sets. A password filter can optionally
+        constrain which characters are used.
 
         :param length: The length of the password
         :param filter_: An optional password filter
@@ -916,7 +921,11 @@ class SpecificPasswordGenerator:
                                          punctuations_ratio: float = 0.2, unicode_ratio: float = 0.0,
                                          filter_: PasswordFilter | None = None) -> str:
         """
-        Generate a ratio based password, version 3
+        Generate a version 3 password based on character type ratios.
+
+        This method creates a password composed of randomly selected characters,
+        distributed according to specified ratios of letters, numbers, punctuation,
+        and optional Unicode symbols.
 
         :param length: The length of the password
         :param letters_ratio: The ratio of letters in the final password
@@ -976,7 +985,11 @@ class SpecificPasswordGenerator:
                                          shuffle_characters: bool = True, repeat_words: bool = False,
                                          filter_: PasswordFilter | None = None, _return_info: bool = False) -> str | tuple[str, str]:
         """
-        Generate a words based password, v3.
+        Generate a version 3 words-based password.
+
+        This method creates a password using words from a sentence. It allows customization
+        such as shuffling the word order, scrambling characters within words, and repeating words.
+        If no sentence is provided, a random one is used.
 
         :param sentence: The sentence to generate the password with, if this is not passed, a random sentence will be used.
         :param shuffle_words: If the order of the words should change in the final password
@@ -1018,7 +1031,11 @@ class SpecificPasswordGenerator:
                                             password_format: str = "{words}{special}{extra}{numbers}",
                                             filter_: PasswordFilter | None = None, _return_info: bool = False) -> str | tuple[str, str]:
         """
-        A sentence based password, v3.
+        Generate a version 3 sentence-based password.
+
+        This method creates a password using words from a sentence (either user-provided or randomly generated),
+        combined with random numbers, special characters, and an optional extra character. The format and rules
+        for how the password is constructed can be customized.
 
         :param sentence: The sentence to generate the password with, if this is not passed, a random sentence will be used.
         :param char_position: Which character in the word should be used in the password. You can also pass "random" for random and "keep" for keeping their position.
@@ -1130,69 +1147,128 @@ class SecurePasswordGenerator:
         scaled_value: float = lower_bound + (upper_bound - lower_bound) * transformed_value
         return scaled_value
 
-    def generate_secure_password(self, return_worst_case: bool = False, predetermined: _ty.Literal["random", "passphrase",
-                                                                                               "pattern", "complex",
-                                                                                               "mnemonic", "ratio",
-                                                                                               "words", "sentence",
-                                                                                               "complex_pattern"
-                                                                                      ] | None = None) -> dict[str, str]:
+    def random(self) -> dict[str, str]:
+        """
+        Generate a fully random password with no specific pattern or structure.
+
+        This method delegates to the underlying generator to create a password
+        composed of random characters from a general character set, with no
+        guarantees on format or composition.
+        :return: The password and generation info.
+        """
+        pw = self._gen.generate_random_password()
+        return {"extra_info": "Entirely random", "password": pw}
+
+    def passphrase(self) -> dict[str, str]:
+        """
+        Generate a secure, long passphrase based on a sentence.
+
+        This method creates a passphrase by selecting multiple words (typically from a wordlist)
+        to form a human-readable but high-entropy sentence. It returns both the passphrase and
+        an explanation of the sentence used to generate it.
+        :return: The password and generation info.
+        """
+        pw, sentence = self._gen.generate_secure_passphrase(self._gen.words, _return_info=True)
+        return {"extra_info": f"Passphrase, secure as it's very long, using the sentence '{sentence}'", "password": pw}
+
+    def pattern(self) -> dict[str, str]:
+        """
+        Generate a password based on a randomized character pattern.
+
+        This method constructs a random password pattern by selecting 28 characters
+        from the template set: `/`, `X` (uppercase), `x` (lowercase), `9` (digits), and `-`.
+        It then passes this pattern to the pattern-based password generator to produce the final password.
+        :return: The password and generation info.
+        """
+        pattern = ''.join(self._rng.choices("/XXXxxx-999", k=28))
+        pw = self._gen.generate_pattern_password(pattern)
+        return {"extra_info": f"A pattern password with the pattern '{pattern}'.", "password": pw}
+
+    def complex(self) -> dict[str, str]:
+        """
+        Generate a complex password and return it with descriptive metadata.
+
+        This method calls `generate_complex_password()` and returns a dictionary
+        containing the password and a short description of its randomness and complexity.
+        :return: The password and generation info.
+        """
+        pw = self._gen.generate_complex_password()
+        return {"extra_info": "Entirely random, a complex password.", "password": pw}
+
+    def mnemonic(self) -> dict[str, str]:
+        """
+        Generate a simple, memorable (mnemonic) password.
+
+        This method generates a password using a common mnemonic pattern,
+        typically involving an adjective and a noun (e.g., "BraveTiger42").
+        It returns the generated password along with descriptive information
+        about the words used.
+        :return: The password and generation info.
+        """
+        pw, adj, noun = self._gen.generate_mnemonic_password(_return_info=True)
+        return {"extra_info": f"A mnemonic password using the adj '{adj}' and the noun '{noun}'.", "password": pw}
+
+    def ratio(self) -> dict[str, str]:
+        """
+        Generate a ratio-based password with explanatory context.
+
+        This method calls `generate_ratio_based_password_v3` using its default parameters
+        and returns the password along with a brief description indicating that the
+        password was generated entirely at random based on character-type ratios.
+        :return: The password and generation info.
+        """
+        pw = self._gen.generate_ratio_based_password_v3()
+        return {"extra_info": "Entirely random, a ratio based password.", "password": pw}
+
+    def words(self) -> dict[str, str]:
+        """
+        Generate a words-based password and return it with descriptive information.
+
+        This method generates a password by calling `generate_words_based_password_v3`
+        with `_return_info=True`, which returns both the password and the sentence used.
+        The result includes a human-readable explanation of how the password was constructed.
+        :return: The password and generation info.
+        """
+        pw, sentence = self._gen.generate_words_based_password_v3(_return_info=True)
+        return {"extra_info": f"A words based password using the sentence '{sentence}_.", "password": pw}
+
+    def sentence(self) -> dict[str, str]:
+        """
+        Generate a sentence-based password with a randomized format and extra character.
+
+        This method constructs a password by:
+        - Randomly selecting a special character.
+        - Randomizing the order of the password components: words, special characters, extra character, and numbers.
+        - Calling the sentence-based password generator with the selected character and format.
+        :return: The password and generation info.
+        """
+        spec_char = self._rng.choice('!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~')
+        pattern = ''.join(self._rng.sample(["{words}", "{special}", "{extra}", "{numbers}"], 4))
+        pw, sentence = self._gen.generate_sentence_based_password_v3(extra_char=spec_char,
+                                                                     password_format=pattern, _return_info=True)
+        return {"extra_info": f"A sentence based password using the sentence '{sentence}' "
+                              f"and the pattern '{pattern}'.", "password": pw}
+
+    def complex_pattern(self) -> dict[str, str]:
+        """
+        A pattern password with uppercase letters, lowercase letters, numbers, words, and symbols.
+        :return: The password and generation info.
+        """
+        pattern = ''.join(self._rng.choices("/XXXxxx-999nnWw!!!", k=28))
+        pw = self._gen.generate_complex_pattern_password(pattern)
+        return {"extra_info": f"A complex pattern password with the pattern '{pattern}'.", "password": pw}
+
+    def generate_secure_password(self, return_worst_case: bool = False) -> dict[str, str]:
         """
         Generates always secure, always changing passwords that are designed to be human readable.
         The target worst time to crack is one century for each generated password.
 
         :param return_worst_case: Return the worst case estimate by zxcvbn
-        :param predetermined: Choose which type of password you want to generate, this will make it 8 times easier to crack your password.
         :return:
         """
-        rnd = int(self.exponential(0, 8, 0.9)) if predetermined is None else \
-            {
-                "mnemonic": 0,
-                "passphrase": 1,
-                "pattern": 2,
-                "complex_pattern": 3,
-                "sentence": 4,
-                "words": 5,
-                "random": 6,
-                "complex": 7,
-                "ratio": 8
-            }[predetermined]
-        match rnd:
-            case 0:
-                pw, adj, noun = self._gen.generate_mnemonic_password(_return_info=True)
-                result = {"extra_info": f"A mnemonic password using the adj '{adj}' and the noun '{noun}'.",
-                          "password": pw}
-            case 1:
-                pw, sentence = self._gen.generate_secure_passphrase(self._gen.words, _return_info=True)
-                result = {"extra_info": f"Passphrase, secure as it's very long, using the sentence '{sentence}'", "password": pw}
-            case 2:
-                pattern = ''.join(self._rng.choices("/XXXxxx-999", k=28))
-                pw = self._gen.generate_pattern_password(pattern)
-                result = {"extra_info": f"A pattern password with the pattern '{pattern}'.", "password": pw}
-            case 3:
-                pattern = ''.join(self._rng.choices("/XXXxxx-999nnWw!!!", k=28))
-                pw = self._gen.generate_complex_pattern_password(pattern)
-                result = {"extra_info": f"A complex pattern password with the pattern '{pattern}'.", "password": pw}
-            case 4:
-                spec_char = self._rng.choice('!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~')
-                pattern = ''.join(self._rng.sample(["{words}", "{special}", "{extra}", "{numbers}"], 4))
-                pw, sentence = self._gen.generate_sentence_based_password_v3(extra_char=spec_char,
-                                                                             password_format=pattern, _return_info=True)
-                result = {"extra_info": f"A sentence based password using the sentence '{sentence}' "
-                                        f"and the pattern '{pattern}'.", "password": pw}
-            case 5:
-                pw, sentence = self._gen.generate_words_based_password_v3(_return_info=True)
-                result = {"extra_info": f"A words based password using the sentence '{sentence}_.", "password": pw}
-            case 6:
-                pw = self._gen.generate_random_password()
-                result = {"extra_info": "Entirely random", "password": pw}
-            case 7:
-                pw = self._gen.generate_complex_password()
-                result = {"extra_info": "Entirely random, a complex password.", "password": pw}
-            case 8:
-                pw = self._gen.generate_ratio_based_password_v3()
-                result = {"extra_info": "Entirely random, a ratio based password.", "password": pw}
-            case _:
-                result = {"extra_info": "", "password": "", "worst_case": ""}
+        rnd = int(self.exponential(0, 8, 0.9))
+        result = [self.mnemonic, self.passphrase, self.pattern, self.complex_pattern, self.sentence, self.words,
+                  self.random, self.complex, self.ratio][rnd]()
 
         if return_worst_case:
             if _zxcvbn is None:

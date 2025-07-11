@@ -23,12 +23,10 @@ packages = [
   "aplustools.security.crypto._crypto_alpha",
   "aplustools.security.crypto._pycrypto_alpha",
   "aplustools.security.crypto._quantcrypt",
-  "aplustools.security.crypto._fallbacks",
   "aplustools.security.crypto.algos",
   "aplustools.security.crypto.algos._asym",
   "aplustools.security.crypto.algos._hash_algorithm",
   "aplustools.security.crypto.algos._sym",
-  "aplustools.security.crypto.cert",
 ]
 include-package-data = true
 package-dir = {"" = "src"}
@@ -56,7 +54,7 @@ package-dir = {"" = "src"}
 
 [project]
 name = "aplustools"
-version = "2.0.0.0b3"
+version = "2.0.0.0"
 dependencies = ["packaging", "pywin32>=306; os_name == 'nt'", "cachetools>=5.5.0", "typing_extensions"]
 requires-python = ">= 3.10"
 authors = [
