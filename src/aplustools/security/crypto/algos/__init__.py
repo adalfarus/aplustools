@@ -1,5 +1,4 @@
-from . import (_sym as Sym, _asym as ASym, _hash_algorithm as HashAlgorithm,
-               _key_derivation_function as KeyDerivationFunction,
-               _message_authentication_code as MessageAuthenticationCode)
+from . import (_sym as Sym, _asym as Asym, _hash_algorithm as HashAlgorithm,
+               _key_derivation_function as KeyDerivationFunction)
 
-__all__ = ["Sym", "ASym", "HashAlgorithm", "KeyDerivationFunction", "MessageAuthenticationCode"]
+__all__ = ["Sym", "Asym", "HashAlgorithm", "KeyDerivationFunction"]

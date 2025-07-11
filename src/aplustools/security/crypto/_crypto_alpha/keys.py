@@ -10,9 +10,9 @@ import warnings
 import secrets
 import os
 
-from .._algorithms import _BASIC_KEYTYPE, _BASIC_KEYPAIRTYPE
-from .._algorithms import Sym, ASym, ECCCurve, ECCType, KeyDerivationFunction, MessageAuthenticationCode
-from .._backends import Backend
+from .._definitions import _BaseSymmetricKey, _BaseAsymmetricKeypair
+from .._definitions import Sym, ASym, ECCCurve, ECCType, KeyDerivationFunction, MessageAuthenticationCode
+from .. import Backend
 from ..exceptions import NotSupportedError
 
 
@@ -72,7 +72,7 @@ _ASYM_PADDING_CONVERSION = {
 }
 
 
-class _BASIC_CRYPTO_KEY(_BASIC_KEYTYPE):
+class _BASIC_CRYPTO_KEY(_BaseSymmetricKey):
     cipher_type = Sym
     cipher = None
     backend = Backend.cryptography
@@ -99,7 +99,7 @@ class _BASIC_CRYPTO_KEY(_BASIC_KEYTYPE):
         return str(self)
 
 
-class _BASIC_CRYPTO_KEYPAIR(_BASIC_KEYPAIRTYPE):
+class _BASIC_CRYPTO_KEYPAIR(_BaseAsymmetricKeypair):
     cipher_type = ASym
     cipher = None
     backend = Backend.cryptography

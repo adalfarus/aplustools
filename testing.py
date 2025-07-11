@@ -1,118 +1,63 @@
-from aplustools.package.argumint import analyze_function, ArgStructBuilder, Argumint, EndPoint
-from aplustools.data import beautify_json
+import os
+import ast
+from pathlib import Path
 
-import typing as _ty
-import sys
+def should_skip(path: Path) -> bool:
+    """Skip paths that are test files or test folders."""
+    return "test" in path.name.lower() or os.path.basename(path.name).startswith("_")
 
+def get_classes_in_file(file_path: Path) -> list[str]:
+    """Return list of class names defined in the Python file."""
+    try:
+        with open(file_path, "r", encoding="utf-8") as f:
+            node = ast.parse(f.read(), filename=str(file_path))
+    except Exception:
+        return []
 
-from aplustools.io.fileio import SafeFileWriter, os_open
+    return [n.name for n in node.body if isinstance(n, (ast.ClassDef, ast.FunctionDef)) and not n.name.startswith("_")]
 
+def list_modules_and_classes(package_dir: str, base_package: str = ""):
+    package_path = Path(package_dir).resolve()
+    for root, dirs, files in os.walk(package_path):
+        root_path = Path(root)
+        rel_path = root_path.relative_to(package_path)
 
-with SafeFileWriter("./hello_world.txt", os_open) as safe_f:
-    safe_f.seek(0, 2)
-    print(safe_f.write(b"Hello WORLD!"))
+        # Build the package path (e.g. aplustools.utils)
+        module_prefix = ".".join([base_package] + list(rel_path.parts)) if rel_path.parts else base_package
 
+        # Remove test dirs in-place to avoid walking into them
+        dirs[:] = [d for d in dirs if not should_skip(Path(d))]
 
-exit()
-def tstfunc(hello_world: str = "DEF!", *args, K: _ty.Literal[0, 1] = 1, **kwargs) -> int:
-    """
-    This is my func!
+        for file in files:
+            file_path = Path(file)
+            if file_path.suffix != ".py" or should_skip(file_path) or file_path.name.startswith("_"):
+                continue
 
-    :param hello_world: What you want to print
-    :param args: Nothing to note here
-    :param K: This is always 1
-    :param kwargs: Nothing as noted before
-    :return: This is not helpful!
-    """
-    ...
+            modname = file_path.stem
+            full_module = f"{module_prefix}.{modname}" if module_prefix else modname
 
+            file_full_path = root_path / file_path
+            class_names = get_classes_in_file(file_full_path)
 
-print(beautify_json(analyze_function(tstfunc)))
+            if class_names:
+                print(f"{full_module}")
+                for cls in class_names:
+                    print(f"  - {full_module}.{cls}")
 
+        # If this is a package with __init__.py and classes, list them
+        if "__init__.py" in files and not should_skip(root_path):
+            init_path = root_path / "__init__.py"
+            class_names = get_classes_in_file(init_path)
+            if class_names:
+                full_package = module_prefix
+                print(f"{full_package}")
+                for cls in class_names:
+                    print(f"  - {full_package}.{cls}")
 
-def local_test():
-    def sorry(*args, **kwargs):
-        print("Not implemented yet, sorry!")
+# Example usage
+if __name__ == "__main__":
+    # Adjust these as needed
+    package_path = "src/aplustools"
+    base_package = "aplustools"
 
-    def help_text():
-        print("Build -> dir/file or help.")
-
-    def build_file(path: _ty.Literal["./main.py", "./file.py"] = "./main.py", num: int = 0):
-        """
-        build_file
-        :param path: The path to the file that should be built.
-        :param num:
-        :return None:
-        """
-        print(f"Building file {path} ..., {num}")
-
-    from aplustools.package import timid
-
-    timer = timid.TimidTimer()
-
-    arg_struct = {
-        'apt': {  # Root key
-            'build': {  # 'build' related options
-                'file': {},  # File-related (ensured endpoint)
-                'dir': {  # Directory-related options
-                    'main': {},  # Main directory (ensured endpoint)
-                    'all': {}  # All directories (ensured endpoint)
-                }
-            },
-            'help': {}  # Help options (ensured endpoint)
-        }
-    }
-
-    # Example usage
-    builder = ArgStructBuilder()
-    builder.add_command("apt")
-    builder.add_nested_command("apt", "build", "file")
-
-    builder.add_nested_command("apt.build", "dir", {'main': {}, 'all': {}})
-    # builder.add_subcommand("apt.build", "dir")
-    # builder.add_nested_command("apt.build.dir", "main")
-    # builder.add_nested_command("apt.build.dir", "all")
-
-    builder.add_command("apt.help")
-    # builder.add_nested_command("apt", "help")
-
-    print(builder.get_structure())  # Best to cache this for better times (by ~15 microseconds)
-
-    parser = Argumint(EndPoint(sorry), arg_struct=arg_struct)
-    parser.add_endpoint("apt.help", help_text)
-
-    parser.add_endpoint("apt.build.file", EndPoint(build_file))
-
-    sys.argv[0] = "apt"
-
-    # Testing
-    # sys.argv = ["apt", "help"]
-    sys.argv = ["apt", "build", "file", "./file.py", "--num=19"]
-    parser.parse_cli(sys, "native_light")
-    print(timer.end())
-
-local_test()
-exit()
-from aplustools.security.prot import BlackBox, SecureMemoryChunk
-
-
-# memory = SecureMemoryChunk(1000)
-# memory.write(b"\x10" * 100)
-# memory.close()
-
-
-bb = BlackBox()
-x = bytearray(b"\x10\x12\xA2")
-bb._attrs.d = x
-print(x)
-
-
-class Test:
-    def link(self) -> bytes:
-        return bytearray(b"\x01" * 4)
-
-
-bb.link(Test())
-print(bb.link_pub_key)
-print(bb._attrs.bb_public_key)
-print(bb._attrs._offsets)
+    list_modules_and_classes(package_path, base_package)

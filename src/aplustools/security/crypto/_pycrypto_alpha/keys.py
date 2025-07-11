@@ -12,9 +12,9 @@ import warnings
 import secrets
 
 
-from .._algorithms import Sym, ASym, ECCCurve, KeyDerivationFunction, MessageAuthenticationCode, ECCType
-from .._algorithms import _BASIC_KEYTYPE, _BASIC_KEYPAIRTYPE
-from .._backends import Backend
+from .._definitions import Sym, ASym, ECCCurve, KeyDerivationFunction, MessageAuthenticationCode, ECCType
+from .._definitions import _BaseSymmetricKey, _BaseAsymmetricKeypair
+from .. import Backend
 from ..exceptions import NotSupportedError
 
 _ECC_TYPE_MAPPING = {
@@ -62,7 +62,7 @@ _CIPHER_MODULE_MAPPING = {
 }
 
 
-class _BASIC_PYCRYPTO_KEY(_BASIC_KEYTYPE):
+class _BASIC_PYCRYPTO_KEY(_BaseSymmetricKey):
     cipher_type = Sym
     cipher = None
     backend = Backend.pycryptodomex
@@ -89,7 +89,7 @@ class _BASIC_PYCRYPTO_KEY(_BASIC_KEYTYPE):
         return str(self)
 
 
-class _BASIC_PYCRYPTO_KEYPAIR(_BASIC_KEYPAIRTYPE):
+class _BASIC_PYCRYPTO_KEYPAIR(_BaseAsymmetricKeypair):
     cipher_type = ASym
     cipher = None
     backend = Backend.pycryptodomex

@@ -14,7 +14,7 @@ import queue
 from .env import MAX_PATH  # as a reference to be importable from here too
 from .env import auto_repr as _auto_repr
 from ..package import enforce_hard_deps as _enforce_hard_deps
-from ..package.timid import TimidTimer as _TimidTimer
+from ..package.chronokit import FlexTimer as _TimidTimer
 
 # Standard typing imports for aps
 import typing_extensions as _te
@@ -363,7 +363,7 @@ class HyperScalingDynamicThreadPoolExecutor(_ThreadPoolExecutor):
         self._min_workers = min_workers
         self._check_interval: float = check_interval
         self._check_timer: _TimidTimer = _TimidTimer(start_now=False)
-        self._check_timer.fire(check_interval, self._join_threads, daemon=True)
+        self._check_timer.loop(check_interval, self._join_threads, daemon=True)
         self._lock: _TLock = _TLock()
         self._to_join: set = set()
         self._worker_func: _a.Callable = _self_managing_worker
@@ -430,7 +430,7 @@ class HyperScalingDynamicThreadPoolExecutor(_ThreadPoolExecutor):
         """
         with self._lock:
             super().shutdown(wait, cancel_futures=cancel_futures)
-        self._check_timer.stop_fires(0, not_exists_okay=True)
+        self._check_timer.stop_loops(0, not_exists_okay=True)
 
     def __del__(self) -> None:
         self.shutdown()

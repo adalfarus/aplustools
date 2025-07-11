@@ -1,7 +1,7 @@
 """TBA"""
 import sys
 
-from ...package.argumint import *
+from ...package.autocli import *
 import pytest
 
 # Standard typing imports for aps

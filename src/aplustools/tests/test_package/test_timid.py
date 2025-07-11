@@ -1,5 +1,5 @@
 """TBA"""
-from ...package.timid import *
+from ...package.chronokit import *
 import pytest
 
 # Standard typing imports for aps

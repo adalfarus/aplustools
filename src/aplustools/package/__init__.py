@@ -13,9 +13,6 @@ Attributes:
 
 Lazy loading allows for deferred loading of these modules, improving performance and memory efficiency in cases where
 they are not always needed.
-
-Usage:
-    from aplus.tools.package import timid, argumint
 """
 
 from ._direct import setup_lazy_loaders as _setup_lazy_loaders
@@ -24,11 +21,11 @@ from typing import TYPE_CHECKING as _TYPE_CHECKING
 
 if _TYPE_CHECKING:
     from ._direct import *
-    from . import timid, argumint
+    from . import chronokit, autocli
 
 _setup_lazy_loaders(
     globals(),
     {
         "timid": ".package.timid",
-        "argumint": ".package.argumint"
+        "autocli": ".package.autocli"
     }, _direct)

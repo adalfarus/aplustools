@@ -5,7 +5,7 @@ from . import _cipher as Cipher
 
 import typing as _ty
 
-__all__ = ["Cipher", "Operation", "Padding", "KeyEncoding"]
+__all__ = ["Cipher", "Operation", "Padding", "KeyEncoding", "MessageAuthenticationCode"]
 
 
 class Operation(enum.Enum):
@@ -23,9 +23,15 @@ class Padding(enum.Enum):
     ANSIX923 = (None, "")
 
 class KeyEncoding(enum.Enum):
-    HEX = (None, "")
-    RAW = (None, "")
-    ASCII = (None, "")
-    BASE16 = (None, "")
-    BASE32 = (None, "")
-    BASE64 = (None, "")
+    RAW = "raw"             # Pure bytes (e.g. from os.urandom)
+    BASE64 = "base64"       # Base64 string
+    HEX = "hex"             # Hex string (optional)
+    BASE32 = "base32"       # Less common, useful for TOTP
+
+class MessageAuthenticationCode(enum.Enum):
+    """Authentication Codes"""
+    HMAC = None  # Hash-based Message Authentication Code
+    CMAC = None  # Cipher-based Message Authentication Code
+    KMAC128 = None
+    KMAC256 = None
+    Poly1305 = None

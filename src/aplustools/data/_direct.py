@@ -4,7 +4,7 @@ import json
 import re
 
 from ..package import enforce_hard_deps as _enforce_hard_deps
-from ..package.argumint import analyze_function as _analyze_function, NoDefault as _NoDefault
+from ..package.autocli import analyze_function as _analyze_function, NoDefault as _NoDefault
 
 # Standard typing imports for aps
 import typing_extensions as _te
