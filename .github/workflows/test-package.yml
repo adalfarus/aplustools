@@ -93,7 +93,7 @@ jobs:
     - name: Combine coverage data
       run: |
         mkdir combined
-        find coverages -name 'coverage.json' -exec cp {} combined/ \;
+        find coverages -type f -name 'coverage.json' -exec cp {} combined/ \;
         coverage combine combined
         coverage json -o coverage.json
         coverage report
