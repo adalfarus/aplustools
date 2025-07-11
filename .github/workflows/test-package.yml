@@ -57,6 +57,21 @@ jobs:
 
     - name: Run tests
       run: |
-        echo "Running tests..."
-        pytest src/aplustools/tests
+        echo "Running tests with coverage..."
+        coverage run -m pytest src/aplustools/tests
+        coverage report
+        coverage json -o coverage.json
         echo "Tests completed."
+
+    - name: Generate coverage badge
+      run: |
+        python scripts/generate_coverage_badge.py
+
+    - name: Commit badge
+      if: github.ref == 'refs/heads/main'
+      run: |
+        git config --global user.name "github-actions"
+        git config --global user.email "github-actions@github.com"
+        git add coverage-badge.svg
+        git commit -m "Update coverage badge"
+        git push
