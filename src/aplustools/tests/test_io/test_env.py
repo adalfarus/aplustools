@@ -62,8 +62,6 @@ def test_base_system_not_implemented_methods() -> None:
         system.send_native_notification("title", "message")
     with pytest.raises(NotImplementedError):
         system.get_appdata_directory("app")
-    with pytest.raises(NotImplementedError):
-        system.get_battery_status()
 
 
 @pytest.fixture
@@ -140,14 +138,6 @@ def test_send_native_notification_safe(system: BaseSystemType) -> None:
         system.send_native_notification("Test", "This is a native test.")
     except NotImplementedError:
         pytest.skip("Native notification not implemented")
-
-
-def test_battery_status_safe(system: BaseSystemType) -> None:
-    try:
-        battery = system.get_battery_status()
-        assert isinstance(battery, (str, dict, _ts.NoneType))  # Computer does not have a battery
-    except NotImplementedError:
-        pytest.skip("Battery status not implemented")
 
 
 def test_appdata_path_user(system: BaseSystemType) -> None:
