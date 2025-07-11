@@ -7,6 +7,7 @@ from .._definitions import _KYBER_KEYPAIRTYPE, _DILITHIUM_KEYPAIRTYPE, SymKeyEnc
 from ..exceptions import NotSupportedError as _NotSupportedError
 from ..algos._asym import KeyFormat as ASymKeyFormat, KeyEncoding as ASymKeyEncoding, Padding as ASymPadding
 
+import typing_extensions as _te
 import typing as _ty
 
 
@@ -29,7 +30,7 @@ class _KYBER_KEYPAIR(_KYBER_KEYPAIRTYPE):
 
     @classmethod
     def decode(cls, mode: _ty.Literal["kyber512", "kyber768", "kyber1024"], *, public_key: bytes | None = None,
-               private_key: bytes | None = None) -> _ty.Self:
+               private_key: bytes | None = None) -> _te.Self:
         """, encoding: SymKeyEncoding"""
         obj = cls(mode)
         obj._public_key = public_key
@@ -73,7 +74,7 @@ class _DILITHIUM_KEYPAIR(_DILITHIUM_KEYPAIRTYPE):
 
     @classmethod
     def decode(cls, mode: _ty.Literal["dilithium2", "dilithium3", "dilithium5"], *, public_key: bytes | None = None,
-               private_key: bytes | None = None) -> _ty.Self:
+               private_key: bytes | None = None) -> _te.Self:
         """, encoding: SymKeyEncoding"""
         obj = cls(mode)
         obj._public_key = public_key

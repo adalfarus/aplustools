@@ -234,7 +234,7 @@ class BasicFDWrapper:
             os.close(self.fd)
             self.closed = True
 
-    def __enter__(self) -> _ty.Self:
+    def __enter__(self) -> _te.Self:
         """
         Allows the FDWrapper to be used as a context manager.
         """
@@ -778,7 +778,7 @@ class os_hyper_read(_FileLockMixin):
         if is_fd_open(self._fd):
             os.close(self._fd)
 
-    def __enter__(self) -> _ty.Self:
+    def __enter__(self) -> _te.Self:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
@@ -1086,7 +1086,7 @@ class os_hyper_write(_FileLockMixin):
         elif is_fd_open(self._fd):
             os.close(self._fd)
 
-    def __enter__(self) -> _ty.Self:
+    def __enter__(self) -> _te.Self:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
@@ -1290,7 +1290,7 @@ class SafeFileWriter:
             else:  # We're on posix, we can now safely release the lock
                 self._open_obj.close()  # This only works on posix
 
-    def __enter__(self) -> _ty.Self:
+    def __enter__(self) -> _te.Self:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:

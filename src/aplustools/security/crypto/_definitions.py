@@ -101,7 +101,7 @@ class _BaseKey(metaclass=ABCMeta):
     __concrete__: bool = False  # Is flipped true if the set_backend function sets this key, otherwise false
 
     @abstractmethod
-    def new(self, *args: _ty.Any, **kwargs: _ty.Any) -> _ty.Self:
+    def new(self, *args: _ty.Any, **kwargs: _ty.Any) -> _te.Self:
         """TBA"""
     @abstractmethod
     def __repr__(self) -> str: ...
@@ -115,7 +115,7 @@ class SingleSerializable(metaclass=ABCMeta):
     """Interface for encoding and decoding single keys."""
     @classmethod
     @abstractmethod
-    def decode(cls, *args: _ty.Any, **kwargs: _ty.Any) -> _ty.Self:
+    def decode(cls, *args: _ty.Any, **kwargs: _ty.Any) -> _te.Self:
         """TBA"""
     @abstractmethod
     def encode(self, *args: _ty.Any, **kwargs: _ty.Any) -> _ty.Any:
@@ -124,7 +124,7 @@ class SymKeySerializable(SingleSerializable, metaclass=ABCMeta):
     """Interface for encoding and decoding symmetric keys."""
     @classmethod
     @abstractmethod
-    def decode(cls, key: bytes, encoding: SymKeyEncoding) -> _ty.Self:
+    def decode(cls, key: bytes, encoding: SymKeyEncoding) -> _te.Self:
         """
         Deserialize a key from its encoded byte representation.
         :param key: The encoded key bytes.
@@ -142,7 +142,7 @@ class DoubleSerializable(metaclass=ABCMeta):
     """Interface for encoding and decoding double keys."""
     @classmethod
     @abstractmethod
-    def decode_private_key(cls, *args: _ty.Any, **kwargs: _ty.Any) -> _ty.Self:
+    def decode_private_key(cls, *args: _ty.Any, **kwargs: _ty.Any) -> _te.Self:
         """
         Deserialize a private key from the given encoded data.
         :param data:: Encoded private key data.
@@ -153,7 +153,7 @@ class DoubleSerializable(metaclass=ABCMeta):
         """
     @classmethod
     @abstractmethod
-    def decode_public_key(cls, *args: _ty.Any, **kwargs: _ty.Any) -> _ty.Self:
+    def decode_public_key(cls, *args: _ty.Any, **kwargs: _ty.Any) -> _te.Self:
         """
         Deserialize a public key from the given encoded data.
         :param data: Encoded public key data.
@@ -182,7 +182,7 @@ class AsymKeySerializable(DoubleSerializable, metaclass=ABCMeta):
     """Interface for encoding and decoding asymmetric key pairs."""
     @classmethod
     @abstractmethod
-    def decode_private_key(cls, data: bytes, format_: ASymKeyFormat, encoding: ASymKeyEncoding, password: bytes | None = None) -> _ty.Self:
+    def decode_private_key(cls, data: bytes, format_: ASymKeyFormat, encoding: ASymKeyEncoding, password: bytes | None = None) -> _te.Self:
         """
         Deserialize a private key from the given encoded data.
         :param data:: Encoded private key data.
@@ -193,7 +193,7 @@ class AsymKeySerializable(DoubleSerializable, metaclass=ABCMeta):
         """
     @classmethod
     @abstractmethod
-    def decode_public_key(cls, data: bytes, format_: ASymKeyFormat, encoding: ASymKeyEncoding) -> _ty.Self:
+    def decode_public_key(cls, data: bytes, format_: ASymKeyFormat, encoding: ASymKeyEncoding) -> _te.Self:
         """
         Deserialize a public key from the given encoded data.
         :param data: Encoded public key data.
@@ -312,7 +312,7 @@ class AsymKeySignable(Signable, metaclass=ABCMeta):
 class AsymKeyKeyExchangeable(metaclass=ABCMeta):
     """Interface for performing a key exchange operation."""
     @abstractmethod
-    def key_exchange(self, peer_public_key: _ty.Self) -> bytes:
+    def key_exchange(self, peer_public_key: _te.Self) -> bytes:
         """
         Perform a key exchange operation using this private key and a peer's public key.
         :param peer_public_key: The peer's public key.
@@ -767,7 +767,7 @@ class _AES_KEYTYPE(
     def __init__(self, key_size: _AES_KEYLITERAL, pwd: _ty.Optional[bytes | str]) -> None: ...
 
     @classmethod
-    def new(cls, pwd_or_keysize: _AES_KEYLITERAL | tuple[_AES_KEYLITERAL, str | bytes]) -> _ty.Self:
+    def new(cls, pwd_or_keysize: _AES_KEYLITERAL | tuple[_AES_KEYLITERAL, str | bytes]) -> _te.Self:
         """TBA"""
         if not cls.__concrete__:
             raise _NotSupportedError(f"The {cls.cipher} cipher is not supported by this backend")
@@ -798,7 +798,7 @@ class _ChaCha20_KEYTYPE(
     def __init__(self, pwd: _ty.Optional[bytes | str] = None) -> None: ...
 
     @classmethod
-    def new(cls, pwd: bytes | str | None = None) -> _ty.Self:
+    def new(cls, pwd: bytes | str | None = None) -> _te.Self:
         if not cls.__concrete__:
             raise _NotSupportedError(f"The {cls.cipher} cipher is not supported by this backend")
         if not (isinstance(pwd, (bytes, str)) or pwd is None):
@@ -818,7 +818,7 @@ class _TripleDES_KEYTYPE(
     def __init__(self, key_size: _ty.Literal[192], pwd: _ty.Optional[bytes | str] = None) -> None: ...
 
     @classmethod
-    def new(cls, pwd: bytes | str | None = None) -> _ty.Self:
+    def new(cls, pwd: bytes | str | None = None) -> _te.Self:
         if not cls.__concrete__:
             raise _NotSupportedError(f"The {cls.cipher} cipher is not supported by this backend")
         if not (isinstance(pwd, (bytes, str)) or pwd is None):
@@ -840,7 +840,7 @@ class _Blowfish_KEYTYPE(
     def __init__(self, key_size: _ty.Literal[128, 256], pwd: _ty.Optional[bytes | str] = None) -> None: ...
 
     @classmethod
-    def new(cls, pwd_or_keysize: _Blowfish_KEYLITERAL | tuple[_Blowfish_KEYLITERAL, str | bytes]) -> _ty.Self:
+    def new(cls, pwd_or_keysize: _Blowfish_KEYLITERAL | tuple[_Blowfish_KEYLITERAL, str | bytes]) -> _te.Self:
         if not cls.__concrete__:
             raise _NotSupportedError(f"The {cls.cipher} cipher is not supported by this backend")
         pwd: str | bytes | None = None
@@ -871,7 +871,7 @@ class _CAST5_KEYTYPE(
     def __init__(self, key_size: _ty.Literal[40, 128], pwd: _ty.Optional[bytes | str] = None) -> None: ...
 
     @classmethod
-    def new(cls, pwd_or_keysize: _CAST5_KEYLITERAL | tuple[_CAST5_KEYLITERAL, str | bytes]) -> _ty.Self:
+    def new(cls, pwd_or_keysize: _CAST5_KEYLITERAL | tuple[_CAST5_KEYLITERAL, str | bytes]) -> _te.Self:
         if not cls.__concrete__:
             raise _NotSupportedError(f"The {cls.cipher} cipher is not supported by this backend")
         pwd: str | bytes | None = None
@@ -900,7 +900,7 @@ class _ARC4_KEYTYPE(
     def __init__(self, pwd: _ty.Optional[bytes | str] = None) -> None: ...
 
     @classmethod
-    def new(cls, pwd: bytes | str | None = None) -> _ty.Self:
+    def new(cls, pwd: bytes | str | None = None) -> _te.Self:
         if not cls.__concrete__:
             raise _NotSupportedError(f"The {cls.cipher} cipher is not supported by this backend")
         if not (isinstance(pwd, (bytes, str)) or pwd is None):
@@ -922,7 +922,7 @@ class _Camellia_KEYTYPE(
     def __init__(self, key_size: _Camellia_KEYLITERAL, pwd: _ty.Optional[bytes | str] = None) -> None: ...
 
     @classmethod
-    def new(cls, pwd_or_keysize: _Camellia_KEYLITERAL | tuple[_Camellia_KEYLITERAL, str | bytes]) -> _ty.Self:
+    def new(cls, pwd_or_keysize: _Camellia_KEYLITERAL | tuple[_Camellia_KEYLITERAL, str | bytes]) -> _te.Self:
         if not cls.__concrete__:
             raise _NotSupportedError(f"The {cls.cipher} cipher is not supported by this backend")
         pwd: str | bytes | None = None
@@ -951,7 +951,7 @@ class _IDEA_KEYTYPE(
     def __init__(self, pwd: _ty.Optional[bytes | str] = None) -> None: ...
 
     @classmethod
-    def new(cls, pwd: bytes | str | None = None) -> _ty.Self:
+    def new(cls, pwd: bytes | str | None = None) -> _te.Self:
         if not cls.__concrete__:
             raise _NotSupportedError(f"The {cls.cipher} cipher is not supported by this backend")
         if not (isinstance(pwd, (bytes, str)) or pwd is None):
@@ -971,7 +971,7 @@ class _SEED_KEYTYPE(
     def __init__(self, pwd: _ty.Optional[bytes | str] = None) -> None: ...
 
     @classmethod
-    def new(cls, pwd: bytes | str | None = None) -> _ty.Self:
+    def new(cls, pwd: bytes | str | None = None) -> _te.Self:
         if not cls.__concrete__:
             raise _NotSupportedError(f"The {cls.cipher} cipher is not supported by this backend")
         if not (isinstance(pwd, (bytes, str)) or pwd is None):
@@ -991,7 +991,7 @@ class _SM4_KEYTYPE(
     def __init__(self, pwd: _ty.Optional[bytes | str] = None): ...
 
     @classmethod
-    def new(cls, pwd: bytes | str | None = None) -> _ty.Self:
+    def new(cls, pwd: bytes | str | None = None) -> _te.Self:
         if not cls.__concrete__:
             raise _NotSupportedError(f"The {cls.cipher} cipher is not supported by this backend")
         if not (isinstance(pwd, (bytes, str)) or pwd is None):
@@ -1011,7 +1011,7 @@ class _DES_KEYTYPE(
     def __init__(self, pwd: _ty.Optional[bytes | str] = None) -> None: ...
 
     @classmethod
-    def new(cls, pwd: bytes | str | None = None) -> _ty.Self:
+    def new(cls, pwd: bytes | str | None = None) -> _te.Self:
         """
         if isinstance(pwd, (bytes, str)):
             if len(pwd) * 8 != 64:
@@ -1040,7 +1040,7 @@ class _ARC2_KEYTYPE(
     def __init__(self, key_size: _ARC2_KEYLITERAL = 128, pwd: _ty.Optional[bytes | str] = None) -> None: ...
 
     @classmethod
-    def new(cls, pwd_or_keysize: _ARC2_KEYLITERAL | tuple[_ARC2_KEYLITERAL, str | bytes]) -> _ty.Self:
+    def new(cls, pwd_or_keysize: _ARC2_KEYLITERAL | tuple[_ARC2_KEYLITERAL, str | bytes]) -> _te.Self:
         if not cls.__concrete__:
             raise _NotSupportedError(f"The {cls.cipher} cipher is not supported by this backend")
         pwd: str | bytes | None = None
@@ -1072,7 +1072,7 @@ class _Salsa20_KEYTYPE(
     def __init__(self, key_size: _Salsa20_KEYLITERAL = 256, pwd: _ty.Optional[bytes | str] = None) -> None: ...
 
     @classmethod
-    def new(cls, pwd_or_keysize: _Salsa20_KEYLITERAL | tuple[_Salsa20_KEYLITERAL, str | bytes]) -> _ty.Self:
+    def new(cls, pwd_or_keysize: _Salsa20_KEYLITERAL | tuple[_Salsa20_KEYLITERAL, str | bytes]) -> _te.Self:
         if not cls.__concrete__:
             raise _NotSupportedError(f"The {cls.cipher} cipher is not supported by this backend")
         pwd: str | bytes | None = None
@@ -1104,7 +1104,7 @@ class _RSA_KEYPAIRTYPE(
     def __init__(self, key_size: _RSA_KEYLITERAL, pwd: _ty.Optional[bytes | str] = None) -> None: ...
 
     @classmethod
-    def new(cls, pwd_or_keysize: _RSA_KEYLITERAL | tuple[_RSA_KEYLITERAL, str | bytes]) -> _ty.Self:
+    def new(cls, pwd_or_keysize: _RSA_KEYLITERAL | tuple[_RSA_KEYLITERAL, str | bytes]) -> _te.Self:
         if not cls.__concrete__:
             raise _NotSupportedError(f"The {cls.cipher} cipher is not supported by this backend")
         pwd: str | bytes | None = None
@@ -1136,7 +1136,7 @@ class _DSA_KEYPAIRTYPE(
     def __init__(self, key_size: _DSA_KEYLITERAL, pwd: _ty.Optional[bytes | str] = None) -> None: ...
 
     @classmethod
-    def new(cls, pwd_or_keysize: _DSA_KEYLITERAL | tuple[_DSA_KEYLITERAL, str | bytes]) -> _ty.Self:
+    def new(cls, pwd_or_keysize: _DSA_KEYLITERAL | tuple[_DSA_KEYLITERAL, str | bytes]) -> _te.Self:
         if not cls.__concrete__:
             raise _NotSupportedError(f"The {cls.cipher} cipher is not supported by this backend")
         pwd: str | bytes | None = None
@@ -1193,7 +1193,7 @@ class _ECC_KEYPAIRTYPE(
                  pwd: _ty.Optional[bytes | str] = None) -> None: ...
 
     @classmethod
-    def new(cls, __item: _ty.Any) -> _ty.Self:
+    def new(cls, __item: _ty.Any) -> _te.Self:
         """
         Creates a new ECC key depending on the provided input.
 
@@ -1229,7 +1229,7 @@ class _ECC_KEYPAIRTYPE(
 
     @classmethod
     def ecdsa_key(cls, ecc_curve: ECCCurve = ECCCurve.SECP256R1,
-                  private_key: bytes | str | None = None) -> _ty.Self:
+                  private_key: bytes | str | None = None) -> _te.Self:
         """Elliptic Curve Digital Signature Algorithm"""
         if not cls.__concrete__:
             raise _NotSupportedError(f"The {cls.cipher} cipher is not supported by this backend")
@@ -1241,7 +1241,7 @@ class _ECC_KEYPAIRTYPE(
 
     @classmethod
     def optimized_key(cls, ecc_type: ECCType,
-                      private_key: bytes | str | None = None) -> _ty.Self:
+                      private_key: bytes | str | None = None) -> _te.Self:
         """
         TBA
         :param ecc_type:
@@ -1275,7 +1275,7 @@ class _KYBER_KEYPAIRTYPE(
     cipher = "KYBER"
     def __init__(self, mode: _KYBER_MODELITERAL) -> None: ...
     @classmethod
-    def new(cls, mode: _KYBER_MODELITERAL) -> _ty.Self:
+    def new(cls, mode: _KYBER_MODELITERAL) -> _te.Self:
         if not cls.__concrete__:
             raise _NotSupportedError(f"The {cls.cipher} cipher is not supported by this backend")
         if mode not in _KYBER_MODES:
@@ -1283,7 +1283,7 @@ class _KYBER_KEYPAIRTYPE(
         return cls(mode)
     @classmethod
     @abstractmethod
-    def decode(cls, mode: _KYBER_MODELITERAL, *, public_key: bytes | None = None, private_key: bytes | None = None) -> _ty.Self: ...
+    def decode(cls, mode: _KYBER_MODELITERAL, *, public_key: bytes | None = None, private_key: bytes | None = None) -> _te.Self: ...
     @abstractmethod
     def encode_private_key(self) -> bytes | None: ...
     @abstractmethod
@@ -1303,7 +1303,7 @@ class _DILITHIUM_KEYPAIRTYPE(
     cipher = "DILITHIUM"
     def __init__(self, mode: _DILITHIUM_MODELITERAL) -> None: ...
     @classmethod
-    def new(cls, mode: _DILITHIUM_MODELITERAL) -> _ty.Self:
+    def new(cls, mode: _DILITHIUM_MODELITERAL) -> _te.Self:
         if not cls.__concrete__:
             raise _NotSupportedError(f"The {cls.cipher} cipher is not supported by this backend")
         if mode not in _DILITHIUM_MODES:
@@ -1311,7 +1311,7 @@ class _DILITHIUM_KEYPAIRTYPE(
         return cls(mode)
     @classmethod
     @abstractmethod
-    def decode(cls, mode: _DILITHIUM_MODELITERAL, *, public_key: bytes | None = None, private_key: bytes | None = None) -> _ty.Self: ...
+    def decode(cls, mode: _DILITHIUM_MODELITERAL, *, public_key: bytes | None = None, private_key: bytes | None = None) -> _te.Self: ...
     @abstractmethod
     def encode_private_key(self) -> bytes | None: ...
     @abstractmethod
@@ -1336,7 +1336,7 @@ class _SPHINCS_KEYPAIRTYPE(
     def __init__(self, mode: _SPHINCS_MODELITERAL) -> None: ...
 
     @classmethod
-    def new(cls, mode: _SPHINCS_MODELITERAL) -> _ty.Self:
+    def new(cls, mode: _SPHINCS_MODELITERAL) -> _te.Self:
         if not cls.__concrete__:
             raise _NotSupportedError(f"{cls.cipher} not supported by this backend")
         if mode not in _SPHINCS_MODES:
@@ -1358,7 +1358,7 @@ class _FRODOKEM_KEYPAIRTYPE(
     def __init__(self, mode: _FRODOKEM_MODELITERAL) -> None: ...
 
     @classmethod
-    def new(cls, mode: _FRODOKEM_MODELITERAL) -> _ty.Self:
+    def new(cls, mode: _FRODOKEM_MODELITERAL) -> _te.Self:
         if not cls.__concrete__:
             raise _NotSupportedError(f"{cls.cipher} not supported by this backend")
         if mode not in _FRODOKEM_MODES:
@@ -1380,7 +1380,7 @@ class _BIKE_KEYPAIRTYPE(
     def __init__(self, mode: _BIKE_MODELITERAL) -> None: ...
 
     @classmethod
-    def new(cls, mode: _BIKE_MODELITERAL) -> _ty.Self:
+    def new(cls, mode: _BIKE_MODELITERAL) -> _te.Self:
         if not cls.__concrete__:
             raise _NotSupportedError(f"{cls.cipher} not supported by this backend")
         if mode not in _BIKE_MODES:

@@ -57,7 +57,7 @@ class StorageMedium:
         self._current_version = self.create_storage(self._filepath)
 
     @classmethod
-    def from_webresource(cls, new_file_path: str, webresource: str, max_cache_size: int = 128) -> _ty.Self:
+    def from_webresource(cls, new_file_path: str, webresource: str, max_cache_size: int = 128) -> _te.Self:
         """
         Create an instance of the class by downloading a web resource.
 
@@ -153,7 +153,7 @@ class StorageMedium:
         """
         self._lock.release()
 
-    def __enter__(self) -> _ty.Self:
+    def __enter__(self) -> _te.Self:
         self.acquire()
         return self
 

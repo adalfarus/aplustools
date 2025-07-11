@@ -122,7 +122,7 @@ class Result:
         """
         return lambda fut: _process_result(fut, idx)
 
-    def into(self, container: list[_a.Callable[[_ty.Any], None] | _ty.Type]) -> _ty.Self:
+    def into(self, container: list[_a.Callable[[_ty.Any], None] | _ty.Type]) -> _te.Self:
         """
         Process each result as it finishes and apply the transformation specified by
         the container's elements (e.g., `str`, `json.loads`, etc.) to the result.
@@ -151,7 +151,7 @@ class Result:
 
         return self  # Return self so you can chain await()
 
-    def no_into(self) -> _ty.Self:
+    def no_into(self) -> _te.Self:
         """
         Collects raw results and stores them in the `null_results` list without any transformation.
 
@@ -173,7 +173,7 @@ class Result:
 
         return self
 
-    def await_(self) -> _ty.Self:
+    def await_(self) -> _te.Self:
         """
         Waits for all futures to finish by blocking until they are done.
 

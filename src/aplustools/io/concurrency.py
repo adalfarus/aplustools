@@ -118,7 +118,7 @@ class SharedStruct:
         return SharedReference(self._struct_format, self._shm_name, self._lock)
 
     @classmethod
-    def from_reference(cls, ref: SharedReference) -> _ty.Self:
+    def from_reference(cls, ref: SharedReference) -> _te.Self:
         """Loads a shared struct obj from a shared reference"""
         return cls(ref.struct_format, False, ref.shm_name, overwrite_mp_lock=ref.lock)
 
@@ -142,7 +142,7 @@ class SharedStruct:
         """Unsets the lock."""
         self._lock.release()
 
-    def __enter__(self) -> _ty.Self:
+    def __enter__(self) -> _te.Self:
         self.set_lock()
         return self
 

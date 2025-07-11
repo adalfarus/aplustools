@@ -251,7 +251,7 @@ class PreciseTimeDelta:
         return _timedelta(seconds=seconds, microseconds=micros)
 
     @classmethod
-    def from_timedelta(cls, td: _timedelta) -> _ty.Self:
+    def from_timedelta(cls, td: _timedelta) -> _te.Self:
         """
         Convert a timedelta object into nanoseconds.
         :param td: The timedelta object to convert.
@@ -260,7 +260,7 @@ class PreciseTimeDelta:
         return cls(nanoseconds=int(td.total_seconds() * cls.NANOS_PER_SECOND))
 
     @classmethod
-    def parse_timedelta_string(cls, td_str: str) -> _ty.Self:
+    def parse_timedelta_string(cls, td_str: str) -> _te.Self:
         """
         Convert a `timedelta`-like string format (e.g., '00:00:00.123456789')
         into nanoseconds.
@@ -450,7 +450,7 @@ class PreciseTimeDelta:
         else:
             return formatted_time
 
-    def __truediv__(self, other: float | int | _ty.Self) -> int | float | _ty.Self:
+    def __truediv__(self, other: float | int | _te.Self) -> int | float | _te.Self:
         """
         Divides the current PreciseTimeDelta by a number or another PreciseTimeDelta.
 
@@ -666,7 +666,7 @@ class BasicTimer:
         if auto_start:
             self.start()
 
-    def start(self) -> _ty.Self:
+    def start(self) -> _te.Self:
         """
         Starts the timer. If the timer was stopped or paused, it resets the start time and
         resumes recording. Raises an error if the timer has already been started or ended.
@@ -689,7 +689,7 @@ class BasicTimer:
             raise RuntimeError("Timer is already running.")
         return self
 
-    def split_start(self) -> _ty.Self:
+    def split_start(self) -> _te.Self:
         """
         Records a tick, which captures the current time as an interval start.
         Raises an error if the timer has ended or is not started.
@@ -706,7 +706,7 @@ class BasicTimer:
             raise RuntimeError("Timer has not been started.")
         return self
 
-    def split_end(self) -> _ty.Self:
+    def split_end(self) -> _te.Self:
         """
         Records a tock, which captures the current time as an interval end.
         Raises an error if the timer has ended or is not started.
@@ -769,7 +769,7 @@ class BasicTimer:
         elapsed_time = (self.stop_time or time.time()) - self.start_time - self.pause_duration
         return _timedelta(seconds=elapsed_time)
 
-    def stop(self) -> _ty.Self:
+    def stop(self) -> _te.Self:
         """
         Stops the timer and records the current time as the stop time.
         Raises an error if the timer is already stopped or not started.
@@ -786,7 +786,7 @@ class BasicTimer:
             raise RuntimeError("Timer has not been started.")
         return self
 
-    def pause(self) -> _ty.Self:
+    def pause(self) -> _te.Self:
         """
         Pauses the timer, storing the current time as the pause start time.
         Raises an error if the timer is already paused, stopped, or not started.
@@ -804,7 +804,7 @@ class BasicTimer:
             raise RuntimeError("Timer has not been started.")
         return self
 
-    def resume(self) -> _ty.Self:
+    def resume(self) -> _te.Self:
         """
         Resumes the timer from a paused state and adjusts the total paused duration.
         Raises an error if the timer is not paused or has ended.
@@ -821,7 +821,7 @@ class BasicTimer:
         self.pause_start_time = None
         return self
 
-    def end(self) -> _ty.Self:
+    def end(self) -> _te.Self:
         """
         Ends the timer, preventing any further operations such as start, pause, or resume.
 
@@ -857,7 +857,7 @@ class FlexTimer:
     """
     EMPTY: tuple[_TimeType, _TimeType, _TimeType, _ty.Optional[threading.Lock]] = (0, 0, 0, None)
     SENTINEL = object()
-    _tracked_timers: _ThreadSafeList[_ty.Self] = _ThreadSafeList()
+    _tracked_timers: _ThreadSafeList[_te.Self] = _ThreadSafeList()
 
     def __init__(self, start_at: _TimeType = 0, start_now: bool = True) -> None:
         """
@@ -887,7 +887,7 @@ class FlexTimer:
         return _default_timer() * 1e9
 
     @classmethod
-    def at(cls, index: int, *args: _ty.Any, **kwargs: _ty.Any) -> _ty.Self:
+    def at(cls, index: int, *args: _ty.Any, **kwargs: _ty.Any) -> _te.Self:
         """
         Retrieves or creates a timer object at the specified index.
 
@@ -899,12 +899,12 @@ class FlexTimer:
             index (int): The index of the timer to access or create.
 
         Returns:
-            _ty.Self: The timer object at the specified index.
+            _te.Self: The timer object at the specified index.
         """
         amount_to_extend = index - len(cls._tracked_timers) + 1  # We want to be able
         if amount_to_extend > 0:
             cls._tracked_timers.extend([cls.SENTINEL] * amount_to_extend)
-        obj: _ty.Self
+        obj: _te.Self
         if cls._tracked_timers[index] is cls.SENTINEL:
             obj = cls(*args, **kwargs)
             cls._tracked_timers[index] = obj
@@ -913,7 +913,7 @@ class FlexTimer:
         return obj
 
     @classmethod
-    def from_(cls, index: int) -> _ty.Self:
+    def from_(cls, index: int) -> _te.Self:
         """
         Retrieves the timer object at the specified index, if it exists.
 
@@ -925,7 +925,7 @@ class FlexTimer:
             index (int): The index of the timer to retrieve.
 
         Returns:
-            _ty.Self: The timer object at the specified index.
+            _te.Self: The timer object at the specified index.
 
         Raises:
             IndexError: If no timer exists at the given index.
@@ -934,7 +934,7 @@ class FlexTimer:
             raise IndexError(f"No timer found at index {index}")
         return cls._tracked_timers[index]
 
-    def start(self, *indices: int | None, start_at: _TimeType = 0) -> _ty.Self:
+    def start(self, *indices: int | None, start_at: _TimeType = 0) -> _te.Self:
         """
         Starts the timer at the specified indices.
 
@@ -990,7 +990,7 @@ class FlexTimer:
                 return i
         return len(self._times)
 
-    def pause(self, *indices: int | None, for_seconds: _TimeType | None = None) -> _ty.Self:
+    def pause(self, *indices: int | None, for_seconds: _TimeType | None = None) -> _te.Self:
         """
         Pauses the timer at the specified indices.
 
@@ -1019,7 +1019,7 @@ class FlexTimer:
                     self._tick_tocks[index].append(float('inf'))
         return self
 
-    def resume(self, *indices: int | None) -> _ty.Self:
+    def resume(self, *indices: int | None) -> _te.Self:
         """
         Resumes the timer at the specified indices.
 
@@ -1049,7 +1049,7 @@ class FlexTimer:
         else:
             raise ValueError(f"Timer on index {index} isn't paused.")
 
-    def stop(self, *indices: int | None) -> _ty.Self:
+    def stop(self, *indices: int | None) -> _te.Self:
         """
         Stops the timer at the specified indices.
 
@@ -1106,7 +1106,7 @@ class FlexTimer:
         return returns if len(returns) > 1 else returns[0]
 
     def delete(self, *indices: int | None, return_type: _ty.Literal["timedelta", "PreciseTimeDelta", None] = "PreciseTimeDelta"
-               ) -> list[PreciseTimeDelta | _timedelta] | PreciseTimeDelta | _timedelta | _ty.Self:
+               ) -> list[PreciseTimeDelta | _timedelta] | PreciseTimeDelta | _timedelta | _te.Self:
         """
         Deletes the timer at the specified indices.
 
@@ -1142,7 +1142,7 @@ class FlexTimer:
         return self
 
     def end(self, *indices: int | None, return_type: _ty.Literal["timedelta", "PreciseTimeDelta", None] = "PreciseTimeDelta"
-            ) -> list[PreciseTimeDelta | _timedelta] | PreciseTimeDelta | _timedelta | _ty.Self:
+            ) -> list[PreciseTimeDelta | _timedelta] | PreciseTimeDelta | _timedelta | _te.Self:
         """
         Ends the timer at the specified indices.
 
@@ -1177,7 +1177,7 @@ class FlexTimer:
         return self
 
     def restart(self, *indices: int | None, return_type: _ty.Literal["timedelta", "PreciseTimeDelta", None] = "PreciseTimeDelta"
-            ) -> list[PreciseTimeDelta | _timedelta] | PreciseTimeDelta | _timedelta | _ty.Self:
+            ) -> list[PreciseTimeDelta | _timedelta] | PreciseTimeDelta | _timedelta | _te.Self:
         """
         Restarts an already running timer, skipping the whole .stop() .get_readable() .delete() boilerplate.
 
@@ -1214,7 +1214,7 @@ class FlexTimer:
         return self
 
     def elapsed(self, *indices: int | None, return_type: _ty.Literal["timedelta", "PreciseTimeDelta", None] = "PreciseTimeDelta"
-                ) -> list[PreciseTimeDelta | _timedelta] | PreciseTimeDelta | _timedelta | _ty.Self:
+                ) -> list[PreciseTimeDelta | _timedelta] | PreciseTimeDelta | _timedelta | _te.Self:
         """
         Records how much time has passed since the start of the timer (similar to elapsed).
 
@@ -1248,7 +1248,7 @@ class FlexTimer:
         return self
 
     def lap(self, *indices: int | None, return_type: _ty.Literal["timedelta", "PreciseTimeDelta", None] = "PreciseTimeDelta"
-            ) -> list[PreciseTimeDelta | _timedelta] | PreciseTimeDelta | _timedelta | _ty.Self:
+            ) -> list[PreciseTimeDelta | _timedelta] | PreciseTimeDelta | _timedelta | _te.Self:
         """
         Records the time between the last tock and the current tock (similar to lap or split time).
 
@@ -1395,7 +1395,7 @@ class FlexTimer:
         self._tick_tocks = []
 
     def after(self, delay: float | int, callback: _a.Callable[..., _ty.Any], *, ms: bool = False, long: bool = False,
-              args: tuple[_ty.Any, ...] = (), kwargs: dict[str, _ty.Any] | None = None) -> _ty.Self:
+              args: tuple[_ty.Any, ...] = (), kwargs: dict[str, _ty.Any] | None = None) -> _te.Self:
         """
         Starts a countdown timer for a specified number of seconds.
         :param delay: The duration of the countdown in seconds.
@@ -1421,7 +1421,7 @@ class FlexTimer:
 
     def interval(self, interval: float | int, count: int | _ty.Literal["inf"], callback: _a.Callable[..., _ty.Any], *,
                  ms: bool = False, long: bool = False, args: tuple[_ty.Any, ...] = (),
-                 kwargs: dict[str, _ty.Any] | None = None) -> _ty.Self:
+                 kwargs: dict[str, _ty.Any] | None = None) -> _te.Self:
         """
         Starts an interval timer that triggers the callback at specified intervals.
         :param interval: The interval in seconds between each callback trigger.
@@ -1524,7 +1524,7 @@ class FlexTimer:
         return timer
 
     @classmethod
-    def setup_timer_func(cls, func: _a.Callable[..., _ty.Any], to_nanosecond_multiplier: float | int) -> _ty.Type[_ty.Self]:
+    def setup_timer_func(cls, func: _a.Callable[..., _ty.Any], to_nanosecond_multiplier: float | int) -> _ty.Type[_te.Self]:
         """
         Sets up a custom timing function for the timer, using a specified multiplier to convert the time to nanoseconds.
 
@@ -1628,7 +1628,7 @@ class FlexTimer:
 
     @classmethod
     def single_shot(cls, wait_time: _TimeType, function: _a.Callable[..., _ty.Any], args: tuple[_ty.Any, ...] = (),
-                    kwargs: dict[str, _ty.Any] | None = None, daemon: bool = False) -> _ty.Type[_ty.Self]:
+                    kwargs: dict[str, _ty.Any] | None = None, daemon: bool = False) -> _ty.Type[_te.Self]:
         """
         Executes a single-shot timer that triggers the specified function after a set amount of time.
 
@@ -1651,7 +1651,7 @@ class FlexTimer:
 
     @classmethod
     def single_shot_ms(cls, wait_time_ms: _TimeType, function: _a.Callable[..., _ty.Any], args: tuple[_ty.Any, ...] = (),
-                       kwargs: dict[str, _ty.Any] | None = None, daemon: bool = False) -> _ty.Type[_ty.Self]:
+                       kwargs: dict[str, _ty.Any] | None = None, daemon: bool = False) -> _ty.Type[_te.Self]:
         """
         Executes a single-shot timer that triggers the specified function after a set amount of time in milliseconds.
 
@@ -1674,7 +1674,7 @@ class FlexTimer:
 
     @classmethod
     def single_shot_long(cls, wait_time: _TimeType, function: _a.Callable[..., _ty.Any], args: tuple[_ty.Any, ...] = (),
-                         kwargs: dict[str, _ty.Any] | None = None) -> _ty.Type[_ty.Self]:
+                         kwargs: dict[str, _ty.Any] | None = None) -> _ty.Type[_te.Self]:
         """
         Executes a long-running single-shot timer that triggers the specified function after a set amount of time.
 
@@ -1695,7 +1695,7 @@ class FlexTimer:
     @classmethod
     def repeat(cls, interval: _TimeType, function: _a.Callable[..., _ty.Any], args: tuple[_ty.Any, ...] = (),
                kwargs: dict[str, _ty.Any] | None = None, iterations: int = 1,
-               daemon: bool = False) -> _ty.Type[_ty.Self]:
+               daemon: bool = False) -> _ty.Type[_te.Self]:
         """
         Repeatedly triggers a function at a specified interval for a set number of iterations.
 
@@ -1720,7 +1720,7 @@ class FlexTimer:
     @classmethod
     def repeat_ms(cls, interval_ms: _TimeType, function: _a.Callable[..., _ty.Any], args: tuple[_ty.Any, ...] = (),
                   kwargs: dict[str, _ty.Any] | None = None, iterations: int = 1,
-                  daemon: bool = False) -> _ty.Type[_ty.Self]:
+                  daemon: bool = False) -> _ty.Type[_te.Self]:
         """
         Repeatedly triggers a function at a specified interval in milliseconds for a set number of iterations.
 
@@ -1744,7 +1744,7 @@ class FlexTimer:
 
     @classmethod
     def repeat_long(cls, interval: _TimeType, function: _a.Callable[..., _ty.Any], args: tuple[_ty.Any, ...] = (),
-                    kwargs: dict[str, _ty.Any] | None = None, iterations: int = 1) -> _ty.Type[_ty.Self]:
+                    kwargs: dict[str, _ty.Any] | None = None, iterations: int = 1) -> _ty.Type[_te.Self]:
         """
         Repeatedly triggers a function at a specified interval for a long-running timer, for a set number of iterations.
 
@@ -1764,7 +1764,7 @@ class FlexTimer:
         return cls
 
     def loop(self, interval: _TimeType, function: _a.Callable[..., _ty.Any], args: tuple[_ty.Any, ...] = (),
-             kwargs: dict[str, _ty.Any] | None = None, index: int | None = None, daemon: bool = False) -> _ty.Self:
+             kwargs: dict[str, _ty.Any] | None = None, index: int | None = None, daemon: bool = False) -> _te.Self:
         """
         Starts a repeating timer that triggers the specified function at set intervals indefinitely.
 
@@ -1800,7 +1800,7 @@ class FlexTimer:
         return self
 
     def loop_ms(self, interval_ms: _TimeType, function: _a.Callable[..., _ty.Any], args: tuple[_ty.Any, ...] = (),
-                kwargs: dict[str, _ty.Any] | None = None, index: int | None = None, daemon: bool = False) -> _ty.Self:
+                kwargs: dict[str, _ty.Any] | None = None, index: int | None = None, daemon: bool = False) -> _te.Self:
         """
         Starts a repeating timer that triggers the specified function at set intervals in milliseconds indefinitely.
 
@@ -1836,7 +1836,7 @@ class FlexTimer:
         return self
 
     def loop_long(self, interval: _TimeType, function: _a.Callable[..., _ty.Any], args: tuple[_ty.Any, ...] = (),
-                  kwargs: dict[str, _ty.Any] | None = None, index: int | None = None) -> _ty.Self:
+                  kwargs: dict[str, _ty.Any] | None = None, index: int | None = None) -> _te.Self:
         """
         Starts a long-running repeating timer that triggers the specified function at set intervals indefinitely.
 
@@ -1867,7 +1867,7 @@ class FlexTimer:
             self._loops.insert(index, (None, event))
         return self
 
-    def stop_loop(self, index: int | None = None, amount: int | None = None) -> _ty.Self:
+    def stop_loop(self, index: int | None = None, amount: int | None = None) -> _te.Self:
         """
         Stops the specified timer(s) and removes them from the internal list.
 
@@ -1887,7 +1887,7 @@ class FlexTimer:
                 thread.join()
         return self
 
-    def stop_loops(self, *indices: int | None, not_exists_okay: bool = False) -> _ty.Self:
+    def stop_loops(self, *indices: int | None, not_exists_okay: bool = False) -> _te.Self:
         """
         Stops the specified timer(s) and removes them from the internal list.
 
@@ -1910,7 +1910,7 @@ class FlexTimer:
                     thread.join()
         return self
 
-    def warmup_timer(self, rounds: int = 300) -> _ty.Self:
+    def warmup_timer(self, rounds: int = 300) -> _te.Self:
         """
         Warms up the timer by running short intervals repeatedly.
 
@@ -1924,7 +1924,7 @@ class FlexTimer:
             self.wait_ms_static(1)
         return self
 
-    def wait(self, seconds: _TimeType = 0) -> _ty.Self:
+    def wait(self, seconds: _TimeType = 0) -> _te.Self:
         """
         Pauses execution for a specified number of seconds.
 
@@ -1937,7 +1937,7 @@ class FlexTimer:
         self.wait_static(seconds)
         return self
 
-    def wait_ms(self, milliseconds: _TimeType = 0) -> _ty.Self:
+    def wait_ms(self, milliseconds: _TimeType = 0) -> _te.Self:
         """
         Pauses execution for a specified number of milliseconds.
 
@@ -1987,7 +1987,7 @@ class FlexTimer:
         return timer.end(return_type=return_type)
 
     @classmethod
-    def wait_static(cls, seconds: _TimeType = 0) -> _ty.Type[_ty.Self]:
+    def wait_static(cls, seconds: _TimeType = 0) -> _ty.Type[_te.Self]:
         """
         Pauses execution for a specified number of seconds, statically.
 
@@ -2001,7 +2001,7 @@ class FlexTimer:
         return cls
 
     @classmethod
-    def wait_ms_static(cls, milliseconds: _TimeType = 0) -> _ty.Type[_ty.Self]:
+    def wait_ms_static(cls, milliseconds: _TimeType = 0) -> _ty.Type[_te.Self]:
         """
         Pauses execution for a specified number of milliseconds, statically.
 
@@ -2143,7 +2143,7 @@ class FlexTimer:
         """
         def _decorator(func: _a.Callable[..., _ty.Any]) -> _a.Callable[..., _ty.Any]:
             def _wrapper(*args: _ty.Any, **kwargs: _ty.Any) -> _ty.Any:
-                timer: _ty.Self = cls()
+                timer: _te.Self = cls()
                 result: _ty.Any = func(*args, **kwargs)
                 elapsed: float = timer.end().nanoseconds()
                 print(f"Function {func.__name__} took {PreciseTimeFormat.get_static_readable(elapsed, time_format)} to complete.")
@@ -2159,7 +2159,7 @@ class FlexTimer:
         """
         return _datetime.now().strftime("%H:%M:%S")
 
-    def enter(self, index: int | None = None) -> _ty.Self:
+    def enter(self, index: int | None = None) -> _te.Self:
         """
         Starts the timer and sets the index for thread-local storage when using the timer in a context manager.
 
@@ -2174,7 +2174,7 @@ class FlexTimer:
         self._thread_data.entry_index = index
         return self.__enter__()
 
-    def __enter__(self) -> _ty.Self:
+    def __enter__(self) -> _te.Self:
         """
         Enters the context manager by starting the timer at the specified entry index.
 
