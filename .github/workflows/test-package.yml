@@ -1,7 +1,8 @@
 name: CI Test
 
 on: [push, pull_request]
-
+permissions:
+  contents: write
 jobs:
   build:
     runs-on: ${{ matrix.os }}
