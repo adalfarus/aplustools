@@ -1096,7 +1096,7 @@ class _LinuxSystem(_BaseSystem):
                 command = "xfconf-query -c xsettings -p /Net/ThemeName"
                 theme = subprocess.check_output(command.split(" ")).decode().strip()
                 return SystemTheme.DARK if "dark" in theme.lower() else SystemTheme.LIGHT
-            raise subprocess.CalledProcessError
+            raise subprocess.CalledProcessError(returncode=1, cmd="defaults read", output="Error")
         except subprocess.CalledProcessError:
             # If theme detection fails for all, return unknown theme
             return SystemTheme.UNKNOWN
