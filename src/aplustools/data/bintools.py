@@ -1111,7 +1111,7 @@ class CNumStorage:
         """
         return self._groups
 
-    def __eq__(self, other: _ty. Self) -> bool:
+    def __eq__(self, other: _te.Self) -> bool:
         """
         Compares two CNumStorage instances for equality based on their stored numbers.
 
