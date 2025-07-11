@@ -103,7 +103,7 @@ all = [
   "zxcvbn>=4.4.28",
   "bcrypt>=4.1.2",
   "psutil>=6.0.0",
-  "pywin32>=306",
+  "pywin32>=306; os_name == 'nt'",
   "cachetools>=5.5.0",
   "PySide6>=6.7.0"
 ]
