@@ -4,6 +4,7 @@ import mmap
 import uuid
 import os
 import shutil
+import sys
 
 from .env import get_system as _get_system
 from ..data import align_to_next as _align_to_next
@@ -408,7 +409,10 @@ class os_open(BasicFDWrapper):
     TRUNC = os.O_TRUNC
     APPEND = os.O_APPEND
     WRONLY = os.O_WRONLY
-    BINARY = os.O_BINARY
+    if sys.platform == "win32":
+        BINARY = os.O_BINARY
+    else:
+        BINARY = 0  # No-op on POSIX
 
     def __init__(self, filepath: str,
                  mode: _ty.Literal["r", "rb", "r+", "r+b", "w", "wb", "w+", "w+b", "a", "ab", "a+", "a+b"] = "r",
