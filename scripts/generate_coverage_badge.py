@@ -1,9 +1,13 @@
 # scripts/generate_coverage_badge.py
 import json
 import sys
+from pathlib import Path
 
-COVERAGE_PATH = "coverage.json"
-BADGE_PATH = "../coverage-badge.svg"
+SCRIPT_DIR = Path(__file__).resolve().parent
+ROOT_DIR = SCRIPT_DIR.parent
+
+COVERAGE_PATH = ROOT_DIR / "coverage.json"
+BADGE_PATH = ROOT_DIR / "coverage-badge.svg"
 
 def get_coverage_percentage(path):
     with open(path) as f:
@@ -24,12 +28,32 @@ def generate_svg(percent):
     except:
         pass
 
-    return f"""<svg xmlns="http://www.w3.org/2000/svg" width="120" height="20">
-      <rect width="60" height="20" fill="#555" rx="3" ry="3"/>
-      <rect x="60" width="60" height="20" fill="{color}" rx="3" ry="3"/>
-      <text x="30" y="14" fill="#fff" font-family="Verdana" font-size="11" text-anchor="middle">coverage</text>
-      <text x="90" y="14" fill="#fff" font-family="Verdana" font-size="11" text-anchor="middle">{percent}%</text>
-    </svg>"""
+    left_text = "coverage"
+    right_text = f"{percent}%"
+    left_width = 73
+    right_width = 47
+    total_width = left_width + right_width
+
+    return f'''<svg xmlns="http://www.w3.org/2000/svg" width="{total_width}" height="20">
+              <linearGradient id="s" x2="0" y2="100%">
+                <stop offset="0" stop-color="#bbb" stop-opacity=".1"/>
+                <stop offset="1" stop-opacity=".1"/>
+              </linearGradient>
+              <clipPath id="r">
+                <rect width="{total_width}" height="20" rx="3" fill="#fff"/>
+              </clipPath>
+              <g clip-path="url(#r)">
+                <rect width="{left_width}" height="20" fill="#555"/>
+                <rect x="{left_width}" width="{right_width}" height="20" fill="{color}"/>
+                <rect width="{total_width}" height="20" fill="url(#s)"/>
+              </g>
+              <g fill="#fff" text-anchor="middle"
+                 font-family="Verdana,Geneva,DejaVu Sans,sans-serif"
+                 font-size="11">
+                <text x="{left_width // 2}" y="15">{left_text}</text>
+                <text x="{left_width + right_width // 2}" y="15">{right_text}</text>
+              </g>
+            </svg>'''
 
 if __name__ == "__main__":
     pct = get_coverage_percentage(COVERAGE_PATH)
