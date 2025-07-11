@@ -25,11 +25,11 @@ def generate_svg(percent):
         pass
 
     return f"""<svg xmlns="http://www.w3.org/2000/svg" width="120" height="20">
-  <rect width="60" height="20" fill="#555"/>
-  <rect x="60" width="60" height="20" fill="{color}"/>
-  <text x="30" y="14" fill="#fff" font-family="Verdana" font-size="11" text-anchor="middle">coverage</text>
-  <text x="90" y="14" fill="#fff" font-family="Verdana" font-size="11" text-anchor="middle">{percent}%</text>
-</svg>"""
+      <rect width="60" height="20" fill="#555" rx="3" ry="3"/>
+      <rect x="60" width="60" height="20" fill="{color}" rx="3" ry="3"/>
+      <text x="30" y="14" fill="#fff" font-family="Verdana" font-size="11" text-anchor="middle">coverage</text>
+      <text x="90" y="14" fill="#fff" font-family="Verdana" font-size="11" text-anchor="middle">{percent}%</text>
+    </svg>"""
 
 if __name__ == "__main__":
     pct = get_coverage_percentage(COVERAGE_PATH)

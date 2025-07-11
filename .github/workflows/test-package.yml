@@ -73,5 +73,4 @@ jobs:
         git config --global user.name "github-actions"
         git config --global user.email "github-actions@github.com"
         git add coverage-badge.svg
-        git commit -m "Update coverage badge"
-        git push
+        git diff --cached --quiet && echo "No changes to commit" || (git commit -m "Update coverage badge" && git push)
