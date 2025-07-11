@@ -5,8 +5,8 @@ import tempfile
 from io import StringIO
 import threading
 
-from ...io import _direct  # Needed
-from ...io._direct import *
+from aplustools.io import _direct  # Needed
+from aplustools.io._direct import *
 import pytest
 
 # Standard typing imports for aps

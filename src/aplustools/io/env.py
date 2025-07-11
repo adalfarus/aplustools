@@ -198,24 +198,6 @@ class _BaseSystem(metaclass=_SingletonMeta):
         """
         raise NotImplementedError("get_battery_status is not implemented for this os")
 
-    def get_clipboard(self) -> str | None:
-        """
-        Get the current content of the system's clipboard.
-
-        :raises NotImplementedError: This method is not implemented for this operating system.
-        """
-        raise NotImplementedError("get_clipboard is not implemented for this os")
-
-    def set_clipboard(self, data: str) -> None:
-        """
-        Set the system clipboard with the specified data.
-
-        :param data: The string data to set in the clipboard.
-
-        :raises NotImplementedError: This method is not implemented for this operating system.
-        """
-        raise NotImplementedError("set_clipboard is not implemented for this os")
-
     def get_system_language(self) -> tuple[str | str | None, str | str | None]:
         """
         Get the current system language and encoding settings.
@@ -1006,31 +988,6 @@ class _WindowsSystem(_BaseSystem):
             return os.path.join(os.environ.get("APPDATA"), app_dir)  # App data for the current user
         return os.path.join(os.environ.get("PROGRAMDATA"), app_dir)  # App data for all users
 
-    def get_clipboard(self) -> str | None:
-        """
-        Get the content of the Windows clipboard.
-
-        :return: The content of the clipboard as a string. If the clipboard is empty, returns None.
-        """
-        _win32clipboard.OpenClipboard()
-        try:
-            data = _win32clipboard.GetClipboardData()
-        except TypeError:
-            data = None
-        _win32clipboard.CloseClipboard()
-        return data
-
-    def set_clipboard(self, data: str) -> None:
-        """
-        Set the Windows clipboard content with the specified string data.
-
-        :param data: The string data to set in the clipboard.
-        """
-        _win32clipboard.OpenClipboard()
-        _win32clipboard.EmptyClipboard()
-        _win32clipboard.SetClipboardText(data)
-        _win32clipboard.CloseClipboard()
-
     def get_system_language(self) -> tuple[str | str | None, str | str | None]:
         """
         Get the system language and encoding on a Windows system.
@@ -1106,14 +1063,6 @@ class _DarwinSystem(_BaseSystem):
         if scope == "user":
             return os.path.join(os.path.expanduser("~"), "Library", "Application Support", app_dir)  # App data for the current user
         return os.path.join("/Library/Application Support", app_dir)  # App data for all users
-
-    def get_clipboard(self):
-        command = "pbpaste"
-        return subprocess.check_output(command.split(" ")).decode().strip()
-
-    def set_clipboard(self, data: str):
-        command = f'echo "{data}" | pbcopy'
-        subprocess.run(command.split(" "), check=True)
 
     def get_system_language(self) -> tuple[str | str | None, str | str | None]:
         language_code, encoding = super().get_system_language()
@@ -1227,17 +1176,6 @@ class _LinuxSystem(_BaseSystem):
             return os.path.join(os.path.expanduser("~"), ".local", "share", app_dir)  # App data for the current user
         return os.path.join("/usr/local/share", app_dir)  # App data for all users
 
-    def get_clipboard(self):
-        command = "xclip -selection clipboard -o"
-        try:
-            return subprocess.check_output(command.split(" ")).decode().strip()
-        except subprocess.CalledProcessError:
-            return None
-
-    def set_clipboard(self, data: str) -> None:
-        command = f'echo "{data}" | xclip -selection clipboard'
-        subprocess.run(command.split(" "))
-
     def get_system_language(self) -> tuple[str | str | None, str | str | None]:
         language_code, encoding = super().get_system_language()
         return language_code or os.getenv('LANG', 'en_US'), encoding
@@ -1285,17 +1223,6 @@ class _FreeBSDSystem(_LinuxSystem):
         if scope == "user":
             return os.path.join(os.path.expanduser("~"), ".local", "share", app_dir)
         return os.path.join("/usr/local/share", app_dir)
-
-    def get_clipboard(self) -> str | None:
-        """Get clipboard content using xclip or xsel (if available on FreeBSD)."""
-        try:
-            return subprocess.check_output(["xclip", "-selection", "clipboard", "-o"]).decode().strip()
-        except subprocess.CalledProcessError:
-            return None
-
-    def set_clipboard(self, data: str) -> None:
-        """Set clipboard content using xclip or xsel (if available)."""
-        subprocess.run(f'echo "{data}" | xclip -selection clipboard', shell=True)
 
     def get_system_language(self) -> tuple[str | None, str | None]:
         """Get system language for FreeBSD."""

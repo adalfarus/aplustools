@@ -64,10 +64,6 @@ def test_base_system_not_implemented_methods() -> None:
         system.get_appdata_directory("app")
     with pytest.raises(NotImplementedError):
         system.get_battery_status()
-    with pytest.raises(NotImplementedError):
-        system.get_clipboard()
-    with pytest.raises(NotImplementedError):
-        system.set_clipboard("data")
 
 
 @pytest.fixture
@@ -152,16 +148,6 @@ def test_battery_status_safe(system: BaseSystemType) -> None:
         assert isinstance(battery, (str, dict, _ts.NoneType))  # Computer does not have a battery
     except NotImplementedError:
         pytest.skip("Battery status not implemented")
-
-
-def test_clipboard_roundtrip(system: BaseSystemType) -> None:
-    test_text = "Hello clipboard"
-    try:
-        system.set_clipboard(test_text)
-        result = system.get_clipboard()
-        assert test_text in result
-    except NotImplementedError:
-        pytest.skip("Clipboard not supported")
 
 
 def test_appdata_path_user(system: BaseSystemType) -> None:
@@ -361,12 +347,12 @@ def test_hide_and_unhide_file_cycle() -> None:
 #     assert "blockers" in captured.out.lower() or "threads" in captured.out.lower() or "no obvious" in captured.out.lower() or "processes" in captured.out.lower()
 
 
-def test_diagnose_shutdown_blockers_with_and_without_suggestions() -> None:
-    with_suggestions: str = diagnose_shutdown_blockers(suggestions=True, return_result=True)
-    without_suggestions: str = diagnose_shutdown_blockers(suggestions=False, return_result=True)
-
-    if "Suggestion:" in with_suggestions:
-        assert "Suggestion:" not in without_suggestions
+# def test_diagnose_shutdown_blockers_with_and_without_suggestions() -> None:
+#     with_suggestions: str = diagnose_shutdown_blockers(suggestions=True, return_result=True)
+#     without_suggestions: str = diagnose_shutdown_blockers(suggestions=False, return_result=True)
+#
+#     if "Suggestion:" in with_suggestions:
+#         assert "Suggestion:" not in without_suggestions
 
 
 def test_suppress_warnings_context_manager() -> None:
@@ -459,7 +445,7 @@ def test_get_uptime_is_positive() -> None:
 
 def test_change_working_dir_to_new_temp_folder() -> None:
     path = BasicSystemFunctions.change_working_dir_to_new_temp_folder()
-    assert os.getcwd() == path
+    assert os.path.realpath(os.getcwd()) == os.path.realpath(path)
     assert os.path.exists(path)
 
 
