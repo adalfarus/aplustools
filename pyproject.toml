@@ -54,6 +54,8 @@ package-dir = {"" = "src"}
 
 [tool.ruff]
 line-length = 88  # For PEP8 compliance
+
+[tool.ruff.lint]
 select = ["E", "F"]
 ignore = ["E501"]  # Line length checks for now
 exclude = [
