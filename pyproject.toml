@@ -56,6 +56,9 @@ package-dir = {"" = "src"}
 line-length = 88  # For PEP8 compliance
 select = ["E", "F"]
 ignore = ["E501"]  # Line length checks for now
+exclude = [
+    "tests/*",
+]
 
 [project]
 name = "aplustools"

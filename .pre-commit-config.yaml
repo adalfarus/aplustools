@@ -3,10 +3,12 @@ repos:
   # Ruff version.
   rev: v0.12.3
   hooks:
-    # Run the linter.
+    # Run the linter
     - id: ruff-check
-      types_or: [ python, pyi ]
-      args: [ --fix ]
-    # Run the formatter.
+      types_or: [python, pyi]
+      args: [--fix, '--exclude', 'tests/*']  # Skip the tests directory
+
+    # Run the formatter
     - id: ruff-format
-      types_or: [ python, pyi ]
+      types_or: [python, pyi]
+      args: ['--exclude', 'tests/*']  # Skip the tests directory
