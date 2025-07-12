@@ -52,6 +52,11 @@ package-dir = {"" = "src"}
   "12-dicts/6phrase.txt"
 ]
 
+[tool.ruff]
+line-length = 88  # For PEP8 compliance
+select = ["E", "F"]
+ignore = ["E501"]  # Line length checks for now
+
 [project]
 name = "aplustools"
 version = "2.0.0.0"
@@ -81,7 +86,7 @@ io = ["windows-toasts>=1.1.1; os_name == 'nt'", "psutil>=6.0.0", "pywin32>=306",
 package = [ "numpy>=1.26.4", "scipy>=1.13.0", "scikit-learn>=1.5.2"]
 security = ["cryptography>=42.0.5", "quantcrypt>=0.4.2; python_version == '3.12'", "zxcvbn>=4.4.28", "bcrypt>=4.1.2"]
 web = ["requests>=2.32.0", "BeautifulSoup4>=4.12.2", "aiohttp>=3.9.5"]
-dev = ["pytest", "coverage"]
+dev = ["pytest", "coverage", "pre-commit", "ruff"]
 all = [
   "Pillow>=10.4.0",
   "aiohttp>=3.9.4",
