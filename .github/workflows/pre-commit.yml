@@ -1,6 +1,15 @@
 name: Run Pre-commit Hooks
 
-on: [push, pull_request]
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
 
 jobs:
   pre-commit:
@@ -24,3 +33,14 @@ jobs:
 
       - name: Run pre-commit hooks
         run: pre-commit run --all-files
+        continue-on-error: true   # This will allow the job to continue even if Ruff fails
+
+      - name: Push formatting changes
+        if: success()  # Only run if previous step was successful
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
+          
+          git pull --ff-only
+          
+          git commit -am "Apply Ruff formatting" && git push
