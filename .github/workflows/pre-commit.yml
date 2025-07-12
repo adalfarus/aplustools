@@ -36,7 +36,8 @@ jobs:
         continue-on-error: true   # This will allow the job to continue even if Ruff fails
 
       - name: Push formatting changes
-        if: success()  # Only run if previous step was successful
+        continue-on-error: true
+        # if: success()  # Only run if previous step was successful
         run: |
           git config --global user.name "github-actions"
           git config --global user.email "github-actions@github.com"
