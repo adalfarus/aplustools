@@ -6,9 +6,7 @@ repos:
     # Run the linter
     - id: ruff-check
       types_or: [python, pyi]
-      args: [--fix, '--exclude', 'tests/*']  # Skip the tests directory
 
     # Run the formatter
     - id: ruff-format
       types_or: [python, pyi]
-      args: ['--exclude', 'tests/*']  # Skip the tests directory
