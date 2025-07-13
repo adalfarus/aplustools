@@ -55,14 +55,14 @@ package-dir = {"" = "src"}
 [tool.ruff]
 line-length = 88  # For PEP8 compliance
 exclude = [
-    "tests/*",
+    "src/aplustools/tests/*",
 ]
 
 [tool.ruff.lint]
 select = ["E", "F"]
 ignore = ["E501", "F401", "F403"]  # E501 Line length checks for now; F401&F403 because they are used for type checking
 exclude = [
-    "tests/*",
+    "src/aplustools/tests/*",
 ]
 
 [project]
