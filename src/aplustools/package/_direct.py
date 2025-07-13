@@ -147,10 +147,9 @@ class LazyLoader:
                 self._check_dependencies(self.module)
 
             except ImportError as e:
-                pass
-                # raise ImportError(
-                #     f"Optional module '{self.module_name}' not installed. Please install it to use this feature."
-                # ) from e
+                print(
+                    f"Optional module '{self.module_name}' not installed. Please install it to use this feature.", e
+                )
 
     def __repr__(self) -> str:
         if self.module is None:
