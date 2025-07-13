@@ -6,6 +6,8 @@
 aplustools documentation
 ========================
 
+This documentation was auto-generated using Sphinx. There are bound to be formatting mistakes.
+
 .. toctree::
    :maxdepth: 2
    :caption: Contents:

@@ -29,11 +29,11 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -e .[all,dev]
-          pip install sphinx sphinx-markdown-builder myst-parser
+          pip install sphinx sphinx-markdown-builder myst-parser sphinxcontrib-restbuilder
 
-      - name: Build markdown docs
+      - name: Build rst docs
         run: |
-          sphinx-build -b markdown docs/source docs/build/markdown
+          sphinx-build -b rst docs/source docs/build/rst
 
       - name: Push docs to GitHub Wiki
         run: |
@@ -42,7 +42,7 @@ jobs:
 
           git clone https://x-access-token:${{ secrets.GH_PAT }}@github.com/${{ github.repository }}.wiki.git wiki
           rm -rf wiki/*
-          cp -r docs/build/markdown/* wiki/
+          cp -r docs/build/rst/* wiki/
           
           if [ -f wiki/index.md ]; then mv wiki/index.md wiki/Home.md; fi
 
