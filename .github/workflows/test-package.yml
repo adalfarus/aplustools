@@ -68,7 +68,7 @@ jobs:
 
     - name: Run tests with coverage
       run: |
-        coverage run -m pytest src/aplustools/tests
+        coverage run --data-file=.coverage -m pytest src/aplustools/tests
 
     - name: Debug Show files and working directory
       run: |
