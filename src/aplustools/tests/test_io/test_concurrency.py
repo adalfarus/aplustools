@@ -28,14 +28,12 @@ def test_shared_struct_creation_and_data_exchange() -> None:
 
 
 def test_shared_struct_reference_and_restore() -> None:
-    struct_format = "i f"
+    struct_format = "if"
     ss1 = SharedStruct(struct_format, create=True)
     try:
         ss1.set_data(7, 2.71)
-        ref = _SharedReference(ss1._struct_format, ss1._shm_name, ss1._lock)
-        ss2 = SharedStruct(
-            ref.struct_format, shm_name=ref.shm_name, overwrite_mp_lock=ref.lock
-        )
+        ref = ss1.reference()
+        ss2 = SharedStruct.from_reference(ref)
         result = ss2.get_data()
         assert result == (7, pytest.approx(2.71))
         ss2.close()
