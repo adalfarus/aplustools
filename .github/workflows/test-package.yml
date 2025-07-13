@@ -31,14 +31,9 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
 
-    - name: Install pytest
+    - name: Install aplustools with all optional and dev dependencies
       run: |
-        python -m pip install --upgrade pip
-        pip install pytest
-
-    - name: Install aplustools with all optional dependencies
-      run: |
-        pip install -e '.[all]'
+        pip install -e .[all,dev]
 
     - name: Prepare test_data directory (macOS/Linux)
       if: runner.os != 'Windows'
@@ -62,13 +57,9 @@ jobs:
         Write-Host "Creating directory $dir..."
         New-Item -ItemType Directory -Force -Path $dir
 
-    - name: Install package
-      run: |
-        pip install -e .[dev]
-
     - name: Run tests with coverage
       run: |
-        coverage run --data-file=.coverage -m pytest src/aplustools/tests
+        coverage run --data-file=coverage -m pytest src/aplustools/tests
 
     - name: Debug Show files and working directory
       run: |
@@ -80,7 +71,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: coverage-${{ matrix.os }}-${{ matrix.python-version }}
-        path: aplustools/aplustools/.coverage
+        path: coverage
 
   coverage-summary:
     needs: build
