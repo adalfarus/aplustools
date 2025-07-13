@@ -12,11 +12,11 @@ repos:
   hooks:
     - id: generate-docs
       name: Auto-generate API documentation
-      entry: pdoc aplustools --output-dir docs
-      language: python
-      additional_dependencies: [pdoc]
+      entry: bash -c 'PYTHONPATH=src pdoc aplustools --output-dir docs'
+      language: system
       pass_filenames: false
       always_run: true
+      additional_dependencies: [pdoc]
       stages: [pre-commit, manual]
 ci:
     autofix_commit_msg: |

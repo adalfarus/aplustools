@@ -31,7 +31,7 @@ import types as _ts
 # _curve_fit = _optional_import("scipy.optimize.curve_fit")
 # _np = _optional_import("numpy")
 
-__deps__: list[str] = []  #["scikit-learn>=1.5.0", "scipy>=1.13.0", "numpy>=1.26.4"]
+__deps__: list[str] = []  # ["scikit-learn>=1.5.0", "scipy>=1.13.0", "numpy>=1.26.4"]
 __hard_deps__: list[str] = []
 _enforce_hard_deps(__hard_deps__, __name__)
 
@@ -1510,7 +1510,9 @@ class FlexTimer:
         return self.tally(*indices, return_type=return_type) / total_tocks
 
     def show_laps(
-        self, index: int | None = None, format_to: PreciseTimeFormat = PreciseTimeFormat.SECONDS
+        self,
+        index: int | None = None,
+        format_to: PreciseTimeFormat = PreciseTimeFormat.SECONDS,
     ) -> str:
         """
         Displays the recorded times for each tick and tock.
@@ -1534,13 +1536,13 @@ class FlexTimer:
             my_tick_tocks.pop(-1)
         for i, (start, end) in enumerate(my_tick_tocks, start=1):
             td = PreciseTimeDelta(microseconds=(end - start) / 1000)
-            retstring += (
-                f"Lap {i}: {td.to_readable(format_to)}\n"
-            )
+            retstring += f"Lap {i}: {td.to_readable(format_to)}\n"
         return retstring
 
     def get_readable(
-        self, index: int | None = None, format_to: PreciseTimeFormat = PreciseTimeFormat.SECONDS
+        self,
+        index: int | None = None,
+        format_to: PreciseTimeFormat = PreciseTimeFormat.SECONDS,
     ) -> str:
         """
         Returns a readable string of the timer's elapsed time.
@@ -2576,29 +2578,38 @@ class FlexTimer:
 class TimeFTimer(FlexTimer):
     _time = staticmethod(lambda: time.time() * 1e9)
 
+
 class TimeFTimerNS(FlexTimer):
     _time = staticmethod(time.time_ns)
+
 
 class PerfFTimer(FlexTimer):
     _time = staticmethod(lambda: time.perf_counter() * 1e9)
 
+
 class PerfFTimerNS(FlexTimer):
     _time = staticmethod(time.perf_counter_ns)
+
 
 class CPUFTimer(FlexTimer):
     _time = staticmethod(lambda: time.process_time() * 1e9)
 
+
 class CPUFTimerNS(FlexTimer):
     _time = staticmethod(time.process_time_ns)
+
 
 class MonotonicFTimer(FlexTimer):
     _time = staticmethod(lambda: time.monotonic() * 1e9)
 
+
 class MonotonicFTimerNS(FlexTimer):
     _time = staticmethod(time.monotonic_ns)
 
+
 class ThreadFTimer(FlexTimer):
     _time = staticmethod(lambda: time.thread_time() * 1e9)
+
 
 class ThreadFTimerNS(FlexTimer):
     _time = staticmethod(time.thread_time_ns)

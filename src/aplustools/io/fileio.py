@@ -440,11 +440,9 @@ class os_open(BasicFDWrapper):
         flags_overwrite: int | None = None,
     ) -> None:
         self._lock = OSFileLock(
-                filepath, flags_overwrite or OSFileLock.convert_mode_to_flags(mode)
+            filepath, flags_overwrite or OSFileLock.convert_mode_to_flags(mode)
         )
-        super().__init__(
-            self._lock.engage()
-        )
+        super().__init__(self._lock.engage())
 
     #     self._buffer: bytearray = bytearray(buffer_size)  # Allocate buffer with max size
     #     self._buffer_size: int = buffer_size

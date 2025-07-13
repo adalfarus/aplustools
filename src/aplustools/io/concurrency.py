@@ -102,7 +102,7 @@ def _split_struct_format(fmt: str) -> list[str]:
     :return: List of format components.
     """
     # Regex: match an optional number prefix + single format character or special format
-    pattern = re.compile(r'(\d*[xcbB?hHiIlLqQnNefdspP])')
+    pattern = re.compile(r"(\d*[xcbB?hHiIlLqQnNefdspP])")
     matches = pattern.findall(fmt)
 
     remainder = pattern.sub("", fmt)
@@ -114,6 +114,7 @@ def _split_struct_format(fmt: str) -> list[str]:
 
 class SharedStruct:
     """Shared memory through processes"""
+
     REFERENCE = _SharedReference  # For typing
 
     def __init__(
