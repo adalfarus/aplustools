@@ -113,7 +113,7 @@ class NumPyRandom:
 
     @staticmethod
     def random() -> float:
-        return NumPyRandomGenerator._generator.random()
+        return _np_random.random()
 
     @classmethod
     def uniform(cls, a: float, b: float) -> float:

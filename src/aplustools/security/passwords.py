@@ -593,7 +593,9 @@ class SpecificPasswordGenerator:
         self._debug_print(f"Securing password: {password}")
         characters = string.ascii_letters + string.digits + string.punctuation
         length = len(password)
-        get_num: _ty.Callable[[], int] = lambda: max(2, (length * self._rng.choice([10, 20, 30])) // 100)
+
+        def get_num() -> int:
+         return max(2, (length * self._rng.choice([10, 20, 30])) // 100)
 
         for _ in range(passes):
             for _ in range(get_num()):
