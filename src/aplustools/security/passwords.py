@@ -22,13 +22,14 @@ if _ty.TYPE_CHECKING:
     import _typeshed as _tsh
 import types as _ts
 
-__deps__: list[str] = ["zxcvbn"]
+__deps__: list[str] = []  # ["zxcvbn"]
 __hard_deps__: list[str] = []
 _enforce_hard_deps(__hard_deps__, __name__)
 
-_zxcvbn: _ts.ModuleType | None = _optional_import(
-    "zxcvbn.zxcvbn"
-)  # TODO: Fix returned type
+# _zxcvbn: _ts.ModuleType | None = _optional_import(
+#     "zxcvbn.zxcvbn"
+# )  # TODO: Fix returned type
+# from zxcvbn import zxcvbn
 
 
 class PasswordFilter:
@@ -116,7 +117,7 @@ class PasswordFilter:
         return self.filter_word(char) == ""
 
 
-class QuickGeneratePasswords:
+class SimplePasswordGenerator:
     """Used to quickly generate a lot of passwords in minimal time"""
 
     _rng = random
@@ -486,7 +487,7 @@ class QuickGeneratePasswords:
         return password
 
 
-class SpecificPasswordGenerator:
+class PasswordGenerator:
     """The random generators security can be adjusted, and all default arguments will result in a password
     that has an average worst case crack time of multiple years (Verified using zxcvbn)."""
 
@@ -1396,7 +1397,7 @@ class SecurePasswordGenerator:
                 "super_strong": "secrets",
             }[security]
         )  # type: ignore
-        self._gen = SpecificPasswordGenerator(self._rng)
+        self._gen = PasswordGenerator(self._rng)
 
         match security:
             case "weak":
@@ -1418,7 +1419,7 @@ class SecurePasswordGenerator:
                 self._gen.load_12_dicts()
         print(f"Loaded {len(self._gen.words):,} unique words")
 
-    def exponential(
+    def _exponential(
         self,
         lower_bound: float | int = 0,
         upper_bound: float | int = 1,
@@ -1587,7 +1588,7 @@ class SecurePasswordGenerator:
         :param return_worst_case: Return the worst case estimate by zxcvbn
         :return:
         """
-        rnd = int(self.exponential(0, 8, 0.9))
+        rnd = int(self._exponential(0, 8, 0.9))
         result = [
             self.mnemonic,
             self.passphrase,
@@ -1601,9 +1602,11 @@ class SecurePasswordGenerator:
         ][rnd]()
 
         if return_worst_case:
-            if _zxcvbn is None:
+            try:
+                from zxcvbn import zxcvbn
+            except ImportError:
                 raise RuntimeError("zxcvbn is not installed")
-            result["worst_case"] = _zxcvbn(result["password"])["crack_times_display"][
+            result["worst_case"] = zxcvbn(result["password"])["crack_times_display"][
                 "offline_fast_hashing_1e10_per_second"
             ]  # type: ignore
 

@@ -182,16 +182,19 @@ class BasicFDWrapper:
         else:
             return os.read(self.fd, size)
 
-    def write(self, data: bytes) -> int:
+    def write(self, data: str | bytes, *, encoding: str = "UTF-8") -> int:
         """
         Writes data to the file descriptor.
 
         Args:
-            data (bytes): The data to write.
+            data (bytes | str): The data to write.
+            encoding (str): What encoding to use if the data isn't in bytes
 
         Returns:
             int: The number of bytes written.
         """
+        if isinstance(data, str):
+            data = data.encode(encoding=encoding)
         return os.write(self.fd, data)
 
     def seek(self, offset: int, whence: int = os.SEEK_SET) -> int:
@@ -436,10 +439,11 @@ class os_open(BasicFDWrapper):
         buffer_size: int = 500,
         flags_overwrite: int | None = None,
     ) -> None:
-        super().__init__(
-            OSFileLock(
+        self._lock = OSFileLock(
                 filepath, flags_overwrite or OSFileLock.convert_mode_to_flags(mode)
-            ).engage()
+        )
+        super().__init__(
+            self._lock.engage()
         )
 
     #     self._buffer: bytearray = bytearray(buffer_size)  # Allocate buffer with max size
@@ -532,6 +536,9 @@ class os_open(BasicFDWrapper):
     # def close(self) -> None:
     #     self.flush()
     #     super().close()
+    def __del__(self) -> None:
+        super().close()
+        self._lock.disengage()
 
 
 class _FileLockMixin:

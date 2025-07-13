@@ -20,6 +20,7 @@ from multiprocessing import RLock as _RMLock
 import weakref
 import struct
 import queue
+import re
 
 from .env import MAX_PATH  # as a reference to be importable from here too
 from .env import auto_repr as _auto_repr
@@ -41,17 +42,79 @@ _enforce_hard_deps(__hard_deps__, __name__)
 
 
 @_auto_repr
-class SharedReference:
+class _SharedReference:
     """Shared reference to memory and a lock. It can get pickled and send between processes"""
 
     def __init__(self, struct_format: str, shm_name: str, lock: _RMLockT) -> None:
         self.struct_format: str = struct_format
         self.shm_name: str = shm_name
         self.lock = _MPLock = lock
+        # self._ss: "SharedStruct | None" = None
+
+    def dereference(self) -> "SharedStruct":
+        return SharedStruct.from_reference(self)
+
+    # def set_field(self, index: int, value: _ty.Any) -> None:
+    #     """
+    #     Set a single field in the shared memory structure.
+    #     :param index: Index of the field to set (starting from 0).
+    #     :param value: The value to set, matching the struct format at the specified index.
+    #     """
+    #     if self._ss is None:
+    #         raise RuntimeError("You can't set a field outside the context manager")
+    #     self._ss.set_field(index, value)
+    #
+    # def get_field(self, index: int) -> _ty.Any:
+    #     """
+    #     Get a single field from the shared memory structure.
+    #     :param index: Index of the field to get (starting from 0).
+    #     :return: The value of the field, unpacked based on the struct format.
+    #     """
+    #     if self._ss is None:
+    #         raise RuntimeError("You can't get a field outside the context manager")
+    #     return self._ss.get_field(index)
+    #
+    # def __enter__(self) -> _ty.Self:
+    #     if self._ss is None:
+    #         self._ss = SharedStruct.from_reference(self)
+    #     self._ss.set_lock()
+    #     return self
+    #
+    # def __exit__(self, exc_type, exc_val, exc_tb) -> bool:
+    #     if self._ss is None:
+    #         raise RuntimeError(f"Private attribute was changed during context manager")
+    #     self._ss.unset_lock()
+    #     return False
+    #
+    # def close(self) -> None:
+    #     if hasattr(self, "_ss") and self._ss is not None:
+    #         self._ss.close()
+    #         self._ss = None
+    #
+    # def __del__(self) -> None:
+    #     self.close()
+
+
+def _split_struct_format(fmt: str) -> list[str]:
+    """
+    Splits a struct format string like "i10sH" into components like ["i", "10s", "H"].
+    :param fmt: The struct format string, compact or spaced.
+    :return: List of format components.
+    """
+    # Regex: match an optional number prefix + single format character or special format
+    pattern = re.compile(r'(\d*[xcbB?hHiIlLqQnNefdspP])')
+    matches = pattern.findall(fmt)
+
+    remainder = pattern.sub("", fmt)
+    if remainder.strip():
+        raise ValueError(f"Unrecognized struct format parts in: {remainder!r}")
+
+    return matches
 
 
 class SharedStruct:
     """Shared memory through processes"""
+    REFERENCE = _SharedReference  # For typing
 
     def __init__(
         self,
@@ -61,11 +124,8 @@ class SharedStruct:
         *_,
         overwrite_mp_lock: _RMLockT | None = None,
     ) -> None:
-        if any([len(x) > 1 for x in struct_format.split(" ")]):
-            raise RuntimeError(
-                "You need to leave a space after each entry in the struct format"
-            )
         self._struct_format: str = struct_format
+        self._struct_parts: list[str] = _split_struct_format(struct_format)
         self._struct_size: int = struct.calcsize(struct_format)
 
         if isinstance(overwrite_mp_lock, _RMLockT):
@@ -90,7 +150,7 @@ class SharedStruct:
         Set data in the shared memory structure.
         :param values: Values to set, matching the struct format.
         """
-        if len(values) != len(self._struct_format.replace(" ", "")):
+        if len(values) != len(self._struct_parts):
             raise ValueError("Number of values must match the struct format")
         with self._lock:
             packed_data = struct.pack(self._struct_format, *values)
@@ -111,12 +171,11 @@ class SharedStruct:
         :param index: Index of the field to set (starting from 0).
         :param value: The value to set, matching the struct format at the specified index.
         """
-        format_parts = self._struct_format.split()
-        if index < 0 or index >= len(format_parts):
+        if index < 0 or index >= len(self._struct_parts):
             raise IndexError("Field index out of range")
         # Calculate offset for the field based on the format
-        offset = sum(struct.calcsize(fmt) for fmt in format_parts[:index])
-        field_format = format_parts[index]
+        offset = sum(struct.calcsize(fmt) for fmt in self._struct_parts[:index])
+        field_format = self._struct_parts[index]
         field_size = struct.calcsize(field_format)
         with self._lock:
             packed_field = struct.pack(field_format, value)
@@ -128,22 +187,21 @@ class SharedStruct:
         :param index: Index of the field to get (starting from 0).
         :return: The value of the field, unpacked based on the struct format.
         """
-        format_parts = self._struct_format.split()
-        if index < 0 or index >= len(format_parts):
+        if index < 0 or index >= len(self._struct_parts):
             raise IndexError("Field index out of range")
-        offset = sum(struct.calcsize(fmt) for fmt in format_parts[:index])
-        field_format = format_parts[index]
+        offset = sum(struct.calcsize(fmt) for fmt in self._struct_parts[:index])
+        field_format = self._struct_parts[index]
         field_size = struct.calcsize(field_format)
         with self._lock:
             packed_field = self._shm.buf[offset : offset + field_size]
             return struct.unpack(field_format, packed_field)[0]
 
-    def reference(self) -> SharedReference:
+    def reference(self) -> _SharedReference:
         """References this shared struct in a simpler data structure"""
-        return SharedReference(self._struct_format, self._shm_name, self._lock)
+        return _SharedReference(self._struct_format, self._shm_name, self._lock)
 
     @classmethod
-    def from_reference(cls, ref: SharedReference) -> _te.Self:
+    def from_reference(cls, ref: _SharedReference) -> _te.Self:
         """Loads a shared struct obj from a shared reference"""
         return cls(ref.struct_format, False, ref.shm_name, overwrite_mp_lock=ref.lock)
 

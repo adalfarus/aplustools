@@ -86,7 +86,7 @@ def _get_data(url: str, method: str = "GET", data: _ty.Any = None) -> bytes:
 
 def fetch(url: str) -> bytes:
     """
-    Fetch a web resource from the specified URL using HTTPSConnection and SSL context.
+    Fetch a web resource from the specified URL.
 
     Args:
         url (str): The URL of the web resource to fetch.
@@ -201,7 +201,7 @@ class Result:
         return self
 
 
-class UnifiedRequestHandler:
+class BatchRequestHandler:
     """
     A request handler that submits HTTP requests using a dynamic thread pool executor.
     It supports both synchronous and asynchronous modes for handling single or multiple
@@ -316,7 +316,7 @@ class UnifiedRequestHandler:
         self.shutdown()
 
 
-class UnifiedRequestHandlerAdvanced:
+class AioHttpRequestHandler:
     """
     Unified request handler that uses aiohttp for asynchronous HTTP requests and integrates
     with AsyncIOResult to handle multiple async requests concurrently. Public-facing methods

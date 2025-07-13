@@ -32,7 +32,7 @@ def test_shared_struct_reference_and_restore() -> None:
     ss1 = SharedStruct(struct_format, create=True)
     try:
         ss1.set_data(7, 2.71)
-        ref = SharedReference(ss1._struct_format, ss1._shm_name, ss1._lock)
+        ref = _SharedReference(ss1._struct_format, ss1._shm_name, ss1._lock)
         ss2 = SharedStruct(
             ref.struct_format, shm_name=ref.shm_name, overwrite_mp_lock=ref.lock
         )

@@ -1,3 +1,3 @@
 @echo off
-pip install -e .[dev]
+pip install -e .[dev,all]
 pause

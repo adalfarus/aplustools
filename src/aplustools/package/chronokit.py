@@ -27,11 +27,11 @@ if _ty.TYPE_CHECKING:
     import _typeshed as _tsh
 import types as _ts
 
-_RANSACRegressor = _optional_import("sklearn.linear_model.RANSACRegressor")
-_curve_fit = _optional_import("scipy.optimize.curve_fit")
-_np = _optional_import("numpy")
+# _RANSACRegressor = _optional_import("sklearn.linear_model.RANSACRegressor")
+# _curve_fit = _optional_import("scipy.optimize.curve_fit")
+# _np = _optional_import("numpy")
 
-__deps__: list[str] = ["scikit-learn>=1.5.0", "scipy>=1.13.0", "numpy>=1.26.4"]
+__deps__: list[str] = []  #["scikit-learn>=1.5.0", "scipy>=1.13.0", "numpy>=1.26.4"]
 __hard_deps__: list[str] = []
 _enforce_hard_deps(__hard_deps__, __name__)
 
@@ -1040,7 +1040,7 @@ class FlexTimer:
                 self._tick_tocks.extend([[] for _ in range(length_to_extend)])
             if self._times[index] is self.EMPTY:
                 self._times[index] = (
-                    start_time + (start_at * 1e9),
+                    start_time - (start_at * 1e9),
                     0,
                     0,
                     threading.Lock(),
@@ -1510,7 +1510,7 @@ class FlexTimer:
         return self.tally(*indices, return_type=return_type) / total_tocks
 
     def show_laps(
-        self, index: int | None = None, format_to: int = PreciseTimeFormat.SECONDS
+        self, index: int | None = None, format_to: PreciseTimeFormat = PreciseTimeFormat.SECONDS
     ) -> str:
         """
         Displays the recorded times for each tick and tock.
@@ -1533,14 +1533,14 @@ class FlexTimer:
         if is_paused:
             my_tick_tocks.pop(-1)
         for i, (start, end) in enumerate(my_tick_tocks, start=1):
-            td = _timedelta(microseconds=(end - start) / 1000)
+            td = PreciseTimeDelta(microseconds=(end - start) / 1000)
             retstring += (
-                f"Lap {i}: {PreciseTimeFormat.get_static_readable(td, format_to)}\n"
+                f"Lap {i}: {td.to_readable(format_to)}\n"
             )
         return retstring
 
     def get_readable(
-        self, index: int | None = None, format_to: int = PreciseTimeFormat.SECONDS
+        self, index: int | None = None, format_to: PreciseTimeFormat = PreciseTimeFormat.SECONDS
     ) -> str:
         """
         Returns a readable string of the timer's elapsed time.
@@ -1552,9 +1552,8 @@ class FlexTimer:
         Returns:
             str: A human-readable string of the elapsed time.
         """
-        return PreciseTimeFormat.get_static_readable(
-            self.get(index or self._get_first_index()).nanoseconds(), format_to
-        )
+        td: PreciseTimeDelta = self.get(index or self._get_first_index())
+        return td.to_readable(format_to)
 
     def _warmup(self, rounds: int = 3) -> None:
         """
@@ -1724,27 +1723,6 @@ class FlexTimer:
         timer = FlexTimer(start_now=False)
         timer.load_state(state_bytes)
         return timer
-
-    @classmethod
-    def setup_timer_func(
-        cls, func: _a.Callable[..., _ty.Any], to_nanosecond_multiplier: float | int
-    ) -> _ty.Type[_te.Self]:
-        """
-        Sets up a custom timing function for the timer, using a specified multiplier to convert the time to nanoseconds.
-
-        Args:
-            func (Callable): The function that returns the current time.
-            to_nanosecond_multiplier (float or int): The multiplier to convert the function's output to nanoseconds.
-
-        Returns:
-            type: A new class with the modified timing function.
-        """
-        NewClass = type(
-            "TimidTimerModified",
-            (cls,),
-            {"_time": lambda self=None: func() * to_nanosecond_multiplier},
-        )
-        return NewClass
 
     @classmethod
     def _trigger(
@@ -2401,7 +2379,11 @@ class FlexTimer:
         Returns:
         str: Estimated time complexity (e.g., "O(N)", "O(N^2)", etc.).
         """
-        if None in (_RANSACRegressor, _curve_fit, _np):
+        try:
+            from sklearn.linear_model import RANSACRegressor
+            from scipy.optimize import curve_fit
+            import numpy as np
+        except ImportError:
             raise RuntimeError("Optional libraries not installed")
         input_sizes = []
         times = []
@@ -2427,44 +2409,44 @@ class FlexTimer:
                 times.append(elapsed_time)
 
         # Ensure there are no zero or negative times and input sizes
-        input_sizes = _np.array(input_sizes)
-        times = _np.array(times)
+        input_sizes = np.array(input_sizes)
+        times = np.array(times)
 
         if len(input_sizes) == 0 or len(times) == 0:
             return "Insufficient data"
 
-        if _np.any(input_sizes <= 0) or _np.any(times <= 0):
+        if np.any(input_sizes <= 0) or np.any(times <= 0):
             raise ValueError("Input sizes and times must be positive")
 
         # Define complexity functions
         complexity_classes = {
-            "O(1)": lambda n, a: a * _np.ones_like(n),
-            "O(log N)": lambda n, a, b: a * _np.log(n) + b,
+            "O(1)": lambda n, a: a * np.ones_like(n),
+            "O(log N)": lambda n, a, b: a * np.log(n) + b,
             "O(N)": lambda n, a: a * n,
-            "O(N log N)": lambda n, a, b: a * n * _np.log(n) + b,
+            "O(N log N)": lambda n, a, b: a * n * np.log(n) + b,
             "O(N^2)": lambda n, a: a * n**2,
             "O(N^3)": lambda n, a: a * n**3,
-            "O(sqrt(N))": lambda n, a: a * _np.sqrt(n),
+            "O(sqrt(N))": lambda n, a: a * np.sqrt(n),
         }
 
         best_fit = None
         best_params = None
-        best_mse = _np.inf
+        best_mse = np.inf
 
         for name, func in complexity_classes.items():
             try:
                 # Use RANSAC to find the robust subset of data points
-                ransac = _RANSACRegressor()
+                ransac = RANSACRegressor()
                 input_sizes_reshaped = input_sizes.reshape(-1, 1)
                 ransac.fit(input_sizes_reshaped, times)
                 inlier_mask = ransac.inlier_mask_
 
                 # Fit the curve to the inliers only
-                popt, *_ = _curve_fit(
+                popt, *_ = curve_fit(
                     func, input_sizes[inlier_mask], times[inlier_mask], maxfev=10000
                 )
                 predictions = func(input_sizes, *popt)
-                mse = _np.mean((times - predictions) ** 2)
+                mse = np.mean((times - predictions) ** 2)
                 if mse < best_mse:
                     best_mse = mse
                     best_fit = name
@@ -2496,7 +2478,7 @@ class FlexTimer:
 
     @classmethod
     def time(
-        cls, time_format: int = PreciseTimeFormat.SECONDS
+        cls, time_format: PreciseTimeFormat = PreciseTimeFormat.SECONDS
     ) -> _a.Callable[[_a.Callable[..., _ty.Any]], _a.Callable[..., _ty.Any]]:
         """
         A decorator to measure the execution time of a function and print the result.
@@ -2515,9 +2497,9 @@ class FlexTimer:
             def _wrapper(*args: _ty.Any, **kwargs: _ty.Any) -> _ty.Any:
                 timer: _te.Self = cls()
                 result: _ty.Any = func(*args, **kwargs)
-                elapsed: float = timer.end().nanoseconds()
+                elapsed: PreciseTimeDelta = timer.end()
                 print(
-                    f"Function {func.__name__} took {PreciseTimeFormat.get_static_readable(elapsed, time_format)} to complete."
+                    f"Function {func.__name__} took {elapsed.to_readable(time_format)} to complete."
                 )
                 return result
 
@@ -2591,18 +2573,35 @@ class FlexTimer:
         self.stop_loop(amount=len(self._loops))
 
 
-TimeFTimer: _ty.Type[FlexTimer] = FlexTimer.setup_timer_func(time.time, 1e9)
-TimeFTimerNS: _ty.Type[FlexTimer] = FlexTimer.setup_timer_func(time.time_ns, 1)
-PerfFTimer: _ty.Type[FlexTimer] = FlexTimer.setup_timer_func(time.perf_counter, 1e9)
-PerfFTimerNS: _ty.Type[FlexTimer] = FlexTimer.setup_timer_func(time.perf_counter_ns, 1)
-CPUFTimer: _ty.Type[FlexTimer] = FlexTimer.setup_timer_func(time.process_time, 1e9)
-CPUFTimerNS: _ty.Type[FlexTimer] = FlexTimer.setup_timer_func(time.process_time_ns, 1)
-MonotonicFTimer: _ty.Type[FlexTimer] = FlexTimer.setup_timer_func(time.monotonic, 1e9)
-MonotonicFTimerNS: _ty.Type[FlexTimer] = FlexTimer.setup_timer_func(
-    time.monotonic_ns, 1
-)
-ThreadFTimer: _ty.Type[FlexTimer] = FlexTimer.setup_timer_func(time.thread_time, 1e9)
-ThreadFTimerNS: _ty.Type[FlexTimer] = FlexTimer.setup_timer_func(time.thread_time_ns, 1)
+class TimeFTimer(FlexTimer):
+    _time = staticmethod(lambda: time.time() * 1e9)
+
+class TimeFTimerNS(FlexTimer):
+    _time = staticmethod(time.time_ns)
+
+class PerfFTimer(FlexTimer):
+    _time = staticmethod(lambda: time.perf_counter() * 1e9)
+
+class PerfFTimerNS(FlexTimer):
+    _time = staticmethod(time.perf_counter_ns)
+
+class CPUFTimer(FlexTimer):
+    _time = staticmethod(lambda: time.process_time() * 1e9)
+
+class CPUFTimerNS(FlexTimer):
+    _time = staticmethod(time.process_time_ns)
+
+class MonotonicFTimer(FlexTimer):
+    _time = staticmethod(lambda: time.monotonic() * 1e9)
+
+class MonotonicFTimerNS(FlexTimer):
+    _time = staticmethod(time.monotonic_ns)
+
+class ThreadFTimer(FlexTimer):
+    _time = staticmethod(lambda: time.thread_time() * 1e9)
+
+class ThreadFTimerNS(FlexTimer):
+    _time = staticmethod(time.thread_time_ns)
 
 
 class DateTimeFTimer(FlexTimer):
