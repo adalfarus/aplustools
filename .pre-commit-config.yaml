@@ -12,12 +12,11 @@ repos:
   hooks:
     - id: generate-docs
       name: Auto-generate API documentation
-      entry: pdoc aplustools --output-dir docs
+      entry: pydoc-markdown
       language: python
-      additional_dependencies: [pdoc, "-e ."]
       pass_filenames: false
       always_run: true
-      stages: [pre-commit, manual]
+      additional_dependencies: [pydoc-markdown]
 ci:
     autofix_commit_msg: |
         [pre-commit.ci] auto fixes from pre-commit.com hooks
