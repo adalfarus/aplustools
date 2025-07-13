@@ -148,7 +148,8 @@ class LazyLoader:
 
             except ImportError as e:
                 print(
-                    f"Optional module '{self.module_name}' not installed. Please install it to use this feature.", e
+                    f"Optional module '{self.module_name}' not installed. Please install it to use this feature.",
+                    e,
                 )
 
     def __repr__(self) -> str:
