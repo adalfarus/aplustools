@@ -1,4 +1,5 @@
 """SHA2"""
+
 from ..._definitions import _HASHER_BACKEND
 
 SHA224: _HASHER_BACKEND = _HASHER_BACKEND("sha224")

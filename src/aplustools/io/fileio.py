@@ -1,4 +1,5 @@
 """TBA"""
+
 import time
 import mmap
 import uuid
@@ -14,6 +15,7 @@ from ..package import enforce_hard_deps as _enforce_hard_deps
 import typing_extensions as _te
 import collections.abc as _a
 import typing as _ty
+
 if _ty.TYPE_CHECKING:
     import _typeshed as _tsh
 import types as _ts
@@ -68,7 +70,9 @@ class BasicFileLock:
         file (_ty.IO | _ty.BinaryIO | None): The opened file object (if opened).
     """
 
-    def __init__(self, filepath: str, check_interval: float = 0.1, open_mode: str | None = None) -> None:
+    def __init__(
+        self, filepath: str, check_interval: float = 0.1, open_mode: str | None = None
+    ) -> None:
         """
         Initializes the file lock for the given file path.
 
@@ -140,6 +144,7 @@ class BasicFDWrapper:
     This class wraps an existing file descriptor and provides higher-level
     file operations like read, write, seek, and close.
     """
+
     SEEK_SET = os.SEEK_SET
     SEEK_CUR = os.SEEK_CUR
     SEEK_END = os.SEEK_END
@@ -173,7 +178,7 @@ class BasicFDWrapper:
                 if not chunk:
                     break
                 chunks.append(chunk)
-            return b''.join(chunks)
+            return b"".join(chunks)
         else:
             return os.read(self.fd, size)
 
@@ -298,7 +303,11 @@ class OSFileLock:
         self._system = _get_system()  # System-specific lock mechanism
 
     @staticmethod
-    def convert_mode_to_flags(mode: _ty.Literal["r", "rb", "r+", "r+b", "w", "wb", "w+", "w+b", "a", "ab", "a+", "a+b"]) -> int:
+    def convert_mode_to_flags(
+        mode: _ty.Literal[
+            "r", "rb", "r+", "r+b", "w", "wb", "w+", "w+b", "a", "ab", "a+", "a+b"
+        ],
+    ) -> int:
         """
         Converts a Python file mode string to os.open flags.
 
@@ -365,7 +374,9 @@ class OSFileLock:
         Returns:
             _ty.IO | _ty.BinaryIO | None: An opened file object if `open_mode` is provided, or None.
         """
-        self.fd = self._system.lock_file(self.filepath, blocking=True, open_flags=self.open_flags)
+        self.fd = self._system.lock_file(
+            self.filepath, blocking=True, open_flags=self.open_flags
+        )
         return self.fd
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
@@ -404,6 +415,7 @@ class os_open(BasicFDWrapper):
             content = file.read()
 
     """
+
     RDWR = os.O_RDWR
     CREAT = os.O_CREAT
     TRUNC = os.O_TRUNC
@@ -414,10 +426,22 @@ class os_open(BasicFDWrapper):
     else:
         BINARY = 0  # No-op on POSIX
 
-    def __init__(self, filepath: str,
-                 mode: _ty.Literal["r", "rb", "r+", "r+b", "w", "wb", "w+", "w+b", "a", "ab", "a+", "a+b"] = "r",
-                 *_, buffer_size: int = 500, flags_overwrite: int | None = None) -> None:
-        super().__init__(OSFileLock(filepath, flags_overwrite or OSFileLock.convert_mode_to_flags(mode)).engage())
+    def __init__(
+        self,
+        filepath: str,
+        mode: _ty.Literal[
+            "r", "rb", "r+", "r+b", "w", "wb", "w+", "w+b", "a", "ab", "a+", "a+b"
+        ] = "r",
+        *_,
+        buffer_size: int = 500,
+        flags_overwrite: int | None = None,
+    ) -> None:
+        super().__init__(
+            OSFileLock(
+                filepath, flags_overwrite or OSFileLock.convert_mode_to_flags(mode)
+            ).engage()
+        )
+
     #     self._buffer: bytearray = bytearray(buffer_size)  # Allocate buffer with max size
     #     self._buffer_size: int = buffer_size
     #     self._p: int = 0  # Buffer pointer
@@ -538,10 +562,14 @@ class _FileLockMixin:
         else:
             raise ValueError("Lock already gotten")
 
-    def _release_lock(self, byte_range: range | None = None, *_, release_fd: bool = False) -> None:
+    def _release_lock(
+        self, byte_range: range | None = None, *_, release_fd: bool = False
+    ) -> None:
         """Release the lock, keeping the file descriptor open."""
         if self._locked:
-            self._system.unlock_file(self._fd, keep_fd_open=not release_fd, byte_range=byte_range)
+            self._system.unlock_file(
+                self._fd, keep_fd_open=not release_fd, byte_range=byte_range
+            )
             self._locked = False
         else:
             raise ValueError("No lock gotten")
@@ -559,10 +587,16 @@ class os_hyper_read(_FileLockMixin):
     be discarded if more data is read.
     """
 
-    def __init__(self, filepath: str, chunk_size: int = (1024 * 1024) * 4,
-                 max_buffer_size: int = (1024 * 1024) * 16) -> None:
-        raise NotImplementedError(f"This class is not yet ready to be used.")
-        super().__init__(filepath, os.open(filepath, os.O_RDONLY))  # Open file in read-only mode
+    def __init__(
+        self,
+        filepath: str,
+        chunk_size: int = (1024 * 1024) * 4,
+        max_buffer_size: int = (1024 * 1024) * 16,
+    ) -> None:
+        raise NotImplementedError("This class is not yet ready to be used.")
+        super().__init__(
+            filepath, os.open(filepath, os.O_RDONLY)
+        )  # Open file in read-only mode
         self._chunk_size: int = chunk_size
         self._max_buffer_size: int = max_buffer_size
         self._buffer: bytearray = bytearray()  # Internal buffer to store chunks
@@ -615,7 +649,7 @@ class os_hyper_read(_FileLockMixin):
         if self._offset >= self._file_size:
             return
 
-        chunk = b''  # Initialize chunk to avoid UnboundLocalError
+        chunk = b""  # Initialize chunk to avoid UnboundLocalError
 
         # Acquire a read lock while reading the chunk
         self._acquire_read_lock(range(self._offset, self._offset + self._chunk_size))
@@ -670,7 +704,11 @@ class os_hyper_read(_FileLockMixin):
             to_read = min(available, length)
 
             # Read from the buffer
-            read_buffer += self._buffer[self._offset - self._buffer_start:self._offset - self._buffer_start + to_read]
+            read_buffer += self._buffer[
+                self._offset - self._buffer_start : self._offset
+                - self._buffer_start
+                + to_read
+            ]
             self._offset += to_read
             length -= to_read
 
@@ -736,7 +774,9 @@ class os_hyper_read(_FileLockMixin):
         """
         if new_chunk_size <= 0:
             raise ValueError("The chunk size has to be greater than 0.")
-        self._chunk_size = _align_to_next(new_chunk_size, self._page_size) or self._page_size
+        self._chunk_size = (
+            _align_to_next(new_chunk_size, self._page_size) or self._page_size
+        )
         self.set_max_buffer_size(self._max_buffer_size)
 
     def get_max_buffer_size(self) -> int:
@@ -766,7 +806,9 @@ class os_hyper_read(_FileLockMixin):
         """
         if new_max_buffer_size <= 0:
             raise ValueError("The max buffer size has to be greater than 0.")
-        self._max_buffer_size = _align_to_next(new_max_buffer_size, self._chunk_size) or self._chunk_size
+        self._max_buffer_size = (
+            _align_to_next(new_max_buffer_size, self._chunk_size) or self._chunk_size
+        )
 
     def close(self) -> None:
         """
@@ -799,12 +841,20 @@ class os_hyper_write(_FileLockMixin):
     mapped into memory at any given time.
     """
 
-    def __init__(self, filepath: str, chunk_size: int = (1024 * 1024) * 4,
-                 max_buffer_size: int = (1024 * 1024) * 16) -> None:
-        raise NotImplementedError(f"This class is not yet ready to be used.")
+    def __init__(
+        self,
+        filepath: str,
+        chunk_size: int = (1024 * 1024) * 4,
+        max_buffer_size: int = (1024 * 1024) * 16,
+    ) -> None:
+        raise NotImplementedError("This class is not yet ready to be used.")
         super().__init__(filepath, os.open(filepath, os.O_RDWR | os.O_CREAT))
-        self._chunk_size: int = _align_to_next(chunk_size, self._page_size) or self._page_size
-        self._max_buffer_size: int = _align_to_next(max_buffer_size, self._chunk_size) or self._chunk_size
+        self._chunk_size: int = (
+            _align_to_next(chunk_size, self._page_size) or self._page_size
+        )
+        self._max_buffer_size: int = (
+            _align_to_next(max_buffer_size, self._chunk_size) or self._chunk_size
+        )
 
         self._offset = self._buffer_start = self._buffer_end = 0
         self.dirty: bool = False
@@ -831,7 +881,9 @@ class os_hyper_write(_FileLockMixin):
         """
         if self.dirty:
             # Release the shared read lock and acquire an exclusive write lock for the current chunk
-            byte_range = range(self._buffer_start, self._buffer_start + self._chunk_size)
+            byte_range = range(
+                self._buffer_start, self._buffer_start + self._chunk_size
+            )
             self._release_lock(byte_range)  # Release read lock
             self._acquire_write_lock(byte_range)
 
@@ -891,10 +943,13 @@ class os_hyper_write(_FileLockMixin):
         self._acquire_read_lock(byte_range)  # Lock only the current chunk
 
         # Create the mmap object for the specified region
-        self._mmap_obj = mmap.mmap(self._fd, self._chunk_size,
-                                    # prot=mmap.PROT_WRITE | mmap.PROT_READ,
-                                    access=mmap.ACCESS_DEFAULT,
-                                    offset=self._buffer_start)
+        self._mmap_obj = mmap.mmap(
+            self._fd,
+            self._chunk_size,
+            # prot=mmap.PROT_WRITE | mmap.PROT_READ,
+            access=mmap.ACCESS_DEFAULT,
+            offset=self._buffer_start,
+        )
         self.dirty = False
         self._offset = 0
 
@@ -941,10 +996,14 @@ class os_hyper_write(_FileLockMixin):
         data_length = len(data)
 
         while bytes_written < data_length:
-            remaining_space_in_buffer = self._buffer_end - self._buffer_start - self._offset
+            remaining_space_in_buffer = (
+                self._buffer_end - self._buffer_start - self._offset
+            )
             len_to_write = min(remaining_space_in_buffer, data_length - bytes_written)
 
-            self._mmap_obj[self._offset:self._offset + len_to_write] = data[bytes_written:bytes_written + len_to_write]
+            self._mmap_obj[self._offset : self._offset + len_to_write] = data[
+                bytes_written : bytes_written + len_to_write
+            ]
 
             self._offset += len_to_write
             bytes_written += len_to_write
@@ -954,7 +1013,9 @@ class os_hyper_write(_FileLockMixin):
                 self._map_region(new_offset)
 
     @staticmethod
-    def _seeker(offset: int, current_offset: int, file_size: int, whence: int = 0) -> int:
+    def _seeker(
+        offset: int, current_offset: int, file_size: int, whence: int = 0
+    ) -> int:
         """
         Calculate the new file position based on the seek parameters.
 
@@ -1038,7 +1099,9 @@ class os_hyper_write(_FileLockMixin):
         """
         if new_chunk_size <= 0:
             raise ValueError("The chunk size has to be greater than 0.")
-        self._chunk_size = _align_to_next(new_chunk_size, self._page_size) or self._page_size
+        self._chunk_size = (
+            _align_to_next(new_chunk_size, self._page_size) or self._page_size
+        )
         self.set_max_buffer_size(self._max_buffer_size)
 
     def get_max_buffer_size(self) -> int:
@@ -1068,7 +1131,9 @@ class os_hyper_write(_FileLockMixin):
         """
         if new_max_buffer_size <= 0:
             raise ValueError("The max buffer size has to be greater than 0.")
-        self._max_buffer_size = _align_to_next(new_max_buffer_size, self._chunk_size) or self._chunk_size
+        self._max_buffer_size = (
+            _align_to_next(new_max_buffer_size, self._chunk_size) or self._chunk_size
+        )
 
     def close(self) -> None:
         """
@@ -1082,7 +1147,9 @@ class os_hyper_write(_FileLockMixin):
             self._mmap_obj.close()
             self._mmap_obj = None
         if self._locked:  # If we aren't locked, we aren't opened.
-            self._release_lock(range(self._buffer_start, self._buffer_end), release_fd=True)
+            self._release_lock(
+                range(self._buffer_start, self._buffer_end), release_fd=True
+            )
         elif is_fd_open(self._fd):
             os.close(self._fd)
 
@@ -1101,6 +1168,7 @@ class FileIOType(_ty.Protocol):
     A protocol defining the interface for file-like objects.
     This includes methods commonly found in Python's file objects.
     """
+
     def read(self, n: int = -1) -> _ty.Any:
         """
         Read up to n bytes from the file. If n is -1, read all available data.
@@ -1167,8 +1235,14 @@ class SafeFileWriter:
     safe_f.write(b"Hello WORLD!")  # As I know os_open only accepts binary data
     """
 
-    def __init__(self, path: str, open_func: _a.Callable[[str, str], FileIOType] | _ty.Type,
-                 mode: _ty.Literal["virtual", "copy_on_close", "switch_on_close"] = "copy_on_close") -> None:
+    def __init__(
+        self,
+        path: str,
+        open_func: _a.Callable[[str, str], FileIOType] | _ty.Type,
+        mode: _ty.Literal[
+            "virtual", "copy_on_close", "switch_on_close"
+        ] = "copy_on_close",
+    ) -> None:
         if not os.path.exists(path):
             open(path, "w").close()
         self._mode: str = mode

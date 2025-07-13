@@ -1,4 +1,5 @@
 """TBA"""
+
 from contextlib import contextmanager as _contextmanager
 from cachetools import LRUCache as _LRUCache
 from threading import RLock as _RLock
@@ -15,6 +16,7 @@ from ..data import beautify_json
 import typing_extensions as _te
 import collections.abc as _a
 import typing as _ty
+
 if _ty.TYPE_CHECKING:
     import _typeshed as _tsh
 import types as _ts
@@ -57,7 +59,9 @@ class StorageMedium:
         self._current_version = self.create_storage(self._filepath)
 
     @classmethod
-    def from_webresource(cls, new_file_path: str, webresource: str, max_cache_size: int = 128) -> _te.Self:
+    def from_webresource(
+        cls, new_file_path: str, webresource: str, max_cache_size: int = 128
+    ) -> _te.Self:
         """
         Create an instance of the class by downloading a web resource.
 
@@ -166,7 +170,10 @@ class JSONStorage(StorageMedium):
     """
     A storage medium using JSON files to store and retrieve key-data pairs.
     """
-    def __init__(self, filepath: str, max_cache_size: int = 128, beautify: bool = False) -> None:
+
+    def __init__(
+        self, filepath: str, max_cache_size: int = 128, beautify: bool = False
+    ) -> None:
         self.beautify: bool = beautify
         super().__init__(filepath, max_cache_size)
 
@@ -181,7 +188,7 @@ class JSONStorage(StorageMedium):
         try:
             # Load the existing JSON data (or start with an empty dictionary if the file is empty)
             storage = json.loads(f.read().decode())
-        except (ValueError, json.JSONDecodeError) as e:
+        except (ValueError, json.JSONDecodeError):
             storage = {}
 
         # Update the JSON structure with the new key-value pair
@@ -220,7 +227,7 @@ class JSONStorage(StorageMedium):
                         # Load the entire JSON data from the file
                         data = f.read().decode()
                         json_storage = json.loads(data)
-                    except (ValueError, json.JSONDecodeError) as e:
+                    except (ValueError, json.JSONDecodeError):
                         dates.append(None)  # If the file is empty or corrupted
 
                     # Cache every key-value pair in the file
@@ -238,8 +245,13 @@ class SQLite3Storage(StorageMedium):
     A storage medium using an SQLite3 database to store and retrieve key-data pairs.
     """
 
-    def __init__(self, filepath: str, tables: tuple[str, ...] = ("storage",), drop_unused_tables: bool = False,
-                 use_wal_journal_mode: bool = False) -> None:
+    def __init__(
+        self,
+        filepath: str,
+        tables: tuple[str, ...] = ("storage",),
+        drop_unused_tables: bool = False,
+        use_wal_journal_mode: bool = False,
+    ) -> None:
         """
         Initializes the SQLite3Storage with a database file.
 
@@ -263,7 +275,9 @@ class SQLite3Storage(StorageMedium):
             conn.commit()
 
     @_contextmanager
-    def _connection(self, filepath: str) -> _ty.Generator[sqlite3.Connection, None, None]:
+    def _connection(
+        self, filepath: str
+    ) -> _ty.Generator[sqlite3.Connection, None, None]:
         with self._lock:
             conn = None
             try:
@@ -302,12 +316,12 @@ class SQLite3Storage(StorageMedium):
         with self._connection(at) as conn:
             cursor = conn.cursor()
             # Create a table for storing key-value pairs if it doesn't already exist
-            cursor.execute(f'''
+            cursor.execute(f"""
                 CREATE TABLE IF NOT EXISTS {table} (
                     key TEXT PRIMARY KEY,
                     value TEXT
                 )
-            ''')
+            """)
             conn.commit()
 
     def create_storage(self, at: str) -> int:
@@ -328,16 +342,21 @@ class SQLite3Storage(StorageMedium):
         cursor = db_conn.cursor()
 
         # Insert or update the key-value pair
-        cursor.executemany(f'''
+        cursor.executemany(
+            f"""
             INSERT INTO {self._table} (key, value)
             VALUES (?, ?)
             ON CONFLICT(key) DO UPDATE SET value=excluded.value
-        ''', items.items())
+        """,
+            items.items(),
+        )
 
         # Commit the transaction
         db_conn.commit()
 
-    def _retrieve_data(self, db_conn: sqlite3.Connection, keys: list[str]) -> list[str | None]:
+    def _retrieve_data(
+        self, db_conn: sqlite3.Connection, keys: list[str]
+    ) -> list[str | None]:
         """
         Retrieve the data stored under the specified key from the SQLite database.
 
@@ -348,7 +367,7 @@ class SQLite3Storage(StorageMedium):
         cursor = db_conn.cursor()
 
         # Use the IN clause to retrieve multiple keys in one query with parameterized queries
-        query = f'SELECT key, value FROM {self._table} WHERE key IN ({",".join(["?"] * len(keys))})'
+        query = f"SELECT key, value FROM {self._table} WHERE key IN ({','.join(['?'] * len(keys))})"
         cursor.execute(query, keys)
         db_results = cursor.fetchall()
 
@@ -389,12 +408,17 @@ class BinaryStorage(StorageMedium):
         """
         Pack key and data into a binary format with length prefixes for variable-sized data.
         """
-        key_bytes = key.encode('utf-8')
-        data_bytes = data.encode('utf-8')
+        key_bytes = key.encode("utf-8")
+        data_bytes = data.encode("utf-8")
 
         # Pack the lengths of the key and value along with the data
-        packed_data = struct.pack(f'!I{len(key_bytes)}sI{len(data_bytes)}s',
-                                   len(key_bytes), key_bytes, len(data_bytes), data_bytes)
+        packed_data = struct.pack(
+            f"!I{len(key_bytes)}sI{len(data_bytes)}s",
+            len(key_bytes),
+            key_bytes,
+            len(data_bytes),
+            data_bytes,
+        )
 
         return packed_data
 
@@ -407,16 +431,20 @@ class BinaryStorage(StorageMedium):
         :return: A tuple containing the key, value, and the new position.
         """
         # Unpack key length
-        key_len = struct.unpack('!I', data[pos:pos + 4])[0]
+        key_len = struct.unpack("!I", data[pos : pos + 4])[0]
         pos += 4
         # Unpack key
-        key = struct.unpack(f'!{key_len}s', data[pos:pos + key_len])[0].decode('utf-8')
+        key = struct.unpack(f"!{key_len}s", data[pos : pos + key_len])[0].decode(
+            "utf-8"
+        )
         pos += key_len
         # Unpack value length
-        value_len = struct.unpack('!I', data[pos:pos + 4])[0]
+        value_len = struct.unpack("!I", data[pos : pos + 4])[0]
         pos += 4
         # Unpack value
-        value = struct.unpack(f'!{value_len}s', data[pos:pos + value_len])[0].decode('utf-8')
+        value = struct.unpack(f"!{value_len}s", data[pos : pos + value_len])[0].decode(
+            "utf-8"
+        )
         pos += value_len
 
         return key, value, pos
@@ -433,7 +461,9 @@ class BinaryStorage(StorageMedium):
         # Unpack the entire binary data into a dictionary
         pos = 0
         all_data = {}  # Dictionary to store all key-value pairs
-        while pos + 4 <= len(buffer):  # Ensure we have enough bytes to unpack the key length
+        while pos + 4 <= len(
+            buffer
+        ):  # Ensure we have enough bytes to unpack the key length
             # Use _unpack_data to extract key, value, and the updated position
             key, value, pos = self._unpack_data(buffer, pos)
             all_data[key] = value
@@ -473,9 +503,13 @@ class BinaryStorage(StorageMedium):
                     pos = 0
                     fill_cache = len(self._read_cache) == 0
 
-                    while pos + 4 <= len(buffer):  # Ensure there are enough bytes to unpack
+                    while pos + 4 <= len(
+                        buffer
+                    ):  # Ensure there are enough bytes to unpack
                         # Use _unpack_data to extract key, value, and the updated position
-                        existing_key, existing_value, pos = self._unpack_data(buffer, pos)
+                        existing_key, existing_value, pos = self._unpack_data(
+                            buffer, pos
+                        )
 
                         # Optionally fill the cache
                         if fill_cache:
@@ -556,6 +590,7 @@ class SimpleJSONStorage(SimpleStorageMedium):
     """
     A simple storage medium using JSON files to store and retrieve key-data pairs.
     """
+
     def __init__(self, filepath: str, beautify: bool = False) -> None:
         self.beautify: bool = beautify
         super().__init__(filepath)
@@ -563,7 +598,7 @@ class SimpleJSONStorage(SimpleStorageMedium):
     def create_storage(self, at: str) -> None:
         """Create an empty JSON file if it doesn't exist."""
         if not os.path.exists(at):
-            with open(at, 'w') as f:
+            with open(at, "w") as f:
                 json.dump({}, f)
 
     def _store_data(self, f, items: dict[str, str]) -> None:
@@ -598,7 +633,12 @@ class SimpleSQLite3Storage(SimpleStorageMedium):
     A storage medium using an SQLite3 database to store and retrieve key-data pairs. This is not thread-safe.
     """
 
-    def __init__(self, filepath: str, tables: tuple[str, ...] = ("storage",), drop_unused_tables: bool = False) -> None:
+    def __init__(
+        self,
+        filepath: str,
+        tables: tuple[str, ...] = ("storage",),
+        drop_unused_tables: bool = False,
+    ) -> None:
         """
         Initializes the SQLite3Storage with a database file.
 
@@ -648,12 +688,12 @@ class SimpleSQLite3Storage(SimpleStorageMedium):
         with sqlite3.connect(at) as conn:
             cursor = conn.cursor()
             # Create a table for storing key-value pairs if it doesn't already exist
-            cursor.execute(f'''
+            cursor.execute(f"""
                 CREATE TABLE IF NOT EXISTS {table} (
                     key TEXT PRIMARY KEY,
                     value TEXT
                 )
-            ''')
+            """)
             conn.commit()
 
     def create_storage(self, at: str) -> None:
@@ -664,18 +704,26 @@ class SimpleSQLite3Storage(SimpleStorageMedium):
     def _store_data(self, f: sqlite3.Connection, items: dict[str, str]) -> None:
         """Store data in the SQLite database."""
         cursor = f.cursor()
-        cursor.executemany(f'''
+        cursor.executemany(
+            f"""
             INSERT INTO {self._table} (key, value) VALUES (?, ?)
             ON CONFLICT(key) DO UPDATE SET value=excluded.value
-        ''', items.items())
+        """,
+            items.items(),
+        )
         f.commit()
 
-    def _retrieve_data(self, f: sqlite3.Connection, keys: list[str]) -> list[str | None]:
+    def _retrieve_data(
+        self, f: sqlite3.Connection, keys: list[str]
+    ) -> list[str | None]:
         """Retrieve data from the SQLite database."""
         cursor = f.cursor()
-        cursor.execute(f'''
+        cursor.execute(
+            f"""
             SELECT key, value FROM {self._table} WHERE key IN ({",".join(["?"] * len(keys))})
-        ''', keys)
+        """,
+            keys,
+        )
         db_results = cursor.fetchall()
 
         db_result_map = {key: value for key, value in db_results}
@@ -709,24 +757,34 @@ class SimpleBinaryStorage(SimpleStorageMedium):
     def create_storage(self, at: str) -> None:
         """Create an empty binary file if it doesn't exist."""
         if not os.path.exists(at):
-            with open(at, 'wb') as f:
+            with open(at, "wb") as f:
                 f.write(b"")
 
     def _pack_data(self, key: str, data: str) -> bytes:
         """Pack key and data into a binary format."""
-        key_bytes = key.encode('utf-8')
-        data_bytes = data.encode('utf-8')
-        return struct.pack(f'!I{len(key_bytes)}sI{len(data_bytes)}s', len(key_bytes), key_bytes, len(data_bytes), data_bytes)
+        key_bytes = key.encode("utf-8")
+        data_bytes = data.encode("utf-8")
+        return struct.pack(
+            f"!I{len(key_bytes)}sI{len(data_bytes)}s",
+            len(key_bytes),
+            key_bytes,
+            len(data_bytes),
+            data_bytes,
+        )
 
     def _unpack_data(self, data: bytes, pos: int) -> tuple[str, str, int]:
         """Unpack binary data into key and value."""
-        key_len = struct.unpack('!I', data[pos:pos + 4])[0]
+        key_len = struct.unpack("!I", data[pos : pos + 4])[0]
         pos += 4
-        key = struct.unpack(f'!{key_len}s', data[pos:pos + key_len])[0].decode('utf-8')
+        key = struct.unpack(f"!{key_len}s", data[pos : pos + key_len])[0].decode(
+            "utf-8"
+        )
         pos += key_len
-        value_len = struct.unpack('!I', data[pos:pos + 4])[0]
+        value_len = struct.unpack("!I", data[pos : pos + 4])[0]
         pos += 4
-        value = struct.unpack(f'!{value_len}s', data[pos:pos + value_len])[0].decode('utf-8')
+        value = struct.unpack(f"!{value_len}s", data[pos : pos + value_len])[0].decode(
+            "utf-8"
+        )
         pos += value_len
         return key, value, pos
 

@@ -1,15 +1,20 @@
 """TBA"""
+
 import inspect
 import json
 import re
 
 from ..package import enforce_hard_deps as _enforce_hard_deps
-from ..package.autocli import analyze_function as _analyze_function, NoDefault as _NoDefault
+from ..package.autocli import (
+    analyze_function as _analyze_function,
+    NoDefault as _NoDefault,
+)
 
 # Standard typing imports for aps
 import typing_extensions as _te
 import collections.abc as _a
 import typing as _ty
+
 if _ty.TYPE_CHECKING:
     import _typeshed as _tsh
 import types as _ts
@@ -79,6 +84,7 @@ class SingletonMeta(type):
     """
     Metaclass to make UnifiedRequestHandlerAdvanced a Singleton.
     """
+
     _instances: dict[_ty.Type[_ty.Any], _ty.Any] = {}
 
     def __call__(cls, *args, **kwargs):
@@ -89,7 +95,9 @@ class SingletonMeta(type):
 
 
 @_te.deprecated("Unused function")
-def reverse_map(functions: _a.Iterable[_a.Callable[..., _ty.Any]], *args: _ty.Any, **kwargs: _ty.Any) -> list[_ty.Any]:
+def reverse_map(
+    functions: _a.Iterable[_a.Callable[..., _ty.Any]], *args: _ty.Any, **kwargs: _ty.Any
+) -> list[_ty.Any]:
     """
     Applies each function in the given iterable `functions` to the provided arguments and keyword arguments.
 
@@ -106,8 +114,11 @@ def reverse_map(functions: _a.Iterable[_a.Callable[..., _ty.Any]], *args: _ty.An
 
 
 @_te.deprecated("Unused function")
-def gen_map(functions: _a.Iterable[_a.Callable[..., _ty.Any]], args_iter: _a.Iterable[tuple[_ty.Any, ...]],
-            kwargs_iter: _a.Iterable[dict[str, _ty.Any]]) -> _a.Iterator[_ty.Any]:
+def gen_map(
+    functions: _a.Iterable[_a.Callable[..., _ty.Any]],
+    args_iter: _a.Iterable[tuple[_ty.Any, ...]],
+    kwargs_iter: _a.Iterable[dict[str, _ty.Any]],
+) -> _a.Iterator[_ty.Any]:
     """
     Applies each function in the given iterable `functions` to corresponding arguments and keyword arguments
     from `args_iter` and `kwargs_iter`, yielding the results one by one.
@@ -126,7 +137,7 @@ def gen_map(functions: _a.Iterable[_a.Callable[..., _ty.Any]], args_iter: _a.Ite
     return None
 
 
-_T = _ty.TypeVar('_T')
+_T = _ty.TypeVar("_T")
 
 
 class Sorters(_ty.Generic[_T]):
@@ -148,7 +159,7 @@ class Sorters(_ty.Generic[_T]):
     Quicksort and merge sort utilize recursive helper methods (_quick_helper and _merge)
     and partition/merge functions to efficiently sort the list.
 
-    All sorting methods operate on a copy of the input list, ensuring that the original 
+    All sorting methods operate on a copy of the input list, ensuring that the original
     list remains unchanged.
 
     This class works with any elements that support comparison operations (e.g., <, >, <=, >=).
@@ -297,7 +308,9 @@ class Sorters(_ty.Generic[_T]):
         return iterable
 
     @classmethod
-    def _merge(cls, iterable: list[_T], help_arr: list[_T], left: int, right: int) -> None:
+    def _merge(
+        cls, iterable: list[_T], help_arr: list[_T], left: int, right: int
+    ) -> None:
         """
         Recursively splits and merges the list in merge sort.
 
@@ -316,7 +329,9 @@ class Sorters(_ty.Generic[_T]):
             cls._merge_halves(iterable, help_arr, left, mid, right)
 
     @classmethod
-    def _merge_halves(cls, iterable: list[_T], help_arr: list[_T], left: int, mid: int, right: int) -> None:
+    def _merge_halves(
+        cls, iterable: list[_T], help_arr: list[_T], left: int, mid: int, right: int
+    ) -> None:
         """
         Merges two halves of a list during merge sort.
 
@@ -391,22 +406,27 @@ def beautify_json(data_dict: dict[str, _ty.Any]) -> str:
         str: The beautified JSON string.
     """
     # Convert dictionary to a pretty-printed JSON string using custom serializer
-    pretty_json = json.dumps(data_dict, indent=4, sort_keys=False, default=_custom_serializer)
+    pretty_json = json.dumps(
+        data_dict, indent=4, sort_keys=False, default=_custom_serializer
+    )
     pretty_json = re.sub(
-        r'\[\s+([^][]+?)\s+]',
+        r"\[\s+([^][]+?)\s+]",
         lambda m: f"[{', '.join(item.strip() for item in m.group(1).split(','))}]",
-        pretty_json
+        pretty_json,
     )
     return pretty_json
 
 
 if _ty.TYPE_CHECKING:
-    def minmax(to_reduce: _tsh.SupportsRichComparisonT, min_val: _tsh.SupportsRichComparisonT,
-               max_val: _tsh.SupportsRichComparisonT) -> _tsh.SupportsRichComparisonT:
-        ...
+
+    def minmax(
+        to_reduce: _tsh.SupportsRichComparisonT,
+        min_val: _tsh.SupportsRichComparisonT,
+        max_val: _tsh.SupportsRichComparisonT,
+    ) -> _tsh.SupportsRichComparisonT: ...
 else:
-    def minmax(to_reduce, min_val,
-               max_val) -> _ty.Any:
+
+    def minmax(to_reduce, min_val, max_val) -> _ty.Any:
         """Clamp a value within a specified minimum and maximum range.
 
         Args:
@@ -456,7 +476,7 @@ def isEvenFloat(x: float | str) -> tuple[bool, bool]:
     """
     if x != x:  # Check for NaN
         return False, False
-    if x in [float('inf'), float('-inf')]:  # Check for infinities
+    if x in [float("inf"), float("-inf")]:  # Check for infinities
         return False, False
     if x == 0.0:  # Zero is even by conventional definition
         return True, True
@@ -478,7 +498,7 @@ def isOddFloat(x: float | str) -> tuple[bool, bool]:
     """
     if x != x:  # Check for NaN
         return False, False
-    if x in [float('inf'), float('-inf')]:  # Check for infinities
+    if x in [float("inf"), float("-inf")]:  # Check for infinities
         return False, False
     if x == 0.0:  # Zero is even by conventional definition
         return False, False
@@ -496,6 +516,7 @@ class StdList(list):
     - Tuple indexing for retrieving multiple elements.
     - Custom default values for non-existent indices.
     """
+
     def __init__(self, default_factory=None, *args) -> None:
         super().__init__(*args)
         self.default_factory = default_factory
@@ -503,7 +524,11 @@ class StdList(list):
     def __getitem__(self, key: _ty.Union[int, slice, tuple]) -> _ty.Any:
         # Handle tuple access: (i1, i2, ...), (slice1, slice2, ...), or (index, default)
         if isinstance(key, tuple):
-            if len(key) == 2 and not isinstance(key[0], slice) and not isinstance(key[1], slice):
+            if (
+                len(key) == 2
+                and not isinstance(key[0], slice)
+                and not isinstance(key[1], slice)
+            ):
                 idx, default = key
                 return super().__getitem__(idx) if idx < len(self) else default
 
@@ -522,26 +547,39 @@ class StdList(list):
             return tuple(result)
 
         # Normal list indexing, auto-expand if needed
-        if isinstance(key, int) and key >= len(self) and self.default_factory is not None:
+        if (
+            isinstance(key, int)
+            and key >= len(self)
+            and self.default_factory is not None
+        ):
             self.extend(self.default_factory() for _ in range(len(self), key + 1))
         return super().__getitem__(key)
 
     def __setitem__(self, key: _ty.Union[int, slice, tuple], value: _ty.Any) -> None:
         if isinstance(key, tuple):
             if isinstance(value, (list, tuple)) and len(value) != len(key):
-                raise ValueError("Value must match length of keys when assigning with tuple.")
+                raise ValueError(
+                    "Value must match length of keys when assigning with tuple."
+                )
 
             for i, part in enumerate(key):
                 val = value[i] if isinstance(value, (list, tuple)) else value
                 if isinstance(part, slice):
-                    indices = range(part.start or 0, part.stop or len(self), part.step or 1)
+                    indices = range(
+                        part.start or 0, part.stop or len(self), part.step or 1
+                    )
                     for j, idx in enumerate(indices):
                         if idx >= len(self) and self.default_factory is not None:
-                            self.extend(self.default_factory() for _ in range(len(self), idx + 1))
+                            self.extend(
+                                self.default_factory()
+                                for _ in range(len(self), idx + 1)
+                            )
                         self[idx] = val[j] if isinstance(val, (list, tuple)) else val
                 else:
                     if part >= len(self) and self.default_factory is not None:
-                        self.extend(self.default_factory() for _ in range(len(self), part + 1))
+                        self.extend(
+                            self.default_factory() for _ in range(len(self), part + 1)
+                        )
                     super().__setitem__(part, val)
             return
         elif isinstance(key, slice):
@@ -551,10 +589,16 @@ class StdList(list):
             for i, idx in enumerate(indices):
                 val = value[i] if isinstance(value, (list, tuple)) else value
                 if idx >= len(self) and self.default_factory is not None:
-                    self.extend(self.default_factory() for _ in range(len(self), idx + 1))
+                    self.extend(
+                        self.default_factory() for _ in range(len(self), idx + 1)
+                    )
                 super().__setitem__(idx, val)
             return
-        if isinstance(key, int) and key >= len(self) and self.default_factory is not None:
+        if (
+            isinstance(key, int)
+            and key >= len(self)
+            and self.default_factory is not None
+        ):
             self.extend(self.default_factory() for _ in range(len(self), key + 1))
         super().__setitem__(key, value)
 
@@ -574,19 +618,28 @@ def unnest_iterable(iterable: _a.Iterable, max_depth: int = 4) -> list[_ty.Any]:
     Returns:
         list: A flattened list of elements up to `max_depth`.
     """
-    def _lod_helper(curr_lod: list[_ty.Any | list], big_lster: list[_ty.Any], depth: int) -> list[_ty.Any]:
+
+    def _lod_helper(
+        curr_lod: list[_ty.Any | list], big_lster: list[_ty.Any], depth: int
+    ) -> list[_ty.Any]:
         for x in curr_lod:
             if isinstance(x, list) and depth > 0:
                 _lod_helper(x, big_lster, depth - 1)
             else:
                 big_lster.append(x)
         return big_lster
+
     return _lod_helper(list(iterable), [], max_depth)
 
 
-def cutoff_iterable(iterable: list | tuple | dict | set, start: int = 0, max_elements_right: int = 3,
-                    max_elements_left: int = 0, show_hidden_elements_num: bool = False, return_lst: bool = False
-                    ) -> str | list:
+def cutoff_iterable(
+    iterable: list | tuple | dict | set,
+    start: int = 0,
+    max_elements_right: int = 3,
+    max_elements_left: int = 0,
+    show_hidden_elements_num: bool = False,
+    return_lst: bool = False,
+) -> str | list:
     """Truncate and format an iterable with optional placeholders for hidden elements.
 
     Args:
@@ -603,7 +656,9 @@ def cutoff_iterable(iterable: list | tuple | dict | set, start: int = 0, max_ele
     if not isinstance(iterable, (list, tuple, set, dict)):
         return f"The class '{type(iterable).__name__}' is not a supported iterable."
 
-    braces = {"tuple": "()", "list": "[]", "set": "{}", "dict": "{}"}[type(iterable).__name__]
+    braces = {"tuple": "()", "list": "[]", "set": "{}", "dict": "{}"}[
+        type(iterable).__name__
+    ]
 
     if isinstance(iterable, (tuple, set)):
         iterable = list(iterable)
@@ -611,7 +666,10 @@ def cutoff_iterable(iterable: list | tuple | dict | set, start: int = 0, max_ele
         iterable = [f"{key}: {value}" for key, value in iterable.items()]
 
     n = len(iterable)
-    max_elements_right, max_elements_left = abs(max_elements_right), abs(max_elements_left)
+    max_elements_right, max_elements_left = (
+        abs(max_elements_right),
+        abs(max_elements_left),
+    )
     elements_shown = max_elements_right + max_elements_left + 1
     elements_start = max_elements_left
     show_lst: list[_ty.Any | None] = [None] * elements_shown
@@ -622,19 +680,30 @@ def cutoff_iterable(iterable: list | tuple | dict | set, start: int = 0, max_ele
         elements_start = (n - start) * -1
 
     for i in range(max_elements_right):
-        show_lst[(elements_start + i + 1) % elements_shown] = iterable[(start + i + 1) % n]
+        show_lst[(elements_start + i + 1) % elements_shown] = iterable[
+            (start + i + 1) % n
+        ]
 
     for i in range(max_elements_left + 1, 1, -1):
-        show_lst[(elements_start - i + 1) % elements_shown] = iterable[(start - i + 1) % n]
+        show_lst[(elements_start - i + 1) % elements_shown] = iterable[
+            (start - i + 1) % n
+        ]
 
     show_lst[elements_start] = iterable[start]
 
-    left_hidden, right_hidden = start - max_elements_left, (n - 1) - start - max_elements_right
+    left_hidden, right_hidden = (
+        start - max_elements_left,
+        (n - 1) - start - max_elements_right,
+    )
 
     if start < max_elements_left:  # Handle overflow from left to right
-        right_hidden -= max_elements_left - start  # Reduce right_hidden by the number of overflowed elements
+        right_hidden -= (
+            max_elements_left - start
+        )  # Reduce right_hidden by the number of overflowed elements
     if start + max_elements_right >= n:  # Handle overflow from right to left
-        left_hidden -= (start + max_elements_right) - (n - 1)  # Reduce left_hidden by the number of overflowed elements
+        left_hidden -= (start + max_elements_right) - (
+            n - 1
+        )  # Reduce left_hidden by the number of overflowed elements
 
     left_hide = right_hide = "..."
     if show_hidden_elements_num:
@@ -645,11 +714,19 @@ def cutoff_iterable(iterable: list | tuple | dict | set, start: int = 0, max_ele
     if left_hidden > 0:
         show_lst.insert((elements_start - (max_elements_left + 1) + 1), left_hide)
 
-    return braces[0] + ', '.join(str(x) for x in show_lst) + braces[1] if not return_lst else show_lst
+    return (
+        braces[0] + ", ".join(str(x) for x in show_lst) + braces[1]
+        if not return_lst
+        else show_lst
+    )
 
 
-def cutoff_string(string: str, max_chars_start: int = 4, max_chars_end: int = 0,
-                  show_hidden_chars_num: bool = False) -> str:
+def cutoff_string(
+    string: str,
+    max_chars_start: int = 4,
+    max_chars_end: int = 0,
+    show_hidden_chars_num: bool = False,
+) -> str:
     """Truncate a string with optional placeholders for hidden characters.
 
     Args:
@@ -661,7 +738,9 @@ def cutoff_string(string: str, max_chars_start: int = 4, max_chars_end: int = 0,
     Returns:
         str: Formatted truncated string.
     """
-    truncated_list = cutoff_iterable(list(string), 0, max_chars_start, max_chars_end, show_hidden_chars_num, True)
+    truncated_list = cutoff_iterable(
+        list(string), 0, max_chars_start, max_chars_end, show_hidden_chars_num, True
+    )
     return "".join(truncated_list)
 
 
@@ -670,6 +749,8 @@ _TYPE_ALIASES = {
     for name, val in vars(_ts).items()
     if isinstance(val, type) and not name.startswith("_")
 }
+
+
 def format_type(tp: _ty.Any, show_origin: bool = False) -> str:
     """Recursively formats any type into a string"""
     alias: str | None = _TYPE_ALIASES.get(id(tp))
@@ -708,8 +789,13 @@ def format_type(tp: _ty.Any, show_origin: bool = False) -> str:
     return repr(tp)
 
 
-def what_func(func: _a.Callable, type_names: bool = True, show_type_origin: bool = False,
-              show_method_origin: bool = False, print_def: bool = True) -> str:
+def what_func(
+    func: _a.Callable,
+    type_names: bool = True,
+    show_type_origin: bool = False,
+    show_method_origin: bool = False,
+    print_def: bool = True,
+) -> str:
     """
     Analyzes the passed function, formats it into a nice string and optionally prints it.
 
@@ -730,7 +816,7 @@ def what_func(func: _a.Callable, type_names: bool = True, show_type_origin: bool
 
     arguments: list[dict[str, str]] = analysis["arguments"]  # type: ignore
     for argument in arguments:
-        type_ = argument['type']
+        type_ = argument["type"]
         formatted_type: str
         if type_ is None:
             formatted_type = ""
@@ -743,14 +829,16 @@ def what_func(func: _a.Callable, type_names: bool = True, show_type_origin: bool
             #     formatted_type = f": {type_}"
             # else:
             #     formatted_type = f": {type(argument['default'])}"
-        if isinstance(argument['default'], _NoDefault):
+        if isinstance(argument["default"], _NoDefault):
             formatted_argument = f"{argument['name']}{formatted_type}"
         else:
-            formatted_argument = f"{argument['name']}{formatted_type} = {repr(argument['default'])}"
+            formatted_argument = (
+                f"{argument['name']}{formatted_type} = {repr(argument['default'])}"
+            )
         formatted_arguments.append(formatted_argument)
     origin = f"{func.__module__}." if show_method_origin else ""
     arguments_str: str = ", ".join(formatted_arguments)
-    return_type = analysis['return_type']
+    return_type = analysis["return_type"]
     formatted_return_type: str = " -> "
     if type_names:
         if return_type is None:
@@ -759,16 +847,24 @@ def what_func(func: _a.Callable, type_names: bool = True, show_type_origin: bool
             formatted_return_type += format_type(return_type, show_type_origin)
     else:
         formatted_return_type = ""  # formatted_return_type += str(return_type)
-    definition: str = f"{origin}{analysis['name']}({arguments_str}){formatted_return_type}"
+    definition: str = (
+        f"{origin}{analysis['name']}({arguments_str}){formatted_return_type}"
+    )
     if print_def:
         print(definition)
     return definition
 
 
 # TODO: Show parent class, repeat inherited methods -> method origin show where inherited from (also in what func?) add docstring + max docstring length
-def what_class(cls: _ty.Type[_ty.Any], spaced_methods: bool = False, type_names: bool = True,
-               show_type_origin: bool = False, show_method_origin: bool = False, show_cls_origin: bool = False,
-               print_def: bool = True) -> str:
+def what_class(
+    cls: _ty.Type[_ty.Any],
+    spaced_methods: bool = False,
+    type_names: bool = True,
+    show_type_origin: bool = False,
+    show_method_origin: bool = False,
+    show_cls_origin: bool = False,
+    print_def: bool = True,
+) -> str:
     """
     Analyzes the passed class, formats it into a string, and optionally prints it.
 
@@ -782,15 +878,24 @@ def what_class(cls: _ty.Type[_ty.Any], spaced_methods: bool = False, type_names:
     :return:
     """
     class_name = cls.__name__
-    methods = [attr for attr in dir(cls) if callable(getattr(cls, attr)) and (not attr.startswith("_") or
-                                                                              (attr == "__init__"))]
+    methods = [
+        attr
+        for attr in dir(cls)
+        if callable(getattr(cls, attr))
+        and (not attr.startswith("_") or (attr == "__init__"))
+    ]
 
     class_def = [f"{class_name}:\n"]
     where = f"{cls.__module__}." if show_cls_origin else ""
     for method in methods:
         try:
-            method_def = what_func(getattr(cls, method), type_names=type_names, show_type_origin=show_type_origin,
-                                   show_method_origin=show_method_origin, print_def=False)
+            method_def = what_func(
+                getattr(cls, method),
+                type_names=type_names,
+                show_type_origin=show_type_origin,
+                show_method_origin=show_method_origin,
+                print_def=False,
+            )
         except Exception as e:
             method_def = f"Unknown: {e}"
         class_def.append(f"    {method_def}\n")
@@ -806,9 +911,16 @@ def what_class(cls: _ty.Type[_ty.Any], spaced_methods: bool = False, type_names:
     return result
 
 
-def what_module(module: _ts.ModuleType, spaced: bool = True, spaced_methods: bool = False, type_names: bool = True,
-                show_type_origin: bool = False, show_method_origin: bool = False, show_cls_origin: bool = False,
-                print_def: bool = True) -> str:
+def what_module(
+    module: _ts.ModuleType,
+    spaced: bool = True,
+    spaced_methods: bool = False,
+    type_names: bool = True,
+    show_type_origin: bool = False,
+    show_method_origin: bool = False,
+    show_cls_origin: bool = False,
+    print_def: bool = True,
+) -> str:
     """
     Analyzes the passed module, formats it into a string, and optionally prints it.
 
@@ -831,12 +943,28 @@ def what_module(module: _ts.ModuleType, spaced: bool = True, spaced_methods: boo
         if hasattr(object_, "__func__"):
             object_ = object_.__func__
         if inspect.isclass(object_):
-            result.append(what_class(object_, spaced_methods=spaced_methods, type_names=type_names,
-                                     show_type_origin=show_type_origin, show_method_origin=show_method_origin,
-                                     show_cls_origin=show_cls_origin, print_def=False))
+            result.append(
+                what_class(
+                    object_,
+                    spaced_methods=spaced_methods,
+                    type_names=type_names,
+                    show_type_origin=show_type_origin,
+                    show_method_origin=show_method_origin,
+                    show_cls_origin=show_cls_origin,
+                    print_def=False,
+                )
+            )
         elif inspect.isfunction(object_):
-            result.append(what_func(object_, type_names=type_names, show_type_origin=show_type_origin,
-                                    show_method_origin=show_method_origin, print_def=False) + "\n")
+            result.append(
+                what_func(
+                    object_,
+                    type_names=type_names,
+                    show_type_origin=show_type_origin,
+                    show_method_origin=show_method_origin,
+                    print_def=False,
+                )
+                + "\n"
+            )
         else:
             type_ = f"Unknown type '{object_}'"
             print(type_)

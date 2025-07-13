@@ -5,7 +5,11 @@ from quantcrypt import errors
 
 from .._definitions import _KYBER_KEYPAIRTYPE, _DILITHIUM_KEYPAIRTYPE, SymKeyEncoding
 from ..exceptions import NotSupportedError as _NotSupportedError
-from ..algos._asym import KeyFormat as ASymKeyFormat, KeyEncoding as ASymKeyEncoding, Padding as ASymPadding
+from ..algos._asym import (
+    KeyFormat as ASymKeyFormat,
+    KeyEncoding as ASymKeyEncoding,
+    Padding as ASymPadding,
+)
 
 import typing_extensions as _te
 import typing as _ty
@@ -16,6 +20,8 @@ _KYBER_VARIANTS = {
     "kyber768": MLKEM_768,
     "kyber1024": MLKEM_1024,
 }
+
+
 class _KYBER_KEYPAIR(_KYBER_KEYPAIRTYPE):
     def __init__(self, mode: _ty.Literal["kyber512", "kyber768", "kyber1024"]) -> None:
         try:
@@ -29,17 +35,24 @@ class _KYBER_KEYPAIR(_KYBER_KEYPAIRTYPE):
         self._public_key, self._private_key = self._impl.keygen()
 
     @classmethod
-    def decode(cls, mode: _ty.Literal["kyber512", "kyber768", "kyber1024"], *, public_key: bytes | None = None,
-               private_key: bytes | None = None) -> _te.Self:
+    def decode(
+        cls,
+        mode: _ty.Literal["kyber512", "kyber768", "kyber1024"],
+        *,
+        public_key: bytes | None = None,
+        private_key: bytes | None = None,
+    ) -> _te.Self:
         """, encoding: SymKeyEncoding"""
         obj = cls(mode)
         obj._public_key = public_key
         obj._private_key = private_key
         return obj
 
-    def encode_private_key(self) -> bytes | None: return self._private_key
+    def encode_private_key(self) -> bytes | None:
+        return self._private_key
 
-    def encode_public_key(self) -> bytes | None: return self._public_key
+    def encode_public_key(self) -> bytes | None:
+        return self._public_key
 
     def encapsulate(self) -> tuple[bytes, bytes]:
         if self._public_key is None:
@@ -60,8 +73,12 @@ _DILITHIUM_VARIANTS = {
     "dilithium3": MLDSA_65,
     "dilithium5": MLDSA_87,
 }
+
+
 class _DILITHIUM_KEYPAIR(_DILITHIUM_KEYPAIRTYPE):
-    def __init__(self, mode: _ty.Literal["dilithium2", "dilithium3", "dilithium5"]) -> None:
+    def __init__(
+        self, mode: _ty.Literal["dilithium2", "dilithium3", "dilithium5"]
+    ) -> None:
         try:
             impl_cls = _DILITHIUM_VARIANTS[mode]
         except KeyError:
@@ -73,17 +90,24 @@ class _DILITHIUM_KEYPAIR(_DILITHIUM_KEYPAIRTYPE):
         self._public_key, self._private_key = self._impl.keygen()
 
     @classmethod
-    def decode(cls, mode: _ty.Literal["dilithium2", "dilithium3", "dilithium5"], *, public_key: bytes | None = None,
-               private_key: bytes | None = None) -> _te.Self:
+    def decode(
+        cls,
+        mode: _ty.Literal["dilithium2", "dilithium3", "dilithium5"],
+        *,
+        public_key: bytes | None = None,
+        private_key: bytes | None = None,
+    ) -> _te.Self:
         """, encoding: SymKeyEncoding"""
         obj = cls(mode)
         obj._public_key = public_key
         obj._private_key = private_key
         return obj
 
-    def encode_private_key(self) -> bytes | None: return self._private_key
+    def encode_private_key(self) -> bytes | None:
+        return self._private_key
 
-    def encode_public_key(self) -> bytes | None: return self._public_key
+    def encode_public_key(self) -> bytes | None:
+        return self._public_key
 
     def sign(self, data: bytes) -> bytes:
         if self._private_key is None:

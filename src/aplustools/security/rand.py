@@ -1,4 +1,5 @@
 """TBA"""
+
 import secrets as _secrets
 import random as _random
 import math as _math
@@ -20,11 +21,9 @@ _enforce_hard_deps(__hard_deps__, __name__)
 
 
 class _SupportsLenAndGetItem(_ty.Protocol):
-    def __len__(self) -> int:
-        ...
+    def __len__(self) -> int: ...
 
-    def __getitem__(self, index: int) -> _ty.Any:
-        ...
+    def __getitem__(self, index: int) -> _ty.Any: ...
 
 
 class ModularRandom:
@@ -87,11 +86,15 @@ class ModularRandom:
 
     @classmethod
     def string_sample(cls, s: str, k: int) -> str:
-        return ''.join(cls.sample(list(s), k))
+        return "".join(cls.sample(list(s), k))
 
     @classmethod
-    def generate_random_string(cls, length: int, char_set: str = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~') -> str:
-        return ''.join(cls.choice(char_set) for _ in range(length))
+    def generate_random_string(
+        cls,
+        length: int,
+        char_set: str = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~",
+    ) -> str:
+        return "".join(cls.choice(char_set) for _ in range(length))
 
 
 class OSRandom(ModularRandom):
@@ -130,13 +133,17 @@ class NumPyRandom:
     @classmethod
     def choice(cls, seq: list[_ty.Any] | tuple[_ty.Any] | _ndarray) -> _ty.Any:
         if isinstance(seq, str):
-            return ''.join(cls._generator.choice(list(seq)))
+            return "".join(cls._generator.choice(list(seq)))
         return cls._generator.choice(seq)
 
     @classmethod
-    def choices(cls, seq: list[_ty.Any] | tuple[_ty.Any] | _ndarray, k: int) -> list | tuple | _ndarray:
+    def choices(
+        cls, seq: list[_ty.Any] | tuple[_ty.Any] | _ndarray, k: int
+    ) -> list | tuple | _ndarray:
         if isinstance(seq, str):
-            return ''.join(cls._generator.choice(list(seq), size=k, replace=True).tolist())
+            return "".join(
+                cls._generator.choice(list(seq), size=k, replace=True).tolist()
+            )
         return cls._generator.choice(seq, size=k, replace=True).tolist()
 
     @classmethod
@@ -188,10 +195,15 @@ class NumPyRandom:
         return cls._generator.weibull(beta) * alpha
 
 
-def generator(name: _ty.Literal["random", "np_random", "os", "sys_random", "secrets"] = "sys_random") -> ModularRandom | _secrets.SystemRandom:
+def generator(
+    name: _ty.Literal[
+        "random", "np_random", "os", "sys_random", "secrets"
+    ] = "sys_random",
+) -> ModularRandom | _secrets.SystemRandom:
     return {
         "random": _random,
         "np_random": NumPyRandom,
         "os": OSRandom,
         "sys_random": _secrets.SystemRandom(),
-        "secrets": SecretsRandom}[name]
+        "secrets": SecretsRandom,
+    }[name]

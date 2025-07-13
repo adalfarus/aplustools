@@ -13,7 +13,11 @@ def hash_verify_bcrypt(password: bytes, hash_: bytes) -> bool:
     return bcrypt.checkpw(password, hash_)
 
 
-def derive_bcrypt(password: bytes, salt: bytes, rounds: int = 12, length: int = 32) -> bytes:
+def derive_bcrypt(
+    password: bytes, salt: bytes, rounds: int = 12, length: int = 32
+) -> bytes:
     if len(salt) < 16:
         raise ValueError("Salt must be at least 16 bytes for bcrypt.kdf")
-    return bcrypt.kdf(password=password, salt=salt, desired_key_bytes=length, rounds=rounds)
+    return bcrypt.kdf(
+        password=password, salt=salt, desired_key_bytes=length, rounds=rounds
+    )

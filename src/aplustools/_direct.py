@@ -6,6 +6,7 @@ from .package import enforce_hard_deps as _enforce_hard_deps
 import typing_extensions as _te
 import collections.abc as _a
 import typing as _ty
+
 if _ty.TYPE_CHECKING:
     import _typeshed as _tsh
 import types as _ts
@@ -15,7 +16,9 @@ __hard_deps__: list[str] = []
 _enforce_hard_deps(__hard_deps__, __name__)
 
 
-def dynamic_cls(name: str, inheritors: tuple[_ty.Type, ...], methods: dict[str, _a.Callable] | None) -> _ty.Type:
+def dynamic_cls(
+    name: str, inheritors: tuple[_ty.Type, ...], methods: dict[str, _a.Callable] | None
+) -> _ty.Type:
     """
     Dynamically creates a new class with the specified name, base classes, and methods.
 

@@ -24,8 +24,5 @@ if _TYPE_CHECKING:
     from . import chronokit, autocli
 
 _setup_lazy_loaders(
-    globals(),
-    {
-        "timid": ".package.timid",
-        "autocli": ".package.autocli"
-    }, _direct)
+    globals(), {"timid": ".package.timid", "autocli": ".package.autocli"}, _direct
+)

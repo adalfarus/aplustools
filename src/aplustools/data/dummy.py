@@ -1,4 +1,5 @@
 """TBA"""
+
 import sys
 
 from ..package import enforce_hard_deps as _enforce_hard_deps
@@ -7,6 +8,7 @@ from ..package import enforce_hard_deps as _enforce_hard_deps
 import typing_extensions as _te
 import collections.abc as _a
 import typing as _ty
+
 if _ty.TYPE_CHECKING:
     import _typeshed as _tsh
 import types as _ts
@@ -28,11 +30,11 @@ class DummyBase:
         pass
 
     # Attribute dunder methods
-    def __call__(self, *args: _ty.Any, **kwargs: _ty.Any) -> 'DummyBase':
+    def __call__(self, *args: _ty.Any, **kwargs: _ty.Any) -> "DummyBase":
         """Return self when called."""
         return self
 
-    def __getattr__(self, *args: _ty.Any, **kwargs: _ty.Any) -> 'DummyBase':
+    def __getattr__(self, *args: _ty.Any, **kwargs: _ty.Any) -> "DummyBase":
         """Return self when an undefined attribute is accessed."""
         return self
 
@@ -49,7 +51,7 @@ class DummyBase:
         """Return an empty generator."""
         return iter([])
 
-    def __enter__(self) -> 'DummyBase':
+    def __enter__(self) -> "DummyBase":
         """Enter a context and return self."""
         return self
 
@@ -57,7 +59,7 @@ class DummyBase:
         """Exit a context and always suppress exceptions."""
         return True
 
-    def __getitem__(self, item: _ty.Any) -> 'DummyBase':
+    def __getitem__(self, item: _ty.Any) -> "DummyBase":
         """Return self when an item is accessed."""
         return self
 
@@ -86,137 +88,137 @@ class DummyBase:
         """Return 0 for the length."""
         return int()
 
-    def __abs__(self) -> 'DummyBase':
+    def __abs__(self) -> "DummyBase":
         """Return self when absolute value is requested."""
         return self
 
-    def __invert__(self) -> 'DummyBase':
+    def __invert__(self) -> "DummyBase":
         """Return self when bitwise inversion is requested."""
         return self
 
-    def __round__(self, ndigits: int = 0) -> 'DummyBase':
+    def __round__(self, ndigits: int = 0) -> "DummyBase":
         """Return self when rounding is requested."""
         return self
 
-    def __trunc__(self) -> 'DummyBase':
+    def __trunc__(self) -> "DummyBase":
         """Return self when truncation is requested."""
         return self
 
     # Unary operators (-x, +x, ~x)
-    def __pos__(self) -> 'DummyBase':
+    def __pos__(self) -> "DummyBase":
         """Return self for unary positive."""
         return self
 
-    def __neg__(self) -> 'DummyBase':
+    def __neg__(self) -> "DummyBase":
         """Return self for unary negation."""
         return self
 
     # Operators (+, -, /, *, //, %, &, |, ^, <<, >>, etc.)
-    def __add__(self, other: _ty.Any) -> 'DummyBase':
+    def __add__(self, other: _ty.Any) -> "DummyBase":
         """Return self for addition."""
         return self
 
-    def __radd__(self, other: _ty.Any) -> 'DummyBase':
+    def __radd__(self, other: _ty.Any) -> "DummyBase":
         """Return self for reverse addition."""
         return self
 
-    def __sub__(self, other: _ty.Any) -> 'DummyBase':
+    def __sub__(self, other: _ty.Any) -> "DummyBase":
         """Return self for subtraction."""
         return self
 
-    def __rsub__(self, other: _ty.Any) -> 'DummyBase':
+    def __rsub__(self, other: _ty.Any) -> "DummyBase":
         """Return self for reverse subtraction."""
         return self
 
-    def __mul__(self, other: _ty.Any) -> 'DummyBase':
+    def __mul__(self, other: _ty.Any) -> "DummyBase":
         """Return self for multiplication."""
         return self
 
-    def __rmul__(self, other: _ty.Any) -> 'DummyBase':
+    def __rmul__(self, other: _ty.Any) -> "DummyBase":
         """Return self for reverse multiplication."""
         return self
 
-    def __rdiv__(self, other: _ty.Any) -> 'DummyBase':
+    def __rdiv__(self, other: _ty.Any) -> "DummyBase":
         """Return self for reverse division (Python 2 compatibility)."""
         return self
 
-    def __floordiv__(self, other: _ty.Any) -> 'DummyBase':
+    def __floordiv__(self, other: _ty.Any) -> "DummyBase":
         """Return self for floor division."""
         return self
 
-    def __rfloordiv__(self, other: _ty.Any) -> 'DummyBase':
+    def __rfloordiv__(self, other: _ty.Any) -> "DummyBase":
         """Return self for reverse floor division."""
         return self
 
-    def __truediv__(self, other: _ty.Any) -> 'DummyBase':
+    def __truediv__(self, other: _ty.Any) -> "DummyBase":
         """Return self for true division."""
         return self
 
-    def __rtruediv__(self, other: _ty.Any) -> 'DummyBase':
+    def __rtruediv__(self, other: _ty.Any) -> "DummyBase":
         """Return self for reverse true division."""
         return self
 
-    def __mod__(self, other: _ty.Any) -> 'DummyBase':
+    def __mod__(self, other: _ty.Any) -> "DummyBase":
         """Return self for modulo operation."""
         return self
 
-    def __rmod__(self, other: _ty.Any) -> 'DummyBase':
+    def __rmod__(self, other: _ty.Any) -> "DummyBase":
         """Return self for reverse modulo operation."""
         return self
 
-    def __divmod__(self, other: _ty.Any) -> 'DummyBase':
+    def __divmod__(self, other: _ty.Any) -> "DummyBase":
         """Return self for divmod operation."""
         return self
 
-    def __rdivmod__(self, other: _ty.Any) -> 'DummyBase':
+    def __rdivmod__(self, other: _ty.Any) -> "DummyBase":
         """Return self for reverse divmod operation."""
         return self
 
-    def __pow__(self, n: _ty.Any) -> 'DummyBase':
+    def __pow__(self, n: _ty.Any) -> "DummyBase":
         """Return self for power operation."""
         return self
 
-    def __rpow__(self, n: _ty.Any) -> 'DummyBase':
+    def __rpow__(self, n: _ty.Any) -> "DummyBase":
         """Return self for reverse power operation."""
         return self
 
-    def __lshift__(self, other: _ty.Any) -> 'DummyBase':
+    def __lshift__(self, other: _ty.Any) -> "DummyBase":
         """Return self for left shift."""
         return self
 
-    def __rlshift__(self, other: _ty.Any) -> 'DummyBase':
+    def __rlshift__(self, other: _ty.Any) -> "DummyBase":
         """Return self for reverse left shift."""
         return self
 
-    def __rshift__(self, other: _ty.Any) -> 'DummyBase':
+    def __rshift__(self, other: _ty.Any) -> "DummyBase":
         """Return self for right shift."""
         return self
 
-    def __rrshift__(self, other: _ty.Any) -> 'DummyBase':
+    def __rrshift__(self, other: _ty.Any) -> "DummyBase":
         """Return self for reverse right shift."""
         return self
 
-    def __and__(self, other: _ty.Any) -> 'DummyBase':
+    def __and__(self, other: _ty.Any) -> "DummyBase":
         """Return self for bitwise and."""
         return self
 
-    def __rand__(self, other: _ty.Any) -> 'DummyBase':
+    def __rand__(self, other: _ty.Any) -> "DummyBase":
         """Return self for reverse bitwise and."""
         return self
 
-    def __or__(self, other: _ty.Any) -> 'DummyBase':
+    def __or__(self, other: _ty.Any) -> "DummyBase":
         """Return self for bitwise or."""
         return self
 
-    def __ror__(self, other: _ty.Any) -> 'DummyBase':
+    def __ror__(self, other: _ty.Any) -> "DummyBase":
         """Return self for reverse bitwise or."""
         return self
 
-    def __xor__(self, other: _ty.Any) -> 'DummyBase':
+    def __xor__(self, other: _ty.Any) -> "DummyBase":
         """Return self for bitwise xor."""
         return self
 
-    def __rxor__(self, other: _ty.Any) -> 'DummyBase':
+    def __rxor__(self, other: _ty.Any) -> "DummyBase":
         """Return self for reverse bitwise xor."""
         return self
 
@@ -235,29 +237,29 @@ class Dummy2(DummyBase):
         if sys.version[0] != "2":
             raise RuntimeError("Please only use Dummy2 for Python 2")
 
-    def __div__(self, other: _ty.Any) -> 'DummyBase':
+    def __div__(self, other: _ty.Any) -> "DummyBase":
         """Return self for division (Python 2 compatibility)."""
         return self
 
-    def __long__(self) -> 'Dummy2':
+    def __long__(self) -> "Dummy2":
         """Return self when cast to a long integer (Python 2 compatibility)."""
         return self
 
-    def __oct__(self) -> 'Dummy2':
+    def __oct__(self) -> "Dummy2":
         """Return self when octal conversion is requested."""
         return self
 
-    def __hex__(self) -> 'Dummy2':
+    def __hex__(self) -> "Dummy2":
         """Return self when hexadecimal conversion is requested."""
         return self
 
-    def __coerce__(self, other: _ty.Any) -> 'Dummy2':
+    def __coerce__(self, other: _ty.Any) -> "Dummy2":
         """Return self for coercion (Python 2 compatibility)."""
         return self
 
     def __unicode__(self) -> str:
         """Return an empty Unicode string."""
-        return u''
+        return ""
 
     def __nonzero__(self) -> bool:
         """Return False for the nonzero check (Python 2 compatibility)."""

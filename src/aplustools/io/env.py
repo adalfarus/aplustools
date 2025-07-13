@@ -1,4 +1,5 @@
 """TBA"""
+
 from mmap import ALLOCATIONGRANULARITY as _ALLOCATIONGRANULARITY
 from threading import enumerate as _threading_enumerate
 from multiprocessing import current_process as _multiprocessing_process
@@ -20,17 +21,23 @@ import os
 try:
     from ctypes.wintypes import MAX_PATH
 except ValueError:  # Raises on linux
-    MAX_PATH = os.pathconf('/', 'PC_PATH_MAX')
+    MAX_PATH = os.pathconf("/", "PC_PATH_MAX")
 
-from ..package import optional_import as _optional_import, enforce_hard_deps as _enforce_hard_deps
-from ..data import (SingletonMeta as _SingletonMeta)
-from ..data.bintools import (bits_to_human_readable as _bits_to_human_readable,
-                             bytes_to_human_readable_binary_iec as _bytes_to_human_readable_binary_iec)
+from ..package import (
+    optional_import as _optional_import,
+    enforce_hard_deps as _enforce_hard_deps,
+)
+from ..data import SingletonMeta as _SingletonMeta
+from ..data.bintools import (
+    bits_to_human_readable as _bits_to_human_readable,
+    bytes_to_human_readable_binary_iec as _bytes_to_human_readable_binary_iec,
+)
 
 # Standard typing imports for aps
 import typing_extensions as _te
 import collections.abc as _a
 import typing as _ty
+
 if _ty.TYPE_CHECKING:
     import _typeshed as _tsh
 import types as _ts
@@ -39,7 +46,9 @@ _winreg = _optional_import("winreg")
 _win32clipboard = _optional_import("win32clipboard")
 _Toast = _optional_import("windows_toasts.Toast")
 _WindowsToaster = _optional_import("windows_toasts.WindowsToaster")
-_InteractableWindowsToaster = _optional_import("windows_toasts.InteractableWindowsToaster")
+_InteractableWindowsToaster = _optional_import(
+    "windows_toasts.InteractableWindowsToaster"
+)
 _ToastInputTextBox = _optional_import("windows_toasts.ToastInputTextBox")
 _ToastActivatedEventArgs = _optional_import("windows_toasts.ToastActivatedEventArgs")
 _ToastButton = _optional_import("windows_toasts.ToastButton")
@@ -53,8 +62,13 @@ _win32con = _optional_import("win32con")
 _winerror = _optional_import("winerror")
 _psutil = _optional_import("psutil")
 
-__deps__: list[str] = ["speedtest-cli>=2.1.3", "windows-toasts>=1.1.1; os_name == 'nt'", "PySide6>=6.7.0",
-            "psutil>=6.0.0", "pywin32>=306"]
+__deps__: list[str] = [
+    "speedtest-cli>=2.1.3",
+    "windows-toasts>=1.1.1; os_name == 'nt'",
+    "PySide6>=6.7.0",
+    "psutil>=6.0.0",
+    "pywin32>=306",
+]
 __hard_deps__: list[str] = []
 _enforce_hard_deps(__hard_deps__, __name__)
 
@@ -65,6 +79,7 @@ if _win32file is not None:
 
 class SystemTheme(enum.Enum):
     """Used to make system theme information standardized"""
+
     LIGHT = 2
     DARK = 1
     UNKNOWN = 0
@@ -104,7 +119,12 @@ class _BaseSystem(metaclass=_SingletonMeta):
             return platform.processor()
         elif self.os == "Linux" or self.os == "Darwin":
             command = "cat /proc/cpuinfo | grep 'model name' | uniq"
-            return subprocess.check_output(command, shell=True).decode().split(": ")[1].strip()
+            return (
+                subprocess.check_output(command, shell=True)
+                .decode()
+                .split(": ")[1]
+                .strip()
+            )
         return "Unknown"
 
     def get_gpu_info(self) -> str:
@@ -123,7 +143,9 @@ class _BaseSystem(metaclass=_SingletonMeta):
         """
         raise NotImplementedError("get_system_theme is not implemented for this os")
 
-    def schedule_event(self, name: str, script_path: str, event_time: _ty.Literal["startup", "login"]) -> None:
+    def schedule_event(
+        self, name: str, script_path: str, event_time: _ty.Literal["startup", "login"]
+    ) -> None:
         """
         Schedule an event to run at a specified time, such as at startup or login.
 
@@ -144,9 +166,13 @@ class _BaseSystem(metaclass=_SingletonMeta):
 
         :raises NotImplementedError: This method is not implemented for this operating system.
         """
-        raise NotImplementedError("send_native_notification is not implemented for this os")
+        raise NotImplementedError(
+            "send_native_notification is not implemented for this os"
+        )
 
-    def get_appdata_directory(self, app_dir: str, scope: _ty.Literal["user", "global"] = "global") -> str:
+    def get_appdata_directory(
+        self, app_dir: str, scope: _ty.Literal["user", "global"] = "global"
+    ) -> str:
         """
         Get the appropriate appdata directory based on the specified scope (user-specific or global).
 
@@ -155,7 +181,9 @@ class _BaseSystem(metaclass=_SingletonMeta):
 
         :raises NotImplementedError: This method is not implemented for this operating system.
         """
-        raise NotImplementedError("get_appdata_directory is not implemented for this os")
+        raise NotImplementedError(
+            "get_appdata_directory is not implemented for this os"
+        )
 
     def get_system_language(self) -> tuple[str | str | None, str | str | None]:
         """
@@ -228,7 +256,9 @@ class _BaseSystem(metaclass=_SingletonMeta):
             FILE_ATTRIBUTE_HIDDEN = 0x02
             try:
                 # Get a handle to the file
-                result = ctypes.windll.kernel32.SetFileAttributesW(filepath, FILE_ATTRIBUTE_HIDDEN)
+                result = ctypes.windll.kernel32.SetFileAttributesW(
+                    filepath, FILE_ATTRIBUTE_HIDDEN
+                )
                 if result:
                     return True
                 return False
@@ -252,7 +282,9 @@ class _BaseSystem(metaclass=_SingletonMeta):
         elif self.os == "Windows":
             try:
                 FILE_ATTRIBUTE_NORMAL = 0x80
-                result = ctypes.windll.kernel32.SetFileAttributesW(str(filepath), FILE_ATTRIBUTE_NORMAL)
+                result = ctypes.windll.kernel32.SetFileAttributesW(
+                    str(filepath), FILE_ATTRIBUTE_NORMAL
+                )
                 return bool(result)
             except Exception as e:
                 print(f"Error unhiding the file on Windows: {e}")
@@ -284,9 +316,13 @@ class _BaseSystem(metaclass=_SingletonMeta):
 
             # If /var/lock is not writable (permission denied), fallback to a custom directory
             if not os.access(shared_dir, os.W_OK):
-                shared_dir = "/srv/shared-locks"  # Replace with a valid shared directory
+                shared_dir = (
+                    "/srv/shared-locks"  # Replace with a valid shared directory
+                )
                 if not os.path.exists(shared_dir):
-                    os.makedirs(shared_dir, mode=0o777, exist_ok=True)  # Create directory if it doesn't exist
+                    os.makedirs(
+                        shared_dir, mode=0o777, exist_ok=True
+                    )  # Create directory if it doesn't exist
         else:
             raise OSError(f"Unsupported operating system: {self.os}")
         return shared_dir
@@ -315,16 +351,22 @@ class _BaseSystem(metaclass=_SingletonMeta):
             raise OSError(f"The filepath {file_path} already exists.")
 
         try:
-            open(file_path, 'w').close()
+            open(file_path, "w").close()
 
             # On Windows, public files are generally shared by default
             if self.os in {"Linux", "Darwin", "FreeBSD"}:
-                os.chmod(file_path, 0o666)  # Set permissions to Read and write for everyone
+                os.chmod(
+                    file_path, 0o666
+                )  # Set permissions to Read and write for everyone
             return file_path
         except PermissionError as e:
-            raise PermissionError(f"Failed to create lock file at {file_path}. Permission denied.") from e
+            raise PermissionError(
+                f"Failed to create lock file at {file_path}. Permission denied."
+            ) from e
         except Exception as e:
-            raise OSError(f"An error occurred while creating the lock file: {str(e)}") from e
+            raise OSError(
+                f"An error occurred while creating the lock file: {str(e)}"
+            ) from e
 
     def is_os_drive(self, volume: str) -> bool:
         """
@@ -366,8 +408,9 @@ class _BaseSystem(metaclass=_SingletonMeta):
             volume = volume.lower().strip(":/\\")
             volume_path = f"{volume.upper()}:\\"
 
-            if (False in (ord(letter) in range(97, 123) for letter in volume)
-                    or not os.path.exists(volume_path)):
+            if False in (
+                ord(letter) in range(97, 123) for letter in volume
+            ) or not os.path.exists(volume_path):
                 return False
             return True
         elif self.os in {"Linux", "Darwin", "FreeBSD"}:
@@ -418,7 +461,9 @@ class _BaseSystem(metaclass=_SingletonMeta):
             return path.lower().startswith(volume_path.lower())
         elif self.os in {"Linux", "Darwin", "FreeBSD"}:
             # For Unix-like systems, check if the path is on a mounted filesystem
-            with open("/proc/mounts" if self.os != "FreeBSD" else "/etc/fstab", "r") as mounts_file:
+            with open(
+                "/proc/mounts" if self.os != "FreeBSD" else "/etc/fstab", "r"
+            ) as mounts_file:
                 mounts = [line.split()[1] for line in mounts_file.readlines()]
 
             # Find the longest mount point that is a prefix of the given path
@@ -431,8 +476,15 @@ class _BaseSystem(metaclass=_SingletonMeta):
         else:
             raise NotImplementedError(f"Unsupported system: {self.os}")
 
-    def lock_file(self, filepath_or_fd: str | int, byte_range: range | None = None, blocking: bool = True, *,
-                  open_flags: int = os.O_RDWR | os.O_CREAT, shared_lock: bool = False) -> None | int:
+    def lock_file(
+        self,
+        filepath_or_fd: str | int,
+        byte_range: range | None = None,
+        blocking: bool = True,
+        *,
+        open_flags: int = os.O_RDWR | os.O_CREAT,
+        shared_lock: bool = False,
+    ) -> None | int:
         """
         Attempt to lock the file for exclusive or shared access, with optional byte-range locking.
 
@@ -479,19 +531,25 @@ class _BaseSystem(metaclass=_SingletonMeta):
                         _msvcrt.locking(fd, _msvcrt.LK_NBLCK, lock_length)
                         # Release exclusive lock and switch to shared read lock
                         _msvcrt.locking(fd, _msvcrt.LK_UNLCK, lock_length)
-                        _msvcrt.locking(fd, _msvcrt.LK_RLCK, lock_length)  # Acquire read lock
+                        _msvcrt.locking(
+                            fd, _msvcrt.LK_RLCK, lock_length
+                        )  # Acquire read lock
                     return fd
                 if not blocking:
                     lock_flags |= _win32con.LOCKFILE_FAIL_IMMEDIATELY
 
                 try:  # Attempt to lock the file
-                    _win32file.LockFileEx(file_handle, lock_flags, 0, lock_length, _overlapped)
+                    _win32file.LockFileEx(
+                        file_handle, lock_flags, 0, lock_length, _overlapped
+                    )
                 except _pywintypes.error as e:
                     if e.winerror == _winerror.ERROR_LOCK_VIOLATION:
                         raise OSError("File already locked.") from e
                 finally:
                     if seek_set != old_pos:
-                        os.lseek(fd, old_pos, os.SEEK_SET)  # Make sure to respect the position of the open flags
+                        os.lseek(
+                            fd, old_pos, os.SEEK_SET
+                        )  # Make sure to respect the position of the open flags
                 return fd
             except OSError:
                 os.close(fd)
@@ -508,7 +566,9 @@ class _BaseSystem(metaclass=_SingletonMeta):
                     os.lseek(fd, byte_range.start, os.SEEK_SET)
                     lock_length = byte_range.stop - byte_range.start
                     _fcntl.lockf(fd, lock_type, lock_length)
-                    os.lseek(fd, old_pos, os.SEEK_SET)  # Make sure to respect the position of the open flags
+                    os.lseek(
+                        fd, old_pos, os.SEEK_SET
+                    )  # Make sure to respect the position of the open flags
                 return fd
             except BlockingIOError:
                 os.close(fd)
@@ -516,7 +576,9 @@ class _BaseSystem(metaclass=_SingletonMeta):
         else:
             raise NotImplementedError(f"Unsupported system: {self.os}")
 
-    def unlock_file(self, fd: int, byte_range: range | None = None, keep_fd_open: bool = True) -> None:
+    def unlock_file(
+        self, fd: int, byte_range: range | None = None, keep_fd_open: bool = True
+    ) -> None:
         """
         Unlocks the file or a byte range and closes the file descriptor.
 
@@ -548,7 +610,9 @@ class _BaseSystem(metaclass=_SingletonMeta):
                         raise e
                 finally:
                     if seek_set != old_pos:
-                        os.lseek(fd, old_pos, os.SEEK_SET)  # Make sure to respect the position
+                        os.lseek(
+                            fd, old_pos, os.SEEK_SET
+                        )  # Make sure to respect the position
             elif self.os in {"Linux", "Darwin", "FreeBSD"}:
                 if byte_range is None:
                     _fcntl.flock(fd, _fcntl.LOCK_UN)
@@ -660,10 +724,12 @@ class _BaseSystem(metaclass=_SingletonMeta):
                             return True
                 # On Windows, use wmic to check for virtual hardware
                 elif self.os == "Windows":
-                    result = subprocess.check_output("wmic baseboard get product", shell=True)
+                    result = subprocess.check_output(
+                        "wmic baseboard get product", shell=True
+                    )
                     if any(driver in str(result) for driver in vm_drivers):
                         return True
-            except Exception as e:
+            except Exception:
                 pass
             return False
 
@@ -676,9 +742,11 @@ class _BaseSystem(metaclass=_SingletonMeta):
                     _ = os.urandom(1)  # Random data access to stress CPU
                 elapsed_time = time.time() - start
                 # Virtual environments can have slower performance for such repetitive tasks
-                if elapsed_time > 0.5:  # Arbitrary threshold for a VM (adjust as necessary)
+                if (
+                    elapsed_time > 0.5
+                ):  # Arbitrary threshold for a VM (adjust as necessary)
                     return True
-            except Exception as e:
+            except Exception:
                 pass
             return False
 
@@ -688,7 +756,7 @@ class _BaseSystem(metaclass=_SingletonMeta):
                 # VM-specific instructions often show different results or errors
                 if "hypervisor" in platform.uname().version:
                     return True
-            except Exception as e:
+            except Exception:
                 pass
             return False
 
@@ -727,7 +795,9 @@ class _BaseSystem(metaclass=_SingletonMeta):
                 # If Gnome screensaver command fails, try KDE command
                 os.system("qdbus org.freedesktop.ScreenSaver /ScreenSaver Lock")
         elif self.os == "Darwin":  # macOS
-            os.system("""osascript -e 'tell application "System Events" to keystroke "q" using {control down, command down}'""")
+            os.system(
+                """osascript -e 'tell application "System Events" to keystroke "q" using {control down, command down}'"""
+            )
         elif self.os == "FreeBSD":
             # Assuming FreeBSD would have similar command line utilities as Linux
             os.system("gnome-screensaver-command -l")
@@ -792,9 +862,9 @@ class _WindowsSystem(_BaseSystem):
 
         :return: The system theme, either LIGHT, DARK, or UNKNOWN if the theme could not be determined.
         """
-        key = r'SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize'
-        light_theme_value = 'AppsUseLightTheme'
-        system_theme_value = 'SystemUsesLightTheme'
+        key = r"SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize"
+        light_theme_value = "AppsUseLightTheme"
+        system_theme_value = "SystemUsesLightTheme"
 
         try:
             # Try to open the registry key
@@ -832,7 +902,9 @@ class _WindowsSystem(_BaseSystem):
             _winreg.CloseKey(reg_key)
             return SystemTheme.UNKNOWN
 
-    def schedule_event(self, name: str, script_path: str, event_time: _ty.Literal["startup", "login"]) -> None:
+    def schedule_event(
+        self, name: str, script_path: str, event_time: _ty.Literal["startup", "login"]
+    ) -> None:
         """
         Schedule an event to run at startup or login on a Windows system using the Task Scheduler.
 
@@ -921,7 +993,9 @@ class _WindowsSystem(_BaseSystem):
         else:
             print("You are not on a default windows machine")
 
-    def get_appdata_directory(self, app_dir: str, scope: _ty.Literal["user", "global"] = "global") -> str:
+    def get_appdata_directory(
+        self, app_dir: str, scope: _ty.Literal["user", "global"] = "global"
+    ) -> str:
         """
         Get the appropriate AppData directory for storing application data based on the specified scope (user or global).
 
@@ -931,8 +1005,12 @@ class _WindowsSystem(_BaseSystem):
         :return: The path to the appropriate AppData directory.
         """
         if scope == "user":
-            return os.path.join(os.environ.get("APPDATA"), app_dir)  # App data for the current user
-        return os.path.join(os.environ.get("PROGRAMDATA"), app_dir)  # App data for all users
+            return os.path.join(
+                os.environ.get("APPDATA"), app_dir
+            )  # App data for the current user
+        return os.path.join(
+            os.environ.get("PROGRAMDATA"), app_dir
+        )  # App data for all users
 
     def get_system_language(self) -> tuple[str | str | None, str | str | None]:
         """
@@ -960,17 +1038,23 @@ class _DarwinSystem(_BaseSystem):
     def get_gpu_info(self):
         command = "system_profiler SPDisplaysDataType | grep 'Chipset Model'"
         output = subprocess.check_output(command.split(" ")).decode()
-        return [line.split(': ')[1].strip() for line in output.split('\n') if 'Chipset Model' in line]
+        return [
+            line.split(": ")[1].strip()
+            for line in output.split("\n")
+            if "Chipset Model" in line
+        ]
 
     def get_system_theme(self) -> SystemTheme:
         command = "defaults read -g AppleInterfaceStyle"
         try:
             theme = subprocess.check_output(command.split(" ")).decode().strip()
-            return SystemTheme.DARK if theme.lower() == 'dark' else SystemTheme.LIGHT
+            return SystemTheme.DARK if theme.lower() == "dark" else SystemTheme.LIGHT
         except subprocess.CalledProcessError:
             return SystemTheme.UNKNOWN
 
-    def schedule_event(self, name: str, script_path: str, event_time: _ty.Literal["startup", "login"]):
+    def schedule_event(
+        self, name: str, script_path: str, event_time: _ty.Literal["startup", "login"]
+    ):
         """Schedule an event to run at startup or login on macOS."""
         plist_content = f"""
         <?xml version="1.0" encoding="UTF-8"?>
@@ -978,7 +1062,7 @@ class _DarwinSystem(_BaseSystem):
         <plist version="1.0">
         <dict>
             <key>Label</key>
-            <string>com.example.{name.replace(' ', '_').lower()}</string>
+            <string>com.example.{name.replace(" ", "_").lower()}</string>
             <key>ProgramArguments</key>
             <array>
                 <string>{script_path}</string>
@@ -988,25 +1072,37 @@ class _DarwinSystem(_BaseSystem):
         </dict>
         </plist>
         """
-        plist_path = f'~/Library/LaunchAgents/com.example.{name.replace(" ", "_").lower()}.plist'
-        with open(os.path.expanduser(plist_path), 'w') as f:
+        plist_path = (
+            f"~/Library/LaunchAgents/com.example.{name.replace(' ', '_').lower()}.plist"
+        )
+        with open(os.path.expanduser(plist_path), "w") as f:
             f.write(plist_content)
-        subprocess.run(f'launchctl load {os.path.expanduser(plist_path)}'.split(" "), check=True)
+        subprocess.run(
+            f"launchctl load {os.path.expanduser(plist_path)}".split(" "), check=True
+        )
 
     def send_native_notification(self, title: str, message: str):
         script = f'display notification "{message}" with title "{title}"'
         subprocess.run(["osascript", "-e", script])
 
-    def get_appdata_directory(self, app_dir: str, scope: _ty.Literal["user", "global"] = "global"):
+    def get_appdata_directory(
+        self, app_dir: str, scope: _ty.Literal["user", "global"] = "global"
+    ):
         if scope == "user":
-            return os.path.join(os.path.expanduser("~"), "Library", "Application Support", app_dir)  # App data for the current user
-        return os.path.join("/Library/Application Support", app_dir)  # App data for all users
+            return os.path.join(
+                os.path.expanduser("~"), "Library", "Application Support", app_dir
+            )  # App data for the current user
+        return os.path.join(
+            "/Library/Application Support", app_dir
+        )  # App data for all users
 
     def get_system_language(self) -> tuple[str | str | None, str | str | None]:
         language_code, encoding = super().get_system_language()
         if language_code:
             return language_code, encoding
-        result = subprocess.run(['defaults', 'read', '-g', 'AppleLocale'], stdout=subprocess.PIPE)
+        result = subprocess.run(
+            ["defaults", "read", "-g", "AppleLocale"], stdout=subprocess.PIPE
+        )
         return result.stdout.decode().strip(), None
 
 
@@ -1015,34 +1111,43 @@ class _LinuxSystem(_BaseSystem):
 
     def get_cpu_brand(self):
         try:
-            with open('/proc/cpuinfo') as f:
+            with open("/proc/cpuinfo") as f:
                 for line in f:
-                    if 'model name' in line:
-                        return line.split(':')[1].strip()
+                    if "model name" in line:
+                        return line.split(":")[1].strip()
         except FileNotFoundError:
             return "Unknown"
 
     def get_gpu_info(self):
         try:
             # Run `lspci` and pipe its output to the next process
-            p1 = subprocess.Popen(["lspci"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            p1 = subprocess.Popen(
+                ["lspci"], stdout=subprocess.PIPE, stderr=subprocess.PIPE
+            )
             # Run `grep VGA` to filter the output of `lspci`
-            p2 = subprocess.Popen(["grep", "VGA"], stdin=p1.stdout, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            p2 = subprocess.Popen(
+                ["grep", "VGA"],
+                stdin=p1.stdout,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
             p1.stdout.close()  # Allow p1 to receive a SIGPIPE if p2 exits
             output, error = p2.communicate()
 
             if p2.returncode != 0:
-                print(f"grep VGA returned non-zero exit status {p2.returncode}. Error: {error.decode().strip()}")
+                print(
+                    f"grep VGA returned non-zero exit status {p2.returncode}. Error: {error.decode().strip()}"
+                )
                 return []
 
             output = output.decode()
-            return [line.strip() for line in output.split('\n') if line.strip()]
-        except FileNotFoundError as e:
+            return [line.strip() for line in output.split("\n") if line.strip()]
+        except FileNotFoundError:
             print("lspci or grep command not found. Please ensure both are installed.")
             return []
         except Exception as e:
             print(f"Unexpected exception occurred: {e}")
-            if 'libEGL.so.1' in str(e):
+            if "libEGL.so.1" in str(e):
                 print("libEGL.so.1 is missing. Please install it with:")
                 print("sudo apt-get install libegl1-mesa")  # For Debian-based systems
                 print("sudo yum install mesa-libEGL")  # For Red Hat-based systems
@@ -1053,22 +1158,37 @@ class _LinuxSystem(_BaseSystem):
         try:
             if "gnome" in os.getenv("XDG_CURRENT_DESKTOP", "").lower():
                 command = "gsettings get org.gnome.desktop.interface gtk-theme"
-                theme = subprocess.check_output(command.split(" ")).decode().strip().strip("'")
-                return SystemTheme.DARK if "dark" in theme.lower() else SystemTheme.LIGHT
+                theme = (
+                    subprocess.check_output(command.split(" "))
+                    .decode()
+                    .strip()
+                    .strip("'")
+                )
+                return (
+                    SystemTheme.DARK if "dark" in theme.lower() else SystemTheme.LIGHT
+                )
             elif "kde" in os.getenv("XDG_CURRENT_DESKTOP", "").lower():
                 command = "lookandfeeltool --current"
                 theme = subprocess.check_output(command.split(" ")).decode().strip()
-                return SystemTheme.DARK if "dark" in theme.lower() else SystemTheme.LIGHT
+                return (
+                    SystemTheme.DARK if "dark" in theme.lower() else SystemTheme.LIGHT
+                )
             elif "xfce" in os.getenv("XDG_CURRENT_DESKTOP", "").lower():
                 command = "xfconf-query -c xsettings -p /Net/ThemeName"
                 theme = subprocess.check_output(command.split(" ")).decode().strip()
-                return SystemTheme.DARK if "dark" in theme.lower() else SystemTheme.LIGHT
-            raise subprocess.CalledProcessError(returncode=1, cmd="defaults read", output="Error")
+                return (
+                    SystemTheme.DARK if "dark" in theme.lower() else SystemTheme.LIGHT
+                )
+            raise subprocess.CalledProcessError(
+                returncode=1, cmd="defaults read", output="Error"
+            )
         except subprocess.CalledProcessError:
             # If theme detection fails for all, return unknown theme
             return SystemTheme.UNKNOWN
 
-    def schedule_event(self, name: str, script_path: str, event_time: _ty.Literal["startup", "login"]):
+    def schedule_event(
+        self, name: str, script_path: str, event_time: _ty.Literal["startup", "login"]
+    ):
         """Schedule an event to run at startup or login on Linux."""
         if event_time == "startup":
             service_content = f"""
@@ -1084,14 +1204,19 @@ class _LinuxSystem(_BaseSystem):
             [Install]
             WantedBy=default.target
             """
-            service_path = f"/etc/systemd/system/{name.replace(' ', '_').lower()}_startup.service"
-            with open(service_path, 'w') as f:
+            service_path = (
+                f"/etc/systemd/system/{name.replace(' ', '_').lower()}_startup.service"
+            )
+            with open(service_path, "w") as f:
                 f.write(service_content)
             os.system(f"systemctl enable {service_path}")
             os.system(f"systemctl start {service_path}")
         elif event_time == "login":
-            cron_command = f'@reboot {script_path}'
-            subprocess.run(f'(crontab -l; echo "{cron_command}") | crontab -'.split(" "), check=True)
+            cron_command = f"@reboot {script_path}"
+            subprocess.run(
+                f'(crontab -l; echo "{cron_command}") | crontab -'.split(" "),
+                check=True,
+            )
 
     def send_native_notification(self, title: str, message: str):
         try:
@@ -1101,14 +1226,18 @@ class _LinuxSystem(_BaseSystem):
         except subprocess.CalledProcessError as e:
             print(f"Exception occurred: {e}")
 
-    def get_appdata_directory(self, app_dir: str, scope: _ty.Literal["user", "global"] = "global"):
+    def get_appdata_directory(
+        self, app_dir: str, scope: _ty.Literal["user", "global"] = "global"
+    ):
         if scope == "user":
-            return os.path.join(os.path.expanduser("~"), ".local", "share", app_dir)  # App data for the current user
+            return os.path.join(
+                os.path.expanduser("~"), ".local", "share", app_dir
+            )  # App data for the current user
         return os.path.join("/usr/local/share", app_dir)  # App data for all users
 
     def get_system_language(self) -> tuple[str | str | None, str | str | None]:
         language_code, encoding = super().get_system_language()
-        return language_code or os.getenv('LANG', 'en_US'), encoding
+        return language_code or os.getenv("LANG", "en_US"), encoding
 
 
 class _FreeBSDSystem(_LinuxSystem):
@@ -1133,22 +1262,35 @@ class _FreeBSDSystem(_LinuxSystem):
         try:
             if "gnome" in os.getenv("XDG_CURRENT_DESKTOP", "").lower():
                 command = "gsettings get org.gnome.desktop.interface gtk-theme"
-                theme = subprocess.check_output(command.split(" ")).decode().strip().strip("'")
-                return SystemTheme.DARK if "dark" in theme.lower() else SystemTheme.LIGHT
+                theme = (
+                    subprocess.check_output(command.split(" "))
+                    .decode()
+                    .strip()
+                    .strip("'")
+                )
+                return (
+                    SystemTheme.DARK if "dark" in theme.lower() else SystemTheme.LIGHT
+                )
             elif "kde" in os.getenv("XDG_CURRENT_DESKTOP", "").lower():
                 command = "lookandfeeltool --current"
                 theme = subprocess.check_output(command.split(" ")).decode().strip()
-                return SystemTheme.DARK if "dark" in theme.lower() else SystemTheme.LIGHT
+                return (
+                    SystemTheme.DARK if "dark" in theme.lower() else SystemTheme.LIGHT
+                )
             elif "xfce" in os.getenv("XDG_CURRENT_DESKTOP", "").lower():
                 command = "xfconf-query -c xsettings -p /Net/ThemeName"
                 theme = subprocess.check_output(command.split(" ")).decode().strip()
-                return SystemTheme.DARK if "dark" in theme.lower() else SystemTheme.LIGHT
+                return (
+                    SystemTheme.DARK if "dark" in theme.lower() else SystemTheme.LIGHT
+                )
             raise subprocess.CalledProcessError
         except subprocess.CalledProcessError:
             # If theme detection fails for all, return unknown theme
             return SystemTheme.UNKNOWN
 
-    def get_appdata_directory(self, app_dir: str, scope: _ty.Literal["user", "global"] = "global") -> str:
+    def get_appdata_directory(
+        self, app_dir: str, scope: _ty.Literal["user", "global"] = "global"
+    ) -> str:
         """Get application data directory for FreeBSD."""
         if scope == "user":
             return os.path.join(os.path.expanduser("~"), ".local", "share", app_dir)
@@ -1157,7 +1299,7 @@ class _FreeBSDSystem(_LinuxSystem):
     def get_system_language(self) -> tuple[str | None, str | None]:
         """Get system language for FreeBSD."""
         language_code, encoding = super().get_system_language()
-        return language_code or os.getenv('LANG', 'en_US'), encoding
+        return language_code or os.getenv("LANG", "en_US"), encoding
 
 
 def get_system() -> BaseSystemType:
@@ -1172,11 +1314,17 @@ def get_system() -> BaseSystemType:
     elif os_name == "FreeBSD":
         return _FreeBSDSystem()
     else:
-        warnings.warn("Unsupported Operating System, returning _BaseSystem instance.", RuntimeWarning, 2)
+        warnings.warn(
+            "Unsupported Operating System, returning _BaseSystem instance.",
+            RuntimeWarning,
+            2,
+        )
         return _BaseSystem()
 
 
-def diagnose_shutdown_blockers(suggestions: bool = True, return_result: bool = False) -> str | None:
+def diagnose_shutdown_blockers(
+    suggestions: bool = True, return_result: bool = False
+) -> str | None:
     """
     Diagnose potential blockers that may prevent the Python process from shutting down cleanly.
 
@@ -1219,7 +1367,9 @@ def diagnose_shutdown_blockers(suggestions: bool = True, return_result: bool = F
     active_threads = _threading_enumerate()
     if len(active_threads) > 1:  # More than just the main thread
         blockers.append(f"Active threads: {[thread.name for thread in active_threads]}")
-        blockers.append("Suggestion: Ensure all threads complete or are set as daemon threads.")
+        blockers.append(
+            "Suggestion: Ensure all threads complete or are set as daemon threads."
+        )
 
     # Check for active processes
     # current_process = _multiprocessing_process()
@@ -1227,21 +1377,29 @@ def diagnose_shutdown_blockers(suggestions: bool = True, return_result: bool = F
         raise RuntimeError("Psutil is not installed")
     child_processes = _psutil.Process(os.getpid()).children(recursive=True)
     if child_processes:
-        blockers.append(f"Active child processes: {[proc.pid for proc in child_processes]}")
-        blockers.append("Suggestion: Ensure all child processes are "
-                        "properly terminated using process.terminate() or process.join().")
+        blockers.append(
+            f"Active child processes: {[proc.pid for proc in child_processes]}"
+        )
+        blockers.append(
+            "Suggestion: Ensure all child processes are "
+            "properly terminated using process.terminate() or process.join()."
+        )
 
     # Check for open files
     open_files = _psutil.Process(os.getpid()).open_files()
     if open_files:
         blockers.append(f"Open files: {[file.path for file in open_files]}")
-        blockers.append("Suggestion: Ensure all files are properly closed using file.close().")
+        blockers.append(
+            "Suggestion: Ensure all files are properly closed using file.close()."
+        )
 
     # Check for open network connections
     open_connections = _psutil.Process(os.getpid()).connections()
     if open_connections:
         blockers.append(f"Open network connections: {open_connections}")
-        blockers.append("Suggestion: Ensure all network connections are properly closed.")
+        blockers.append(
+            "Suggestion: Ensure all network connections are properly closed."
+        )
 
     if not blockers:
         returns = "No obvious blockers preventing Python from shutting down."
@@ -1268,13 +1426,22 @@ def auto_repr(cls: type, *_, use_repr: bool = False):
     Decorator that automatically generates a __repr__ method for a class.
     """
     if cls.__repr__ is object.__repr__:
+
         def __repr__(self):
             if not use_repr:
-                attributes = ', '.join(f"{key}={getattr(self, key)}" for key in self.__dict__ if not key.startswith("_")
-                                       or (key.startswith("__") and key.endswith("__")))
+                attributes = ", ".join(
+                    f"{key}={getattr(self, key)}"
+                    for key in self.__dict__
+                    if not key.startswith("_")
+                    or (key.startswith("__") and key.endswith("__"))
+                )
             else:
-                attributes = ', '.join(f"{key}={repr(getattr(self, key))}" for key in self.__dict__ if not key.startswith("_")
-                                       or (key.startswith("__") and key.endswith("__")))
+                attributes = ", ".join(
+                    f"{key}={repr(getattr(self, key))}"
+                    for key in self.__dict__
+                    if not key.startswith("_")
+                    or (key.startswith("__") and key.endswith("__"))
+                )
             return f"{cls.__name__}({attributes})"
 
         cls.__repr__ = __repr__
@@ -1286,11 +1453,16 @@ def auto_repr_with_privates(cls: type, use_repr: bool = False):
     Decorator that automatically generates a __repr__ method for a class, including all private attributes.
     """
     if cls.__repr__ is object.__repr__:
+
         def __repr__(self):
             if not use_repr:
-                attributes = ', '.join(f"{key}={getattr(self, key)}" for key in self.__dict__)
+                attributes = ", ".join(
+                    f"{key}={getattr(self, key)}" for key in self.__dict__
+                )
             else:
-                attributes = ', '.join(f"{key}={repr(getattr(self, key))}" for key in self.__dict__)
+                attributes = ", ".join(
+                    f"{key}={repr(getattr(self, key))}" for key in self.__dict__
+                )
             return f"{cls.__name__}({attributes})"
 
         cls.__repr__ = __repr__
@@ -1327,18 +1499,19 @@ class BasicSystemFunctions:
         as a normal Python script.
         """
         import __main__
+
         try:
-            if getattr(sys, 'frozen', False):
+            if getattr(sys, "frozen", False):
                 main_dir = os.path.dirname(sys.executable)
             else:
-                if hasattr(__main__, '__file__'):
+                if hasattr(__main__, "__file__"):
                     main_dir = os.path.dirname(os.path.abspath(__main__.__file__))
                 else:
                     main_dir = os.getcwd()
                     warnings.warn(
                         "Unable to set working directory to main script's location. Using current working directory.",
                         RuntimeWarning,
-                        stacklevel=2
+                        stacklevel=2,
                     )
             os.chdir(main_dir)
             print(f"Working directory set to {main_dir}")
@@ -1354,7 +1527,7 @@ class BasicSystemFunctions:
         Uses the caller's file path, which may differ from the main script's location.
         """
         try:
-            if getattr(sys, 'frozen', False):
+            if getattr(sys, "frozen", False):
                 script_dir = os.path.dirname(sys.executable)
             else:
                 frame = inspect.currentframe()
@@ -1406,10 +1579,10 @@ class BasicSystemFunctions:
             OSError: If the operating system is unsupported.
         """
         try:
-            if os.name == 'posix':
+            if os.name == "posix":
                 home_dir = os.path.join(os.path.expanduser("~"), folder)
-            elif os.name == 'nt':
-                home_dir = os.path.join(os.environ['USERPROFILE'], folder)
+            elif os.name == "nt":
+                home_dir = os.path.join(os.environ["USERPROFILE"], folder)
             else:
                 raise OSError(f"System {os.name} is unsupported by this function.")
             os.chdir(home_dir)
@@ -1427,4 +1600,6 @@ def is_compiled() -> bool:
     to common Python compilers, including PyInstaller, cx_Freeze, and py2exe.
     :return: bool
     """
-    return getattr(sys, "frozen", False) and (hasattr(sys, "_MEIPASS") or sys.executable.endswith(".exe"))
+    return getattr(sys, "frozen", False) and (
+        hasattr(sys, "_MEIPASS") or sys.executable.endswith(".exe")
+    )

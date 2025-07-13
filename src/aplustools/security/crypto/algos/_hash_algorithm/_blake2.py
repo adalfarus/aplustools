@@ -1,4 +1,5 @@
 """BLAKE2"""
+
 from ..._definitions import _HASHER_WITH_LEN_BACKEND
 
 BLAKE2b: _HASHER_WITH_LEN_BACKEND = _HASHER_WITH_LEN_BACKEND("blake2b")

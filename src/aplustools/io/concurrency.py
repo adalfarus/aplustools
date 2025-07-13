@@ -1,9 +1,19 @@
 """TBA"""
+
 import typing
-from concurrent.futures import ThreadPoolExecutor as _ThreadPoolExecutor, Future as _Future
+from concurrent.futures import (
+    ThreadPoolExecutor as _ThreadPoolExecutor,
+    Future as _Future,
+)
+
 # We basically need to change the way the threads work and thus need these
 from concurrent.futures.thread import _threads_queues, _shutdown, _base
-from threading import Event as _Event, Lock as _TLock, Thread as _Thread, current_thread as _current_thread
+from threading import (
+    Event as _Event,
+    Lock as _TLock,
+    Thread as _Thread,
+    current_thread as _current_thread,
+)
 from multiprocessing.shared_memory import SharedMemory as _SharedMemory
 from multiprocessing.synchronize import RLock as _RMLockT
 from multiprocessing import RLock as _RMLock
@@ -20,6 +30,7 @@ from ..package.chronokit import FlexTimer as _TimidTimer
 import typing_extensions as _te
 import collections.abc as _a
 import typing as _ty
+
 if _ty.TYPE_CHECKING:
     import _typeshed as _tsh
 import types as _ts
@@ -32,6 +43,7 @@ _enforce_hard_deps(__hard_deps__, __name__)
 @_auto_repr
 class SharedReference:
     """Shared reference to memory and a lock. It can get pickled and send between processes"""
+
     def __init__(self, struct_format: str, shm_name: str, lock: _RMLockT) -> None:
         self.struct_format: str = struct_format
         self.shm_name: str = shm_name
@@ -40,10 +52,19 @@ class SharedReference:
 
 class SharedStruct:
     """Shared memory through processes"""
-    def __init__(self, struct_format: str, create: bool = False, shm_name: str | None = None,
-                 *_, overwrite_mp_lock: _RMLockT | None = None) -> None:
+
+    def __init__(
+        self,
+        struct_format: str,
+        create: bool = False,
+        shm_name: str | None = None,
+        *_,
+        overwrite_mp_lock: _RMLockT | None = None,
+    ) -> None:
         if any([len(x) > 1 for x in struct_format.split(" ")]):
-            raise RuntimeError("You need to leave a space after each entry in the struct format")
+            raise RuntimeError(
+                "You need to leave a space after each entry in the struct format"
+            )
         self._struct_format: str = struct_format
         self._struct_size: int = struct.calcsize(struct_format)
 
@@ -53,12 +74,16 @@ class SharedStruct:
             self._lock: _RMLockT = _RMLock()
 
         if create:  # Create a new, shared memory segment
-            self._shm: _SharedMemory = _SharedMemory(create=True, size=self._struct_size)
+            self._shm: _SharedMemory = _SharedMemory(
+                create=True, size=self._struct_size
+            )
         else:  # Attach to an existing shared memory segment
             if shm_name is None:
                 raise ValueError("shm_name must be provided, when create=False")
             self._shm: _SharedMemory = _SharedMemory(name=shm_name)
-        self._shm_name: str = self._shm.name  # Store the shared memory name for reference
+        self._shm_name: str = (
+            self._shm.name
+        )  # Store the shared memory name for reference
 
     def set_data(self, *values) -> None:
         """
@@ -69,7 +94,7 @@ class SharedStruct:
             raise ValueError("Number of values must match the struct format")
         with self._lock:
             packed_data = struct.pack(self._struct_format, *values)
-            self._shm.buf[:self._struct_size] = packed_data
+            self._shm.buf[: self._struct_size] = packed_data
 
     def get_data(self) -> tuple[_ty.Any, ...]:
         """
@@ -77,7 +102,7 @@ class SharedStruct:
         :return: Tuple of values unpacked from the shared memory.
         """
         with self._lock:
-            packed_data = self._shm.buf[:self._struct_size]
+            packed_data = self._shm.buf[: self._struct_size]
             return struct.unpack(self._struct_format, packed_data)
 
     def set_field(self, index: int, value: _ty.Any) -> None:
@@ -95,7 +120,7 @@ class SharedStruct:
         field_size = struct.calcsize(field_format)
         with self._lock:
             packed_field = struct.pack(field_format, value)
-            self._shm.buf[offset:offset + field_size] = packed_field
+            self._shm.buf[offset : offset + field_size] = packed_field
 
     def get_field(self, index: int) -> _ty.Any:
         """
@@ -110,7 +135,7 @@ class SharedStruct:
         field_format = format_parts[index]
         field_size = struct.calcsize(field_format)
         with self._lock:
-            packed_field = self._shm.buf[offset:offset + field_size]
+            packed_field = self._shm.buf[offset : offset + field_size]
             return struct.unpack(field_format, packed_field)[0]
 
     def reference(self) -> SharedReference:
@@ -146,18 +171,26 @@ class SharedStruct:
         self.set_lock()
         return self
 
-    def __exit__(self, exc_type: _ty.Type[BaseException] | None, exc_val: BaseException | None,
-                 exc_tb: BaseException | None) -> bool | None:
+    def __exit__(
+        self,
+        exc_type: _ty.Type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: BaseException | None,
+    ) -> bool | None:
         self.unset_lock()
         # If an exception occurred, propagate it by returning False (default behavior).
         return False  # Exception will propagate to the caller
 
     def __repr__(self) -> str:
-        return (f"SharedStruct(struct_format='{self._struct_format}', struct_size={self._struct_size}, "
-                f"shm_name='{self._shm_name}')")
+        return (
+            f"SharedStruct(struct_format='{self._struct_format}', struct_size={self._struct_size}, "
+            f"shm_name='{self._shm_name}')"
+        )
 
 
 _T = _ty.TypeVar("_T")
+
+
 class ThreadSafeList(list[_T], _ty.Generic[_T]):
     """
     A thread-safe implementation of a Python list, ensuring that all mutation operations are protected by a lock.
@@ -171,6 +204,7 @@ class ThreadSafeList(list[_T], _ty.Generic[_T]):
     protected for full thread safety, though read-only operations are generally safe unless done concurrently
     with writes.
     """
+
     def __init__(self, *args: _ty.Any, **kwargs: _ty.Any) -> None:
         super().__init__(*args, **kwargs)
         self._lock: _TLock = _TLock()
@@ -223,7 +257,9 @@ class ThreadSafeList(list[_T], _ty.Generic[_T]):
         with self._lock:
             return super().__getitem__(index)
 
-    def __setitem__(self, index: _ty.Union[int, slice], value: _ty.Union[_T, _ty.Iterable[_T]]) -> None:
+    def __setitem__(
+        self, index: _ty.Union[int, slice], value: _ty.Union[_T, _ty.Iterable[_T]]
+    ) -> None:
         with self._lock:
             super().__setitem__(index, value)
 
@@ -256,15 +292,20 @@ class ThreadSafeList(list[_T], _ty.Generic[_T]):
             return super().__str__()
 
 
-def _self_managing_worker(executor_reference, work_queue, signal_func: _a.Callable[[_Thread, _Event], None],
-                          initializer, initargs) -> None:
+def _self_managing_worker(
+    executor_reference,
+    work_queue,
+    signal_func: _a.Callable[[_Thread, _Event], None],
+    initializer,
+    initargs,
+) -> None:
     shutdown_event: _Event = _Event()
 
     if initializer is not None:
         try:
             initializer(*initargs)
         except BaseException:
-            _base.LOGGER.critical('Exception in initializer:', exc_info=True)
+            _base.LOGGER.critical("Exception in initializer:", exc_info=True)
             executor = executor_reference()
             if executor is not None:
                 executor._initializer_failed()
@@ -310,7 +351,7 @@ def _self_managing_worker(executor_reference, work_queue, signal_func: _a.Callab
                 return
             del executor
     except BaseException:
-        _base.LOGGER.critical('Exception in worker', exc_info=True)
+        _base.LOGGER.critical("Exception in worker", exc_info=True)
 
 
 class HyperScalingDynamicThreadPoolExecutor(_ThreadPoolExecutor):
@@ -352,13 +393,16 @@ class HyperScalingDynamicThreadPoolExecutor(_ThreadPoolExecutor):
           thread-safe.
 
     """
-    def __init__(self,
-                 min_workers: int = 0,
-                 max_workers: int | None = None,
-                 check_interval: float = 1.0,
-                 thread_name_prefix: str = "",
-                 initializer: _a.Callable[[object | None], None] = None,
-                 initargs: tuple[_ty.Any, ...] = ()) -> None:
+
+    def __init__(
+        self,
+        min_workers: int = 0,
+        max_workers: int | None = None,
+        check_interval: float = 1.0,
+        thread_name_prefix: str = "",
+        initializer: _a.Callable[[object | None], None] = None,
+        initargs: tuple[_ty.Any, ...] = (),
+    ) -> None:
         super().__init__(max_workers, thread_name_prefix, initializer, initargs)
         self._min_workers = min_workers
         self._check_interval: float = check_interval
@@ -403,14 +447,18 @@ class HyperScalingDynamicThreadPoolExecutor(_ThreadPoolExecutor):
 
         num_threads = len(self._threads)
         if num_threads < self._max_workers:
-            thread_name = '%s_%d' % (self._thread_name_prefix or self,
-                                     num_threads)
-            t = _Thread(name=thread_name, target=self._worker_func,
-                                 args=(weakref.ref(self, weakref_cb),
-                                       self._work_queue,
-                                       self._should_shutdown,
-                                       self._initializer,
-                                       self._initargs))
+            thread_name = "%s_%d" % (self._thread_name_prefix or self, num_threads)
+            t = _Thread(
+                name=thread_name,
+                target=self._worker_func,
+                args=(
+                    weakref.ref(self, weakref_cb),
+                    self._work_queue,
+                    self._should_shutdown,
+                    self._initializer,
+                    self._initargs,
+                ),
+            )
             t.start()
             with self._lock:
                 self._threads.add(t)
@@ -436,19 +484,23 @@ class HyperScalingDynamicThreadPoolExecutor(_ThreadPoolExecutor):
         self.shutdown()
 
 
-class _ExitWorkerFlag:
-    ...
+class _ExitWorkerFlag: ...
 
 
-def _lazy_worker(executor_reference, work_queue, signal_func: _a.Callable[[_Thread, _Event], None],
-                 initializer, initargs):
+def _lazy_worker(
+    executor_reference,
+    work_queue,
+    signal_func: _a.Callable[[_Thread, _Event], None],
+    initializer,
+    initargs,
+):
     shutdown_event: _Event = _Event()
 
     if initializer is not None:
         try:
             initializer(*initargs)
         except BaseException:
-            _base.LOGGER.critical('Exception in initializer:', exc_info=True)
+            _base.LOGGER.critical("Exception in initializer:", exc_info=True)
             executor = executor_reference()
             if executor is not None:
                 executor._initializer_failed()
@@ -496,7 +548,7 @@ def _lazy_worker(executor_reference, work_queue, signal_func: _a.Callable[[_Thre
                 return
             del executor
     except BaseException:
-        _base.LOGGER.critical('Exception in worker', exc_info=True)
+        _base.LOGGER.critical("Exception in worker", exc_info=True)
 
 
 class LazyDynamicThreadPoolExecutor(HyperScalingDynamicThreadPoolExecutor):
@@ -539,17 +591,25 @@ class LazyDynamicThreadPoolExecutor(HyperScalingDynamicThreadPoolExecutor):
         - The `_lock` attribute ensures that thread pool modifications (such as joining threads or resizing the pool)
           are thread-safe.
     """
-    def __init__(self,
-                 min_workers: int = 0,
-                 max_workers: int | None = None,
-                 check_interval: float = 1.0,
-                 max_join_number: int = 5,
-                 thread_name_prefix: str = "",
-                 initializer: _a.Callable[[object | None], None] = None,
-                 initargs: tuple[_ty.Any, ...] = ()) -> None:
-        super().__init__(min_workers, max_workers,
-                         check_interval,  # Never used
-                         thread_name_prefix, initializer, initargs)
+
+    def __init__(
+        self,
+        min_workers: int = 0,
+        max_workers: int | None = None,
+        check_interval: float = 1.0,
+        max_join_number: int = 5,
+        thread_name_prefix: str = "",
+        initializer: _a.Callable[[object | None], None] = None,
+        initargs: tuple[_ty.Any, ...] = (),
+    ) -> None:
+        super().__init__(
+            min_workers,
+            max_workers,
+            check_interval,  # Never used
+            thread_name_prefix,
+            initializer,
+            initargs,
+        )
         self._max_join_number: int = max_join_number
         self._join_count = 0  # Start at valid state
         self._worker_func: _a.Callable = _lazy_worker
@@ -612,20 +672,32 @@ class LazySelfManagingDynamicThreadPoolExecutor(LazyDynamicThreadPoolExecutor):
         - The class periodically checks for idle threads and manages resources by dynamically resizing the pool as needed.
         - Thread pool modifications (e.g., joining threads or resizing) are thread-safe due to the use of a `_lock` attribute.
     """
-    def __init__(self,
-                 min_workers: int = 0,
-                 max_workers: int | None = None,
-                 check_interval: float = 1.0,
-                 max_join_number: int = 5,
-                 thread_name_prefix: str = "",
-                 initializer: _a.Callable[[object | None], None] = None,
-                 initargs: tuple[_ty.Any, ...] = ()) -> None:
-        super().__init__(min_workers, max_workers, check_interval, max_join_number, thread_name_prefix,
-                         initializer, initargs)
+
+    def __init__(
+        self,
+        min_workers: int = 0,
+        max_workers: int | None = None,
+        check_interval: float = 1.0,
+        max_join_number: int = 5,
+        thread_name_prefix: str = "",
+        initializer: _a.Callable[[object | None], None] = None,
+        initargs: tuple[_ty.Any, ...] = (),
+    ) -> None:
+        super().__init__(
+            min_workers,
+            max_workers,
+            check_interval,
+            max_join_number,
+            thread_name_prefix,
+            initializer,
+            initargs,
+        )
         self._worker_func: _a.Callable = _self_managing_worker
 
     def _join_threads(self) -> None:
-        if self._work_queue.qsize() == 0 and self._idle_semaphore._value == len(self._threads):
+        if self._work_queue.qsize() == 0 and self._idle_semaphore._value == len(
+            self._threads
+        ):
             with self._lock:
                 threads = self._to_join.copy()
                 self._to_join.clear()
@@ -648,13 +720,12 @@ class LazySelfManagingDynamicThreadPoolExecutor(LazyDynamicThreadPoolExecutor):
 
 class SharedLDTPE(LazyDynamicThreadPoolExecutor):
     def __init__(self) -> None:
-        raise NotImplementedError("LazyDynamicThreadPoolExecutor is not implemented yet")
+        raise NotImplementedError(
+            "LazyDynamicThreadPoolExecutor is not implemented yet"
+        )
 
-    def create_handle(self) -> int:
-        ...
+    def create_handle(self) -> int: ...
 
-    def reserve(self, amount_of_threads: int, handle: int) -> None:
-        ...
+    def reserve(self, amount_of_threads: int, handle: int) -> None: ...
 
-    def submit(self, task, handle: int) -> None:
-        ...
+    def submit(self, task, handle: int) -> None: ...

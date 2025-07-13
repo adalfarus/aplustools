@@ -10,9 +10,6 @@ if _TYPE_CHECKING:
 
 _setup_lazy_loaders(
     globals(),
-    {
-        "bintools": ".data.bintools",
-        "storage": ".data.storage",
-        "dummy": ".data.dummy"
-    }, _direct
+    {"bintools": ".data.bintools", "storage": ".data.storage", "dummy": ".data.dummy"},
+    _direct,
 )

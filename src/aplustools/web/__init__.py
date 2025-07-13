@@ -9,8 +9,5 @@ if _TYPE_CHECKING:
     from . import request, utils
 
 _setup_lazy_loaders(
-    globals(),
-    {
-        "request": ".web.request",
-        "utils": ".web.utils"
-    }, _direct)
+    globals(), {"request": ".web.request", "utils": ".web.utils"}, _direct
+)

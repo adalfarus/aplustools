@@ -2,9 +2,11 @@ import os
 import ast
 from pathlib import Path
 
+
 def should_skip(path: Path) -> bool:
     """Skip paths that are test files or test folders."""
     return "test" in path.name.lower() or os.path.basename(path.name).startswith("_")
+
 
 def get_classes_in_file(file_path: Path) -> list[str]:
     """Return list of class names defined in the Python file."""
@@ -14,7 +16,12 @@ def get_classes_in_file(file_path: Path) -> list[str]:
     except Exception:
         return []
 
-    return [n.name for n in node.body if isinstance(n, (ast.ClassDef, ast.FunctionDef)) and not n.name.startswith("_")]
+    return [
+        n.name
+        for n in node.body
+        if isinstance(n, (ast.ClassDef, ast.FunctionDef)) and not n.name.startswith("_")
+    ]
+
 
 def list_modules_and_classes(package_dir: str, base_package: str = ""):
     package_path = Path(package_dir).resolve()
@@ -23,14 +30,22 @@ def list_modules_and_classes(package_dir: str, base_package: str = ""):
         rel_path = root_path.relative_to(package_path)
 
         # Build the package path (e.g. aplustools.utils)
-        module_prefix = ".".join([base_package] + list(rel_path.parts)) if rel_path.parts else base_package
+        module_prefix = (
+            ".".join([base_package] + list(rel_path.parts))
+            if rel_path.parts
+            else base_package
+        )
 
         # Remove test dirs in-place to avoid walking into them
         dirs[:] = [d for d in dirs if not should_skip(Path(d))]
 
         for file in files:
             file_path = Path(file)
-            if file_path.suffix != ".py" or should_skip(file_path) or file_path.name.startswith("_"):
+            if (
+                file_path.suffix != ".py"
+                or should_skip(file_path)
+                or file_path.name.startswith("_")
+            ):
                 continue
 
             modname = file_path.stem
@@ -53,6 +68,7 @@ def list_modules_and_classes(package_dir: str, base_package: str = ""):
                 print(f"{full_package}")
                 for cls in class_names:
                     print(f"  - {full_package}.{cls}")
+
 
 # Example usage
 if __name__ == "__main__":

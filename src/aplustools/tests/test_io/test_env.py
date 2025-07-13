@@ -1,6 +1,13 @@
 """TBA"""
+
 from ...io.env import *
-from ...io.env import _BaseSystem, _LinuxSystem, _WindowsSystem, _DarwinSystem, _FreeBSDSystem
+from ...io.env import (
+    _BaseSystem,
+    _LinuxSystem,
+    _WindowsSystem,
+    _DarwinSystem,
+    _FreeBSDSystem,
+)
 import pytest
 import platform
 from unittest import mock
@@ -15,20 +22,24 @@ import shutil
 import typing_extensions as _te
 import collections.abc as _a
 import typing as _ty
+
 if _ty.TYPE_CHECKING:
     import _typeshed as _tsh
 import types as _ts
 
 
 @pytest.mark.parametrize(
-    "platform_name, expected_class", [
+    "platform_name, expected_class",
+    [
         ("Windows", _WindowsSystem),
         ("Darwin", _DarwinSystem),
         ("Linux", _LinuxSystem),
         ("FreeBSD", _FreeBSDSystem),
-    ]
+    ],
 )
-def test_get_system_known_os(monkeypatch: pytest.MonkeyPatch, platform_name: str, expected_class: BaseSystemType) -> None:
+def test_get_system_known_os(
+    monkeypatch: pytest.MonkeyPatch, platform_name: str, expected_class: BaseSystemType
+) -> None:
     monkeypatch.setattr(platform, "system", lambda: platform_name)
     result: BaseSystemType = get_system()
     assert isinstance(result, expected_class)
@@ -104,8 +115,12 @@ def test_gpu_info_safe(system: BaseSystemType) -> None:
 
 
 @pytest.mark.skipif('sys.platform != "win32"', reason="Windows-only test")
-@pytest.mark.parametrize("reg_value, expected_theme", [(1, SystemTheme.LIGHT), (0, SystemTheme.DARK)])
-def test_get_system_theme(monkeypatch: pytest.MonkeyPatch, reg_value: int, expected_theme: SystemTheme) -> None:
+@pytest.mark.parametrize(
+    "reg_value, expected_theme", [(1, SystemTheme.LIGHT), (0, SystemTheme.DARK)]
+)
+def test_get_system_theme(
+    monkeypatch: pytest.MonkeyPatch, reg_value: int, expected_theme: SystemTheme
+) -> None:
     mock_key = mock.MagicMock()
     monkeypatch.setattr("winreg.OpenKey", lambda root, path: mock_key)
     monkeypatch.setattr("winreg.QueryValueEx", lambda key, name: (reg_value, None))
@@ -117,7 +132,9 @@ def test_get_system_theme(monkeypatch: pytest.MonkeyPatch, reg_value: int, expec
 
 @pytest.mark.skipif('sys.platform != "win32"', reason="Windows-only test")
 def test_get_system_theme_key_missing(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr("winreg.OpenKey", lambda root, path: (_ for _ in ()).throw(FileNotFoundError()))
+    monkeypatch.setattr(
+        "winreg.OpenKey", lambda root, path: (_ for _ in ()).throw(FileNotFoundError())
+    )
     system = _WindowsSystem()
     assert system.get_system_theme() == SystemTheme.UNKNOWN
 
@@ -152,11 +169,13 @@ def test_appdata_path_global(system: BaseSystemType) -> None:
     assert "APlusTest" in path
 
 
-@pytest.mark.parametrize("base_name,expected_hidden", [
-    ("visible_file.txt", True),
-    (".already_hidden.txt", False)
-])
-def test_hide_file_unix_like(monkeypatch: pytest.MonkeyPatch, base_name: str, expected_hidden: bool) -> None:
+@pytest.mark.parametrize(
+    "base_name,expected_hidden",
+    [("visible_file.txt", True), (".already_hidden.txt", False)],
+)
+def test_hide_file_unix_like(
+    monkeypatch: pytest.MonkeyPatch, base_name: str, expected_hidden: bool
+) -> None:
     system: BaseSystemType = get_system()
 
     if system.os not in {"Linux", "Darwin", "FreeBSD"}:
@@ -416,7 +435,9 @@ def test_change_working_dir_to_userprofile_folder(tmp_path) -> None:
     os.makedirs(userprofile_folder, exist_ok=True)
     original_cwd = os.getcwd()
     try:
-        BasicSystemFunctions.change_working_dir_to_userprofile_folder("test_aplus_folder")
+        BasicSystemFunctions.change_working_dir_to_userprofile_folder(
+            "test_aplus_folder"
+        )
         assert os.getcwd() == userprofile_folder
     finally:
         os.chdir(original_cwd)  # Move out so we can delete it

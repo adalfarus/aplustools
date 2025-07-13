@@ -1,4 +1,5 @@
 """TBA"""
+
 import os
 import tempfile
 
@@ -11,6 +12,7 @@ import io
 import typing_extensions as _te
 import collections.abc as _a
 import typing as _ty
+
 if _ty.TYPE_CHECKING:
     import _typeshed as _tsh
 import types as _ts
@@ -24,20 +26,23 @@ def test_float_encoding_decoding() -> None:
             assert pytest.approx(decoded, rel=1e-5) == value
 
 
-@pytest.mark.parametrize("val, negatives, will_panic", [
-    (0, False, False),
-    (0, True, False),
-    (127, False, False),
-    (127, True, False),
-    (255, False, False),
-    (255, True, False),
-    (256, False, False),
-    (256, True, False),
-    (-1, False, True),
-    (-1, True, False),
-    (-256, False, True),
-    (-256, True, False)
-])
+@pytest.mark.parametrize(
+    "val, negatives, will_panic",
+    [
+        (0, False, False),
+        (0, True, False),
+        (127, False, False),
+        (127, True, False),
+        (255, False, False),
+        (255, True, False),
+        (256, False, False),
+        (256, True, False),
+        (-1, False, True),
+        (-1, True, False),
+        (-256, False, True),
+        (-256, True, False),
+    ],
+)
 def test_integer_encoding_decoding(val: int, negatives: bool, will_panic: bool) -> None:
     if will_panic:
         with pytest.raises(ValueError):
@@ -57,7 +62,10 @@ def test_bytes_and_bit_length() -> None:
 
 
 def test_variable_length_encoding() -> None:
-    lst = [b''.join([encode_integer(x) for x in range(0, y // 10_000)]) for y in range(0, 10_000_000, 100_000)]
+    lst = [
+        b"".join([encode_integer(x) for x in range(0, y // 10_000)])
+        for y in range(0, 10_000_000, 100_000)
+    ]
     for original in lst:
         # original = b"hello world"
         encoded = get_variable_bytes_like(original)
@@ -87,7 +95,10 @@ def test_varint_eof() -> None:
 # @pytest.mark.filterwarnings("ignore:to_progressive_length ran out of buffer space")
 def test_progressive_encoding() -> None:
     # with pytest.warns(RuntimeWarning):
-    lst = [b''.join([bytes(x) for x in range(0, y // 10_000)]) for y in range(0, 10_000_000, 100_000)]
+    lst = [
+        b"".join([bytes(x) for x in range(0, y // 10_000)])
+        for y in range(0, 10_000_000, 100_000)
+    ]
     for original in lst:
         # original = b"hello world"
         encoded = get_progressive_bytes_like(original)
@@ -127,20 +138,20 @@ def test_bitbuffer_get_single_bits() -> None:
 
 def test_bitbuffer_get_multiple() -> None:
     buffer = BitBuffer()
-    buffer.read(io.BytesIO(b"\xF0"), 1)  # 0b11110000
+    buffer.read(io.BytesIO(b"\xf0"), 1)  # 0b11110000
     assert buffer.get_multiple(4, 2) == [3, 3, 0, 0]
 
 
 def test_bitbuffer_disregard_specific() -> None:
     buffer = BitBuffer()
-    buffer.read(io.BytesIO(b"\xAA"), 1)  # 0b10101010
+    buffer.read(io.BytesIO(b"\xaa"), 1)  # 0b10101010
     buffer.disregard(3)
     assert buffer.get(5) == 10  # Remaining bits: 01010 -> 10
 
 
 def test_bitbuffer_disregard_to_byte_boundary() -> None:
     buffer = BitBuffer()
-    buffer.read(io.BytesIO(b"\xFF\x0F"), 2)
+    buffer.read(io.BytesIO(b"\xff\x0f"), 2)
     buffer.get(3)  # consume 3 bits
     buffer.disregard()  # should skip to next byte
     assert buffer.get(4) == 0  # from second byte: 00001111
@@ -195,7 +206,9 @@ def test_merge_groups_behavior() -> None:
     s = CNumStorage()
     s.add_numbers([1, 2])
     s.add_numbers([128, 255])
-    assert len(s.get_groups()) == 3  # Not add numbers unorganized and 1 and 2 have different bit lengths
+    assert (
+        len(s.get_groups()) == 3
+    )  # Not add numbers unorganized and 1 and 2 have different bit lengths
     s.merge_groups(0, 1)
     assert len(s.get_groups()) == 2
     assert s.get_total_number_of_numbers() == 4
@@ -226,20 +239,20 @@ def test_eq_and_debug() -> None:
 def test_set_bits() -> None:
     assert set_bits(b"\x00", 0, "11", "big", False, False) == b"\xc0"
     assert set_bits(b"\x00", 0, "1111111111", "big", False, True) == b"\xff\xc0"
-    b = bytearray(b'\x00\x00')
-    out = set_bits(b, 3, '1011', return_bytearray=True)
+    b = bytearray(b"\x00\x00")
+    out = set_bits(b, 3, "1011", return_bytearray=True)
     assert bits(out, return_str=True) == "00010110 00000000".replace(" ", "")
 
 
 def test_bits() -> None:
-    assert bits(b'\x01\x02') == ['00000001', '00000010']
-    assert bits(b'\xFF', return_str=True) == "11111111"
+    assert bits(b"\x01\x02") == ["00000001", "00000010"]
+    assert bits(b"\xff", return_str=True) == "11111111"
 
 
 def test_nice_bits() -> None:
-    assert nice_bits(b'\xFF') == "11111111"
-    assert nice_bits(b'\xFF\xFF', spaced=True) == "11111111 11111111"
-    assert nice_bits(b'\x41', to_chars=True) == "01000001  A          "
+    assert nice_bits(b"\xff") == "11111111"
+    assert nice_bits(b"\xff\xff", spaced=True) == "11111111 11111111"
+    assert nice_bits(b"\x41", to_chars=True) == "01000001  A          "
 
 
 def test_human_readables() -> None:

@@ -1,21 +1,31 @@
 """TBA"""
+
 from importlib import import_module as _import_module
 import warnings as _warnings
 import os as _os
 
 # from .algos import (Sym as _Sym, ASym as _ASym, HashAlgorithm as _HashAlgorithm,
 #                     KeyDerivationFunction as _KDF)
-from ._definitions import _HASHER_BACKEND, _HASHER_WITH_LEN_BACKEND, _HASHID_TO_STRING, Backend
+from ._definitions import (
+    _HASHER_BACKEND,
+    _HASHER_WITH_LEN_BACKEND,
+    _HASHID_TO_STRING,
+    Backend,
+)
 from .. import Security as _Security, RiskLevel as _RiskLevel
 from .exceptions import NotSupportedError as _NotSupportedError
 
 from ...io.env import suppress_warnings as _suppress_warnings
-from ...package import enforce_hard_deps as _enforce_hard_deps, optional_import as _optional_import
+from ...package import (
+    enforce_hard_deps as _enforce_hard_deps,
+    optional_import as _optional_import,
+)
 
 # Standard typing imports for aps
 import typing_extensions as _te
 import collections.abc as _a
 import typing as _ty
+
 if _ty.TYPE_CHECKING:
     import _typeshed as _tsh
 import types as _ts
@@ -153,10 +163,16 @@ BACKENDS: list[Backend] = []
 
 # _ISSUED_KEYS: list[_BASIC_KEYTYPE | _BASIC_KEYPAIRTYPE] = []
 
+
 def set_backend(backends: list[Backend] | None = None) -> None:
     """Sets a new backend for the crypt submodule"""
-    from .algos import (Sym as _Sym, Asym as _Asym, HashAlgorithm as _H,
-                        KeyDerivationFunction as _KDF)
+    from .algos import (
+        Sym as _Sym,
+        Asym as _Asym,
+        HashAlgorithm as _H,
+        KeyDerivationFunction as _KDF,
+    )
+
     global BACKENDS
     if backends is None:
         backends = [Backend.std_lib]
@@ -164,33 +180,68 @@ def set_backend(backends: list[Backend] | None = None) -> None:
     backend_modules: list[_ts.ModuleType] = []
     for backend in backends:
         if not isinstance(backend, Backend):
-            raise _NotSupportedError(f"Backend '{repr(backend)}' is not supported by aplustools.crypt")
+            raise _NotSupportedError(
+                f"Backend '{repr(backend)}' is not supported by aplustools.crypt"
+            )
         try:
             backend_modules.append(_import_module(backend.value[0]))
         except ImportError:
-            raise _NotSupportedError(f"The {backend.value[1]} is not yet supported by aplustools.crypt")
+            raise _NotSupportedError(
+                f"The {backend.value[1]} is not yet supported by aplustools.crypt"
+            )
 
     BACKENDS = backends
     with _suppress_warnings():
         # Dynamically set hashes
         _HASHER_BACKEND._MAPPING.clear()  # Clear previous mapping
-        for hasher in {_H.SHA1, _H.SHA2.SHA224, _H.SHA2.SHA256, _H.SHA2.SHA384, _H.SHA2.SHA512, _H.SHA2.SHA512_244,
-                       _H.SHA2.SHA512_256, _H.SHA3.SHA224, _H.SHA3.SHA256, _H.SHA3.SHA384, _H.SHA3.SHA512,
-                       _H.SHA3.SHAKE128, _H.SHA3.SHAKE256, _H.SHA3.TurboSHAKE128, _H.SHA3.TurboSHAKE256,
-                       _H.SHA3.KangarooTwelve, _H.SHA3.TupleHash128, _H.SHA3.TupleHash256, _H.SHA3.CSHAKE128,
-                       _H.SHA3.CSHAKE256, _H.MD2, _H.MD4, _H.MD5, _H.SM3, _H.RIPEMD160, _H.BCRYPT, _H.ARGON2,
-                       _H.BLAKE2.BLAKE2b, _H.BLAKE2.BLAKE2s}:
+        for hasher in {
+            _H.SHA1,
+            _H.SHA2.SHA224,
+            _H.SHA2.SHA256,
+            _H.SHA2.SHA384,
+            _H.SHA2.SHA512,
+            _H.SHA2.SHA512_244,
+            _H.SHA2.SHA512_256,
+            _H.SHA3.SHA224,
+            _H.SHA3.SHA256,
+            _H.SHA3.SHA384,
+            _H.SHA3.SHA512,
+            _H.SHA3.SHAKE128,
+            _H.SHA3.SHAKE256,
+            _H.SHA3.TurboSHAKE128,
+            _H.SHA3.TurboSHAKE256,
+            _H.SHA3.KangarooTwelve,
+            _H.SHA3.TupleHash128,
+            _H.SHA3.TupleHash256,
+            _H.SHA3.CSHAKE128,
+            _H.SHA3.CSHAKE256,
+            _H.MD2,
+            _H.MD4,
+            _H.MD5,
+            _H.SM3,
+            _H.RIPEMD160,
+            _H.BCRYPT,
+            _H.ARGON2,
+            _H.BLAKE2.BLAKE2b,
+            _H.BLAKE2.BLAKE2s,
+        }:
             found_hasher: bool = False
             for module in backend_modules:
                 hash_func = getattr(module, f"hash_{hasher.algorithm}", None)
                 verify_func = getattr(module, f"hash_verify_{hasher.algorithm}", None)
 
-                if not (isinstance(hash_func, _ts.FunctionType) or isinstance(verify_func, _ts.FunctionType)):
+                if not (
+                    isinstance(hash_func, _ts.FunctionType)
+                    or isinstance(verify_func, _ts.FunctionType)
+                ):
                     continue
 
                 if isinstance(hasher, (_HASHER_BACKEND, _HASHER_WITH_LEN_BACKEND)):
-                    if not hasher.algorithm in _HASHER_BACKEND._MAPPING:
-                        _HASHER_BACKEND._MAPPING[hasher.algorithm] = (hash_func, verify_func)
+                    if hasher.algorithm not in _HASHER_BACKEND._MAPPING:
+                        _HASHER_BACKEND._MAPPING[hasher.algorithm] = (
+                            hash_func,
+                            verify_func,
+                        )
                 else:
                     hasher._IMPLS = (hash_func, verify_func)
                 found_hasher = True
@@ -198,8 +249,19 @@ def set_backend(backends: list[Backend] | None = None) -> None:
             if not found_hasher:
                 hasher._IMPLS = None
         # Dynamically set kdfs
-        for kdf_to_set in (_KDF.PBKDF2HMAC, _KDF.Scrypt, _KDF.HKDF, _KDF.X963, _KDF.ConcatKDF, _KDF.PBKDF1,
-                           _KDF.KMAC128, _KDF.KMAC256, _KDF.ARGON2, _KDF.KKDF, _KDF.BCRYPT):
+        for kdf_to_set in (
+            _KDF.PBKDF2HMAC,
+            _KDF.Scrypt,
+            _KDF.HKDF,
+            _KDF.X963,
+            _KDF.ConcatKDF,
+            _KDF.PBKDF1,
+            _KDF.KMAC128,
+            _KDF.KMAC256,
+            _KDF.ARGON2,
+            _KDF.KKDF,
+            _KDF.BCRYPT,
+        ):
             name = f"derive_{str(kdf_to_set()).lower()}"
             found_kdf: bool = False
             for module in backend_modules:
@@ -210,10 +272,21 @@ def set_backend(backends: list[Backend] | None = None) -> None:
             if not found_kdf:
                 kdf_to_set._IMPL = None
         # Dynamically set keys
-        for sym_to_set in {_Sym.Cipher.AES, _Sym.Cipher.ChaCha20, _Sym.Cipher.TripleDES, _Sym.Cipher.Blowfish,
-                           _Sym.Cipher.CAST5, _Sym.Cipher.ARC4, _Sym.Cipher.Camellia, _Sym.Cipher.IDEA,
-                           _Sym.Cipher.SEED, _Sym.Cipher.SM4, _Sym.Cipher.DES, _Sym.Cipher.ARC2,
-                           _Sym.Cipher.Salsa20}:
+        for sym_to_set in {
+            _Sym.Cipher.AES,
+            _Sym.Cipher.ChaCha20,
+            _Sym.Cipher.TripleDES,
+            _Sym.Cipher.Blowfish,
+            _Sym.Cipher.CAST5,
+            _Sym.Cipher.ARC4,
+            _Sym.Cipher.Camellia,
+            _Sym.Cipher.IDEA,
+            _Sym.Cipher.SEED,
+            _Sym.Cipher.SM4,
+            _Sym.Cipher.DES,
+            _Sym.Cipher.ARC2,
+            _Sym.Cipher.Salsa20,
+        }:
             key = f"_{sym_to_set()}_KEY"
             found_sym_key: bool = False
             for module in backend_modules:
@@ -224,9 +297,16 @@ def set_backend(backends: list[Backend] | None = None) -> None:
                     break
             if not found_sym_key:
                 sym_to_set.key = _ty.get_type_hints(sym_to_set)["key"].__args__[0]
-        for asym_to_set in {_Asym.Cipher.RSA, _Asym.Cipher.DSA, _Asym.Cipher.ECC, _Asym.Cipher.KYBER,
-                            _Asym.Cipher.DILITHIUM, _Asym.Cipher.SPHINCS, _Asym.Cipher.FRODOKEM,
-                            _Asym.Cipher.BIKE}:
+        for asym_to_set in {
+            _Asym.Cipher.RSA,
+            _Asym.Cipher.DSA,
+            _Asym.Cipher.ECC,
+            _Asym.Cipher.KYBER,
+            _Asym.Cipher.DILITHIUM,
+            _Asym.Cipher.SPHINCS,
+            _Asym.Cipher.FRODOKEM,
+            _Asym.Cipher.BIKE,
+        }:
             keypair = f"_{asym_to_set()}_KEYPAIR"
             found_asym_keypair: bool = False
             for module in backend_modules:
@@ -236,7 +316,9 @@ def set_backend(backends: list[Backend] | None = None) -> None:
                     found_asym_keypair = True
                     break
             if not found_asym_keypair:
-                asym_to_set.keypair = _ty.get_type_hints(asym_to_set)["keypair"].__args__[0]
+                asym_to_set.keypair = _ty.get_type_hints(asym_to_set)[
+                    "keypair"
+                ].__args__[0]
 
 
 # if 1!=1:

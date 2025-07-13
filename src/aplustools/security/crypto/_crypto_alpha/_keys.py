@@ -5,8 +5,12 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.constant_time import bytes_eq
 
 from .._definitions import _AES_KEYTYPE, _AES_KEYLITERAL
-from ..algos._sym import (Operation as SymOperation, Padding as SymPadding,
-                          KeyEncoding as SymKeyEncoding, MessageAuthenticationCode as MAC)
+from ..algos._sym import (
+    Operation as SymOperation,
+    Padding as SymPadding,
+    KeyEncoding as SymKeyEncoding,
+    MessageAuthenticationCode as MAC,
+)
 
 import os
 
@@ -25,17 +29,18 @@ _OPERATION_MAP = {
     SymOperation.GCM: lambda iv, tag=None: modes.GCM(iv, tag) if tag else modes.GCM(iv),
 }
 
+
 def _derive_key_from_password(password: str | bytes, length: int, salt: bytes) -> bytes:
     """Derive a key from a password using PBKDF2."""
     if isinstance(password, str):
-        password = password.encode('utf-8')
+        password = password.encode("utf-8")
     salt = salt
     kdf = PBKDF2HMAC(
         algorithm=hashes.SHA256(),
         length=length,
         salt=salt,
         iterations=100_000,
-        backend=default_backend()
+        backend=default_backend(),
     )
     key = kdf.derive(password)
     return key

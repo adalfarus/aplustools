@@ -1,4 +1,5 @@
 """TBA"""
+
 import sys
 
 from ...package.autocli import *
@@ -8,6 +9,7 @@ import pytest
 import typing_extensions as _te
 import collections.abc as _a
 import typing as _ty
+
 if _ty.TYPE_CHECKING:
     import _typeshed as _tsh
 import types as _ts
@@ -19,12 +21,7 @@ def test_arg_struct_builder():
     builder.add_subcommand("build", "clean")
     builder.add_nested_command("build", "run", {"dev": {}, "prod": {}})
     result = builder.get_structure()
-    assert result == {
-        "build": {
-            "clean": {},
-            "run": {"dev": {}, "prod": {}}
-        }
-    }
+    assert result == {"build": {"clean": {}, "run": {"dev": {}, "prod": {}}}}
 
 
 def test_argument_parsing_error():
@@ -137,6 +134,11 @@ def test_analyze_function_metadata():
     analysis = analyze_function(sample_function)
 
     assert analysis["name"] == "sample_function"
-    assert any(arg["name"] == "x" and arg["type"] == int for arg in analysis["arguments"])
-    assert any(arg["name"] == "y" and arg["default"] == "default" for arg in analysis["arguments"])
+    assert any(
+        arg["name"] == "x" and arg["type"] == int for arg in analysis["arguments"]
+    )
+    assert any(
+        arg["name"] == "y" and arg["default"] == "default"
+        for arg in analysis["arguments"]
+    )
     assert analysis["return_type"] is bool

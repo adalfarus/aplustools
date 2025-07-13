@@ -1,5 +1,9 @@
 """Classes and functions directly accessible through aps.package"""
-from importlib.metadata import version as _version, PackageNotFoundError as _PackageNotFoundError
+
+from importlib.metadata import (
+    version as _version,
+    PackageNotFoundError as _PackageNotFoundError,
+)
 from importlib import import_module as _import_module
 
 from packaging.specifiers import SpecifierSet as _SpecifierSet
@@ -12,6 +16,7 @@ import re
 import typing_extensions as _te
 import collections.abc as _a
 import typing as _ty
+
 if _ty.TYPE_CHECKING:
     import _typeshed as _tsh
 import types as _ts
@@ -57,16 +62,20 @@ class LazyLoader:
     @staticmethod
     def _parse_dependency(dep) -> tuple[str | None, str | None]:
         # Regular expression to match a package name followed by an optional version specifier
-        match = re.match(r'([A-Za-z0-9_.-]+)([><=!~]{1,2}.*)?', dep)
+        match = re.match(r"([A-Za-z0-9_.-]+)([><=!~]{1,2}.*)?", dep)
 
         if match:
             pkg_name = match.group(1)  # Package name
-            specifier = match.group(2) if match.group(2) else ''  # Version specifier (if exists)
+            specifier = (
+                match.group(2) if match.group(2) else ""
+            )  # Version specifier (if exists)
             return pkg_name, specifier
         else:
             return None, None  # In case it doesn't match
 
-    def _check_dependencies(self, module: _ts.ModuleType, enforce_hard: bool = False) -> None:
+    def _check_dependencies(
+        self, module: _ts.ModuleType, enforce_hard: bool = False
+    ) -> None:
         """
         Check for the presence of required dependencies stored in __deps__ attribute.
 
@@ -104,8 +113,15 @@ class LazyLoader:
             finally:
                 if error != "":
                     if dep in hard_dependencies:
-                        raise ModuleNotFoundError(error.format(err_type="hard dependency", err_type_upper="Hard Dependency"))
-                    warnings.warn(error.format(err_type="dependency", err_type_upper="Dependency"))
+                        raise ModuleNotFoundError(
+                            error.format(
+                                err_type="hard dependency",
+                                err_type_upper="Hard Dependency",
+                            )
+                        )
+                    warnings.warn(
+                        error.format(err_type="dependency", err_type_upper="Dependency")
+                    )
 
     def _ensure_loaded_module(self):
         """
@@ -117,9 +133,9 @@ class LazyLoader:
         if self.module is None:
             try:
                 # Handle relative imports correctly
-                if self.module_name.startswith('.'):
+                if self.module_name.startswith("."):
                     # Calculate the full module name based on the current package
-                    caller_package = __name__.rsplit('.', 2)[0]
+                    caller_package = __name__.rsplit(".", 2)[0]
                     full_module_name = caller_package + self.module_name
                 else:
                     full_module_name = self.module_name
@@ -165,9 +181,10 @@ class LazyLoader:
 
 
 def setup_lazy_loaders(
-        module_globals: dict[str, _ty.Any],
-        lazy_modules: dict[str, str],
-        direct_module: _ts.ModuleType | None = None):
+    module_globals: dict[str, _ty.Any],
+    lazy_modules: dict[str, str],
+    direct_module: _ts.ModuleType | None = None,
+):
     """
     Set up lazy loaders for specified submodules and dynamically import members from a direct module.
 
@@ -202,21 +219,29 @@ def setup_lazy_loaders(
     if direct_module:
         direct_module_contents = dir(direct_module)
         for name in direct_module_contents:
-            if not name.startswith('_') and not (name.startswith('__') and name.endswith('__')):
+            if not name.startswith("_") and not (
+                name.startswith("__") and name.endswith("__")
+            ):
                 if name in module_globals:
                     warnings.warn(f"Overwrote {name} while lazy loading", stacklevel=2)
                 module_globals[name] = getattr(direct_module, name)
                 module_globals["__all__"].append(name)
             elif name == "__deps__":
                 fake_self = type("Bla", (LazyLoader,), {"module_name": __name__})
-                fake_module = type("clss", (object, ), {
-                    "__deps__": getattr(direct_module, name),
-                    "__hard_deps__": []  # getattr(direct_module, "__hard_deps__")
-                })
+                fake_module = type(
+                    "clss",
+                    (object,),
+                    {
+                        "__deps__": getattr(direct_module, name),
+                        "__hard_deps__": [],  # getattr(direct_module, "__hard_deps__")
+                    },
+                )
                 LazyLoader._check_dependencies(fake_self, fake_module)
 
 
-def optional_import(module_name: str, fromlist: list | None = None) -> _ts.ModuleType | None:  # TODO: Fix return type
+def optional_import(
+    module_name: str, fromlist: list | None = None
+) -> _ts.ModuleType | None:  # TODO: Fix return type
     """
     Attempt to import a module by its name. Return the module if available, otherwise return None.
 
@@ -244,10 +269,9 @@ def check_if_available(module_spec: str) -> bool:
     :return: True if available, otherwise False.
     """
     fake_self = type("Bla", (LazyLoader,), {"module_name": __name__})
-    fake_module = type("clss", (object,), {
-        "__deps__": [],
-        "__hard_deps__": [module_spec]
-    })
+    fake_module = type(
+        "clss", (object,), {"__deps__": [], "__hard_deps__": [module_spec]}
+    )
     try:
         LazyLoader._check_dependencies(fake_self, fake_module, True)
     except ModuleNotFoundError:
@@ -264,8 +288,5 @@ def enforce_hard_deps(hard_deps: list[str], module_name: str) -> None:
     :return: None
     """
     fake_self = type("Bla", (LazyLoader,), {"module_name": module_name})
-    fake_module = type("clss", (object,), {
-        "__deps__": [],
-        "__hard_deps__": hard_deps
-    })
+    fake_module = type("clss", (object,), {"__deps__": [], "__hard_deps__": hard_deps})
     LazyLoader._check_dependencies(fake_self, fake_module, True)

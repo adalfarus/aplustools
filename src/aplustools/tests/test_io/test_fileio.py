@@ -1,4 +1,5 @@
 """TBA"""
+
 from ...io.fileio import *
 import pytest
 import os
@@ -8,6 +9,7 @@ import tempfile
 import typing_extensions as _te
 import collections.abc as _a
 import typing as _ty
+
 if _ty.TYPE_CHECKING:
     import _typeshed as _tsh
 import types as _ts
@@ -89,14 +91,14 @@ def test_safe_file_writer(tmp_path) -> None:
 #
 #     with pytest.raises(NotImplementedError):
 #         reader = os_hyper_read(filepath=str(file_path))
-    # assert reader.read(10) == b"x" * 10
-    # reader.close()
-    #
-    # writer = os_hyper_write(filepath=str(file_path))
-    # writer.write(b"new data")
-    # writer.close()
-    #
-    # assert b"new data" in file_path.read_bytes()
+# assert reader.read(10) == b"x" * 10
+# reader.close()
+#
+# writer = os_hyper_write(filepath=str(file_path))
+# writer.write(b"new data")
+# writer.close()
+#
+# assert b"new data" in file_path.read_bytes()
 
 
 def test_os_open(tmp_path) -> None:

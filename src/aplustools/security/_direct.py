@@ -1,4 +1,5 @@
 """TBA"""
+
 from enum import Enum as _Enum
 
 from ..package import enforce_hard_deps as _enforce_hard_deps
@@ -9,6 +10,7 @@ from typing_extensions import deprecated
 import typing_extensions as _te
 import collections.abc as _a
 import typing as _ty
+
 if _ty.TYPE_CHECKING:
     import _typeshed as _tsh
 import types as _ts
@@ -60,6 +62,7 @@ class GenericLabeledEnum(_Enum):
                 f"{self.__class__.__name__} object has no attribute '{attr}'"
             )
 
+
 # @deprecated("Please use GenericLabeledEnum instead")
 class EAN:
     def __init__(self, value: _ty.Any, info: str) -> None:
@@ -72,18 +75,41 @@ class EAN:
 
 class Security:  # Changed to indices for easy selection from iterables
     """Baseclass for different security levels"""
-    BASIC = EAN(0, "An attacker can reverse whatever if they have enough info on you pretty easily")
+
+    BASIC = EAN(
+        0,
+        "An attacker can reverse whatever if they have enough info on you pretty easily",
+    )
     AVERAGE = EAN(1, "A lot better than basic")
     STRONG = EAN(2, "Practically impossible to reverse or crack")
-    SUPER_STRONG = EAN(3, "Great security, but at the cost of comfort features like readability and efficiency")
+    SUPER_STRONG = EAN(
+        3,
+        "Great security, but at the cost of comfort features like readability and efficiency",
+    )
 
     check_not_available: bool = True
 
 
 class RiskLevel(GenericLabeledEnum):
     """Risk assessment for various parts of security"""
-    HARMLESS = (None, "Harmless: Considered secure, even with the threat of future quantum computers.")
-    NOT_RECOMMENDED = (None, "Not recommended: Generally secure but there are better or more modern alternatives.")
-    KNOWN_UNSAFE = (None, "Deprecated: Known vulnerabilities exist; should not be used.")
-    KNOWN_UNSAFE_NOT_RECOMMENDED = (None, "Deprecated, Not recommended: Combination of known issues and better alternatives.")
-    HIGHLY_DANGEROUS = (None, "Highly dangerous: Easily broken and should not be used under any circumstances.")
+
+    HARMLESS = (
+        None,
+        "Harmless: Considered secure, even with the threat of future quantum computers.",
+    )
+    NOT_RECOMMENDED = (
+        None,
+        "Not recommended: Generally secure but there are better or more modern alternatives.",
+    )
+    KNOWN_UNSAFE = (
+        None,
+        "Deprecated: Known vulnerabilities exist; should not be used.",
+    )
+    KNOWN_UNSAFE_NOT_RECOMMENDED = (
+        None,
+        "Deprecated, Not recommended: Combination of known issues and better alternatives.",
+    )
+    HIGHLY_DANGEROUS = (
+        None,
+        "Highly dangerous: Easily broken and should not be used under any circumstances.",
+    )

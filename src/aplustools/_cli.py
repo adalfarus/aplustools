@@ -1,4 +1,5 @@
 """TBA"""
+
 try:
     from .package.autocli import Argumint, ArgStructBuilder, EndPoint
 except ImportError:
@@ -13,7 +14,7 @@ import os
 
 def _change_working_dir_to_script_location():  # Duplicate code
     try:
-        if getattr(sys, 'frozen', False):
+        if getattr(sys, "frozen", False):
             # If the script is running as a bundled executable created by PyInstaller
             script_dir = os.path.dirname(sys.executable)
         else:
@@ -32,8 +33,10 @@ def _change_working_dir_to_script_location():  # Duplicate code
 
 
 def _execute_silent_python_command(command):  # Duplicate code
-    with open(os.devnull, 'w') as devnull:
-        result = subprocess.run([sys.executable] + command, stdout=devnull, stderr=devnull)
+    with open(os.devnull, "w") as devnull:
+        result = subprocess.run(
+            [sys.executable] + command, stdout=devnull, stderr=devnull
+        )
     return result
 
 
@@ -42,6 +45,7 @@ def _cli():
         def _debug(*args, **kwargs):
             if debug:
                 print(*args, **kwargs)
+
         if tests is None:
             tests = ["all"]
         _change_working_dir_to_script_location()
@@ -60,9 +64,23 @@ def _cli():
             _debug("Running tests...")
             test = os.path.join("aplustools", test)
             if not minimal:
-                result = subprocess.run(["pytest", "-s", "-q", "--tb=short", "--maxfail=1", "-p", "no:warnings"] + [test])  # "-vv",
+                result = subprocess.run(
+                    [
+                        "pytest",
+                        "-s",
+                        "-q",
+                        "--tb=short",
+                        "--maxfail=1",
+                        "-p",
+                        "no:warnings",
+                    ]
+                    + [test]
+                )  # "-vv",
             else:
-                result = subprocess.run(["pytest", "--tb=short", "--maxfail=1", "-p", "no:warnings"] + [test])
+                result = subprocess.run(
+                    ["pytest", "--tb=short", "--maxfail=1", "-p", "no:warnings"]
+                    + [test]
+                )
             if result.returncode != 0:
                 _debug(f"Tests failed for {test}.")
             else:
@@ -76,11 +94,27 @@ def _cli():
 
     arg_struct = builder.get_structure()
 
-    argu_mint = Argumint(EndPoint(lambda: print("Not implemented yet, sorry.")), arg_struct=arg_struct)
+    argu_mint = Argumint(
+        EndPoint(lambda: print("Not implemented yet, sorry.")), arg_struct=arg_struct
+    )
     argu_mint.add_endpoint("aps.tests.run", EndPoint(_run_tests))
-    argu_mint.add_endpoint("aps.help", EndPoint(lambda: print("aps --> tests -> run {tests} {-debug} {-minimal}\n    |\n     -> help")))
-    argu_mint.add_endpoint("aps", EndPoint(lambda: print("This command doesn't work like that, please use it like this:\n"
-                                                "aps --> tests -> run {tests} {-debug} {-minimal}\n    |\n     -> help")))
+    argu_mint.add_endpoint(
+        "aps.help",
+        EndPoint(
+            lambda: print(
+                "aps --> tests -> run {tests} {-debug} {-minimal}\n    |\n     -> help"
+            )
+        ),
+    )
+    argu_mint.add_endpoint(
+        "aps",
+        EndPoint(
+            lambda: print(
+                "This command doesn't work like that, please use it like this:\n"
+                "aps --> tests -> run {tests} {-debug} {-minimal}\n    |\n     -> help"
+            )
+        ),
+    )
 
     sys.argv[0] = "aps"
 

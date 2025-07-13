@@ -2,6 +2,7 @@
 This module provides a collection of timing utilities, including timers with different resolution levels,
 time formatting and conversion utilities, and performance measurement tools for function execution time analysis.
 """
+
 import enum
 from datetime import timedelta as _timedelta, datetime as _datetime
 from timeit import default_timer as _default_timer
@@ -11,13 +12,17 @@ import threading
 import pickle
 import math
 
-from ..package import optional_import as _optional_import, enforce_hard_deps as _enforce_hard_deps
+from ..package import (
+    optional_import as _optional_import,
+    enforce_hard_deps as _enforce_hard_deps,
+)
 # from ..io.concurrency import ThreadSafeList as _ThreadSafeList  # Circular import
 
 # Standard typing imports for aps
 import typing_extensions as _te
 import collections.abc as _a
 import typing as _ty
+
 if _ty.TYPE_CHECKING:
     import _typeshed as _tsh
 import types as _ts
@@ -36,6 +41,8 @@ _TimeType = int | float
 
 # Duplicate code
 _T = _ty.TypeVar("_T")
+
+
 class _ThreadSafeList(list[_T], _ty.Generic[_T]):
     """
     A thread-safe implementation of a Python list, ensuring that all mutation operations are protected by a lock.
@@ -49,6 +56,7 @@ class _ThreadSafeList(list[_T], _ty.Generic[_T]):
     protected for full thread safety, though read-only operations are generally safe unless done concurrently
     with writes.
     """
+
     def __init__(self, *args: _ty.Any, **kwargs: _ty.Any) -> None:
         super().__init__(*args, **kwargs)
         self._lock: threading.Lock = threading.Lock()
@@ -101,7 +109,9 @@ class _ThreadSafeList(list[_T], _ty.Generic[_T]):
         with self._lock:
             return super().__getitem__(index)
 
-    def __setitem__(self, index: _ty.Union[int, slice], value: _ty.Union[_T, _ty.Iterable[_T]]) -> None:
+    def __setitem__(
+        self, index: _ty.Union[int, slice], value: _ty.Union[_T, _ty.Iterable[_T]]
+    ) -> None:
         with self._lock:
             super().__setitem__(index, value)
 
@@ -151,6 +161,7 @@ class PreciseTimeFormat(enum.Enum):
         FEMTOSECS (int): Constant representing the time unit 'femtoseconds'.
         ATTOSECS (int): Constant representing the time unit 'attoseconds'.
     """
+
     YEARS = 0
     MONTHS = 1
     WEEKS = 2
@@ -195,12 +206,23 @@ class PreciseTimeDelta:
     DAYS_IN_MONTH = 30.44
     DAYS_IN_YEAR = 365.25
 
-    def __init__(self, years: float = 0, months: float = 0, weeks: float = 0,
-                 days: float = 0, hours: float = 0, minutes: float = 0,
-                 seconds: float = 0, milliseconds: float = 0,
-                 microseconds: float = 0, nanoseconds: float = 0,
-                 picoseconds: float = 0, femtoseconds: float = 0,
-                 attoseconds: float = 0, max_precision: int = 10) -> None:
+    def __init__(
+        self,
+        years: float = 0,
+        months: float = 0,
+        weeks: float = 0,
+        days: float = 0,
+        hours: float = 0,
+        minutes: float = 0,
+        seconds: float = 0,
+        milliseconds: float = 0,
+        microseconds: float = 0,
+        nanoseconds: float = 0,
+        picoseconds: float = 0,
+        femtoseconds: float = 0,
+        attoseconds: float = 0,
+        max_precision: int = 10,
+    ) -> None:
         """
         Initializes the PreciseTimeDelta by converting all time formats into nanoseconds
         and summing them up.
@@ -222,19 +244,19 @@ class PreciseTimeDelta:
             max_precision (int): Number of decimal digits to display for fractional seconds.
         """
         total_nanoseconds = (
-                years * self.DAYS_IN_YEAR * self.SECONDS_IN_DAY * self.NANOS_PER_SECOND +
-                months * self.DAYS_IN_MONTH * self.SECONDS_IN_DAY * self.NANOS_PER_SECOND +
-                weeks * self.DAYS_IN_WEEK * self.SECONDS_IN_DAY * self.NANOS_PER_SECOND +
-                days * self.SECONDS_IN_DAY * self.NANOS_PER_SECOND +
-                hours * self.SECONDS_IN_HOUR * self.NANOS_PER_SECOND +
-                minutes * self.SECONDS_IN_MINUTE * self.NANOS_PER_SECOND +
-                seconds * self.NANOS_PER_SECOND +
-                milliseconds * 1e6 +
-                microseconds * 1e3 +
-                nanoseconds +
-                picoseconds / 1e3 +
-                femtoseconds / 1e6 +
-                attoseconds / 1e9
+            years * self.DAYS_IN_YEAR * self.SECONDS_IN_DAY * self.NANOS_PER_SECOND
+            + months * self.DAYS_IN_MONTH * self.SECONDS_IN_DAY * self.NANOS_PER_SECOND
+            + weeks * self.DAYS_IN_WEEK * self.SECONDS_IN_DAY * self.NANOS_PER_SECOND
+            + days * self.SECONDS_IN_DAY * self.NANOS_PER_SECOND
+            + hours * self.SECONDS_IN_HOUR * self.NANOS_PER_SECOND
+            + minutes * self.SECONDS_IN_MINUTE * self.NANOS_PER_SECOND
+            + seconds * self.NANOS_PER_SECOND
+            + milliseconds * 1e6
+            + microseconds * 1e3
+            + nanoseconds
+            + picoseconds / 1e3
+            + femtoseconds / 1e6
+            + attoseconds / 1e9
         )
 
         self.negative = total_nanoseconds < 0
@@ -247,7 +269,9 @@ class PreciseTimeDelta:
         :return: Corresponding timedelta object.
         """
         seconds = self._total_nanoseconds // self.NANOS_PER_SECOND
-        micros = (self._total_nanoseconds % self.NANOS_PER_SECOND) // self.NANOS_PER_MICROSECOND
+        micros = (
+            self._total_nanoseconds % self.NANOS_PER_SECOND
+        ) // self.NANOS_PER_MICROSECOND
         return _timedelta(seconds=seconds, microseconds=micros)
 
     @classmethod
@@ -271,22 +295,24 @@ class PreciseTimeDelta:
         Returns:
             int: Equivalent nanoseconds.
         """
-        time_parts = td_str.split(':')
+        time_parts = td_str.split(":")
         if len(time_parts) != 3:
             raise ValueError("Invalid time format, expected HH:MM:SS.fffffffff")
 
         hours = int(time_parts[0])
         minutes = int(time_parts[1])
-        seconds_fraction = time_parts[2].split('.')
+        seconds_fraction = time_parts[2].split(".")
         seconds = int(seconds_fraction[0])
-        fraction = int(seconds_fraction[1].ljust(9, '0'))  # Ensure 9 digits for nanoseconds
+        fraction = int(
+            seconds_fraction[1].ljust(9, "0")
+        )  # Ensure 9 digits for nanoseconds
 
         # Convert everything into nanoseconds
         total_nanoseconds = (
-                hours * cls.SECONDS_IN_HOUR * cls.NANOS_PER_SECOND +
-                minutes * cls.SECONDS_IN_MINUTE * cls.NANOS_PER_SECOND +
-                seconds * cls.NANOS_PER_SECOND +
-                fraction
+            hours * cls.SECONDS_IN_HOUR * cls.NANOS_PER_SECOND
+            + minutes * cls.SECONDS_IN_MINUTE * cls.NANOS_PER_SECOND
+            + seconds * cls.NANOS_PER_SECOND
+            + fraction
         )
         return cls(nanoseconds=total_nanoseconds)
 
@@ -310,7 +336,11 @@ class PreciseTimeDelta:
         # If the value is an integer, display as an integer, otherwise show full precision
         return int(value) if value.is_integer() else round(value, max_precision)
 
-    def to_readable(self, format_to: PreciseTimeFormat | None = None, max_precision: int | None = None) -> str:
+    def to_readable(
+        self,
+        format_to: PreciseTimeFormat | None = None,
+        max_precision: int | None = None,
+    ) -> str:
         """
         Convert a given timedelta to a human-readable string based on the specified
         time format. If no format is provided, it defaults to seconds.
@@ -322,7 +352,7 @@ class PreciseTimeDelta:
 
         if format_to is None:
             format_to = TF.NANOSECS
-            for (conversion_constant, time_format) in [
+            for conversion_constant, time_format in [
                 (self.NANOS_PER_MICROSECOND, TF.MICROSECS),
                 (self.NANOS_PER_MILLISECOND, TF.MILLISECS),
                 (self.NANOS_PER_SECOND, TF.SECONDS),
@@ -331,7 +361,7 @@ class PreciseTimeDelta:
                 (self.NANOS_PER_DAY, TF.DAYS),
                 (self.NANOS_PER_WEEK, TF.WEEKS),
                 (self.NANOS_PER_MONTH, TF.MONTHS),
-                (self.NANOS_PER_YEAR, TF.YEARS)
+                (self.NANOS_PER_YEAR, TF.YEARS),
             ]:
                 value = self._total_nanoseconds / conversion_constant
                 if value < 1:
@@ -363,26 +393,38 @@ class PreciseTimeDelta:
 
         elif format_to == TF.HOURS:
             hours, remainder = divmod(self._total_nanoseconds, self.NANOS_PER_HOUR)
-            minutes = self._format_value(remainder / self.NANOS_PER_MINUTE, max_precision)
+            minutes = self._format_value(
+                remainder / self.NANOS_PER_MINUTE, max_precision
+            )
             return f"{self._pluralize(self._format_value(hours, max_precision), 'hour', 'hours')}, {self._pluralize(minutes, 'minute', 'minutes')}"
 
         elif format_to == TF.MINUTES:
             minutes, remainder = divmod(self._total_nanoseconds, self.NANOS_PER_MINUTE)
-            seconds = self._format_value(remainder / self.NANOS_PER_SECOND, max_precision)
+            seconds = self._format_value(
+                remainder / self.NANOS_PER_SECOND, max_precision
+            )
             return f"{self._pluralize(self._format_value(minutes, max_precision), 'minute', 'minutes')}, {seconds} second(s)"
 
         elif format_to == TF.SECONDS:
             seconds, remainder = divmod(self._total_nanoseconds, self.NANOS_PER_SECOND)
-            milliseconds = self._format_value(remainder / self.NANOS_PER_MILLISECOND, max_precision)
+            milliseconds = self._format_value(
+                remainder / self.NANOS_PER_MILLISECOND, max_precision
+            )
             return f"{self._pluralize(self._format_value(seconds, max_precision), 'second', 'seconds')}, {milliseconds} millisecond(s)"
 
         elif format_to == TF.MILLISECS:
-            millisecs, remainder = divmod(self._total_nanoseconds, self.NANOS_PER_MILLISECOND)
-            microsecs = self._format_value(remainder / self.NANOS_PER_MICROSECOND, max_precision)
+            millisecs, remainder = divmod(
+                self._total_nanoseconds, self.NANOS_PER_MILLISECOND
+            )
+            microsecs = self._format_value(
+                remainder / self.NANOS_PER_MICROSECOND, max_precision
+            )
             return f"{self._pluralize(self._format_value(millisecs, max_precision), 'millisecond', 'milliseconds')}, {microsecs} microsecond(s)"
 
         elif format_to == TF.MICROSECS:
-            microsecs = self._format_value(self._total_nanoseconds / self.NANOS_PER_MICROSECOND, max_precision)
+            microsecs = self._format_value(
+                self._total_nanoseconds / self.NANOS_PER_MICROSECOND, max_precision
+            )
             return f"{self._pluralize(microsecs, 'microsecond', 'microseconds')}"
 
         elif format_to == TF.NANOSECS:
@@ -415,10 +457,10 @@ class PreciseTimeDelta:
 
         # Break down into higher units (years, months, etc.)
         years = total_seconds // (365.25 * self.SECONDS_IN_DAY)
-        total_seconds %= (365.25 * self.SECONDS_IN_DAY)
+        total_seconds %= 365.25 * self.SECONDS_IN_DAY
 
         months = total_seconds // (30.44 * self.SECONDS_IN_DAY)
-        total_seconds %= (30.44 * self.SECONDS_IN_DAY)
+        total_seconds %= 30.44 * self.SECONDS_IN_DAY
 
         days = total_seconds // self.SECONDS_IN_DAY
         total_seconds %= self.SECONDS_IN_DAY
@@ -467,13 +509,20 @@ class PreciseTimeDelta:
         if isinstance(other, (float, int)):
             if other == 0:
                 raise ZeroDivisionError("Cannot divide by zero.")
-            return PreciseTimeDelta(nanoseconds=self._total_nanoseconds / other, max_precision=self.max_precision)
+            return PreciseTimeDelta(
+                nanoseconds=self._total_nanoseconds / other,
+                max_precision=self.max_precision,
+            )
         elif isinstance(other, PreciseTimeDelta):
             if other._total_nanoseconds == 0:
-                raise ZeroDivisionError("Cannot divide by a PreciseTimeDelta with zero nanoseconds.")
+                raise ZeroDivisionError(
+                    "Cannot divide by a PreciseTimeDelta with zero nanoseconds."
+                )
             return self._total_nanoseconds / other._total_nanoseconds
         else:
-            raise TypeError("Division only supports numbers or PreciseTimeDelta objects.")
+            raise TypeError(
+                "Division only supports numbers or PreciseTimeDelta objects."
+            )
 
     def __str__(self) -> str:
         """
@@ -488,11 +537,13 @@ class PreciseTimeDelta:
         minutes, seconds = divmod(remainder, self.SECONDS_IN_MINUTE)
 
         # Get the fractional seconds with high precision
-        fractional_seconds = round(total_seconds - math.floor(total_seconds), self.max_precision)
+        fractional_seconds = round(
+            total_seconds - math.floor(total_seconds), self.max_precision
+        )
 
         # Adjust precision dynamically based on the fractional part
         if fractional_seconds > 0:
-            fractional_part_str = f"{fractional_seconds}".split('.')[1].rstrip('0')
+            fractional_part_str = f"{fractional_seconds}".split(".")[1].rstrip("0")
             time_str = f"{hours}:{minutes:02}:{seconds:02}.{fractional_part_str}"
         else:
             time_str = f"{hours}:{minutes:02}:{seconds:02}"
@@ -518,7 +569,9 @@ class PreciseTimeDelta:
         Returns:
             float: The number of years.
         """
-        return self._total_nanoseconds / (self.DAYS_IN_YEAR * self.SECONDS_IN_DAY * self.NANOS_PER_SECOND)
+        return self._total_nanoseconds / (
+            self.DAYS_IN_YEAR * self.SECONDS_IN_DAY * self.NANOS_PER_SECOND
+        )
 
     def months(self) -> float:
         """
@@ -527,7 +580,9 @@ class PreciseTimeDelta:
         Returns:
             float: The number of months.
         """
-        return self._total_nanoseconds / (self.DAYS_IN_MONTH * self.SECONDS_IN_DAY * self.NANOS_PER_SECOND)
+        return self._total_nanoseconds / (
+            self.DAYS_IN_MONTH * self.SECONDS_IN_DAY * self.NANOS_PER_SECOND
+        )
 
     def weeks(self) -> float:
         """
@@ -536,7 +591,9 @@ class PreciseTimeDelta:
         Returns:
             float: The number of weeks.
         """
-        return self._total_nanoseconds / (self.DAYS_IN_WEEK * self.SECONDS_IN_DAY * self.NANOS_PER_SECOND)
+        return self._total_nanoseconds / (
+            self.DAYS_IN_WEEK * self.SECONDS_IN_DAY * self.NANOS_PER_SECOND
+        )
 
     def days(self) -> float:
         """
@@ -563,7 +620,9 @@ class PreciseTimeDelta:
         Returns:
             float: The number of minutes.
         """
-        return self._total_nanoseconds / (self.SECONDS_IN_MINUTE * self.NANOS_PER_SECOND)
+        return self._total_nanoseconds / (
+            self.SECONDS_IN_MINUTE * self.NANOS_PER_SECOND
+        )
 
     def seconds(self) -> float:
         """
@@ -766,7 +825,9 @@ class BasicTimer:
         """
         if self.start_time is None:
             return None
-        elapsed_time = (self.stop_time or time.time()) - self.start_time - self.pause_duration
+        elapsed_time = (
+            (self.stop_time or time.time()) - self.start_time - self.pause_duration
+        )
         return _timedelta(seconds=elapsed_time)
 
     def stop(self) -> _te.Self:
@@ -831,7 +892,9 @@ class BasicTimer:
         self.is_ended = True
         return self
 
-    def get_readable(self, format_to: PreciseTimeFormat = PreciseTimeFormat.SECONDS) -> str:
+    def get_readable(
+        self, format_to: PreciseTimeFormat = PreciseTimeFormat.SECONDS
+    ) -> str:
         """
         Converts the current elapsed time to a human-readable format based on the specified time unit.
 
@@ -855,7 +918,13 @@ class FlexTimer:
     Attributes:
         EMPTY (tuple): A constant tuple representing an empty timer slot.
     """
-    EMPTY: tuple[_TimeType, _TimeType, _TimeType, _ty.Optional[threading.Lock]] = (0, 0, 0, None)
+
+    EMPTY: tuple[_TimeType, _TimeType, _TimeType, _ty.Optional[threading.Lock]] = (
+        0,
+        0,
+        0,
+        None,
+    )
     SENTINEL = object()
     _tracked_timers: _ThreadSafeList[_te.Self] = _ThreadSafeList()
 
@@ -867,9 +936,15 @@ class FlexTimer:
             start_at (float or int, optional): The initial starting point of the timer. Defaults to 0.
             start_now (bool, optional): If True, the timer starts immediately. Defaults to True.
         """
-        self._loops: list[tuple[threading.Thread | None, threading.Event | None]] = _ThreadSafeList()
-        self._times: list[tuple[_TimeType, _TimeType, _TimeType, threading.Lock | None] | None] = _ThreadSafeList()
-        self._tick_tocks: list[list[_TimeType | tuple[_TimeType, _TimeType]]] = _ThreadSafeList()
+        self._loops: list[tuple[threading.Thread | None, threading.Event | None]] = (
+            _ThreadSafeList()
+        )
+        self._times: list[
+            tuple[_TimeType, _TimeType, _TimeType, threading.Lock | None] | None
+        ] = _ThreadSafeList()
+        self._tick_tocks: list[list[_TimeType | tuple[_TimeType, _TimeType]]] = (
+            _ThreadSafeList()
+        )
         self._thread_data: threading.local = threading.local()
 
         if start_now:
@@ -930,7 +1005,10 @@ class FlexTimer:
         Raises:
             IndexError: If no timer exists at the given index.
         """
-        if index >= len(cls._tracked_timers) or cls._tracked_timers[index] is cls.SENTINEL:
+        if (
+            index >= len(cls._tracked_timers)
+            or cls._tracked_timers[index] is cls.SENTINEL
+        ):
             raise IndexError(f"No timer found at index {index}")
         return cls._tracked_timers[index]
 
@@ -946,18 +1024,27 @@ class FlexTimer:
             FlexTimer: The current instance of the timer.
         """
         start_time = self._time()
-        indices: list[int] | tuple[int, ...] = indices or [self._get_first_other_index()]
+        indices: list[int] | tuple[int, ...] = indices or [
+            self._get_first_other_index()
+        ]
 
         for index in indices:
             if index < len(self._times) and self._times[index][2] != 0:
                 self.resume(index)
                 return self
             length_to_extend = index - len(self._times) + 1
-            if length_to_extend > 0:  # Ensure the _times and _tick_tocks lists has enough elements
+            if (
+                length_to_extend > 0
+            ):  # Ensure the _times and _tick_tocks lists has enough elements
                 self._times.extend([self.EMPTY] * length_to_extend)
                 self._tick_tocks.extend([[] for _ in range(length_to_extend)])
             if self._times[index] is self.EMPTY:
-                self._times[index] = (start_time + (start_at * 1e9), 0, 0, threading.Lock())
+                self._times[index] = (
+                    start_time + (start_at * 1e9),
+                    0,
+                    0,
+                    threading.Lock(),
+                )
                 self._tick_tocks[index].clear()  # List is always already here.
             else:
                 raise Exception(f"A Timer already running on index {index}")
@@ -990,7 +1077,9 @@ class FlexTimer:
                 return i
         return len(self._times)
 
-    def pause(self, *indices: int | None, for_seconds: _TimeType | None = None) -> _te.Self:
+    def pause(
+        self, *indices: int | None, for_seconds: _TimeType | None = None
+    ) -> _te.Self:
         """
         Pauses the timer at the specified indices.
 
@@ -1002,7 +1091,9 @@ class FlexTimer:
             FlexTimer: The current instance of the timer.
         """
         pause_time = self._time()
-        indices: list[int] | tuple[int, ...] = indices or [self._get_first_index()]  # If it's 0 it just sets it to 0 so it's okay.
+        indices: list[int] | tuple[int, ...] = indices or [
+            self._get_first_index()
+        ]  # If it's 0 it just sets it to 0 so it's okay.
 
         for index in indices:
             if index >= len(self._times) or self._times[index] is self.EMPTY:
@@ -1016,7 +1107,7 @@ class FlexTimer:
                 if for_seconds:
                     self._tick_tocks[index].append(for_seconds * 1e9)
                 else:
-                    self._tick_tocks[index].append(float('inf'))
+                    self._tick_tocks[index].append(float("inf"))
         return self
 
     def resume(self, *indices: int | None) -> _te.Self:
@@ -1030,7 +1121,9 @@ class FlexTimer:
             FlexTimer: The current instance of the timer.
         """
         resumed_time = self._time()
-        indices: list[int] | tuple[int, ...] = indices or [self._get_first_index()]  # If it's 0 it just sets it to 0 so it's okay.
+        indices: list[int] | tuple[int, ...] = indices or [
+            self._get_first_index()
+        ]  # If it's 0 it just sets it to 0 so it's okay.
 
         for index in indices:
             if index >= len(self._times) or self._times[index] is self.EMPTY:
@@ -1045,7 +1138,12 @@ class FlexTimer:
         if paused_time != 0:
             max_paused_timedelta = self._tick_tocks[index].pop(-1)
             actual_paused_time = min((resumed_time - paused_time), max_paused_timedelta)
-            self._times[index] = (start + actual_paused_time, (end + actual_paused_time) if end > 0 else end, 0, lock)
+            self._times[index] = (
+                start + actual_paused_time,
+                (end + actual_paused_time) if end > 0 else end,
+                0,
+                lock,
+            )
         else:
             raise ValueError(f"Timer on index {index} isn't paused.")
 
@@ -1060,7 +1158,9 @@ class FlexTimer:
             FlexTimer: The current instance of the timer.
         """
         end_time = self._time()
-        indices: list[int] | tuple[int, ...] = indices or [self._get_first_index()]  # If it's 0 it just sets it to 0 so it's okay.
+        indices: list[int] | tuple[int, ...] = indices or [
+            self._get_first_index()
+        ]  # If it's 0 it just sets it to 0 so it's okay.
 
         for index in indices:
             if index >= len(self._times) or self._times[index] is self.EMPTY:
@@ -1074,8 +1174,11 @@ class FlexTimer:
                 self._times[index] = (start, end_time, 0, lock)
         return self
 
-    def get(self, *indices: int | None, return_type: _ty.Literal["timedelta", "PreciseTimeDelta"] = "PreciseTimeDelta"
-            ) -> list[PreciseTimeDelta | _timedelta] | PreciseTimeDelta | _timedelta:
+    def get(
+        self,
+        *indices: int | None,
+        return_type: _ty.Literal["timedelta", "PreciseTimeDelta"] = "PreciseTimeDelta",
+    ) -> list[PreciseTimeDelta | _timedelta] | PreciseTimeDelta | _timedelta:
         """
         Retrieves the elapsed time for the specified indices.
 
@@ -1086,7 +1189,9 @@ class FlexTimer:
         Returns:
             list[PreciseTimeDelta | timedelta] | PreciseTimeDelta | timedelta: The elapsed time(s).
         """
-        indices: list[int] | tuple[int, ...] = indices or [self._get_first_index()]  # If it's 0 it just sets it to 0 so it's okay.
+        indices: list[int] | tuple[int, ...] = indices or [
+            self._get_first_index()
+        ]  # If it's 0 it just sets it to 0 so it's okay.
         returns = []
 
         for index in indices:
@@ -1094,19 +1199,26 @@ class FlexTimer:
                 raise IndexError(f"Index {index} doesn't exist or is not running.")
             with self._times[index][-1]:
                 start, end, paused_time, _ = self._times[index]
-            max_paused_time = float('inf')
+            max_paused_time = float("inf")
             if paused_time != 0:
                 paused_time = self._time() - paused_time
                 max_paused_time = self._tick_tocks[-1]
-            elapsed_time = (end or self._time()) - min(max_paused_time, start + paused_time)
+            elapsed_time = (end or self._time()) - min(
+                max_paused_time, start + paused_time
+            )
             if return_type == "PreciseTimeDelta":
                 returns.append(PreciseTimeDelta(nanoseconds=elapsed_time))
             else:
                 returns.append(_timedelta(microseconds=elapsed_time / 1000))
         return returns if len(returns) > 1 else returns[0]
 
-    def delete(self, *indices: int | None, return_type: _ty.Literal["timedelta", "PreciseTimeDelta", None] = "PreciseTimeDelta"
-               ) -> list[PreciseTimeDelta | _timedelta] | PreciseTimeDelta | _timedelta | _te.Self:
+    def delete(
+        self,
+        *indices: int | None,
+        return_type: _ty.Literal[
+            "timedelta", "PreciseTimeDelta", None
+        ] = "PreciseTimeDelta",
+    ) -> list[PreciseTimeDelta | _timedelta] | PreciseTimeDelta | _timedelta | _te.Self:
         """
         Deletes the timer at the specified indices.
 
@@ -1118,7 +1230,9 @@ class FlexTimer:
             list[PreciseTimeDelta | timedelta] | PreciseTimeDelta | timedelta: The elapsed time(s) or TimidTimer: The current instance of the timer.
         """
         end_timer = self._time()
-        indices: list[int] | tuple[int, ...] = indices or [self._get_first_index()]  # If it's 0 it just sets it to 0 so it's okay.
+        indices: list[int] | tuple[int, ...] = indices or [
+            self._get_first_index()
+        ]  # If it's 0 it just sets it to 0 so it's okay.
         returns = []
 
         for index in indices:
@@ -1126,11 +1240,13 @@ class FlexTimer:
                 raise IndexError(f"Index {index} doesn't exist or is not running.")
             with self._times[index][-1]:
                 start, end, paused_time, _ = self._times[index]
-                max_paused_time = float('inf')
+                max_paused_time = float("inf")
                 if paused_time != 0:
                     paused_time = end_timer - paused_time
                     max_paused_time = self._tick_tocks[-1]
-                elapsed_time = (end or end_timer) - min(max_paused_time, start + paused_time)
+                elapsed_time = (end or end_timer) - min(
+                    max_paused_time, start + paused_time
+                )
                 if return_type == "PreciseTimeDelta":
                     returns.append(PreciseTimeDelta(nanoseconds=elapsed_time))
                 else:
@@ -1141,8 +1257,13 @@ class FlexTimer:
             return returns if len(returns) > 1 else returns[0]
         return self
 
-    def end(self, *indices: int | None, return_type: _ty.Literal["timedelta", "PreciseTimeDelta", None] = "PreciseTimeDelta"
-            ) -> list[PreciseTimeDelta | _timedelta] | PreciseTimeDelta | _timedelta | _te.Self:
+    def end(
+        self,
+        *indices: int | None,
+        return_type: _ty.Literal[
+            "timedelta", "PreciseTimeDelta", None
+        ] = "PreciseTimeDelta",
+    ) -> list[PreciseTimeDelta | _timedelta] | PreciseTimeDelta | _timedelta | _te.Self:
         """
         Ends the timer at the specified indices.
 
@@ -1154,7 +1275,9 @@ class FlexTimer:
             list[PreciseTimeDelta | timedelta] | PreciseTimeDelta | timedelta: The elapsed time(s) or TimidTimer: The current instance of the timer.
         """
         end_time = self._time()
-        indices: list[int] | tuple[int, ...] = indices or [self._get_first_index()]  # If it's 0 it just sets it to 0 so it's okay.
+        indices: list[int] | tuple[int, ...] = indices or [
+            self._get_first_index()
+        ]  # If it's 0 it just sets it to 0 so it's okay.
         returns = []
 
         for index in indices:
@@ -1176,8 +1299,13 @@ class FlexTimer:
             return returns if len(returns) > 1 else returns[0]
         return self
 
-    def restart(self, *indices: int | None, return_type: _ty.Literal["timedelta", "PreciseTimeDelta", None] = "PreciseTimeDelta"
-            ) -> list[PreciseTimeDelta | _timedelta] | PreciseTimeDelta | _timedelta | _te.Self:
+    def restart(
+        self,
+        *indices: int | None,
+        return_type: _ty.Literal[
+            "timedelta", "PreciseTimeDelta", None
+        ] = "PreciseTimeDelta",
+    ) -> list[PreciseTimeDelta | _timedelta] | PreciseTimeDelta | _timedelta | _te.Self:
         """
         Restarts an already running timer, skipping the whole .stop() .get_readable() .delete() boilerplate.
 
@@ -1189,7 +1317,9 @@ class FlexTimer:
             list[PreciseTimeDelta | timedelta] | PreciseTimeDelta | timedelta: The elapsed time(s) or TimidTimer: The current instance of the timer.
         """
         end_timer = self._time()
-        indices: list[int] | tuple[int, ...] = indices or [self._get_first_index()]  # If it's 0 it just sets it to 0 so it's okay.
+        indices: list[int] | tuple[int, ...] = indices or [
+            self._get_first_index()
+        ]  # If it's 0 it just sets it to 0 so it's okay.
         returns = []
 
         for index in indices:
@@ -1197,11 +1327,13 @@ class FlexTimer:
                 raise IndexError(f"Index {index} doesn't exist or is not running.")
             with self._times[index][-1]:
                 start, end, paused_time, _ = self._times[index]
-                max_paused_time = float('inf')
+                max_paused_time = float("inf")
                 if paused_time != 0:
                     paused_time = end_timer - paused_time
                     max_paused_time = self._tick_tocks[-1]
-                elapsed_time = (end or end_timer) - min(max_paused_time, start + paused_time)
+                elapsed_time = (end or end_timer) - min(
+                    max_paused_time, start + paused_time
+                )
                 if return_type == "PreciseTimeDelta":
                     returns.append(PreciseTimeDelta(nanoseconds=elapsed_time))
                 else:
@@ -1213,8 +1345,13 @@ class FlexTimer:
             return returns if len(returns) > 1 else returns[0]
         return self
 
-    def elapsed(self, *indices: int | None, return_type: _ty.Literal["timedelta", "PreciseTimeDelta", None] = "PreciseTimeDelta"
-                ) -> list[PreciseTimeDelta | _timedelta] | PreciseTimeDelta | _timedelta | _te.Self:
+    def elapsed(
+        self,
+        *indices: int | None,
+        return_type: _ty.Literal[
+            "timedelta", "PreciseTimeDelta", None
+        ] = "PreciseTimeDelta",
+    ) -> list[PreciseTimeDelta | _timedelta] | PreciseTimeDelta | _timedelta | _te.Self:
         """
         Records how much time has passed since the start of the timer (similar to elapsed).
 
@@ -1226,7 +1363,9 @@ class FlexTimer:
             list[PreciseTimeDelta | timedelta] | PreciseTimeDelta | timedelta: The elapsed time(s) or TimidTimer: The current instance of the timer.
         """
         tick_time = self._time()
-        indices: list[int] | tuple[int, ...] = indices or [self._get_first_index()]  # If it's 0 it just sets it to 0 so it's okay.
+        indices: list[int] | tuple[int, ...] = indices or [
+            self._get_first_index()
+        ]  # If it's 0 it just sets it to 0 so it's okay.
         returns = []
 
         for index in indices:
@@ -1235,7 +1374,7 @@ class FlexTimer:
             with self._times[index][-1]:
                 start, _, paused_time, __ = self._times[index]
                 if tick_time - start < 0:
-                    raise ValueError(f"Please don't tick when the timer is paused.")
+                    raise ValueError("Please don't tick when the timer is paused.")
                 if paused_time != 0:
                     self._resume(tick_time, index)
                 self._tick_tocks[index].append((start, tick_time))
@@ -1247,8 +1386,13 @@ class FlexTimer:
             return returns if len(returns) > 1 else returns[0]
         return self
 
-    def lap(self, *indices: int | None, return_type: _ty.Literal["timedelta", "PreciseTimeDelta", None] = "PreciseTimeDelta"
-            ) -> list[PreciseTimeDelta | _timedelta] | PreciseTimeDelta | _timedelta | _te.Self:
+    def lap(
+        self,
+        *indices: int | None,
+        return_type: _ty.Literal[
+            "timedelta", "PreciseTimeDelta", None
+        ] = "PreciseTimeDelta",
+    ) -> list[PreciseTimeDelta | _timedelta] | PreciseTimeDelta | _timedelta | _te.Self:
         """
         Records the time between the last tock and the current tock (similar to lap or split time).
 
@@ -1260,7 +1404,9 @@ class FlexTimer:
             list[PreciseTimeDelta | timedelta] | PreciseTimeDelta | timedelta: The elapsed time(s) or TimidTimer: The current instance of the timer.
         """
         tock_time = self._time()
-        indices: list[int] | tuple[int, ...] = indices or [self._get_first_index()]  # If it's 0 it just sets it to 0 so it's okay.
+        indices: list[int] | tuple[int, ...] = indices or [
+            self._get_first_index()
+        ]  # If it's 0 it just sets it to 0 so it's okay.
         returns = []
 
         for index in indices:
@@ -1274,7 +1420,7 @@ class FlexTimer:
                     start, end, _, __ = self._times[index]
                 last_time = end or start
                 if tock_time - last_time < 0:
-                    raise ValueError(f"Please don't tock when the timer is paused.")
+                    raise ValueError("Please don't tock when the timer is paused.")
                 end = tock_time
                 self._times[index] = (start, end, 0, lock)
                 self._tick_tocks[index].append((last_time, end))
@@ -1286,8 +1432,11 @@ class FlexTimer:
             return returns if len(returns) > 1 else returns[0]
         return self
 
-    def tally(self, *indices: int | None, return_type: _ty.Literal["timedelta", "PreciseTimeDelta"] = "PreciseTimeDelta"
-              ) -> PreciseTimeDelta | _timedelta:
+    def tally(
+        self,
+        *indices: int | None,
+        return_type: _ty.Literal["timedelta", "PreciseTimeDelta"] = "PreciseTimeDelta",
+    ) -> PreciseTimeDelta | _timedelta:
         """
         Returns the total time recorded across all ticks and tocks.
 
@@ -1298,7 +1447,9 @@ class FlexTimer:
         Returns:
             PreciseTimeDelta | timedelta: The total elapsed time across all ticks and tocks.
         """
-        indices: list[int] | tuple[int, ...] = indices or [self._get_first_index()]  # If it's 0 it just sets it to 0 so it's okay.
+        indices: list[int] | tuple[int, ...] = indices or [
+            self._get_first_index()
+        ]  # If it's 0 it just sets it to 0 so it's okay.
         total_time = 0
 
         for index in indices:
@@ -1313,11 +1464,17 @@ class FlexTimer:
                 tick_tocks.append((start, end))
             total_time += sum((end - start for start, end in tick_tocks))
 
-        return PreciseTimeDelta(nanoseconds=total_time) if return_type == "PreciseTimeDelta" \
+        return (
+            PreciseTimeDelta(nanoseconds=total_time)
+            if return_type == "PreciseTimeDelta"
             else _timedelta(microseconds=total_time / 1000)
+        )
 
-    def average(self, *indices: int | None, return_type: _ty.Literal["timedelta", "PreciseTimeDelta"] = "PreciseTimeDelta"
-                ) -> PreciseTimeDelta | _timedelta:
+    def average(
+        self,
+        *indices: int | None,
+        return_type: _ty.Literal["timedelta", "PreciseTimeDelta"] = "PreciseTimeDelta",
+    ) -> PreciseTimeDelta | _timedelta:
         """
         Calculates the average time recorded across all ticks and tocks.
 
@@ -1328,7 +1485,9 @@ class FlexTimer:
         Returns:
             PreciseTimeDelta | timedelta: The average elapsed time across all ticks and tocks.
         """
-        indices = indices or [self._get_first_index()]  # If it's 0 it just sets it to 0 so it's okay.
+        indices = indices or [
+            self._get_first_index()
+        ]  # If it's 0 it just sets it to 0 so it's okay.
         total_tocks = 0
 
         for index in indices:
@@ -1337,14 +1496,22 @@ class FlexTimer:
             with self._times[index][-1]:
                 _, end, __, ___ = self._times[index]
                 tick_tocks = self._tick_tocks[index].copy()
-            total_tocks += len(tick_tocks) + (1 if end != 0 and end != ([(0, 0)] + tick_tocks)[-1][1] else 0)
+            total_tocks += len(tick_tocks) + (
+                1 if end != 0 and end != ([(0, 0)] + tick_tocks)[-1][1] else 0
+            )
 
         if total_tocks == 0:
-            return PreciseTimeDelta(0) if return_type == "PreciseTimeDelta" else _timedelta(0)
+            return (
+                PreciseTimeDelta(0)
+                if return_type == "PreciseTimeDelta"
+                else _timedelta(0)
+            )
 
         return self.tally(*indices, return_type=return_type) / total_tocks
 
-    def show_laps(self, index: int | None = None, format_to: int = PreciseTimeFormat.SECONDS) -> str:
+    def show_laps(
+        self, index: int | None = None, format_to: int = PreciseTimeFormat.SECONDS
+    ) -> str:
         """
         Displays the recorded times for each tick and tock.
 
@@ -1356,7 +1523,9 @@ class FlexTimer:
             str: The tick tocks of the index in a readable string format.
         """
         retstring = ""
-        index = index or self._get_first_index()  # If it's 0 it just sets it to 0 so it's okay.
+        index = (
+            index or self._get_first_index()
+        )  # If it's 0 it just sets it to 0 so it's okay.
         retstring += "Lap times:\n"
         with self._times[index][-1]:
             my_tick_tocks = self._tick_tocks[index].copy()
@@ -1365,10 +1534,14 @@ class FlexTimer:
             my_tick_tocks.pop(-1)
         for i, (start, end) in enumerate(my_tick_tocks, start=1):
             td = _timedelta(microseconds=(end - start) / 1000)
-            retstring += f"Lap {i}: {PreciseTimeFormat.get_static_readable(td, format_to)}\n"
+            retstring += (
+                f"Lap {i}: {PreciseTimeFormat.get_static_readable(td, format_to)}\n"
+            )
         return retstring
 
-    def get_readable(self, index: int | None = None, format_to: int = PreciseTimeFormat.SECONDS) -> str:
+    def get_readable(
+        self, index: int | None = None, format_to: int = PreciseTimeFormat.SECONDS
+    ) -> str:
         """
         Returns a readable string of the timer's elapsed time.
 
@@ -1379,7 +1552,9 @@ class FlexTimer:
         Returns:
             str: A human-readable string of the elapsed time.
         """
-        return PreciseTimeFormat.get_static_readable(self.get(index or self._get_first_index()).nanoseconds(), format_to)
+        return PreciseTimeFormat.get_static_readable(
+            self.get(index or self._get_first_index()).nanoseconds(), format_to
+        )
 
     def _warmup(self, rounds: int = 3) -> None:
         """
@@ -1394,8 +1569,16 @@ class FlexTimer:
         self._times = []
         self._tick_tocks = []
 
-    def after(self, delay: float | int, callback: _a.Callable[..., _ty.Any], *, ms: bool = False, long: bool = False,
-              args: tuple[_ty.Any, ...] = (), kwargs: dict[str, _ty.Any] | None = None) -> _te.Self:
+    def after(
+        self,
+        delay: float | int,
+        callback: _a.Callable[..., _ty.Any],
+        *,
+        ms: bool = False,
+        long: bool = False,
+        args: tuple[_ty.Any, ...] = (),
+        kwargs: dict[str, _ty.Any] | None = None,
+    ) -> _te.Self:
         """
         Starts a countdown timer for a specified number of seconds.
         :param delay: The duration of the countdown in seconds.
@@ -1419,9 +1602,17 @@ class FlexTimer:
             self.single_shot(delay, callback, args, kwargs)
         return self
 
-    def interval(self, interval: float | int, count: int | _ty.Literal["inf"], callback: _a.Callable[..., _ty.Any], *,
-                 ms: bool = False, long: bool = False, args: tuple[_ty.Any, ...] = (),
-                 kwargs: dict[str, _ty.Any] | None = None) -> _te.Self:
+    def interval(
+        self,
+        interval: float | int,
+        count: int | _ty.Literal["inf"],
+        callback: _a.Callable[..., _ty.Any],
+        *,
+        ms: bool = False,
+        long: bool = False,
+        args: tuple[_ty.Any, ...] = (),
+        kwargs: dict[str, _ty.Any] | None = None,
+    ) -> _te.Self:
         """
         Starts an interval timer that triggers the callback at specified intervals.
         :param interval: The interval in seconds between each callback trigger.
@@ -1458,8 +1649,12 @@ class FlexTimer:
         return self
 
     @staticmethod
-    def schedule_task_at(time_str, callback: _a.Callable[..., _ty.Any] = print, args: tuple[_ty.Any, ...] = (),
-                         kwargs: dict[str, _ty.Any] | None = None) -> None:
+    def schedule_task_at(
+        time_str,
+        callback: _a.Callable[..., _ty.Any] = print,
+        args: tuple[_ty.Any, ...] = (),
+        kwargs: dict[str, _ty.Any] | None = None,
+    ) -> None:
         """
         Schedules a task to run at a specified time of day, either today or the next day if the time has passed.
 
@@ -1481,11 +1676,18 @@ class FlexTimer:
         target_datetime = _datetime.combine(_datetime.today(), target_time)
 
         if target_datetime < current_datetime:
-            target_datetime += _timedelta(days=1)  # Set alarm for the next day if time has already passed today
+            target_datetime += _timedelta(
+                days=1
+            )  # Set alarm for the next day if time has already passed today
         diff = target_datetime - current_datetime
 
         # Schedule task
-        threading.Timer(diff.total_seconds(), callback, args or (f"Timer for {time_str} is over.",), kwargs or {}).start()
+        threading.Timer(
+            diff.total_seconds(),
+            callback,
+            args or (f"Timer for {time_str} is over.",),
+            kwargs or {},
+        ).start()
 
     def save_state(self) -> bytes:
         """
@@ -1524,7 +1726,9 @@ class FlexTimer:
         return timer
 
     @classmethod
-    def setup_timer_func(cls, func: _a.Callable[..., _ty.Any], to_nanosecond_multiplier: float | int) -> _ty.Type[_te.Self]:
+    def setup_timer_func(
+        cls, func: _a.Callable[..., _ty.Any], to_nanosecond_multiplier: float | int
+    ) -> _ty.Type[_te.Self]:
         """
         Sets up a custom timing function for the timer, using a specified multiplier to convert the time to nanoseconds.
 
@@ -1535,14 +1739,23 @@ class FlexTimer:
         Returns:
             type: A new class with the modified timing function.
         """
-        NewClass = type('TimidTimerModified', (cls,), {
-            '_time': lambda self=None: func() * to_nanosecond_multiplier
-        })
+        NewClass = type(
+            "TimidTimerModified",
+            (cls,),
+            {"_time": lambda self=None: func() * to_nanosecond_multiplier},
+        )
         return NewClass
 
     @classmethod
-    def _trigger(cls, interval: _TimeType, function: _a.Callable[..., _ty.Any], args: tuple[_ty.Any, ...],
-                 kwargs: dict[str, _ty.Any], iterations: int, stop_event: threading.Event = threading.Event()) -> None:
+    def _trigger(
+        cls,
+        interval: _TimeType,
+        function: _a.Callable[..., _ty.Any],
+        args: tuple[_ty.Any, ...],
+        kwargs: dict[str, _ty.Any],
+        iterations: int,
+        stop_event: threading.Event = threading.Event(),
+    ) -> None:
         """
         A helper function to trigger a function at specified intervals, with a specified number of iterations.
 
@@ -1556,7 +1769,9 @@ class FlexTimer:
         """
         try:
             cls.wait_static(interval)
-            while not stop_event.is_set() and iterations != 0:  # So infinite timers are possible
+            while (
+                not stop_event.is_set() and iterations != 0
+            ):  # So infinite timers are possible
                 try:
                     function(*args, **kwargs)
                 except Exception as e:
@@ -1567,8 +1782,15 @@ class FlexTimer:
             pass
 
     @classmethod
-    def _trigger_ms(cls, interval_ms: _TimeType, function: _a.Callable[..., _ty.Any], args: tuple[_ty.Any, ...],
-                    kwargs: dict[str, _ty.Any], iterations: int, stop_event: threading.Event = threading.Event()) -> None:
+    def _trigger_ms(
+        cls,
+        interval_ms: _TimeType,
+        function: _a.Callable[..., _ty.Any],
+        args: tuple[_ty.Any, ...],
+        kwargs: dict[str, _ty.Any],
+        iterations: int,
+        stop_event: threading.Event = threading.Event(),
+    ) -> None:
         """
         A helper function to trigger a function at specified intervals in milliseconds, with a specified number of iterations.
 
@@ -1582,7 +1804,9 @@ class FlexTimer:
         """
         try:
             cls.wait_ms_static(interval_ms)
-            while not stop_event.is_set() and iterations != 0:  # So infinite timers are possible
+            while (
+                not stop_event.is_set() and iterations != 0
+            ):  # So infinite timers are possible
                 try:
                     function(*args, **kwargs)
                 except Exception as e:
@@ -1593,8 +1817,15 @@ class FlexTimer:
             pass
 
     @classmethod
-    def _trigger_long(cls, interval: _TimeType, function: _a.Callable[..., _ty.Any], args: tuple[_ty.Any, ...],
-                      kwargs: dict[str, _ty.Any], iterations: int, stop_event: threading.Event = threading.Event()) -> None:
+    def _trigger_long(
+        cls,
+        interval: _TimeType,
+        function: _a.Callable[..., _ty.Any],
+        args: tuple[_ty.Any, ...],
+        kwargs: dict[str, _ty.Any],
+        iterations: int,
+        stop_event: threading.Event = threading.Event(),
+    ) -> None:
         """
         A helper function to trigger a function at specified intervals indefinitely or for a specified number of iterations.
 
@@ -1606,10 +1837,13 @@ class FlexTimer:
             iterations (int): The number of times to call the function.
             stop_event (threading.Event, optional): An event to stop the timer. Defaults to a new event.
         """
+
         def _trigger_function() -> None:
             try:
                 nonlocal iterations
-                if stop_event.is_set() or iterations == 0:  # So infinite timers are possible
+                if (
+                    stop_event.is_set() or iterations == 0
+                ):  # So infinite timers are possible
                     return
 
                 try:
@@ -1627,8 +1861,14 @@ class FlexTimer:
         threading.Timer(interval, _trigger_function).start()
 
     @classmethod
-    def single_shot(cls, wait_time: _TimeType, function: _a.Callable[..., _ty.Any], args: tuple[_ty.Any, ...] = (),
-                    kwargs: dict[str, _ty.Any] | None = None, daemon: bool = False) -> _ty.Type[_te.Self]:
+    def single_shot(
+        cls,
+        wait_time: _TimeType,
+        function: _a.Callable[..., _ty.Any],
+        args: tuple[_ty.Any, ...] = (),
+        kwargs: dict[str, _ty.Any] | None = None,
+        daemon: bool = False,
+    ) -> _ty.Type[_te.Self]:
         """
         Executes a single-shot timer that triggers the specified function after a set amount of time.
 
@@ -1644,14 +1884,28 @@ class FlexTimer:
         """
         if kwargs is None:
             kwargs = {}
-        threading.Thread(target=cls._trigger, kwargs={
-            "interval": wait_time, "function": function, "args": args, "kwargs": kwargs, "iterations": 1
-        }, daemon=daemon).start()
+        threading.Thread(
+            target=cls._trigger,
+            kwargs={
+                "interval": wait_time,
+                "function": function,
+                "args": args,
+                "kwargs": kwargs,
+                "iterations": 1,
+            },
+            daemon=daemon,
+        ).start()
         return cls
 
     @classmethod
-    def single_shot_ms(cls, wait_time_ms: _TimeType, function: _a.Callable[..., _ty.Any], args: tuple[_ty.Any, ...] = (),
-                       kwargs: dict[str, _ty.Any] | None = None, daemon: bool = False) -> _ty.Type[_te.Self]:
+    def single_shot_ms(
+        cls,
+        wait_time_ms: _TimeType,
+        function: _a.Callable[..., _ty.Any],
+        args: tuple[_ty.Any, ...] = (),
+        kwargs: dict[str, _ty.Any] | None = None,
+        daemon: bool = False,
+    ) -> _ty.Type[_te.Self]:
         """
         Executes a single-shot timer that triggers the specified function after a set amount of time in milliseconds.
 
@@ -1667,14 +1921,27 @@ class FlexTimer:
         """
         if kwargs is None:
             kwargs = {}
-        threading.Thread(target=cls._trigger_ms, kwargs={
-            "interval_ms": wait_time_ms, "functions": function, "args": args, "kwargs": kwargs, "iterations": 1
-        }, daemon=daemon).start()
+        threading.Thread(
+            target=cls._trigger_ms,
+            kwargs={
+                "interval_ms": wait_time_ms,
+                "functions": function,
+                "args": args,
+                "kwargs": kwargs,
+                "iterations": 1,
+            },
+            daemon=daemon,
+        ).start()
         return cls
 
     @classmethod
-    def single_shot_long(cls, wait_time: _TimeType, function: _a.Callable[..., _ty.Any], args: tuple[_ty.Any, ...] = (),
-                         kwargs: dict[str, _ty.Any] | None = None) -> _ty.Type[_te.Self]:
+    def single_shot_long(
+        cls,
+        wait_time: _TimeType,
+        function: _a.Callable[..., _ty.Any],
+        args: tuple[_ty.Any, ...] = (),
+        kwargs: dict[str, _ty.Any] | None = None,
+    ) -> _ty.Type[_te.Self]:
         """
         Executes a long-running single-shot timer that triggers the specified function after a set amount of time.
 
@@ -1693,9 +1960,15 @@ class FlexTimer:
         return cls
 
     @classmethod
-    def repeat(cls, interval: _TimeType, function: _a.Callable[..., _ty.Any], args: tuple[_ty.Any, ...] = (),
-               kwargs: dict[str, _ty.Any] | None = None, iterations: int = 1,
-               daemon: bool = False) -> _ty.Type[_te.Self]:
+    def repeat(
+        cls,
+        interval: _TimeType,
+        function: _a.Callable[..., _ty.Any],
+        args: tuple[_ty.Any, ...] = (),
+        kwargs: dict[str, _ty.Any] | None = None,
+        iterations: int = 1,
+        daemon: bool = False,
+    ) -> _ty.Type[_te.Self]:
         """
         Repeatedly triggers a function at a specified interval for a set number of iterations.
 
@@ -1712,15 +1985,29 @@ class FlexTimer:
         """
         if kwargs is None:
             kwargs = {}
-        threading.Thread(target=cls._trigger, kwargs={
-            "interval": interval, "function": function, "args": args, "kwargs": kwargs, "iterations": iterations
-        }, daemon=daemon).start()
+        threading.Thread(
+            target=cls._trigger,
+            kwargs={
+                "interval": interval,
+                "function": function,
+                "args": args,
+                "kwargs": kwargs,
+                "iterations": iterations,
+            },
+            daemon=daemon,
+        ).start()
         return cls
 
     @classmethod
-    def repeat_ms(cls, interval_ms: _TimeType, function: _a.Callable[..., _ty.Any], args: tuple[_ty.Any, ...] = (),
-                  kwargs: dict[str, _ty.Any] | None = None, iterations: int = 1,
-                  daemon: bool = False) -> _ty.Type[_te.Self]:
+    def repeat_ms(
+        cls,
+        interval_ms: _TimeType,
+        function: _a.Callable[..., _ty.Any],
+        args: tuple[_ty.Any, ...] = (),
+        kwargs: dict[str, _ty.Any] | None = None,
+        iterations: int = 1,
+        daemon: bool = False,
+    ) -> _ty.Type[_te.Self]:
         """
         Repeatedly triggers a function at a specified interval in milliseconds for a set number of iterations.
 
@@ -1737,14 +2024,28 @@ class FlexTimer:
         """
         if kwargs is None:
             kwargs = {}
-        threading.Thread(target=cls._trigger_ms, kwargs={
-            "interval_ms": interval_ms, "function": function, "args": args, "kwargs": kwargs, "iterations": iterations
-        }, daemon=daemon).start()
+        threading.Thread(
+            target=cls._trigger_ms,
+            kwargs={
+                "interval_ms": interval_ms,
+                "function": function,
+                "args": args,
+                "kwargs": kwargs,
+                "iterations": iterations,
+            },
+            daemon=daemon,
+        ).start()
         return cls
 
     @classmethod
-    def repeat_long(cls, interval: _TimeType, function: _a.Callable[..., _ty.Any], args: tuple[_ty.Any, ...] = (),
-                    kwargs: dict[str, _ty.Any] | None = None, iterations: int = 1) -> _ty.Type[_te.Self]:
+    def repeat_long(
+        cls,
+        interval: _TimeType,
+        function: _a.Callable[..., _ty.Any],
+        args: tuple[_ty.Any, ...] = (),
+        kwargs: dict[str, _ty.Any] | None = None,
+        iterations: int = 1,
+    ) -> _ty.Type[_te.Self]:
         """
         Repeatedly triggers a function at a specified interval for a long-running timer, for a set number of iterations.
 
@@ -1760,11 +2061,24 @@ class FlexTimer:
         """
         if kwargs is None:
             kwargs = {}
-        cls._trigger_long(interval=interval, function=function, args=args, kwargs=kwargs, iterations=iterations)
+        cls._trigger_long(
+            interval=interval,
+            function=function,
+            args=args,
+            kwargs=kwargs,
+            iterations=iterations,
+        )
         return cls
 
-    def loop(self, interval: _TimeType, function: _a.Callable[..., _ty.Any], args: tuple[_ty.Any, ...] = (),
-             kwargs: dict[str, _ty.Any] | None = None, index: int | None = None, daemon: bool = False) -> _te.Self:
+    def loop(
+        self,
+        interval: _TimeType,
+        function: _a.Callable[..., _ty.Any],
+        args: tuple[_ty.Any, ...] = (),
+        kwargs: dict[str, _ty.Any] | None = None,
+        index: int | None = None,
+        daemon: bool = False,
+    ) -> _te.Self:
         """
         Starts a repeating timer that triggers the specified function at set intervals indefinitely.
 
@@ -1787,10 +2101,18 @@ class FlexTimer:
             self._loops.append((None, None))
 
         event = threading.Event()
-        thread = threading.Thread(target=self._trigger, kwargs={
-            "interval": interval, "function": function, "args": args, "kwargs": kwargs, "iterations": -1,
-            "stop_event": event
-        }, daemon=daemon)
+        thread = threading.Thread(
+            target=self._trigger,
+            kwargs={
+                "interval": interval,
+                "function": function,
+                "args": args,
+                "kwargs": kwargs,
+                "iterations": -1,
+                "stop_event": event,
+            },
+            daemon=daemon,
+        )
 
         if index < len(self._loops) and self._loops[index] == (None, None):
             self._loops[index] = (thread, event)
@@ -1799,8 +2121,15 @@ class FlexTimer:
         thread.start()
         return self
 
-    def loop_ms(self, interval_ms: _TimeType, function: _a.Callable[..., _ty.Any], args: tuple[_ty.Any, ...] = (),
-                kwargs: dict[str, _ty.Any] | None = None, index: int | None = None, daemon: bool = False) -> _te.Self:
+    def loop_ms(
+        self,
+        interval_ms: _TimeType,
+        function: _a.Callable[..., _ty.Any],
+        args: tuple[_ty.Any, ...] = (),
+        kwargs: dict[str, _ty.Any] | None = None,
+        index: int | None = None,
+        daemon: bool = False,
+    ) -> _te.Self:
         """
         Starts a repeating timer that triggers the specified function at set intervals in milliseconds indefinitely.
 
@@ -1823,10 +2152,18 @@ class FlexTimer:
             self._loops.append((None, None))
 
         event = threading.Event()
-        thread = threading.Thread(target=self._trigger_ms, kwargs={
-            "interval_ms": interval_ms, "function": function, "args": args, "kwargs": kwargs, "iterations": -1,
-            "stop_event": event
-        }, daemon=daemon)
+        thread = threading.Thread(
+            target=self._trigger_ms,
+            kwargs={
+                "interval_ms": interval_ms,
+                "function": function,
+                "args": args,
+                "kwargs": kwargs,
+                "iterations": -1,
+                "stop_event": event,
+            },
+            daemon=daemon,
+        )
 
         if index < len(self._loops) and self._loops[index] == (None, None):
             self._loops[index] = (thread, event)
@@ -1835,8 +2172,14 @@ class FlexTimer:
         thread.start()
         return self
 
-    def loop_long(self, interval: _TimeType, function: _a.Callable[..., _ty.Any], args: tuple[_ty.Any, ...] = (),
-                  kwargs: dict[str, _ty.Any] | None = None, index: int | None = None) -> _te.Self:
+    def loop_long(
+        self,
+        interval: _TimeType,
+        function: _a.Callable[..., _ty.Any],
+        args: tuple[_ty.Any, ...] = (),
+        kwargs: dict[str, _ty.Any] | None = None,
+        index: int | None = None,
+    ) -> _te.Self:
         """
         Starts a long-running repeating timer that triggers the specified function at set intervals indefinitely.
 
@@ -1858,8 +2201,14 @@ class FlexTimer:
             self._loops.append((None, None))
 
         event = threading.Event()
-        self._trigger_long(interval=interval, function=function, args=args, kwargs=kwargs, iterations=-1,
-                           stop_event=event)
+        self._trigger_long(
+            interval=interval,
+            function=function,
+            args=args,
+            kwargs=kwargs,
+            iterations=-1,
+            stop_event=event,
+        )
 
         if index < len(self._loops) and self._loops[index] == (None, None):
             self._loops[index] = (None, event)
@@ -1867,7 +2216,9 @@ class FlexTimer:
             self._loops.insert(index, (None, event))
         return self
 
-    def stop_loop(self, index: int | None = None, amount: int | None = None) -> _te.Self:
+    def stop_loop(
+        self, index: int | None = None, amount: int | None = None
+    ) -> _te.Self:
         """
         Stops the specified timer(s) and removes them from the internal list.
 
@@ -1887,7 +2238,9 @@ class FlexTimer:
                 thread.join()
         return self
 
-    def stop_loops(self, *indices: int | None, not_exists_okay: bool = False) -> _te.Self:
+    def stop_loops(
+        self, *indices: int | None, not_exists_okay: bool = False
+    ) -> _te.Self:
         """
         Stops the specified timer(s) and removes them from the internal list.
 
@@ -1951,8 +2304,11 @@ class FlexTimer:
         return self
 
     @classmethod
-    def test_delay(cls, amount: _TimeType = 0, return_type: _ty.Literal["timedelta", "PreciseTimeDelta"] = "PreciseTimeDelta"
-                   ) -> PreciseTimeDelta | _timedelta:
+    def test_delay(
+        cls,
+        amount: _TimeType = 0,
+        return_type: _ty.Literal["timedelta", "PreciseTimeDelta"] = "PreciseTimeDelta",
+    ) -> PreciseTimeDelta | _timedelta:
         """
         Tests a delay of a specified amount of time and returns the elapsed time.
 
@@ -1969,8 +2325,11 @@ class FlexTimer:
         return timer.end(return_type=return_type)
 
     @classmethod
-    def test_delay_ms(cls, amount_ms: _TimeType = 0, return_type: _ty.Literal["timedelta", "PreciseTimeDelta"] = "PreciseTimeDelta"
-                      ) -> PreciseTimeDelta | _timedelta:
+    def test_delay_ms(
+        cls,
+        amount_ms: _TimeType = 0,
+        return_type: _ty.Literal["timedelta", "PreciseTimeDelta"] = "PreciseTimeDelta",
+    ) -> PreciseTimeDelta | _timedelta:
         """
         Tests a delay of a specified amount of time in milliseconds and returns the elapsed time.
 
@@ -2011,7 +2370,7 @@ class FlexTimer:
         Returns:
             FlexTimer: The class itself.
         """
-        wanted_time = cls._time() + (milliseconds * 1e+6)
+        wanted_time = cls._time() + (milliseconds * 1e6)
         while cls._time() < wanted_time:
             if wanted_time - cls._time() > 1_000_000:  # 3_000_000
                 time.sleep(0.001)
@@ -2020,9 +2379,13 @@ class FlexTimer:
         return cls
 
     @classmethod
-    def complexity(cls, func: _a.Callable,
-                   input_generator: _a.Iterable[tuple[tuple[_ty.Any, ...], dict[str, _ty.Any]]] | _a.Generator[tuple[tuple[_ty.Any, ...], dict[str, _ty.Any]], None, None],
-                   matplotlib_pyplt: _ts.ModuleType | None = None) -> str:
+    def complexity(
+        cls,
+        func: _a.Callable,
+        input_generator: _a.Iterable[tuple[tuple[_ty.Any, ...], dict[str, _ty.Any]]]
+        | _a.Generator[tuple[tuple[_ty.Any, ...], dict[str, _ty.Any]], None, None],
+        matplotlib_pyplt: _ts.ModuleType | None = None,
+    ) -> str:
         """
         Measures the execution time of a function over a range of input sizes and estimates the time complexity.
         Too little data points will lead to bigger error rates.
@@ -2058,7 +2421,9 @@ class FlexTimer:
 
             # Store the input size and the elapsed time if valid
             if elapsed_time > 0:
-                input_sizes.append(int(args[0]) if args else (int(next(iter(kwargs))) if kwargs else 0))
+                input_sizes.append(
+                    int(args[0]) if args else (int(next(iter(kwargs))) if kwargs else 0)
+                )
                 times.append(elapsed_time)
 
         # Ensure there are no zero or negative times and input sizes
@@ -2077,8 +2442,8 @@ class FlexTimer:
             "O(log N)": lambda n, a, b: a * _np.log(n) + b,
             "O(N)": lambda n, a: a * n,
             "O(N log N)": lambda n, a, b: a * n * _np.log(n) + b,
-            "O(N^2)": lambda n, a: a * n ** 2,
-            "O(N^3)": lambda n, a: a * n ** 3,
+            "O(N^2)": lambda n, a: a * n**2,
+            "O(N^3)": lambda n, a: a * n**3,
             "O(sqrt(N))": lambda n, a: a * _np.sqrt(n),
         }
 
@@ -2095,7 +2460,9 @@ class FlexTimer:
                 inlier_mask = ransac.inlier_mask_
 
                 # Fit the curve to the inliers only
-                popt, *_ = _curve_fit(func, input_sizes[inlier_mask], times[inlier_mask], maxfev=10000)
+                popt, *_ = _curve_fit(
+                    func, input_sizes[inlier_mask], times[inlier_mask], maxfev=10000
+                )
                 predictions = func(input_sizes, *popt)
                 mse = _np.mean((times - predictions) ** 2)
                 if mse < best_mse:
@@ -2108,18 +2475,18 @@ class FlexTimer:
         if matplotlib_pyplt:
             plt = matplotlib_pyplt
             # Plotting the input sizes vs times
-            plt.scatter(input_sizes, times, label='Actual Times')
+            plt.scatter(input_sizes, times, label="Actual Times")
 
             # Plot the best fit curve
             if best_fit:
                 fitted_func = complexity_classes[best_fit]
                 x_model = _np.linspace(min(input_sizes), max(input_sizes), 100)
                 y_model = fitted_func(x_model, *best_params)
-                plt.plot(x_model, y_model, label=f'Best Fit: {best_fit}')
+                plt.plot(x_model, y_model, label=f"Best Fit: {best_fit}")
 
-            plt.xlabel('Input Size')
-            plt.ylabel('Execution Time (s)')
-            plt.title('Execution Time vs Input Size')
+            plt.xlabel("Input Size")
+            plt.ylabel("Execution Time (s)")
+            plt.title("Execution Time vs Input Size")
             plt.legend()
             plt.show()
         else:
@@ -2128,7 +2495,9 @@ class FlexTimer:
         return best_fit
 
     @classmethod
-    def time(cls, time_format: int = PreciseTimeFormat.SECONDS) -> _a.Callable[[_a.Callable[..., _ty.Any]], _a.Callable[..., _ty.Any]]:
+    def time(
+        cls, time_format: int = PreciseTimeFormat.SECONDS
+    ) -> _a.Callable[[_a.Callable[..., _ty.Any]], _a.Callable[..., _ty.Any]]:
         """
         A decorator to measure the execution time of a function and print the result.
 
@@ -2141,14 +2510,19 @@ class FlexTimer:
         Returns:
             Callable: A decorator function.
         """
+
         def _decorator(func: _a.Callable[..., _ty.Any]) -> _a.Callable[..., _ty.Any]:
             def _wrapper(*args: _ty.Any, **kwargs: _ty.Any) -> _ty.Any:
                 timer: _te.Self = cls()
                 result: _ty.Any = func(*args, **kwargs)
                 elapsed: float = timer.end().nanoseconds()
-                print(f"Function {func.__name__} took {PreciseTimeFormat.get_static_readable(elapsed, time_format)} to complete.")
+                print(
+                    f"Function {func.__name__} took {PreciseTimeFormat.get_static_readable(elapsed, time_format)} to complete."
+                )
                 return result
+
             return _wrapper
+
         return _decorator
 
     @staticmethod
@@ -2183,7 +2557,7 @@ class FlexTimer:
         Returns:
             FlexTimer: The current instance of the timer.
         """
-        entry_index = getattr(self._thread_data, 'entry_index', 0)
+        entry_index = getattr(self._thread_data, "entry_index", 0)
         if entry_index > len(self._times):
             self.start(entry_index)
         self._thread_data.entry_index = entry_index
@@ -2201,12 +2575,12 @@ class FlexTimer:
             exc_val: The exception value (if any) raised in the context block.
             exc_tb: The traceback (if any) of the exception raised in the context block.
         """
-        exit_index = getattr(self._thread_data, 'entry_index', None)
+        exit_index = getattr(self._thread_data, "entry_index", None)
         if exit_index is not None:
             elapsed_time = self.end(exit_index)
             print(f"Codeblock {exit_index} took {elapsed_time} to execute.")
         else:
-            print(f"Error: exit index not found in thread-local storage")
+            print("Error: exit index not found in thread-local storage")
 
     def __del__(self) -> None:
         """
@@ -2224,12 +2598,15 @@ PerfFTimerNS: _ty.Type[FlexTimer] = FlexTimer.setup_timer_func(time.perf_counter
 CPUFTimer: _ty.Type[FlexTimer] = FlexTimer.setup_timer_func(time.process_time, 1e9)
 CPUFTimerNS: _ty.Type[FlexTimer] = FlexTimer.setup_timer_func(time.process_time_ns, 1)
 MonotonicFTimer: _ty.Type[FlexTimer] = FlexTimer.setup_timer_func(time.monotonic, 1e9)
-MonotonicFTimerNS: _ty.Type[FlexTimer] = FlexTimer.setup_timer_func(time.monotonic_ns, 1)
+MonotonicFTimerNS: _ty.Type[FlexTimer] = FlexTimer.setup_timer_func(
+    time.monotonic_ns, 1
+)
 ThreadFTimer: _ty.Type[FlexTimer] = FlexTimer.setup_timer_func(time.thread_time, 1e9)
 ThreadFTimerNS: _ty.Type[FlexTimer] = FlexTimer.setup_timer_func(time.thread_time_ns, 1)
 
 
 class DateTimeFTimer(FlexTimer):
     """This is a joke and should not be taken seriously as it isn't performant."""
+
     def _time(self) -> float:
         return _datetime.now().timestamp() * 1e9

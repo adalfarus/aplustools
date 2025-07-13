@@ -1,4 +1,5 @@
 """TBA"""
+
 __version__ = "2.0.0.0"
 
 from .package import _setup_lazy_loaders
@@ -16,6 +17,7 @@ _setup_lazy_loaders(
         "io": ".io",
         "package": ".package",
         "web": ".web",
-        "security": ".security"
-    }, _direct
+        "security": ".security",
+    },
+    _direct,
 )

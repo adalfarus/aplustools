@@ -1,4 +1,5 @@
 """SHA3"""
+
 from ..._definitions import _HASHER_BACKEND, _HASHER_WITH_LEN_BACKEND, _BASIC_HASHER
 from ...exceptions import NotSupportedError as _NotSupportedError
 
@@ -20,21 +21,42 @@ keccak: _HASHER_BACKEND = _HASHER_BACKEND("sha3_keccak")
 
 
 class CSHAKE128(_BASIC_HASHER):
-    _IMPLS: tuple[_a.Callable[[bytes, int, bytes, bytes], bytes], _a.Callable[[bytes, bytes, int, bytes, bytes], bool]]
+    _IMPLS: tuple[
+        _a.Callable[[bytes, int, bytes, bytes], bytes],
+        _a.Callable[[bytes, bytes, int, bytes, bytes], bool],
+    ]
     algorithm: str = "sha3_cshake_128"
 
     @classmethod
-    def hash(cls, data: bytes, length: int = 32, *, custom: bytes = b"", function_name: bytes = b"") -> bytes:
+    def hash(
+        cls,
+        data: bytes,
+        length: int = 32,
+        *,
+        custom: bytes = b"",
+        function_name: bytes = b"",
+    ) -> bytes:
         impl = cls._IMPLS
         if impl is None:
-            raise _NotSupportedError(f"The {cls()} hash is not supported by this backend")
+            raise _NotSupportedError(
+                f"The {cls()} hash is not supported by this backend"
+            )
         return impl[0](data, length, custom, function_name)
 
     @classmethod
-    def verify(cls, to_verify: bytes, original_hash: bytes, length: int, custom: bytes = b"", function_name: bytes = b"") -> bool:
+    def verify(
+        cls,
+        to_verify: bytes,
+        original_hash: bytes,
+        length: int,
+        custom: bytes = b"",
+        function_name: bytes = b"",
+    ) -> bool:
         impl = cls._IMPLS
         if impl is None:
-            raise _NotSupportedError(f"The {cls()} hash is not supported by this backend")
+            raise _NotSupportedError(
+                f"The {cls()} hash is not supported by this backend"
+            )
         return impl[1](to_verify, original_hash, length, custom, function_name)
 
     def __str__(self) -> str:
@@ -42,21 +64,42 @@ class CSHAKE128(_BASIC_HASHER):
 
 
 class CSHAKE256(_BASIC_HASHER):
-    _IMPLS: tuple[_a.Callable[[bytes, int, bytes, bytes], bytes], _a.Callable[[bytes, bytes, int, bytes, bytes], bool]]
+    _IMPLS: tuple[
+        _a.Callable[[bytes, int, bytes, bytes], bytes],
+        _a.Callable[[bytes, bytes, int, bytes, bytes], bool],
+    ]
     algorithm: str = "sha3_cshake_256"
 
     @classmethod
-    def hash(cls, data: bytes, length: int = 32, *, custom: bytes = b"", function_name: bytes = b"") -> bytes:
+    def hash(
+        cls,
+        data: bytes,
+        length: int = 32,
+        *,
+        custom: bytes = b"",
+        function_name: bytes = b"",
+    ) -> bytes:
         impl = cls._IMPLS
         if impl is None:
-            raise _NotSupportedError(f"The {cls()} hash is not supported by this backend")
+            raise _NotSupportedError(
+                f"The {cls()} hash is not supported by this backend"
+            )
         return impl[0](data, length, custom, function_name)
 
     @classmethod
-    def verify(cls, to_verify: bytes, original_hash: bytes, length: int, custom: bytes = b"", function_name: bytes = b"") -> bool:
+    def verify(
+        cls,
+        to_verify: bytes,
+        original_hash: bytes,
+        length: int,
+        custom: bytes = b"",
+        function_name: bytes = b"",
+    ) -> bool:
         impl = cls._IMPLS
         if impl is None:
-            raise _NotSupportedError(f"The {cls()} hash is not supported by this backend")
+            raise _NotSupportedError(
+                f"The {cls()} hash is not supported by this backend"
+            )
         return impl[1](to_verify, original_hash, length, custom, function_name)
 
     def __str__(self) -> str:

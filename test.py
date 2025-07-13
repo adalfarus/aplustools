@@ -1,5 +1,11 @@
 """Test"""
-from aplustools.security.crypto.algos import Sym, Asym, HashAlgorithm, KeyDerivationFunction
+
+from aplustools.security.crypto.algos import (
+    Sym,
+    Asym,
+    HashAlgorithm,
+    KeyDerivationFunction,
+)
 from aplustools.security.crypto import set_backend, Backend
 import os
 
@@ -56,19 +62,30 @@ password = b"my-password"
 salt = os.urandom(16)
 
 print("PBKDF2HMAC:", KeyDerivationFunction.PBKDF2HMAC.derive(password, salt=salt).hex())
-print("PBKDF1    :", KeyDerivationFunction.PBKDF1.derive(password, salt=salt, length=16).hex())
-print("Scrypt    :", KeyDerivationFunction.Scrypt.derive(password, salt=salt, length=16).hex())
+print(
+    "PBKDF1    :",
+    KeyDerivationFunction.PBKDF1.derive(password, salt=salt, length=16).hex(),
+)
+print(
+    "Scrypt    :",
+    KeyDerivationFunction.Scrypt.derive(password, salt=salt, length=16).hex(),
+)
 print("HKDF      :", KeyDerivationFunction.HKDF.derive(password, salt=salt).hex())
-print("ConcatKDF :", KeyDerivationFunction.ConcatKDF.derive(password, otherinfo=b"my-info").hex())
+print(
+    "ConcatKDF :",
+    KeyDerivationFunction.ConcatKDF.derive(password, otherinfo=b"my-info").hex(),
+)
 
 
-set_backend([
-    Backend.cryptography_alpha,  # Currently only hashes like SHA3
-    Backend.quantcrypt,          # To enable post-quantum cryptography
-    Backend.argon2_cffi,         # Required for Argon2
-    Backend.bcrypt,              # Required for BCrypt
-    Backend.std_lib              # Fallback
-])
+set_backend(
+    [
+        Backend.cryptography_alpha,  # Currently only hashes like SHA3
+        Backend.quantcrypt,  # To enable post-quantum cryptography
+        Backend.argon2_cffi,  # Required for Argon2
+        Backend.bcrypt,  # Required for BCrypt
+        Backend.std_lib,  # Fallback
+    ]
+)
 
 
 # Hash a password/message using Argon2
@@ -80,7 +97,12 @@ is_valid = HashAlgorithm.ARGON2.verify(b"Ha", hashed)
 print("Argon2 Valid:", is_valid)
 
 try:
-    print("Std-Verify", HashAlgorithm.std_verify(b"Ha", hashed, fallback_algorithm="argon2", text_ids=False))  # Std-Verify can't decode special algos like argon2 or bcrypt
+    print(
+        "Std-Verify",
+        HashAlgorithm.std_verify(
+            b"Ha", hashed, fallback_algorithm="argon2", text_ids=False
+        ),
+    )  # Std-Verify can't decode special algos like argon2 or bcrypt
 except NotSupportedError:
     print("Std-Verify failed")
 
@@ -106,7 +128,9 @@ recipient_key = Asym.Cipher.KYBER.keypair.new("kyber1024")
 
 # Extract public key from recipient and share it with the sender
 pub_key_bytes = recipient_key.encode_public_key()
-if pub_key_bytes is None:  # Keys can't be regenerated and try: except: takes more space; Can only happen if you do not pass one of the keys when using .decode( ... )
+if (
+    pub_key_bytes is None
+):  # Keys can't be regenerated and try: except: takes more space; Can only happen if you do not pass one of the keys when using .decode( ... )
     raise ValueError("recipient_key has no public key")
 
 # Sender receives the public key and creates a key object with only the public key
@@ -133,11 +157,15 @@ signature = sign_key.sign(message)
 
 # Extract and share only the public key
 pub_key_bytes = sign_key.encode_public_key()
-if pub_key_bytes is None:  # Keys can't be regenerated and try: except: takes more space; Can only happen if you do not pass one of the keys when using .decode( ... )
+if (
+    pub_key_bytes is None
+):  # Keys can't be regenerated and try: except: takes more space; Can only happen if you do not pass one of the keys when using .decode( ... )
     raise ValueError("sign_key has no public key")
 
 # Create a new key object with only the public key for verification
-verify_key = Asym.Cipher.DILITHIUM.keypair.decode("dilithium5", public_key=pub_key_bytes)
+verify_key = Asym.Cipher.DILITHIUM.keypair.decode(
+    "dilithium5", public_key=pub_key_bytes
+)
 # Verify the signature using the public key
 is_valid = verify_key.sign_verify(message, signature)
 

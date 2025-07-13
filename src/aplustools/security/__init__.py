@@ -13,6 +13,7 @@ _setup_lazy_loaders(
     {
         "rand": ".security.rand",
         "passwords": ".security.passwords",
-        "crypto": ".security.crypto"
-    }, _direct
+        "crypto": ".security.crypto",
+    },
+    _direct,
 )

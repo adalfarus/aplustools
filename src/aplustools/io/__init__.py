@@ -14,5 +14,6 @@ _setup_lazy_loaders(
         "env": ".io.env",
         "fileio": ".io.fileio",
         "concurrency": ".io.concurrency",
-    }, _direct
+    },
+    _direct,
 )

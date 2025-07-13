@@ -1,4 +1,5 @@
 """TBA"""
+
 from ssl import create_default_context as _create_default_context
 from http.client import HTTPSConnection as _HTTPSConnection
 import concurrent.futures as _concurrent_futures
@@ -9,7 +10,9 @@ import asyncio
 import requests
 import certifi
 
-from ..io.concurrency import LazyDynamicThreadPoolExecutor as _LazyDynamicThreadPoolExecutor
+from ..io.concurrency import (
+    LazyDynamicThreadPoolExecutor as _LazyDynamicThreadPoolExecutor,
+)
 from ..package import enforce_hard_deps as _enforce_hard_deps
 from ..package import optional_import as _optional_import
 
@@ -17,6 +20,7 @@ from ..package import optional_import as _optional_import
 import typing_extensions as _te
 import collections.abc as _a
 import typing as _ty
+
 if _ty.TYPE_CHECKING:
     import _typeshed as _tsh
 import types as _ts
@@ -39,7 +43,7 @@ def _get_data_manual(url: str, method: str = "GET", data: _ty.Any = None) -> byt
         raise ValueError(f"The URL '{url}' lacks a scheme")
 
     conn = _HTTPSConnection(parsed_url.hostname, context=context)
-    uri = parsed_url.path + ('?' + parsed_url.query if parsed_url.query else '')
+    uri = parsed_url.path + ("?" + parsed_url.query if parsed_url.query else "")
 
     conn.request(method, uri, body=data)
     response = conn.getresponse()
@@ -104,6 +108,7 @@ class Result:
         no_into_results (list[_ty.Any]): A list initialized to store raw results, which can later be populated.
         _into_done (bool): A flag to indicate whether an 'into' method has been used.
     """
+
     def __init__(self, futures: list[_concurrent_futures.Future]):
         """
         Initializes the Result class with a list of future objects.
@@ -124,7 +129,9 @@ class Result:
         """
         return lambda fut: _process_result(fut, idx)
 
-    def into(self, container: list[_a.Callable[[_ty.Any], None] | _ty.Type]) -> _te.Self:
+    def into(
+        self, container: list[_a.Callable[[_ty.Any], None] | _ty.Type]
+    ) -> _te.Self:
         """
         Process each result as it finishes and apply the transformation specified by
         the container's elements (e.g., `str`, `json.loads`, etc.) to the result.
@@ -135,16 +142,22 @@ class Result:
                             or if another 'into' method has already been called.
         """
         if len(container) != len(self.futures):
-            raise ValueError(f"Container should be of length '{len(self.futures)}' "
-                             f"but is of length '{len(container)}'")
+            raise ValueError(
+                f"Container should be of length '{len(self.futures)}' "
+                f"but is of length '{len(container)}'"
+            )
         elif self._into_done:
-            raise ValueError("You cannot use .into([..]) if you've already used another into_... method.")
+            raise ValueError(
+                "You cannot use .into([..]) if you've already used another into_... method."
+            )
         self._into_done = True
 
         # Append the futures to the container as soon as they are completed.
         def _process_result(future, index):
             result = future.result()  # This blocks until the future is done
-            container[index] = container[index](result)  # Store the result into the container
+            container[index] = container[index](
+                result
+            )  # Store the result into the container
 
         # Attach the processor to each future
         for idx, future in enumerate(self.futures):
@@ -161,7 +174,9 @@ class Result:
         :raises ValueError: If another 'into' method has already been called.
         """
         if self._into_done:
-            raise ValueError("You cannot use .into_null() if you've already used another into_... method.")
+            raise ValueError(
+                "You cannot use .into_null() if you've already used another into_... method."
+            )
         self._into_done = True
 
         # Append the futures to the container as soon as they are completed.
@@ -205,8 +220,13 @@ class UnifiedRequestHandler:
         _pool (_LazyDynamicThreadPoolExecutor): A dynamically sized thread pool for executing tasks.
     """
 
-    def __init__(self, min_workers: int = 2, max_workers: int = 10, workers_step: int = 5,
-                 check_interval: float = 5.0) -> None:
+    def __init__(
+        self,
+        min_workers: int = 2,
+        max_workers: int = 10,
+        workers_step: int = 5,
+        check_interval: float = 5.0,
+    ) -> None:
         """
         Initializes the request handler with a dynamic thread pool.
 
@@ -216,7 +236,9 @@ class UnifiedRequestHandler:
         :param check_interval: The time interval, in seconds, to wait before checking if the pool
                                needs resizing based on current load.
         """
-        self._pool = _LazyDynamicThreadPoolExecutor(min_workers, max_workers, check_interval, workers_step)
+        self._pool = _LazyDynamicThreadPoolExecutor(
+            min_workers, max_workers, check_interval, workers_step
+        )
 
     @property
     def current_size(self) -> int:
@@ -235,8 +257,13 @@ class UnifiedRequestHandler:
         """
         return self._pool
 
-    def request(self, url: str, async_mode: bool = False, method: str = "GET", data: _ty.Any = None
-                ) -> _concurrent_futures.Future | bytes:
+    def request(
+        self,
+        url: str,
+        async_mode: bool = False,
+        method: str = "GET",
+        data: _ty.Any = None,
+    ) -> _concurrent_futures.Future | bytes:
         """
         Submits an HTTP request. Supports both synchronous and asynchronous execution.
 
@@ -254,8 +281,13 @@ class UnifiedRequestHandler:
             # Synchronous mode, just return the result
             return _get_data(url, method, data)
 
-    def request_many(self, urls: list[str], async_mode: bool = False, method: str = "GET", data: _ty.Any = None
-                     ) -> Result | list[bytes]:
+    def request_many(
+        self,
+        urls: list[str],
+        async_mode: bool = False,
+        method: str = "GET",
+        data: _ty.Any = None,
+    ) -> Result | list[bytes]:
         """
         Submits multiple requests concurrently. Supports both synchronous and asynchronous execution.
 
@@ -301,15 +333,21 @@ class UnifiedRequestHandlerAdvanced:
         if not self.session:
             self.session = _aiohttp.ClientSession()
 
-    async def _get_data(self, url: str, method: str = "GET", data: _ty.Any = None) -> bytes:
+    async def _get_data(
+        self, url: str, method: str = "GET", data: _ty.Any = None
+    ) -> bytes:
         async with self.session.request(method, url, data=data) as response:
             return await response.read()
 
-    async def _request_async(self, url: str, method: str = "GET", data: _ty.Any = None) -> bytes:
+    async def _request_async(
+        self, url: str, method: str = "GET", data: _ty.Any = None
+    ) -> bytes:
         await self._initialize_session()
         return await self._get_data(url, method, data)
 
-    async def _request_many_async(self, urls: list[str], method: str = "GET", data: _ty.Any = None) -> asyncio.gather:
+    async def _request_many_async(
+        self, urls: list[str], method: str = "GET", data: _ty.Any = None
+    ) -> asyncio.gather:
         await self._initialize_session()
         tasks = [asyncio.create_task(self._get_data(url, method, data)) for url in urls]
         return await asyncio.gather(*tasks)
@@ -343,7 +381,9 @@ class UnifiedRequestHandlerAdvanced:
         """
         return self._run_in_event_loop(self._request_async(url, method, data))
 
-    def request_many(self, urls: list[str], method: str = "GET", data: _ty.Any = None) -> list[bytes]:
+    def request_many(
+        self, urls: list[str], method: str = "GET", data: _ty.Any = None
+    ) -> list[bytes]:
         """
         Public-facing synchronous method to submit multiple requests. Internally runs the async code.
         """

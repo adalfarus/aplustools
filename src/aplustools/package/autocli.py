@@ -1,4 +1,5 @@
 """TBA"""
+
 from argparse import ArgumentParser as _ArgumentParser
 import sys
 
@@ -8,6 +9,7 @@ from ..package import enforce_hard_deps as _enforce_hard_deps
 import typing_extensions as _te
 import collections.abc as _a
 import typing as _ty
+
 if _ty.TYPE_CHECKING:
     import _typeshed as _tsh
 import types as _ts
@@ -55,9 +57,11 @@ def analyze_function(function: _a.Callable) -> dict[str, list[_ty.Any] | str | N
         raise ValueError(f"Only a real function can be analyzed, not '{function}'")
 
     name = function.__name__
-    arg_count = (function.__code__.co_argcount
-                 + function.__code__.co_kwonlyargcount
-                 + function.__code__.co_posonlyargcount)
+    arg_count = (
+        function.__code__.co_argcount
+        + function.__code__.co_kwonlyargcount
+        + function.__code__.co_posonlyargcount
+    )
     argument_names = list(function.__code__.co_varnames[:arg_count] or ())
     has_args = (function.__code__.co_flags & 0b0100) == 4
     has_kwargs = (function.__code__.co_flags & 0b1000) == 8
@@ -65,7 +69,7 @@ def analyze_function(function: _a.Callable) -> dict[str, list[_ty.Any] | str | N
     defaults.extend(list(function.__defaults__ or ()))
     if function.__kwdefaults__ is not None:
         defaults.extend(list(function.__kwdefaults__.values()))
-    defaults = defaults[len(defaults) - len(argument_names):]
+    defaults = defaults[len(defaults) - len(argument_names) :]
     types = function.__annotations__ or {}
     docstring = function.__doc__ or ""
     type_hints = _ty.get_type_hints(function)
@@ -81,15 +85,23 @@ def analyze_function(function: _a.Callable) -> dict[str, list[_ty.Any] | str | N
     argument_names.append("return")
     defaults.append(None)
 
-    result = {"name": name, "doc": docstring, "arguments": [],
-              "has_*args": has_args, "has_**kwargs": has_kwargs,
-              "return_type": function.__annotations__.get("return"),
-              "return_choices": [], "return_doc_help": ""}
+    result = {
+        "name": name,
+        "doc": docstring,
+        "arguments": [],
+        "has_*args": has_args,
+        "has_**kwargs": has_kwargs,
+        "return_type": function.__annotations__.get("return"),
+        "return_choices": [],
+        "return_doc_help": "",
+    }
     for i, (argument_name, default) in enumerate(zip(argument_names, defaults)):
         argument_start = docstring.find(argument_name)
         help_str, choices = "", []
         if argument_start != -1:
-            help_start = argument_start + len(argument_name)  # Where argument_name ends in docstring
+            help_start = argument_start + len(
+                argument_name
+            )  # Where argument_name ends in docstring
             next_line = argument_start + docstring[argument_start:].find("\n")
             help_str = docstring[help_start:next_line].strip(": \n\t")
         if argument_name == "return":
@@ -102,9 +114,16 @@ def analyze_function(function: _a.Callable) -> dict[str, list[_ty.Any] | str | N
         type_hint = type_hints.get(argument_name)
         if getattr(type_hint, "__origin__", None) is _ty.Literal:
             choices = type_hint.__args__
-        result["arguments"].append({"name": argument_name, "default": default,
-                                    "choices": choices, "type": types.get(argument_name),
-                                    "doc_help": help_str, "kwarg_only": True if i >= pos_argcount else False})
+        result["arguments"].append(
+            {
+                "name": argument_name,
+                "default": default,
+                "choices": choices,
+                "type": types.get(argument_name),
+                "doc_help": help_str,
+                "kwarg_only": True if i >= pos_argcount else False,
+            }
+        )
     return result
 
 
@@ -141,8 +160,12 @@ class EndPoint:
     """
 
     def __init__(self, function: _ts.FunctionType) -> None:
-        self.analysis: dict[str, list[_ty.Any] | str | None] = analyze_function(function)
-        self._arg_index: dict[str, int] = {arg["name"]: i for i, arg in enumerate(self.analysis["arguments"])}
+        self.analysis: dict[str, list[_ty.Any] | str | None] = analyze_function(
+            function
+        )
+        self._arg_index: dict[str, int] = {
+            arg["name"]: i for i, arg in enumerate(self.analysis["arguments"])
+        }
         self._function: _ts.FunctionType = function
 
     def call(self, *args, **kwargs) -> None:
@@ -158,7 +181,10 @@ class EndPoint:
         self._function(*args, **kwargs)
 
     def __repr__(self) -> str:
-        args = [f'{key}: {self.analysis["arguments"][index]}' for (key, index) in self._arg_index.items()]
+        args = [
+            f"{key}: {self.analysis['arguments'][index]}"
+            for (key, index) in self._arg_index.items()
+        ]
         return f"Endpoint(arguments={args})"
 
 
@@ -209,7 +235,9 @@ class ArgStructBuilder:
         else:
             raise ValueError(f"Command '{parent}' cannot have subcommands.")
 
-    def add_nested_command(self, parent: str, command: str, subcommand: str | dict | None) -> None:
+    def add_nested_command(
+        self, parent: str, command: str, subcommand: str | dict | None
+    ) -> None:
         """Adds a nested command within a command structure hierarchy.
 
         Navigates to the specified parent path in the command structure, allowing
@@ -228,11 +256,13 @@ class ArgStructBuilder:
             subcommand = {}
 
         # Navigate to the correct parent level
-        parts = parent.split('.')
+        parts = parent.split(".")
         current_level = self._commands
         for part in parts:
             if part not in current_level or not isinstance(current_level[part], dict):
-                raise ValueError(f"Command '{parent}' not found or is not a valid parent.")
+                raise ValueError(
+                    f"Command '{parent}' not found or is not a valid parent."
+                )
             current_level = current_level[part]
 
         if isinstance(subcommand, str):
@@ -250,7 +280,7 @@ class ArgStructBuilder:
         return self._commands
 
 
-_A = _ty.TypeVar('_A')
+_A = _ty.TypeVar("_A")
 
 
 class Argumint:
@@ -266,7 +296,9 @@ class Argumint:
         _endpoints (dict): A mapping of argument paths to endpoint functions.
     """
 
-    def __init__(self, default_endpoint: EndPoint, arg_struct: dict[str, dict | str]) -> None:
+    def __init__(
+        self, default_endpoint: EndPoint, arg_struct: dict[str, dict | str]
+    ) -> None:
         self.default_endpoint: EndPoint = default_endpoint
         self._arg_struct: dict[str, dict | str] = arg_struct
         self._endpoints: dict[str, EndPoint] = {}
@@ -282,7 +314,9 @@ class Argumint:
         print(f"{command_string}\n{' ' * i + '^'}")
 
     @staticmethod
-    def _lst_error(i: int, arg_i: int, command_lst: list[str], do_exit: bool = False) -> None:
+    def _lst_error(
+        i: int, arg_i: int, command_lst: list[str], do_exit: bool = False
+    ) -> None:
         """Displays an error caret in a list of command arguments.
 
         This method calculates the error position in a CLI argument list, displaying
@@ -296,8 +330,7 @@ class Argumint:
             do_exit (bool, optional): If True, exits the program. Defaults to False.
         """
         length = sum(len(item) for item in command_lst[:i]) + i
-        print(' '.join(command_lst) + "\n" +
-              " " * (length + arg_i) + "^")
+        print(" ".join(command_lst) + "\n" + " " * (length + arg_i) + "^")
         if do_exit:
             sys.exit(1)
 
@@ -339,7 +372,9 @@ class Argumint:
             else:
                 to_del.append(path)
         self._arg_struct = new_arg_struct
-        print(f"Removed {len([self._endpoints.pop(epPath) for epPath in to_del])} endpoints.")
+        print(
+            f"Removed {len([self._endpoints.pop(epPath) for epPath in to_del])} endpoints."
+        )
 
     def add_endpoint(self, path: str, endpoint: EndPoint) -> None:
         """Adds an endpoint at a specified path within the structure.
@@ -404,9 +439,11 @@ class Argumint:
         i = call = None
         try:
             for i, call in enumerate(pre_args):
-                if call in current_struct or ("ANY" in current_struct and len(current_struct) == 1):
+                if call in current_struct or (
+                    "ANY" in current_struct and len(current_struct) == 1
+                ):
                     struct_lst.append(call)
-                    if not i == len(pre_args)-1:
+                    if not i == len(pre_args) - 1:
                         current_struct = current_struct[call]
                 elif len(current_struct) == 0:  # At endpoint
                     break
@@ -416,7 +453,9 @@ class Argumint:
             print("Too many pre arguments.")
             self._lst_error(i, 0, pre_args, True)
         except (IndexError, KeyError):
-            print(f"The argument '{call}' doesn't exist in current_struct ({current_struct}).")
+            print(
+                f"The argument '{call}' doesn't exist in current_struct ({current_struct})."
+            )
             self._lst_error(i, 0, pre_args, True)
         return struct_lst
 
@@ -456,8 +495,9 @@ class Argumint:
         return type_(to_type)
 
     @classmethod
-    def _parse_args_native_light(cls, args: list[str], endpoint: EndPoint, smart_typing: bool = True
-                                 ) -> dict[str, _ty.Any]:
+    def _parse_args_native_light(
+        cls, args: list[str], endpoint: EndPoint, smart_typing: bool = True
+    ) -> dict[str, _ty.Any]:
         """Parses command-line arguments in a lightweight manner.
 
         This method parses arguments for an endpoint function, supporting positional
@@ -482,20 +522,29 @@ class Argumint:
         for i, arg in enumerate(args):
             # Check for keyword argument
             if arg.startswith("--"):
-                key, _, value = arg[2:].partition('=')
+                key, _, value = arg[2:].partition("=")
                 if not any(a["name"] == key for a in endpoint.analysis["arguments"]):
                     raise ArgumentParsingError(f"Unknown argument: {key}", i)
-                arg_obj = next(a for a in endpoint.analysis["arguments"] if a["name"] == key)
-                parsed_args[key] = cls._to_type(value, arg_obj["type"]) if arg_obj["type"] else value
+                arg_obj = next(
+                    a for a in endpoint.analysis["arguments"] if a["name"] == key
+                )
+                parsed_args[key] = (
+                    cls._to_type(value, arg_obj["type"]) if arg_obj["type"] else value
+                )
                 remaining_args.remove(arg_obj)
 
             # Check for flag argument
             elif arg.startswith("-"):
                 key = arg[1:]
-                if not any(a["name"] == key and a["type"] is bool for a in endpoint.analysis["arguments"]):
+                if not any(
+                    a["name"] == key and a["type"] is bool
+                    for a in endpoint.analysis["arguments"]
+                ):
                     raise ArgumentParsingError(f"Unknown flag argument: {key}", i)
                 parsed_args[key] = True
-                remaining_arg = next(a for a in endpoint.analysis["arguments"] if a["name"] == key)
+                remaining_arg = next(
+                    a for a in endpoint.analysis["arguments"] if a["name"] == key
+                )
                 remaining_args.remove(remaining_arg)
 
             # Handle positional argument
@@ -503,8 +552,13 @@ class Argumint:
                 if smart_typing:
                     # Find the first argument with a matching type
                     for pos_arg in remaining_args:
-                        if isinstance(pos_arg["default"], type(arg)) or pos_arg["default"] is None:
-                            parsed_args[pos_arg["name"]] = cls._to_type(arg, pos_arg["type"])
+                        if (
+                            isinstance(pos_arg["default"], type(arg))
+                            or pos_arg["default"] is None
+                        ):
+                            parsed_args[pos_arg["name"]] = cls._to_type(
+                                arg, pos_arg["type"]
+                            )
                             remaining_args.remove(pos_arg)
                             break
                     else:
@@ -513,7 +567,9 @@ class Argumint:
                     # Assign to the next available argument
                     if remaining_args:
                         pos_arg = remaining_args.pop(0)
-                        parsed_args[pos_arg["name"]] = cls._to_type(arg, pos_arg["type"])
+                        parsed_args[pos_arg["name"]] = cls._to_type(
+                            arg, pos_arg["type"]
+                        )
 
         # Assign default values for missing optional arguments
         for remaining_arg in remaining_args:
@@ -523,7 +579,9 @@ class Argumint:
         return parsed_args
 
     @staticmethod
-    def _parse_args_arg_parse(args: list[str], endpoint: EndPoint) -> dict[str, _ty.Any]:
+    def _parse_args_arg_parse(
+        args: list[str], endpoint: EndPoint
+    ) -> dict[str, _ty.Any]:
         """Parses command-line arguments using the argparse library.
 
         Sets up argparse to support keyword arguments (prefixed with '--') and flag
@@ -541,16 +599,30 @@ class Argumint:
         # Set up argparse for keyword and flag arguments
         for arg in endpoint.analysis["arguments"]:
             if arg["type"] is bool:  # For boolean flags
-                parser.add_argument(f"-{arg['name'][0]}", f"--{arg['name']}", action='store_true', help=arg["help"])
+                parser.add_argument(
+                    f"-{arg['name'][0]}",
+                    f"--{arg['name']}",
+                    action="store_true",
+                    help=arg["help"],
+                )
             else:
-                parser.add_argument(f"--{arg['name']}", type=arg["type"], default=arg["default"], help=arg["help"])
+                parser.add_argument(
+                    f"--{arg['name']}",
+                    type=arg["type"],
+                    default=arg["default"],
+                    help=arg["help"],
+                )
 
         # Parse arguments with argparse
         parsed_args = parser.parse_args(args)
         return vars(parsed_args)
 
-    def _parse_args(self, args: list[str], endpoint: EndPoint,
-                    mode: _ty.Literal["arg_parse", "native_light"] = "arg_parse") -> dict[str, _ty.Any]:
+    def _parse_args(
+        self,
+        args: list[str],
+        endpoint: EndPoint,
+        mode: _ty.Literal["arg_parse", "native_light"] = "arg_parse",
+    ) -> dict[str, _ty.Any]:
         """Dispatches argument parsing to a specified mode.
 
         This method selects the appropriate parsing function (argparse or native light)
@@ -565,10 +637,18 @@ class Argumint:
         Returns:
             dict[str, _ty.Any]: Parsed arguments as a dictionary.
         """
-        func = self._parse_args_native_light if mode == "native_light" else self._parse_args_arg_parse
+        func = (
+            self._parse_args_native_light
+            if mode == "native_light"
+            else self._parse_args_arg_parse
+        )
         return func(args, endpoint)
 
-    def parse_cli(self, system: sys = sys, mode: _ty.Literal["arg_parse", "native_light"] = "arg_parse") -> None:
+    def parse_cli(
+        self,
+        system: sys = sys,
+        mode: _ty.Literal["arg_parse", "native_light"] = "arg_parse",
+    ) -> None:
         """Parses CLI arguments and calls the endpoint based on the parsed path.
 
         This method processes command-line input, navigates the argument structure,
@@ -583,8 +663,10 @@ class Argumint:
         """
         arguments = system.argv
         pre_args = self._parse_pre_args(arguments)
-        path = '.'.join(pre_args)
-        args = arguments[arguments.index(pre_args[-1])+1:]  # Will return an empty list, if [i:] is longer than the list
+        path = ".".join(pre_args)
+        args = arguments[
+            arguments.index(pre_args[-1]) + 1 :
+        ]  # Will return an empty list, if [i:] is longer than the list
         endpoint = self._endpoints.get(path) or self.default_endpoint
         arguments = self._parse_args(args, endpoint, mode)
         endpoint.call(**arguments)
