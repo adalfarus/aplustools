@@ -12,8 +12,8 @@ release = "2.0.0.0"
 
 # -- General configuration ---------------------------------------------------
 extensions = [
-    "sphinx.ext.autodoc",         # Auto-document from docstrings
-    "sphinx.ext.napoleon",        # Support for NumPy/Google style docstrings
+    "sphinx.ext.autodoc",  # Auto-document from docstrings
+    "sphinx.ext.napoleon",  # Support for NumPy/Google style docstrings
     "sphinxcontrib.restbuilder",  # ReST output builder
 ]
 
@@ -35,11 +35,13 @@ rst_link_suffix = ""
 rst_line_width = 88
 rst_indent = 4
 
+
 # Rename 'index.rst' to 'Home.rst' and adjust wiki links
 def rst_file_transform(docname):
     if docname == "index":
         docname = "Home"
     return docname + rst_file_suffix
+
 
 def rst_link_transform(docname):
     if docname == "index":
