@@ -105,7 +105,7 @@ jobs:
           cp "$file" "combined/.coverage.$i"
           i=$((i + 1))
         done
-        coverage combine combined/
+        coverage combine --keep-paths combined/
         coverage json -o coverage.json
         coverage report
 
