@@ -31,8 +31,9 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
 
-    - name: Install aplustools with all optional and dev dependencies
+    - name: Upgrade pip and install aplustools with all optional and dev dependencies
       run: |
+        python -m pip install --upgrade pip
         pip install -e .[all,dev]
 
     - name: Prepare test_data directory (macOS/Linux)
@@ -61,16 +62,10 @@ jobs:
       run: |
         coverage run --data-file=data.coverage -m pytest src/aplustools/tests
 
-    - name: Debug Show files and working directory
-      run: |
-        echo "Current directory: $(pwd)"
-        echo "Files:"
-        ls -R
-
     - name: Upload coverage data
       uses: actions/upload-artifact@v4
       with:
-        name: coverage-${{ matrix.os }}-${{ matrix.python-version }}.coverage
+        name: coverage-${{ matrix.os }}-${{ matrix.python-version }}
         path: data.coverage
 
   coverage-summary:
@@ -102,10 +97,14 @@ jobs:
         echo "Files:"
         ls -R
 
-    - name: Combine coverage data
+    - name: Rename data.coverage to .coverage and combine coverage data
       run: |
         mkdir combined
-        find coverages -type f -name '.coverage' -exec cp {} combined/ \;
+        i=0
+        for file in $(find coverages -type f -name 'data.coverage'); do
+          cp "$file" "combined/.coverage.$i"
+          i=$((i + 1))
+        done
         coverage combine combined/
         coverage json -o coverage.json
         coverage report
