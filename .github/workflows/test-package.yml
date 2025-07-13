@@ -70,6 +70,12 @@ jobs:
       run: |
         coverage run -m pytest src/aplustools/tests
 
+    - name: Debug Show files and working directory
+      run: |
+        echo "Current directory: $(pwd)"
+        echo "Files:"
+        ls -R
+
     - name: Upload coverage data
       uses: actions/upload-artifact@v4
       with:
