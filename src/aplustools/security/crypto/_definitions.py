@@ -14,14 +14,6 @@ from .exceptions import NotSupportedError as _NotSupportedError
 
 from abc import ABCMeta, abstractmethod
 
-SymKeyEncoding = None
-SymPadding = None
-SymOperation = None
-MessageAuthenticationCode = None
-ASymKeyEncoding = None
-ASymKeyFormat = None
-ASymPadding = None
-
 # Standard typing imports for aps
 import typing_extensions as _te
 import collections.abc as _a
@@ -29,6 +21,15 @@ import typing as _ty
 if _ty.TYPE_CHECKING:
     import _typeshed as _tsh
 import types as _ts
+
+# TODO: Fix circular import
+SymKeyEncoding = None
+SymPadding = None
+SymOperation = None
+MessageAuthenticationCode = None
+ASymKeyEncoding = None
+ASymKeyFormat = None
+ASymPadding = None
 
 
 class Backend(enum.Enum):

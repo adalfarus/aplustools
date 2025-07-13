@@ -17,7 +17,7 @@ def hash_argon2(password: bytes, salt: bytes, time_cost: int, memory_cost: int, 
 def hash_verify_argon2(password: bytes, expected_hash: bytes, variant: str) -> bool:
     try:
         verify_secret(expected_hash, password, {"i": Argon2Type.I, "d": Argon2Type.D, "id": Argon2Type.ID}[variant])
-    except:
+    except Exception:
         return False
     return True
 

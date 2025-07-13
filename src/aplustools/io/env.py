@@ -135,39 +135,6 @@ class _BaseSystem(metaclass=_SingletonMeta):
         """
         raise NotImplementedError("schedule_event is not implemented for this os")
 
-    def send_notification(self, title: str, message: str,
-                          input_fields: tuple[tuple[str, str, str], ...] = (("input_arg", "Input", "Hint"),),
-                          selections: tuple[tuple[str, str, list[tuple], int], ...] = (("selection_arg", "Sel Display Name", ["selection_name", "Selection Display Name"], 0),),
-                          buttons: tuple[tuple[str, _a.Callable], ...] = (("Accept", lambda: None), ("Cancel", lambda: None),),
-                          click_callback: _a.Callable = lambda: None) -> None:
-        """
-        Sends a cross-platform complex notification, or a system-specific notification with support for input fields,
-        selections, buttons, and callbacks.
-
-        :param title: The title of the notification.
-        :param message: The main message to display in the notification.
-        :param input_fields: A tuple of input field configurations. Each field is a tuple containing
-                             the argument name, display name, and a hint.
-        :param selections: A tuple of selection field configurations. Each field is a tuple containing
-                           the argument name, display name, list of selections, and default selection index.
-        :param buttons: A tuple of button configurations. Each button is a tuple containing
-                        the button text and a callback function.
-        :param click_callback: A callback function triggered when the notification is clicked.
-        """
-        from ..io.gui.balloon_tip import (NotificationManager)  # To prevent a circular import
-
-        icon_path = Window.get_app_icon_path()
-        NotificationManager.show_notification(
-            icon_path,
-            "Sample Notification",
-            "This is a sample notification message.",
-            inputs=input_fields,
-            selections=selections,
-            buttons=buttons,
-            click_callback=lambda inputs, selections: print(f"Clicked with inputs: {inputs}, selections: {selections}"),
-            auto_close_duration=7000  # Auto close after 7 seconds
-        )
-
     def send_native_notification(self, title: str, message: str) -> None:
         """
         Sends a simple notification using the operating system's native notification system.
@@ -880,64 +847,64 @@ class _WindowsSystem(_BaseSystem):
             command = f'schtasks /create /tn "{task_name}" /tr "{script_path}" /sc onlogon /rl highest /f'
         subprocess.run(command.split(" "), check=True)
 
-    def send_notification(self, title: str, message: str,
-                          input_fields: tuple[tuple[str, str, str], ...] = (("input_arg", "Input", "Hint"),),
-                          selections: tuple[tuple[str, str, list[tuple], int], ...] = (("selection_arg", "Sel Display Name", ["selection_name", "Selection Display Name"], 0),),
-                          buttons: tuple[tuple[str, _a.Callable], ...] = (("Accept", lambda: None), ("Cancel", lambda: None),),
-                          click_callback: _a.Callable = lambda: None) -> None:
-        """
-        Send a notification on Windows systems, supporting both simple and interactive notifications with input fields,
-        selections, and buttons.
-
-        :param title: The title of the notification.
-        :param message: The message content to display in the notification.
-        :param input_fields: A tuple of input field configurations for the notification (optional).
-        :param selections: A tuple of selection field configurations for the notification (optional).
-        :param buttons: A tuple of button configurations for the notification (optional).
-        :param click_callback: A callback function triggered when the notification is clicked (optional).
-        """
-        if not (input_fields or selections or buttons):
-            if _WindowsToaster is not None and _Toast is not None:
-                toaster = _WindowsToaster(title)
-                new_toast = _Toast()
-                new_toast.text_fields = [message]
-                new_toast.on_activated = click_callback
-                toaster.show_toast(new_toast)
-        else:
-            if (_InteractableWindowsToaster is not None
-                    and _Toast is not None
-                    and _ToastInputTextBox is not None
-                    and _ToastSelection is not None
-                    and _ToastButton is not None):
-                interactable_toaster = _InteractableWindowsToaster(title)
-                new_toast = _Toast([message])
-
-                for input_field in input_fields:
-                    arg_name, display_name, input_hint = input_field
-                    new_toast.AddInput(_ToastInputTextBox(arg_name, display_name, input_hint))
-
-                for selection in selections:
-                    selection_arg_name, selection_display_name, selection_options, default_selection_id = selection
-
-                    selection_option_objects = []
-                    for selection_option in selection_options:
-                        selection_option_id, selection_option_display_name = selection_option
-                        selection_option_objects.append(_ToastSelection(selection_option_id, selection_option_display_name))
-
-                    new_toast.AddInput(_ToastInputSelectionBox(selection_arg_name, selection_display_name,
-                                                              selection_option_objects,
-                                                              selection_option_objects[default_selection_id]))
-
-                response_lst = []
-                for i, button in enumerate(buttons):
-                    button_text, callback = button
-                    response_lst.append(callback)
-                    new_toast.AddAction(_ToastButton(button_text, str(i)))
-
-                new_toast.on_activated = lambda activated_event_args: (response_lst[int(activated_event_args.arguments)]()
-                                                                       or click_callback(**activated_event_args.inputs))
-
-                interactable_toaster.show_toast(new_toast)
+    # def send_notification(self, title: str, message: str,
+    #                       input_fields: tuple[tuple[str, str, str], ...] = (("input_arg", "Input", "Hint"),),
+    #                       selections: tuple[tuple[str, str, list[tuple], int], ...] = (("selection_arg", "Sel Display Name", ["selection_name", "Selection Display Name"], 0),),
+    #                       buttons: tuple[tuple[str, _a.Callable], ...] = (("Accept", lambda: None), ("Cancel", lambda: None),),
+    #                       click_callback: _a.Callable = lambda: None) -> None:
+    #     """
+    #     Send a notification on Windows systems, supporting both simple and interactive notifications with input fields,
+    #     selections, and buttons.
+    #
+    #     :param title: The title of the notification.
+    #     :param message: The message content to display in the notification.
+    #     :param input_fields: A tuple of input field configurations for the notification (optional).
+    #     :param selections: A tuple of selection field configurations for the notification (optional).
+    #     :param buttons: A tuple of button configurations for the notification (optional).
+    #     :param click_callback: A callback function triggered when the notification is clicked (optional).
+    #     """
+    #     if not (input_fields or selections or buttons):
+    #         if _WindowsToaster is not None and _Toast is not None:
+    #             toaster = _WindowsToaster(title)
+    #             new_toast = _Toast()
+    #             new_toast.text_fields = [message]
+    #             new_toast.on_activated = click_callback
+    #             toaster.show_toast(new_toast)
+    #     else:
+    #         if (_InteractableWindowsToaster is not None
+    #                 and _Toast is not None
+    #                 and _ToastInputTextBox is not None
+    #                 and _ToastSelection is not None
+    #                 and _ToastButton is not None):
+    #             interactable_toaster = _InteractableWindowsToaster(title)
+    #             new_toast = _Toast([message])
+    #
+    #             for input_field in input_fields:
+    #                 arg_name, display_name, input_hint = input_field
+    #                 new_toast.AddInput(_ToastInputTextBox(arg_name, display_name, input_hint))
+    #
+    #             for selection in selections:
+    #                 selection_arg_name, selection_display_name, selection_options, default_selection_id = selection
+    #
+    #                 selection_option_objects = []
+    #                 for selection_option in selection_options:
+    #                     selection_option_id, selection_option_display_name = selection_option
+    #                     selection_option_objects.append(_ToastSelection(selection_option_id, selection_option_display_name))
+    #
+    #                 new_toast.AddInput(_ToastInputSelectionBox(selection_arg_name, selection_display_name,
+    #                                                           selection_option_objects,
+    #                                                           selection_option_objects[default_selection_id]))
+    #
+    #             response_lst = []
+    #             for i, button in enumerate(buttons):
+    #                 button_text, callback = button
+    #                 response_lst.append(callback)
+    #                 new_toast.AddAction(_ToastButton(button_text, str(i)))
+    #
+    #             new_toast.on_activated = lambda activated_event_args: (response_lst[int(activated_event_args.arguments)]()
+    #                                                                    or click_callback(**activated_event_args.inputs))
+    #
+    #             interactable_toaster.show_toast(new_toast)
 
     def send_native_notification(self, title: str, message: str) -> None:
         """
@@ -1255,7 +1222,7 @@ def diagnose_shutdown_blockers(suggestions: bool = True, return_result: bool = F
         blockers.append("Suggestion: Ensure all threads complete or are set as daemon threads.")
 
     # Check for active processes
-    current_process = _multiprocessing_process()
+    # current_process = _multiprocessing_process()
     if _psutil is None:
         raise RuntimeError("Psutil is not installed")
     child_processes = _psutil.Process(os.getpid()).children(recursive=True)

@@ -185,8 +185,8 @@ def set_backend(backends: list[Backend] | None = None) -> None:
                 hash_func = getattr(module, f"hash_{hasher.algorithm}", None)
                 verify_func = getattr(module, f"hash_verify_{hasher.algorithm}", None)
 
-                if not isinstance(hash_func, _ts.FunctionType): continue
-                if not isinstance(verify_func, _ts.FunctionType): continue
+                if not (isinstance(hash_func, _ts.FunctionType) or isinstance(verify_func, _ts.FunctionType)):
+                    continue
 
                 if isinstance(hasher, (_HASHER_BACKEND, _HASHER_WITH_LEN_BACKEND)):
                     if not hasher.algorithm in _HASHER_BACKEND._MAPPING:
