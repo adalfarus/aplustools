@@ -1,8 +1,12 @@
 name: Publish Markdown Docs to Wiki
 
 on:
+  pull_request:
+    branches: [main]
+    paths: ['src/**']
   push:
     branches: [main]
+    paths: ['src/**']
   workflow_dispatch:
 
 permissions:
@@ -44,5 +48,11 @@ jobs:
 
           cd wiki
           git add .
-          git commit -m "📚 Update wiki docs"
-          git push
+          
+          # Only commit if there are changes
+          if ! git diff-index --quiet HEAD; then
+            git commit -m "📚 Update wiki docs"
+            git push
+          else
+            echo "No changes to commit."
+          fi
