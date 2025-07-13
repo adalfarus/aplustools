@@ -3,15 +3,15 @@ from ssl import create_default_context as _create_default_context
 from http.client import HTTPSConnection as _HTTPSConnection
 import concurrent.futures as _concurrent_futures
 from urllib.parse import urlparse as _urlparse
-import requests
 import asyncio
+
+# Third party
+import requests
 import certifi
 
 from ..io.concurrency import LazyDynamicThreadPoolExecutor as _LazyDynamicThreadPoolExecutor
 from ..package import enforce_hard_deps as _enforce_hard_deps
 from ..package import optional_import as _optional_import
-
-_aiohttp = _optional_import("aiohttp")
 
 # Standard typing imports for aps
 import typing_extensions as _te
@@ -20,6 +20,8 @@ import typing as _ty
 if _ty.TYPE_CHECKING:
     import _typeshed as _tsh
 import types as _ts
+
+_aiohttp = _optional_import("aiohttp")
 
 __deps__: list[str] = ["aiohttp>=3.9.5"]
 __hard_deps__: list[str] = ["certifi"]
