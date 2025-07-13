@@ -60,7 +60,7 @@ exclude = [
 
 [tool.ruff.lint]
 select = ["E", "F"]
-ignore = ["E501"]  # Line length checks for now
+ignore = ["E501", "F401", "F403"]  # E501 Line length checks for now; F401&F403 because they are used for type checking
 
 [project]
 name = "aplustools"
