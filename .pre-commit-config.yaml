@@ -8,15 +8,6 @@ repos:
     - id: ruff-format  # Run the formatter
       types_or: [python, pyi]
       args: ['--exclude', 'tests/*', '--exclude', 'scripts/*', '--quiet']
-- repo: local
-  hooks:
-    - id: generate-docs
-      name: Auto-generate API documentation
-      entry: pydoc-markdown
-      language: python
-      pass_filenames: false
-      always_run: true
-      additional_dependencies: [pydoc-markdown]
 ci:
     autofix_commit_msg: |
         [pre-commit.ci] auto fixes from pre-commit.com hooks

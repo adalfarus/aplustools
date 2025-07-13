@@ -1,49 +1,31 @@
-name: Publish Markdown Docs to Wiki
+name: Deploy Markdown Docs to Wiki
 
 on:
   push:
     branches: [main]
-  workflow_dispatch:
-
-permissions:
-  contents: read
 
 jobs:
-  publish-wiki:
+  deploy-wiki:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout main repo
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-
-      - name: Install dependencies
-        run: |
-          pip install sphinx sphinx-markdown-builder myst-parser
-
-      - name: Build markdown docs
-        run: |
-          sphinx-build -b markdown docs/source docs/build/markdown
-
-      - name: Push docs to GitHub Wiki
+      - name: Setup Git
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
-          # Clone the Wiki repo
-          git clone https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.wiki.git wiki
+      - name: Build Markdown Docs
+        run: |
+          pip install pydoc-markdown
+          pydoc-markdown  # or whatever generates your docs to ./docs/build/markdown
 
-          # Clear existing wiki content
+      - name: Push to Wiki
+        run: |
+          git clone https://x-access-token:${{ secrets.GH_PAT }}@github.com/${{ github.repository }}.wiki.git wiki
           rm -rf wiki/*
-          
-          # Copy generated markdown docs
           cp -r docs/build/markdown/* wiki/
-
           cd wiki
           git add .
-          git commit -m "📚 Update wiki docs"
+          git commit -m "📚 Update docs"
           git push
