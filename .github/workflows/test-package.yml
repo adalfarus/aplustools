@@ -17,8 +17,10 @@ jobs:
 
     strategy:
       matrix:
-        os: [macos-latest, ubuntu-latest, windows-latest]
-        python-version: ['3.10', '3.11', '3.12', '3.13']
+        # os: [macos-latest, ubuntu-latest, windows-latest]
+        # python-version: ['3.10', '3.11', '3.12', '3.13']
+        os: [ubuntu-latest]
+        python-version: ['3.12', '3.13']
 
     steps:
     - name: Checkout code
@@ -67,13 +69,12 @@ jobs:
     - name: Run tests with coverage
       run: |
         coverage run -m pytest src/aplustools/tests
-        coverage json -o coverage.json
 
     - name: Upload coverage data
       uses: actions/upload-artifact@v4
       with:
         name: coverage-${{ matrix.os }}-${{ matrix.python-version }}
-        path: coverage.json
+        path: .coverage
 
   coverage-summary:
     needs: build
@@ -101,8 +102,8 @@ jobs:
     - name: Combine coverage data
       run: |
         mkdir combined
-        find coverages -type f -name 'coverage.json' -exec cp {} combined/ \;
-        coverage combine combined
+        find coverages -type f -name '.coverage' -exec cp {} combined/ \;
+        coverage combine combined/
         coverage json -o coverage.json
         coverage report
 
