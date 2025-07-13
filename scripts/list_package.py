@@ -73,7 +73,7 @@ def list_modules_and_classes(package_dir: str, base_package: str = ""):
 # Example usage
 if __name__ == "__main__":
     # Adjust these as needed
-    package_path = "src/aplustools"
+    package_path = "../src/aplustools"
     base_package = "aplustools"
 
     list_modules_and_classes(package_path, base_package)

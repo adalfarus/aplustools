@@ -2462,7 +2462,7 @@ class FlexTimer:
             # Plot the best fit curve
             if best_fit:
                 fitted_func = complexity_classes[best_fit]
-                x_model = _np.linspace(min(input_sizes), max(input_sizes), 100)
+                x_model = np.linspace(min(input_sizes), max(input_sizes), 100)
                 y_model = fitted_func(x_model, *best_params)
                 plt.plot(x_model, y_model, label=f"Best Fit: {best_fit}")
 

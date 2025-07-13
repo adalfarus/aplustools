@@ -12,11 +12,12 @@ repos:
   hooks:
     - id: generate-docs
       name: Auto-generate API documentation
-      entry: bash -c 'pdoc aplustools --output-dir docs --force'
-      language: system
+      entry: pdoc aplustools --output-dir docs --force
+      language: python
+      additional_dependencies: [pdoc]
       pass_filenames: false
       always_run: true
-      stages: [commit, push]
+      stages: [pre-commit, manual]
 ci:
     autofix_commit_msg: |
         [pre-commit.ci] auto fixes from pre-commit.com hooks
