@@ -65,6 +65,14 @@ exclude = [
     "src/aplustools/tests/*",
 ]
 
+[tool.pydoc-markdown]
+loader.type = "python"
+loader.search_path = ["src"]
+loader.modules = ["aplustools"]
+
+renderer.type = "markdown"
+renderer.output_directory = "docs"
+
 [project]
 name = "aplustools"
 version = "2.0.0.0"
