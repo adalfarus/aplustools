@@ -6,7 +6,7 @@ on:
     paths: ['src/**']
   push:
     branches: [main]
-    paths: ['src/**']
+    # paths: ['src/**']
   workflow_dispatch:
 
 permissions:
