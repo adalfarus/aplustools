@@ -17,10 +17,8 @@ jobs:
 
     strategy:
       matrix:
-        # os: [macos-latest, ubuntu-latest, windows-latest]
-        # python-version: ['3.10', '3.11', '3.12', '3.13']
-        os: [ubuntu-latest, windows-latest]
-        python-version: ['3.13']
+        os: [macos-latest, ubuntu-latest, windows-latest]
+        python-version: ['3.10', '3.11', '3.12', '3.13']
 
     steps:
     - name: Checkout code
@@ -90,12 +88,6 @@ jobs:
       uses: actions/download-artifact@v4
       with:
         path: coverages
-
-    - name: Debug Show files and working directory
-      run: |
-        echo "Current directory: $(pwd)"
-        echo "Files:"
-        ls -R
 
     - name: Rename data.coverage to .coverage and combine coverage data
       run: |
