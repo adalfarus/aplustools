@@ -27,7 +27,7 @@ jobs:
 
       - name: Build markdown docs
         run: |
-          sphinx-build -b rst docs/source docs/build/rst
+          sphinx-build -b markdown docs/source docs/build/markdown
 
       - name: Push docs to GitHub Wiki
         run: |
@@ -36,7 +36,9 @@ jobs:
 
           git clone https://x-access-token:${{ secrets.GH_PAT }}@github.com/${{ github.repository }}.wiki.git wiki
           rm -rf wiki/*
-          cp -r docs/build/rst/* wiki/
+          cp -r docs/build/markdown/* wiki/
+          
+          if [ -f wiki/index.md ]; then mv wiki/index.md wiki/Home.md; fi
 
           cd wiki
           git add .
