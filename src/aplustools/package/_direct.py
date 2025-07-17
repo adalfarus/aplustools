@@ -113,7 +113,7 @@ class LazyLoader:
             finally:
                 if error != "":
                     if dep in hard_dependencies:
-                        raise ModuleNotFoundError(
+                        print(
                             error.format(
                                 err_type="hard dependency",
                                 err_type_upper="Hard Dependency",
