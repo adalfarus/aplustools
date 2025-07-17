@@ -103,17 +103,17 @@ class LazyLoader:
                     if installed_version not in spec:
                         error = (
                             f"Version conflict for '{pkg_name}' ({{err_type}}): "
-                            f"Installed version {installed_version} does not meet {specifier}"
+                            f"Installed version {installed_version} does not seem meet {specifier}"
                         )
 
             except _PackageNotFoundError:
-                error = f"{{err_type_upper}} '{dep}' for module '{self.module_name}' is not installed."
+                error = f"{{err_type_upper}} '{dep}' for module '{self.module_name}' might not be installed."
             except Exception as e:
                 error = f"Error while checking {{err_type}} '{dep}': {e}"
             finally:
                 if error != "":
                     if dep in hard_dependencies:
-                        raise ModuleNotFoundError(
+                        print(
                             error.format(
                                 err_type="hard dependency",
                                 err_type_upper="Hard Dependency",
@@ -148,7 +148,7 @@ class LazyLoader:
 
             except ImportError as e:
                 print(
-                    f"Optional module '{self.module_name}' not installed. Please install it to use this feature.",
+                    f"Optional module '{self.module_name}' might not be installed. Please ensure it is installed when using this feature.",
                     e,
                 )
 
