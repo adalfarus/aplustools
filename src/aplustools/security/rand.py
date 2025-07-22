@@ -5,8 +5,6 @@ import random as _random
 import math as _math
 import os as _os
 
-from numpy import random as _np_random, ndarray as _ndarray
-
 from ..package import enforce_hard_deps as _enforce_hard_deps
 
 # Standard typing imports for aps
@@ -110,6 +108,13 @@ class SecretsRandom(ModularRandom):
         """Return a random float from secrets.randbits"""
         return _secrets.randbits(56) / (1 << 56)
 
+
+try:
+    from numpy import random as _np_random, ndarray as _ndarray
+except ImportError as e:
+    print(f"Failed to import numpy {e}")
+    _np_random = None
+    _ndarray = None
 
 class NumPyRandom:
     _generator = _np_random.default_rng()
