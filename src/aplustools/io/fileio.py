@@ -238,6 +238,12 @@ class BasicFDWrapper:
         """
         Closes the file descriptor.
         """
+        if not (
+            hasattr(self, "closed")
+            and hasattr(self, "close_fd")
+            and hasattr(self, "fd")
+        ):
+            return  # Object has not finished initializing
         if not self.closed and self.close_fd and is_fd_open(self.fd):
             os.close(self.fd)
             self.closed = True

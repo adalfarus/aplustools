@@ -16,4 +16,10 @@ import types as _ts
 def test_() -> (
     None
 ):  # That the package structure works is proof enough it works (for now)
-    assert True
+    try:
+        for i in range(100):
+            timer = FlexTimer()
+            timer.wait_ms(3e-06)
+            print(timer.end())
+    except Exception as e:
+        raise RuntimeError(f"Chronokit tests failed") from e
