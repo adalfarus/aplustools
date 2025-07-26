@@ -116,6 +116,7 @@ except ImportError as e:
     _np_random = None
     _ndarray = None
 
+
 class NumPyRandom:
     _generator = _np_random.default_rng()
 

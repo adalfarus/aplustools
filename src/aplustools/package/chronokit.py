@@ -543,7 +543,9 @@ class PreciseTimeDelta:
 
         # Adjust precision dynamically based on the fractional part
         print(fractional_seconds)
-        if fractional_seconds > 0:  # We convert it to a decimal to avert ones like "3e-06"
+        if (
+            fractional_seconds > 0
+        ):  # We convert it to a decimal to avert ones like "3e-06"
             fractional_part_str = f"{fractional_seconds:.10f}".split(".")[1].rstrip("0")
             time_str = f"{hours}:{minutes:02}:{seconds:02}.{fractional_part_str}"
         else:
