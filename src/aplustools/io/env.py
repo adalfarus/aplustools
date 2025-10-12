@@ -85,6 +85,14 @@ class SystemTheme(enum.Enum):
     UNKNOWN = 0
 
 
+class OperatingSystem(enum.Enum):
+    """Used to differentiate the operating systems"""
+    NT = 0
+    DARWIN = 1
+    GNU_LINUX = 2
+    BSD = 3
+
+
 class _BaseSystem(metaclass=_SingletonMeta):
     """
     A base class to represent a system's general functionalities, such as CPU and GPU information,
@@ -100,6 +108,13 @@ class _BaseSystem(metaclass=_SingletonMeta):
         self.os: str = platform.system()
         self.os_version: str = platform.version()
         self.major_os_version: str = platform.release()
+
+    def get_os(self) -> OperatingSystem:
+        """
+        Get the Operating System enum
+        Returns: The operating system
+        """
+        raise NotImplementedError
 
     def get_cpu_arch(self) -> str:
         """
@@ -838,6 +853,8 @@ class _WindowsSystem(_BaseSystem):
     managing system theme, scheduling events, and sending notifications.
     """
 
+    def get_os(self) -> OperatingSystem: return OperatingSystem.NT
+
     def get_cpu_brand(self) -> str:
         """
         Get the brand and model of the CPU specific to Windows systems.
@@ -1031,6 +1048,8 @@ class _WindowsSystem(_BaseSystem):
 class _DarwinSystem(_BaseSystem):
     """System methods specific to macOS (Darwin)."""
 
+    def get_os(self) -> OperatingSystem: return OperatingSystem.DARWIN
+
     def get_cpu_brand(self):
         command = "sysctl -n machdep.cpu.brand_string"
         return subprocess.check_output(command.split(" ")).decode().strip()
@@ -1108,6 +1127,8 @@ class _DarwinSystem(_BaseSystem):
 
 class _LinuxSystem(_BaseSystem):
     """System methods specific to Linux."""
+
+    def get_os(self) -> OperatingSystem: return OperatingSystem.GNU_LINUX
 
     def get_cpu_brand(self):
         try:
@@ -1242,6 +1263,8 @@ class _LinuxSystem(_BaseSystem):
 
 class _FreeBSDSystem(_LinuxSystem):
     """System methods specific to FreeBSD."""
+
+    def get_os(self) -> OperatingSystem: return OperatingSystem.BSD
 
     def get_cpu_brand(self) -> str:
         """Get CPU brand using sysctl."""
