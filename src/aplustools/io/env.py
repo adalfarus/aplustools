@@ -87,6 +87,7 @@ class SystemTheme(enum.Enum):
 
 class OperatingSystem(enum.Enum):
     """Used to differentiate the operating systems"""
+
     NT = "Windows"
     DARWIN = "Darwin"
     GNU_LINUX = "Linux"
@@ -879,7 +880,8 @@ class _WindowsSystem(_BaseSystem):
     managing system theme, scheduling events, and sending notifications.
     """
 
-    def get_os(self) -> OperatingSystem: return OperatingSystem.NT
+    def get_os(self) -> OperatingSystem:
+        return OperatingSystem.NT
 
     def get_cpu_brand(self) -> str:
         """
@@ -1074,7 +1076,8 @@ class _WindowsSystem(_BaseSystem):
 class _DarwinSystem(_BaseSystem):
     """System methods specific to macOS (Darwin)."""
 
-    def get_os(self) -> OperatingSystem: return OperatingSystem.DARWIN
+    def get_os(self) -> OperatingSystem:
+        return OperatingSystem.DARWIN
 
     def get_cpu_brand(self):
         command = "sysctl -n machdep.cpu.brand_string"
@@ -1154,7 +1157,8 @@ class _DarwinSystem(_BaseSystem):
 class _LinuxSystem(_BaseSystem):
     """System methods specific to Linux."""
 
-    def get_os(self) -> OperatingSystem: return OperatingSystem.GNU_LINUX
+    def get_os(self) -> OperatingSystem:
+        return OperatingSystem.GNU_LINUX
 
     def get_cpu_brand(self):
         try:
@@ -1290,7 +1294,8 @@ class _LinuxSystem(_BaseSystem):
 class _BSDSystem(_LinuxSystem):
     """System methods specific to FreeBSD."""
 
-    def get_os(self) -> OperatingSystem: return OperatingSystem.BSD
+    def get_os(self) -> OperatingSystem:
+        return OperatingSystem.BSD
 
     def get_cpu_brand(self) -> str:
         """Get CPU brand using sysctl."""
