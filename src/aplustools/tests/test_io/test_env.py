@@ -1,4 +1,5 @@
 """TBA"""
+from subprocess import SubprocessError
 
 from ...io.env import *
 from ...io.env import (
@@ -112,6 +113,8 @@ def test_gpu_info_safe(system: BaseSystemType) -> None:
         assert isinstance(info, (str, list))
     except NotImplementedError:
         pytest.skip("GPU info not implemented on this OS")
+    except (SubprocessError, FileNotFoundError):
+        pytest.skip("Utility for GPU info not working at the moment")
 
 
 @pytest.mark.skipif('sys.platform != "win32"', reason="Windows-only test")

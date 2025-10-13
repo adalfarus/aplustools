@@ -169,7 +169,7 @@ class _BaseSystem(metaclass=_SingletonMeta):
             )
         return "Unknown"
 
-    def get_gpu_info(self) -> str:
+    def get_gpu_info(self) -> list[str]:
         """
         Get the GPU information in a standardized format.
 
