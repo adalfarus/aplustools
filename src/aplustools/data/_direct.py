@@ -409,10 +409,25 @@ def beautify_json(data_dict: dict[str, _ty.Any]) -> str:
     pretty_json = json.dumps(
         data_dict, indent=4, sort_keys=False, default=_custom_serializer
     )
-    pretty_json = re.sub(
-        r"\[\s+([^][]+?)\s+]",
-        lambda m: f"[{', '.join(item.strip() for item in m.group(1).split(','))}]",
+
+    def compact_simple_lists(
+        match,
+    ):  # Replace simple lists with compact versions, but leave complex ones alone
+        contents = match.group(1)
+        # Check if all items are primitives (strings/numbers/bools/null)
+        try:
+            parsed = json.loads(f"[{contents}]")
+            if all(isinstance(x, (str, int, float, bool, type(None))) for x in parsed):
+                return f"[{', '.join(json.dumps(x) for x in parsed)}]"
+        except Exception:
+            pass
+        return match.group(0)
+
+    pretty_json = re.sub(  # Regex matches lists that span multiple lines with only simple elements
+        r"\[\s*((?:[^{}\[\]]|\n)+?)\s*]",  # Match contents inside [...]
+        compact_simple_lists,
         pretty_json,
+        flags=re.MULTILINE,
     )
     return pretty_json
 
