@@ -85,6 +85,41 @@ class SystemTheme(enum.Enum):
     UNKNOWN = 0
 
 
+class OperatingSystem(enum.Enum):
+    """Used to differentiate the operating systems"""
+
+    NT = "Windows"
+    DARWIN = "Darwin"
+    GNU_LINUX = "Linux"
+    BSD = "BSD"
+    ANDROID = "Android"
+    IOS = "iOS"
+    IPADOS = "iPadOS"
+    UNKNOWN = "Unknown"
+
+    @classmethod
+    def detect(cls) -> _te.Self:
+        """Detects the current OS and returns an OperatingSystem member."""
+        os_name = platform.system()
+
+        if os_name == "Windows":
+            return cls.NT
+        elif os_name == "Darwin":
+            plat: str = platform.platform()
+            if "iPhoneOS" in plat and sys.maxsize < 2**63:
+                return cls.IOS
+            elif "iPad" in plat and sys.maxsize < 2**63:
+                return cls.IPADOS
+            return cls.DARWIN
+        elif os_name == "Linux":
+            return cls.GNU_LINUX
+        elif os_name in {"FreeBSD", "OpenBSD", "NetBSD", "DragonFly"}:
+            return cls.BSD
+        elif os_name == "Android":
+            return cls.ANDROID
+        return cls.UNKNOWN
+
+
 class _BaseSystem(metaclass=_SingletonMeta):
     """
     A base class to represent a system's general functionalities, such as CPU and GPU information,
@@ -100,6 +135,13 @@ class _BaseSystem(metaclass=_SingletonMeta):
         self.os: str = platform.system()
         self.os_version: str = platform.version()
         self.major_os_version: str = platform.release()
+
+    def get_os(self) -> OperatingSystem:
+        """
+        Get the Operating System enum
+        Returns: The operating system
+        """
+        raise NotImplementedError
 
     def get_cpu_arch(self) -> str:
         """
@@ -127,7 +169,7 @@ class _BaseSystem(metaclass=_SingletonMeta):
             )
         return "Unknown"
 
-    def get_gpu_info(self) -> str:
+    def get_gpu_info(self) -> list[str]:
         """
         Get the GPU information in a standardized format.
 
@@ -838,6 +880,9 @@ class _WindowsSystem(_BaseSystem):
     managing system theme, scheduling events, and sending notifications.
     """
 
+    def get_os(self) -> OperatingSystem:
+        return OperatingSystem.NT
+
     def get_cpu_brand(self) -> str:
         """
         Get the brand and model of the CPU specific to Windows systems.
@@ -1031,6 +1076,9 @@ class _WindowsSystem(_BaseSystem):
 class _DarwinSystem(_BaseSystem):
     """System methods specific to macOS (Darwin)."""
 
+    def get_os(self) -> OperatingSystem:
+        return OperatingSystem.DARWIN
+
     def get_cpu_brand(self):
         command = "sysctl -n machdep.cpu.brand_string"
         return subprocess.check_output(command.split(" ")).decode().strip()
@@ -1108,6 +1156,9 @@ class _DarwinSystem(_BaseSystem):
 
 class _LinuxSystem(_BaseSystem):
     """System methods specific to Linux."""
+
+    def get_os(self) -> OperatingSystem:
+        return OperatingSystem.GNU_LINUX
 
     def get_cpu_brand(self):
         try:
@@ -1240,8 +1291,11 @@ class _LinuxSystem(_BaseSystem):
         return language_code or os.getenv("LANG", "en_US"), encoding
 
 
-class _FreeBSDSystem(_LinuxSystem):
+class _BSDSystem(_LinuxSystem):
     """System methods specific to FreeBSD."""
+
+    def get_os(self) -> OperatingSystem:
+        return OperatingSystem.BSD
 
     def get_cpu_brand(self) -> str:
         """Get CPU brand using sysctl."""
@@ -1304,22 +1358,30 @@ class _FreeBSDSystem(_LinuxSystem):
 
 def get_system() -> BaseSystemType:
     """Gets the appropriate system instance based on the operating system."""
-    os_name = platform.system()
-    if os_name == "Windows":
-        return _WindowsSystem()
-    elif os_name == "Darwin":
-        return _DarwinSystem()
-    elif os_name == "Linux":
-        return _LinuxSystem()
-    elif os_name == "FreeBSD":
-        return _FreeBSDSystem()
-    else:
-        warnings.warn(
-            "Unsupported Operating System, returning _BaseSystem instance.",
-            RuntimeWarning,
-            2,
-        )
-        return _BaseSystem()
+    os_enum: OperatingSystem = OperatingSystem.detect()
+
+    match os_enum:
+        case OperatingSystem.NT:
+            return _WindowsSystem()
+        case OperatingSystem.DARWIN:
+            return _DarwinSystem()
+        case OperatingSystem.GNU_LINUX:
+            return _LinuxSystem()
+        case OperatingSystem.BSD:
+            return _BSDSystem()
+        case OperatingSystem.UNKNOWN:
+            warnings.warn(
+                "Unknown Operating System, returning _BaseSystem instance.",
+                RuntimeWarning,
+                2,
+            )
+        case _:
+            warnings.warn(
+                "Unsupported Operating System, returning _BaseSystem instance.",
+                RuntimeWarning,
+                2,
+            )
+    return _BaseSystem()
 
 
 def diagnose_shutdown_blockers(

@@ -1,4 +1,5 @@
 """TBA"""
+from subprocess import SubprocessError
 
 from ...io.env import *
 from ...io.env import (
@@ -6,7 +7,7 @@ from ...io.env import (
     _LinuxSystem,
     _WindowsSystem,
     _DarwinSystem,
-    _FreeBSDSystem,
+    _BSDSystem,
 )
 import pytest
 import platform
@@ -34,7 +35,7 @@ import types as _ts
         ("Windows", _WindowsSystem),
         ("Darwin", _DarwinSystem),
         ("Linux", _LinuxSystem),
-        ("FreeBSD", _FreeBSDSystem),
+        ("FreeBSD", _BSDSystem),
     ],
 )
 def test_get_system_known_os(
@@ -47,7 +48,7 @@ def test_get_system_known_os(
 
 def test_get_system_unknown_os(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(platform, "system", lambda: "Solaris")
-    with pytest.warns(RuntimeWarning, match="Unsupported Operating System"):
+    with pytest.warns(RuntimeWarning, match="Unknown Operating System"):
         result = get_system()
     assert isinstance(result, _BaseSystem)
 
@@ -112,6 +113,8 @@ def test_gpu_info_safe(system: BaseSystemType) -> None:
         assert isinstance(info, (str, list))
     except NotImplementedError:
         pytest.skip("GPU info not implemented on this OS")
+    except (SubprocessError, FileNotFoundError):
+        pytest.skip("Utility for GPU info not working at the moment")
 
 
 @pytest.mark.skipif('sys.platform != "win32"', reason="Windows-only test")
