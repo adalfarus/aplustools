@@ -6,7 +6,7 @@ from ...io.env import (
     _LinuxSystem,
     _WindowsSystem,
     _DarwinSystem,
-    _FreeBSDSystem,
+    _BSDSystem,
 )
 import pytest
 import platform
@@ -34,7 +34,7 @@ import types as _ts
         ("Windows", _WindowsSystem),
         ("Darwin", _DarwinSystem),
         ("Linux", _LinuxSystem),
-        ("FreeBSD", _FreeBSDSystem),
+        ("FreeBSD", _BSDSystem),
     ],
 )
 def test_get_system_known_os(
