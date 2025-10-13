@@ -47,7 +47,7 @@ def test_get_system_known_os(
 
 def test_get_system_unknown_os(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(platform, "system", lambda: "Solaris")
-    with pytest.warns(RuntimeWarning, match="Unsupported Operating System"):
+    with pytest.warns(RuntimeWarning, match="Unknown Operating System"):
         result = get_system()
     assert isinstance(result, _BaseSystem)
 
