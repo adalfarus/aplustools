@@ -1353,7 +1353,7 @@ class _BSDSystem(_LinuxSystem):
 
 def get_system() -> BaseSystemType:
     """Gets the appropriate system instance based on the operating system."""
-    os_enum: OperatingSystem = platform.system()
+    os_enum: OperatingSystem = OperatingSystem.detect()
 
     match os_enum:
         case OperatingSystem.NT:
