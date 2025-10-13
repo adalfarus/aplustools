@@ -98,7 +98,7 @@ class OperatingSystem(enum.Enum):
     UNKNOWN = "Unknown"
 
     @classmethod
-    def detect(cls) -> _ty.Self:
+    def detect(cls) -> _te.Self:
         """Detects the current OS and returns an OperatingSystem member."""
         os_name = platform.system()
 
