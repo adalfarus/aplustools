@@ -69,7 +69,7 @@ exclude = [
 
 [project]
 name = "aplustools"
-version = "2.0.0.4"
+version = "2.0.0.5"
 dependencies = ["packaging", "pywin32>=306; os_name == 'nt'", "cachetools>=5.5.0", "typing_extensions"]
 requires-python = ">= 3.10"
 authors = [
