@@ -664,8 +664,13 @@ class Argumint:
         arguments = system.argv
         pre_args = self._parse_pre_args(arguments)
         path = ".".join(pre_args)
+        preargs_stop_idx: int
+        if len(pre_args) > 1:
+            preargs_stop_idx = arguments.index(pre_args[-1]) + 1
+        else:
+            preargs_stop_idx = 0
         args = arguments[
-            arguments.index(pre_args[-1]) + 1 :
+            preargs_stop_idx :
         ]  # Will return an empty list, if [i:] is longer than the list
         endpoint = self._endpoints.get(path) or self.default_endpoint
         arguments = self._parse_args(args, endpoint, mode)
