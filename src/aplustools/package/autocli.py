@@ -525,6 +525,10 @@ class Argumint:
                 key, _, value = arg[2:].partition("=")
                 if not any(a["name"] == key for a in endpoint.analysis["arguments"]):
                     raise ArgumentParsingError(f"Unknown argument: {key}", i)
+                elif not value:
+                    raise ArgumentParsingError(
+                        f"No value: {key}, pleae use the format {key}=[value]", i
+                    )
                 arg_obj = next(
                     a for a in endpoint.analysis["arguments"] if a["name"] == key
                 )
@@ -603,14 +607,14 @@ class Argumint:
                     f"-{arg['name'][0]}",
                     f"--{arg['name']}",
                     action="store_true",
-                    help=arg["help"],
+                    help=arg.get("help", "No help available"),
                 )
             else:
                 parser.add_argument(
                     f"--{arg['name']}",
                     type=arg["type"],
                     default=arg["default"],
-                    help=arg["help"],
+                    help=arg.get("help", "No help available"),
                 )
 
         # Parse arguments with argparse
@@ -666,9 +670,11 @@ class Argumint:
         path = ".".join(pre_args)
         preargs_stop_idx: int
         if len(pre_args) != 0:
-            preargs_stop_idx = arguments.index(pre_args[-1]) + 1
+            preargs_stop_idx = (
+                arguments.index(pre_args[-1]) + 1
+            )  # Fix => remove single "root" arg in next big update, also update the class name
         else:
-            preargs_stop_idx = 0
+            preargs_stop_idx = 1  # Temp fix
         args = arguments[
             preargs_stop_idx:
         ]  # Will return an empty list, if [i:] is longer than the list
