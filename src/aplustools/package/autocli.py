@@ -526,7 +526,9 @@ class Argumint:
                 if not any(a["name"] == key for a in endpoint.analysis["arguments"]):
                     raise ArgumentParsingError(f"Unknown argument: {key}", i)
                 elif not value:
-                    raise ArgumentParsingError(f"No value: {key}, pleae use the format {key}=[value]", i)
+                    raise ArgumentParsingError(
+                        f"No value: {key}, pleae use the format {key}=[value]", i
+                    )
                 arg_obj = next(
                     a for a in endpoint.analysis["arguments"] if a["name"] == key
                 )
@@ -668,7 +670,9 @@ class Argumint:
         path = ".".join(pre_args)
         preargs_stop_idx: int
         if len(pre_args) != 0:
-            preargs_stop_idx = arguments.index(pre_args[-1]) + 1  # Fix => remove single "root" arg in next big update, also update the class name
+            preargs_stop_idx = (
+                arguments.index(pre_args[-1]) + 1
+            )  # Fix => remove single "root" arg in next big update, also update the class name
         else:
             preargs_stop_idx = 1  # Temp fix
         args = arguments[
