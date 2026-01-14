@@ -670,7 +670,7 @@ class Argumint:
         else:
             preargs_stop_idx = 0
         args = arguments[
-            preargs_stop_idx :
+            preargs_stop_idx:
         ]  # Will return an empty list, if [i:] is longer than the list
         endpoint = self._endpoints.get(path) or self.default_endpoint
         arguments = self._parse_args(args, endpoint, mode)
