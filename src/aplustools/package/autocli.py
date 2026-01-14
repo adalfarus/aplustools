@@ -665,7 +665,7 @@ class Argumint:
         pre_args = self._parse_pre_args(arguments)
         path = ".".join(pre_args)
         preargs_stop_idx: int
-        if len(pre_args) > 1:
+        if len(pre_args) != 0:
             preargs_stop_idx = arguments.index(pre_args[-1]) + 1
         else:
             preargs_stop_idx = 0
