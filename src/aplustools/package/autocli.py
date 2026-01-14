@@ -525,7 +525,7 @@ class Argumint:
                 key, _, value = arg[2:].partition("=")
                 if not any(a["name"] == key for a in endpoint.analysis["arguments"]):
                     raise ArgumentParsingError(f"Unknown argument: {key}", i)
-                else if not value:
+                elif not value:
                     raise ArgumentParsingError(f"No value: {key}, pleae use the format {key}=[value]", i)
                 arg_obj = next(
                     a for a in endpoint.analysis["arguments"] if a["name"] == key
