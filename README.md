@@ -14,8 +14,8 @@ aplustools2 is a simple, user-friendly Python library for performing amazing tas
 | OS                       | UX & README instructions | Tests | More Complex Functionalities |
 |--------------------------|--------------------------|-------|------------------------------|
 | Windows                  | 🟩                       | 🟩    | 🟩                           |
-| MacOS                    | 🟨                       | 🟩    | 🟨                           |
-| Linux (Ubuntu 22.04 LTS) | 🟩                       | 🟩    | 🟨                           |
+| MacOS                    | 🟩                       | 🟩    | 🟩                           |
+| Linux (Ubuntu 22.04 LTS) | 🟩                       | 🟩    | 🟩                           |
 
 ## Features
 
@@ -754,3 +754,4 @@ chmod +x ./aps_build_master.sh
 ## License
 
 aplustools is licensed under the LGPL-2.1 License - see the [LICENSE](https://github.com/adalfarus/aplustools/blob/main/LICENSE) file for details.
+
